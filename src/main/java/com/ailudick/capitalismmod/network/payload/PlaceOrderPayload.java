@@ -8,7 +8,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Client -> Server: place a sell or buy order. Prices are in USD.
+ * Client -> Server: place a sell or buy order on the commodity exchange. Prices are in USD.
  *
  * @param sell {@code true} = sell order, {@code false} = buy order
  */

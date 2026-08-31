@@ -54,6 +54,9 @@ import com.ailudick.capitalismmod.bond.BondMarket;
 import com.ailudick.capitalismmod.bond.BondSavedData;
 import com.ailudick.capitalismmod.futures.FuturesMarket;
 import com.ailudick.capitalismmod.futures.Position;
+import com.ailudick.capitalismmod.supply.PurchaseOrder;
+import com.ailudick.capitalismmod.supply.SupplyMarket;
+import com.ailudick.capitalismmod.supply.SupplyMarketSavedData;
 import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
@@ -70,7 +73,9 @@ import com.ailudick.capitalismmod.network.payload.BidPayload;
 import com.ailudick.capitalismmod.network.payload.BuyBondPayload;
 import com.ailudick.capitalismmod.network.payload.CloseFuturesPositionPayload;
 import com.ailudick.capitalismmod.network.payload.ListAuctionPayload;
+import com.ailudick.capitalismmod.network.payload.PlaceSupplyOrderPayload;
 import com.ailudick.capitalismmod.network.payload.RedeemBondPayload;
+import com.ailudick.capitalismmod.network.payload.SyncSupplyMarketPayload;
 import com.ailudick.capitalismmod.network.payload.SyncAuctionsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncBondsPayload;
 import com.ailudick.capitalismmod.network.payload.DepositMarginPayload;
@@ -534,6 +539,29 @@ public class ServerPayloadHandler {
             }
         }
         PacketDistributor.sendToPlayer(player, new SyncBondsPayload(mine));
+    }
+
+    public static void handlePlaceSupplyOrder(PlaceSupplyOrderPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer player)) {
+                return;
+            }
+            if (!SupplyMarket.placeOrder(player, payload.offerId(), payload.quantity())) {
+                player.displayClientMessage(Component.translatable("command.capitalismmod.insufficient"), true);
+            }
+            syncSupplyMarket(player);
+        });
+    }
+
+    private static void syncSupplyMarket(ServerPlayer player) {
+        List<PurchaseOrder> mine = new ArrayList<>();
+        for (PurchaseOrder order : SupplyMarketSavedData.get(player.getServer()).orders()) {
+            if (order.buyerUuid().equals(player.getUUID())) {
+                mine.add(order);
+            }
+        }
+        PacketDistributor.sendToPlayer(player, new SyncSupplyMarketPayload(
+                new ArrayList<>(SupplyMarketSavedData.get(player.getServer()).offers()), mine));
     }
 
     public static void handlePlaceStockOrder(PlaceStockOrderPayload payload, IPayloadContext context) {

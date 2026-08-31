@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.CapitalismMod;
 import com.ailudick.capitalismmod.menu.AuctionHouseMenu;
 import com.ailudick.capitalismmod.menu.BankMenu;
 import com.ailudick.capitalismmod.menu.BondMarketMenu;
+import com.ailudick.capitalismmod.menu.ProcurementMenu;
 import com.ailudick.capitalismmod.menu.BusinessLicenseMenu;
 import com.ailudick.capitalismmod.menu.CommodityExchangeMenu;
 import com.ailudick.capitalismmod.menu.CompanyMenu;
@@ -62,4 +63,7 @@ public class ModMenuTypes {
 
     public static final DeferredHolder<MenuType<?>, MenuType<BondMarketMenu>> BOND_MARKET_MENU =
             MENUS.register("bond_market_menu", () -> new MenuType<>(BondMarketMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<ProcurementMenu>> PROCUREMENT_MENU =
+            MENUS.register("procurement_menu", () -> new MenuType<>(ProcurementMenu::new, FeatureFlags.DEFAULT_FLAGS));
 }

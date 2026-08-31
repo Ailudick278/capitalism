@@ -266,5 +266,13 @@
   "command.capitalismmod.loan_list_title": "My loans",
 
   "news.capitalismmod.price_move": "%s moved %s",
-  "news.capitalismmod.big_trade": "Big trade: %s x %s, total $%s"
+  "news.capitalismmod.big_trade": "Big trade: %s x %s, total $%s",
+
+  "block.capitalismmod.procurement": "Procurement",
+  "container.capitalismmod.procurement": "Procurement",
+  "gui.capitalismmod.suppliers": "Suppliers",
+  "gui.capitalismmod.my_orders": "My Orders",
+  "gui.capitalismmod.place_order": "Order",
+  "command.capitalismmod.offer_failed": "Offer failed (company not found or item not produced)",
+  "command.capitalismmod.offer_made": "Listed %s @ $%s"
 }

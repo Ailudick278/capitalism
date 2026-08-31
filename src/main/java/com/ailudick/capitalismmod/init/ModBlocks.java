@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.CapitalismMod;
 import com.ailudick.capitalismmod.block.AuctionHouseBlock;
 import com.ailudick.capitalismmod.block.BankBlock;
 import com.ailudick.capitalismmod.block.BondMarketBlock;
+import com.ailudick.capitalismmod.block.ProcurementBlock;
 import com.ailudick.capitalismmod.block.BusinessBureau;
 import com.ailudick.capitalismmod.block.CommodityExchangeBlock;
 import com.ailudick.capitalismmod.block.FuturesExchangeBlock;
@@ -45,4 +46,6 @@ public class ModBlocks {
             () -> new AuctionHouseBlock(BlockBehaviour.Properties.of().strength(3.0f)));
     public static final DeferredBlock<Block> BOND_MARKET_BLOCK = BLOCKS.register("bond_market",
             () -> new BondMarketBlock(BlockBehaviour.Properties.of().strength(3.0f)));
+    public static final DeferredBlock<Block> PROCUREMENT_BLOCK = BLOCKS.register("procurement",
+            () -> new ProcurementBlock(BlockBehaviour.Properties.of().strength(3.0f)));
 }

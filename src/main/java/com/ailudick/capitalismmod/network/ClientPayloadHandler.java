@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.network;
 import com.ailudick.capitalismmod.menu.AuctionHouseMenu;
 import com.ailudick.capitalismmod.menu.BankMenu;
 import com.ailudick.capitalismmod.menu.BondMarketMenu;
+import com.ailudick.capitalismmod.menu.ProcurementMenu;
 import com.ailudick.capitalismmod.menu.CommodityExchangeMenu;
 import com.ailudick.capitalismmod.menu.CompanyMenu;
 import com.ailudick.capitalismmod.menu.FuturesExchangeMenu;
@@ -15,6 +16,7 @@ import com.ailudick.capitalismmod.menu.WarehouseMenu;
 import com.ailudick.capitalismmod.network.payload.SyncAuctionsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncBankAccountsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncBondsPayload;
+import com.ailudick.capitalismmod.network.payload.SyncSupplyMarketPayload;
 import com.ailudick.capitalismmod.network.payload.SyncCommodityPayload;
 import com.ailudick.capitalismmod.network.payload.SyncConglomeratePayload;
 import com.ailudick.capitalismmod.network.payload.SyncFuturesPayload;
@@ -117,6 +119,15 @@ public class ClientPayloadHandler {
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof BondMarketMenu menu) {
                 menu.setHoldings(payload.holdings());
+            }
+        });
+    }
+
+    public static void handleSyncSupplyMarket(SyncSupplyMarketPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player().containerMenu instanceof ProcurementMenu menu) {
+                menu.setOffers(payload.offers());
+                menu.setOrders(payload.orders());
             }
         });
     }

@@ -266,5 +266,13 @@
   "command.capitalismmod.loan_list_title": "我的借贷",
 
   "news.capitalismmod.price_move": "%s 价格波动 %s",
-  "news.capitalismmod.big_trade": "大宗成交: %s × %s,总额 $%s"
+  "news.capitalismmod.big_trade": "大宗成交: %s × %s,总额 $%s",
+
+  "block.capitalismmod.procurement": "采购台",
+  "container.capitalismmod.procurement": "采购台",
+  "gui.capitalismmod.suppliers": "供应商",
+  "gui.capitalismmod.my_orders": "我的订单",
+  "gui.capitalismmod.place_order": "下单",
+  "command.capitalismmod.offer_failed": "挂牌失败(公司不存在或该商品非公司产出)",
+  "command.capitalismmod.offer_made": "已挂牌 %s @ $%s"
 }

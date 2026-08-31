@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.command.RankingCommand;
 import com.ailudick.capitalismmod.command.TransferSharesCommand;
 import com.ailudick.capitalismmod.command.FxCommand;
 import com.ailudick.capitalismmod.command.MoneyCommand;
+import com.ailudick.capitalismmod.command.OfferCommand;
 import com.ailudick.capitalismmod.command.PayCommand;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
@@ -31,5 +32,6 @@ public class ModEvents {
         RankingCommand.register(dispatcher);
         TransferSharesCommand.register(dispatcher);
         LoanCommand.register(dispatcher);
+        OfferCommand.register(dispatcher);
     }
 }

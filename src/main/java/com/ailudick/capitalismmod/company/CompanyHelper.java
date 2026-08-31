@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.init.ModAttachments;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -172,6 +173,8 @@ public final class CompanyHelper {
             }
             warehouse.credit(player.getUUID(), item, output.getValue());
             commodityData.addSupply(output.getKey(), output.getValue());
+            // automatically fulfill any backorders for this commodity
+            SupplyMarket.fulfill(server, player.getUUID(), output.getKey());
         }
     }
 

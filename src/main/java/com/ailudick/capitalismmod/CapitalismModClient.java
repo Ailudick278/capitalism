@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.init.ModMenuTypes;
 import com.ailudick.capitalismmod.screen.AuctionHouseScreen;
 import com.ailudick.capitalismmod.screen.BankScreen;
 import com.ailudick.capitalismmod.screen.BondMarketScreen;
+import com.ailudick.capitalismmod.screen.ProcurementScreen;
 import com.ailudick.capitalismmod.screen.BusinessLicenseScreen;
 import com.ailudick.capitalismmod.screen.CommodityExchangeScreen;
 import com.ailudick.capitalismmod.screen.CompanyScreen;
@@ -47,5 +48,6 @@ public class CapitalismModClient {
         event.register(ModMenuTypes.FUTURES_EXCHANGE_MENU.get(), FuturesExchangeScreen::new);
         event.register(ModMenuTypes.AUCTION_HOUSE_MENU.get(), AuctionHouseScreen::new);
         event.register(ModMenuTypes.BOND_MARKET_MENU.get(), BondMarketScreen::new);
+        event.register(ModMenuTypes.PROCUREMENT_MENU.get(), ProcurementScreen::new);
     }
 }

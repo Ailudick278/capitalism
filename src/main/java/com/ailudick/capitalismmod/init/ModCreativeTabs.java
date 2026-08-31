@@ -80,6 +80,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.FUTURES_EXCHANGE.get());
                         output.accept(ModItems.AUCTION_HOUSE.get());
                         output.accept(ModItems.BOND_MARKET.get());
+                        output.accept(ModItems.PROCUREMENT.get());
                     })
                     .build());
 }

@@ -35,7 +35,9 @@ import com.ailudick.capitalismmod.network.payload.WithdrawMarginPayload;
 import com.ailudick.capitalismmod.network.payload.BidPayload;
 import com.ailudick.capitalismmod.network.payload.BuyBondPayload;
 import com.ailudick.capitalismmod.network.payload.ListAuctionPayload;
+import com.ailudick.capitalismmod.network.payload.PlaceSupplyOrderPayload;
 import com.ailudick.capitalismmod.network.payload.RedeemBondPayload;
+import com.ailudick.capitalismmod.network.payload.SyncSupplyMarketPayload;
 import com.ailudick.capitalismmod.network.payload.SyncAuctionsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncBondsPayload;
 import com.ailudick.capitalismmod.network.payload.IpoCompanyPayload;
@@ -82,6 +84,7 @@ public class NetworkHandler {
         registrar.playToServer(BidPayload.TYPE, BidPayload.STREAM_CODEC, ServerPayloadHandler::handleBid);
         registrar.playToServer(BuyBondPayload.TYPE, BuyBondPayload.STREAM_CODEC, ServerPayloadHandler::handleBuyBond);
         registrar.playToServer(RedeemBondPayload.TYPE, RedeemBondPayload.STREAM_CODEC, ServerPayloadHandler::handleRedeemBond);
+        registrar.playToServer(PlaceSupplyOrderPayload.TYPE, PlaceSupplyOrderPayload.STREAM_CODEC, ServerPayloadHandler::handlePlaceSupplyOrder);
 
         // Server -> Client.
         registrar.playToClient(SyncShopDataPayload.TYPE, SyncShopDataPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncShopData);
@@ -96,5 +99,6 @@ public class NetworkHandler {
         registrar.playToClient(SyncFuturesPayload.TYPE, SyncFuturesPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncFutures);
         registrar.playToClient(SyncAuctionsPayload.TYPE, SyncAuctionsPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncAuctions);
         registrar.playToClient(SyncBondsPayload.TYPE, SyncBondsPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncBonds);
+        registrar.playToClient(SyncSupplyMarketPayload.TYPE, SyncSupplyMarketPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncSupplyMarket);
     }
 }

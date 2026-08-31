@@ -150,6 +150,8 @@ public class ModItems {
             () -> new BlockItem(ModBlocks.AUCTION_HOUSE_BLOCK.get(), new Item.Properties()));
     public static final DeferredItem<BlockItem> BOND_MARKET = ITEMS.register("bond_market",
             () -> new BlockItem(ModBlocks.BOND_MARKET_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> PROCUREMENT = ITEMS.register("procurement",
+            () -> new BlockItem(ModBlocks.PROCUREMENT_BLOCK.get(), new Item.Properties()));
 
     // Business license.
     public static final DeferredItem<BusinessLicense> BUSINESS_LICENSE = ITEMS.register("business_license",
