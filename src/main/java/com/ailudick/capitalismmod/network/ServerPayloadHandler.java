@@ -9,11 +9,10 @@ import com.ailudick.capitalismmod.currency.ExchangeRates;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.init.ModItems;
 import com.ailudick.capitalismmod.init.ModDataComponents;
+import com.ailudick.capitalismmod.init.ModAttachments;
 import com.ailudick.capitalismmod.item.BankCard;
 import com.ailudick.capitalismmod.item.Invoice;
-import com.ailudick.capitalismmod.menu.ShopMenu;
 import com.ailudick.capitalismmod.network.payload.BankTransactionPayload;
-import com.ailudick.capitalismmod.network.payload.BuyItemPayload;
 import com.ailudick.capitalismmod.network.payload.ExchangePayload;
 import com.ailudick.capitalismmod.network.payload.LoanPayload;
 import com.ailudick.capitalismmod.network.payload.OpenAccountPayload;
@@ -26,7 +25,9 @@ import com.ailudick.capitalismmod.network.payload.RedeemInvoicesPayload;
 import com.ailudick.capitalismmod.network.payload.WithdrawCompanyPayload;
 import com.ailudick.capitalismmod.network.payload.UpgradeCompanyPayload;
 import com.ailudick.capitalismmod.network.payload.SyncBankAccountsPayload;
-import com.ailudick.capitalismmod.shop.ShopOffer;
+import com.ailudick.capitalismmod.network.payload.SyncPersonalAssetsPayload;
+import com.ailudick.capitalismmod.network.payload.OperationResultPayload;
+import com.ailudick.capitalismmod.economy.PersonalAssets;
 import com.ailudick.capitalismmod.company.Conglomerate;
 import com.ailudick.capitalismmod.menu.ConglomerateMenu;
 import com.ailudick.capitalismmod.network.payload.OpenConglomeratePayload;
@@ -95,43 +96,6 @@ import java.util.Map;
 
 public class ServerPayloadHandler {
 
-    public static void handleBuyItem(BuyItemPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer player)) {
-                return;
-            }
-            if (!(player.containerMenu instanceof ShopMenu menu)) {
-                return;
-            }
-
-            List<ShopOffer> offers = menu.getOffers();
-            int index = payload.offerIndex();
-            if (index < 0 || index >= offers.size()) {
-                return;
-            }
-
-            ShopOffer offer = offers.get(index);
-            Currency currency = Currencies.byId(offer.currencyId());
-            if (!EconomyHelper.tryPay(player, currency, Money.toMinor(offer.price()))) {
-                player.displayClientMessage(Component.translatable("command.capitalismmod.insufficient"), true);
-                return;
-            }
-
-            ItemStack bought = offer.item().copy();
-            if (!player.getInventory().add(bought)) {
-                player.drop(bought, false);
-            }
-
-            ItemStack invoice = new ItemStack(ModItems.INVOICE.get());
-            invoice.set(ModDataComponents.INVOICE_AMOUNT.get(), Money.toMinor(offer.price()));
-            if (!player.getInventory().add(invoice)) {
-                player.drop(invoice, false);
-            }
-
-            NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, null, offer.item(), offer.item().getCount(), offer.currencyId(), offer.price(), "shop", 0));
-        });
-    }
-
     public static void handleExchange(ExchangePayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player)) {
@@ -148,16 +112,15 @@ public class ServerPayloadHandler {
                 return;
             }
 
-            long converted = ExchangeRates.convert(amountMinor, from, to);
-            if (converted <= 0) {
-                player.displayClientMessage(Component.translatable("command.capitalismmod.amount_too_small"), true);
+            boolean buyingForeign = from.equals(baseCurrency());
+            long sourceAmount = buyingForeign ? ExchangeRates.convert(amountMinor, to, from) : amountMinor;
+            long converted = buyingForeign ? amountMinor : ExchangeRates.convert(amountMinor, from, to);
+            if (sourceAmount <= 0 || converted <= 0 || !BankAccountHelper.exchange(player, payload.accountId(), from, to, sourceAmount, converted)) {
+                operationResult(player, false, Component.translatable("command.capitalismmod.amount_too_small"));
                 return;
             }
-            if (!EconomyHelper.tryPay(player, from, amountMinor)) {
-                player.displayClientMessage(Component.translatable("command.capitalismmod.insufficient"), true);
-                return;
-            }
-            EconomyHelper.giveMoney(player, to, converted);
+            syncBankState(player);
+            operationResult(player, true, Component.translatable("gui.capitalismmod.exchange"));
         });
     }
 
@@ -166,14 +129,15 @@ public class ServerPayloadHandler {
             if (!(context.player() instanceof ServerPlayer player)) {
                 return;
             }
-            if (!consumeCard(player, payload.credit())) {
-                player.displayClientMessage(Component.translatable(payload.credit()
-                        ? "message.capitalismmod.no_credit_card" : "message.capitalismmod.no_debit_card"), true);
+            if (!BankAccountHelper.canOpenAccount(player, payload.credit())) {
+                operationResult(player, false, Component.translatable(payload.credit()
+                        ? "message.capitalismmod.credit_account_limit" : "message.capitalismmod.debit_account_limit"));
                 return;
             }
             BankAccount account = BankAccountHelper.openAccount(player, payload.credit());
             giveCard(player, account.id(), payload.credit());
-            PacketDistributor.sendToPlayer(player, new SyncBankAccountsPayload(BankAccountHelper.getAccounts(player)));
+            syncBankState(player);
+            operationResult(player, true, Component.translatable("gui.capitalismmod.open_account"));
         });
     }
 
@@ -189,9 +153,10 @@ public class ServerPayloadHandler {
 
             boolean success = BankAccountHelper.transfer(player, payload.accountId(), currency, Money.toMinor(payload.amount()), payload.deposit());
             if (!success) {
-                player.displayClientMessage(Component.translatable("command.capitalismmod.insufficient"), true);
+                operationResult(player, false, Component.translatable("command.capitalismmod.insufficient"));
             }
-            PacketDistributor.sendToPlayer(player, new SyncBankAccountsPayload(BankAccountHelper.getAccounts(player)));
+            syncBankState(player);
+            if (success) operationResult(player, true, Component.translatable(payload.deposit() ? "gui.capitalismmod.deposit" : "gui.capitalismmod.withdraw"));
         });
     }
 
@@ -202,10 +167,40 @@ public class ServerPayloadHandler {
             }
             BankAccount account = BankAccountHelper.getAccount(player, payload.accountId());
             if (account == null) {
+                operationResult(player, false, Component.translatable("gui.capitalismmod.no_account"));
+                return;
+            }
+            if (hasMatchingCard(player, payload.accountId(), account.credit())) {
+                operationResult(player, false, Component.literal("物品栏中已有对应银行卡，无需补办"));
+                return;
+            }
+            long now = player.getServer().overworld().getGameTime();
+            long lastReplacement = player.getData(ModAttachments.LAST_CARD_REPLACEMENT_TICK);
+            if (lastReplacement != Long.MIN_VALUE && now - lastReplacement < 24000L) {
+                operationResult(player, false, Component.literal("请等待一个 Minecraft 日后再补办银行卡。"));
                 return;
             }
             giveCard(player, payload.accountId(), account.credit());
+            player.setData(ModAttachments.LAST_CARD_REPLACEMENT_TICK, now);
+            operationResult(player, true, Component.translatable("gui.capitalismmod.report_loss"));
         });
+    }
+
+    private static boolean hasMatchingCard(ServerPlayer player, String accountId, boolean credit) {
+        Item expected = credit ? ModItems.CREDIT_CARD.get() : ModItems.DEBIT_CARD.get();
+        for (ItemStack stack : player.getInventory().items) {
+            if (stack.getItem() == expected && BankCard.isBound(stack)
+                    && accountId.equals(BankCard.getAccountId(stack))) {
+                return true;
+            }
+        }
+        for (ItemStack stack : player.getInventory().offhand) {
+            if (stack.getItem() == expected && BankCard.isBound(stack)
+                    && accountId.equals(BankCard.getAccountId(stack))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void handleLoan(LoanPayload payload, IPayloadContext context) {
@@ -222,9 +217,10 @@ public class ServerPayloadHandler {
                     ? BankAccountHelper.repay(player, payload.accountId(), currency, Money.toMinor(payload.amount()))
                     : BankAccountHelper.loan(player, payload.accountId(), currency, Money.toMinor(payload.amount()));
             if (!success) {
-                player.displayClientMessage(Component.translatable("command.capitalismmod.insufficient"), true);
+                operationResult(player, false, Component.translatable("command.capitalismmod.insufficient"));
             }
-            PacketDistributor.sendToPlayer(player, new SyncBankAccountsPayload(BankAccountHelper.getAccounts(player)));
+            syncBankState(player);
+            if (success) operationResult(player, true, Component.translatable(payload.repay() ? "gui.capitalismmod.repay" : "gui.capitalismmod.loan"));
         });
     }
 
@@ -238,9 +234,10 @@ public class ServerPayloadHandler {
             }
             boolean success = BankAccountHelper.transferBetween(player, payload.fromAccountId(), payload.targetAccountId(), payload.currencyId(), Money.toMinor(payload.amount()));
             if (!success) {
-                player.displayClientMessage(Component.translatable("message.capitalismmod.transfer_failed"), true);
+                operationResult(player, false, Component.translatable("message.capitalismmod.transfer_failed"));
             }
-            PacketDistributor.sendToPlayer(player, new SyncBankAccountsPayload(BankAccountHelper.getAccounts(player)));
+            syncBankState(player);
+            if (success) operationResult(player, true, Component.translatable("gui.capitalismmod.transfer"));
         });
     }
 
@@ -251,9 +248,10 @@ public class ServerPayloadHandler {
             }
             boolean success = BankAccountHelper.openTermDeposit(player, payload.accountId(), payload.currencyId(), Money.toMinor(payload.amount()), payload.termDays());
             if (!success) {
-                player.displayClientMessage(Component.translatable("command.capitalismmod.insufficient"), true);
+                operationResult(player, false, Component.translatable("command.capitalismmod.insufficient"));
             }
-            PacketDistributor.sendToPlayer(player, new SyncBankAccountsPayload(BankAccountHelper.getAccounts(player)));
+            syncBankState(player);
+            if (success) operationResult(player, true, Component.translatable("gui.capitalismmod.open_term"));
         });
     }
 
@@ -263,7 +261,7 @@ public class ServerPayloadHandler {
                 return;
             }
             BankAccountHelper.withdrawTermDeposit(player, payload.accountId(), payload.index());
-            PacketDistributor.sendToPlayer(player, new SyncBankAccountsPayload(BankAccountHelper.getAccounts(player)));
+            syncBankState(player);
         });
     }
 
@@ -329,16 +327,6 @@ public class ServerPayloadHandler {
             Conglomerate conglomerate = CompanyHelper.getConglomerate(player);
             PacketDistributor.sendToPlayer(player, new SyncConglomeratePayload(conglomerate.name(), conglomerate.companies()));
         });
-    }
-
-    private static boolean consumeCard(ServerPlayer player, boolean credit) {
-        for (ItemStack stack : player.getInventory().items) {
-            if (stack.getItem() instanceof BankCard card && card.isCredit() == credit && !BankCard.isBound(stack)) {
-                stack.shrink(1);
-                return true;
-            }
-        }
-        return false;
     }
 
     private static void giveCard(ServerPlayer player, String accountId, boolean credit) {
@@ -682,5 +670,20 @@ public class ServerPayloadHandler {
             }
         }
         PacketDistributor.sendToPlayer(player, new SyncSecuritiesPayload(new HashMap<>(companies), listed));
+    }
+
+    private static void syncBankState(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new SyncBankAccountsPayload(BankAccountHelper.getAccounts(player)));
+        PacketDistributor.sendToPlayer(player, new SyncPersonalAssetsPayload(
+                PersonalAssets.estimate(player.getServer(), player)));
+    }
+
+    private static void operationResult(ServerPlayer player, boolean success, Component message) {
+        PacketDistributor.sendToPlayer(player, new OperationResultPayload(success, message.getString()));
+    }
+
+    private static Currency baseCurrency() {
+        String id = Config.CROSS_BORDER_BASE_CURRENCY.get();
+        return Currencies.exists(id) ? Currencies.byId(id) : Currencies.CNY;
     }
 }

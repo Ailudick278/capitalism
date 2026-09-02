@@ -8,20 +8,23 @@ import com.ailudick.capitalismmod.menu.CommodityExchangeMenu;
 import com.ailudick.capitalismmod.menu.CompanyMenu;
 import com.ailudick.capitalismmod.menu.FuturesExchangeMenu;
 import com.ailudick.capitalismmod.menu.ConglomerateMenu;
-import com.ailudick.capitalismmod.menu.ShopMenu;
 import com.ailudick.capitalismmod.menu.SecuritiesCommissionMenu;
 import com.ailudick.capitalismmod.menu.StockExchangeMenu;
 import com.ailudick.capitalismmod.menu.TaxBureauMenu;
 import com.ailudick.capitalismmod.menu.WarehouseMenu;
 import com.ailudick.capitalismmod.network.payload.SyncAuctionsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncBankAccountsPayload;
+import com.ailudick.capitalismmod.network.payload.SyncPersonalAssetsPayload;
+import com.ailudick.capitalismmod.network.payload.SyncExchangeRatesPayload;
+import com.ailudick.capitalismmod.currency.ExchangeRateProvider;
+import com.ailudick.capitalismmod.network.payload.OperationResultPayload;
+import com.ailudick.capitalismmod.client.OperationResultHandler;
 import com.ailudick.capitalismmod.network.payload.SyncBondsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncSupplyMarketPayload;
 import com.ailudick.capitalismmod.network.payload.SyncCommodityPayload;
 import com.ailudick.capitalismmod.network.payload.SyncConglomeratePayload;
 import com.ailudick.capitalismmod.network.payload.SyncFuturesPayload;
 import com.ailudick.capitalismmod.network.payload.SyncMarketOrdersPayload;
-import com.ailudick.capitalismmod.network.payload.SyncShopDataPayload;
 import com.ailudick.capitalismmod.network.payload.SyncSecuritiesPayload;
 import com.ailudick.capitalismmod.network.payload.SyncStockOrdersPayload;
 import com.ailudick.capitalismmod.network.payload.SyncStocksPayload;
@@ -36,20 +39,28 @@ import java.util.HashSet;
  */
 public class ClientPayloadHandler {
 
-    public static void handleSyncShopData(SyncShopDataPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof ShopMenu menu) {
-                menu.setOffers(payload.offers());
-            }
-        });
-    }
-
     public static void handleSyncBankAccounts(SyncBankAccountsPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof BankMenu menu) {
                 menu.setAccounts(payload.accounts());
             }
         });
+    }
+
+    public static void handleSyncPersonalAssets(SyncPersonalAssetsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player().containerMenu instanceof BankMenu menu) {
+                menu.setPersonalAssets(payload.assets());
+            }
+        });
+    }
+
+    public static void handleSyncExchangeRates(SyncExchangeRatesPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ExchangeRateProvider.applySnapshot(payload.anchors(), payload.updatedAt(), payload.live()));
+    }
+
+    public static void handleOperationResult(OperationResultPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> OperationResultHandler.show(payload.success(), payload.message()));
     }
 
     public static void handleSyncMarketOrders(SyncMarketOrdersPayload payload, IPayloadContext context) {

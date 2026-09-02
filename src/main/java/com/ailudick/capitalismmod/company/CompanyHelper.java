@@ -345,6 +345,47 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Returns the sole shareholder with more than half of a listed company's shares, if any. */
+    public static UUID controller(MinecraftServer server, String stockId) {
+        EconomySavedData data = EconomySavedData.get(server);
+        EconomySavedData.Listing listing = data.listings().get(stockId);
+        if (listing == null || listing.totalShares() <= 0) return null;
+        for (Map.Entry<String, Long> entry : data.shareholders().getOrDefault(stockId, Map.of()).entrySet()) {
+            if (entry.getValue() > listing.totalShares() / 2) {
+                try {
+                    return UUID.fromString(entry.getKey());
+                } catch (IllegalArgumentException ignored) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Settles a public takeover offer by transferring a specific shareholder's shares. */
+    public static boolean acceptPublicOffer(ServerPlayer seller, ServerPlayer buyer,
+                                            PublicTakeoverSavedData.Offer offer) {
+        if (offer == null || !offer.sellerUuid().equals(seller.getUUID())
+                || !offer.buyerUuid().equals(buyer.getUUID()) || seller.getUUID().equals(buyer.getUUID())) {
+            return false;
+        }
+        if (offer.pricePerShare() <= 0 || offer.quantity() <= 0) {
+            return false;
+        }
+        EconomySavedData data = EconomySavedData.get(buyer.getServer());
+        if (!data.isListed(offer.stockId()) || data.holdings(offer.stockId(), seller.getUUID()) < offer.quantity()) {
+            return false;
+        }
+        long total = EconomyMath.multiply(offer.pricePerShare(), offer.quantity());
+        if (total < 0 || !EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(total))) {
+            return false;
+        }
+        data.addShares(offer.stockId(), seller.getUUID(), -offer.quantity());
+        data.addShares(offer.stockId(), buyer.getUUID(), offer.quantity());
+        EconomyHelper.giveMoney(seller, Currencies.USD, Money.toMinor(total));
+        return true;
+    }
+
     /** Distributes {@code income} to the shareholders of a listed company, proportional to holdings. */
     private static void distributeDividend(MinecraftServer server, String stockId, long income) {
         EconomySavedData data = EconomySavedData.get(server);
@@ -388,6 +429,9 @@ public final class CompanyHelper {
     }
 
     private static void removeCompany(Player player, String name) {
+        if (player.getServer() != null) {
+            SupplyMarket.removeOffersForCompany(player.getServer(), player.getUUID(), name);
+        }
         Map<String, Company> companies = new HashMap<>(getCompanies(player));
         companies.remove(name);
         Conglomerate conglomerate = getConglomerate(player);

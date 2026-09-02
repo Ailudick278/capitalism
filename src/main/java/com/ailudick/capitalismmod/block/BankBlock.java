@@ -3,6 +3,8 @@ package com.ailudick.capitalismmod.block;
 import com.ailudick.capitalismmod.bank.BankAccountHelper;
 import com.ailudick.capitalismmod.menu.BankMenu;
 import com.ailudick.capitalismmod.network.payload.SyncBankAccountsPayload;
+import com.ailudick.capitalismmod.network.payload.SyncPersonalAssetsPayload;
+import com.ailudick.capitalismmod.economy.PersonalAssets;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -34,6 +36,8 @@ public class BankBlock extends Block {
                     Component.translatable("container.capitalismmod.bank")));
 
             PacketDistributor.sendToPlayer(serverPlayer, new SyncBankAccountsPayload(BankAccountHelper.getAccounts(serverPlayer)));
+            PacketDistributor.sendToPlayer(serverPlayer, new SyncPersonalAssetsPayload(
+                    PersonalAssets.estimate(serverPlayer.getServer(), serverPlayer)));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

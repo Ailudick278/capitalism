@@ -3,12 +3,15 @@ package com.ailudick.capitalismmod.command;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.AcquisitionSavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.PublicTakeoverSavedData;
 import com.ailudick.capitalismmod.company.CompanyTypes;
+import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.server.MinecraftServer;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -51,7 +54,30 @@ public class CompanyCommand {
                 .then(Commands.literal("reject")
                         .then(Commands.argument("offer", StringArgumentType.word())
                                 .executes(ctx -> rejectOffer(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "offer")))))
+                .then(Commands.literal("publicoffer")
+                        .then(Commands.argument("stock", StringArgumentType.word())
+                                .then(Commands.argument("shareholder", EntityArgument.player())
+                                        .then(Commands.argument("price", LongArgumentType.longArg(1))
+                                                .then(Commands.argument("quantity", IntegerArgumentType.integer(1))
+                                                        .executes(ctx -> createPublicOffer(ctx.getSource(),
+                                                                EntityArgument.getPlayer(ctx, "shareholder"),
+                                                                StringArgumentType.getString(ctx, "stock"),
+                                                                LongArgumentType.getLong(ctx, "price"),
+                                                                IntegerArgumentType.getInteger(ctx, "quantity"))))))))
+                .then(Commands.literal("publiclist").executes(ctx -> listPublicOffers(ctx.getSource())))
+                .then(Commands.literal("publicaccept")
+                        .then(Commands.argument("offer", StringArgumentType.word())
+                                .executes(ctx -> acceptPublicOffer(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "offer")))))
+                .then(Commands.literal("publicreject")
+                        .then(Commands.argument("offer", StringArgumentType.word())
+                                .executes(ctx -> rejectPublicOffer(ctx.getSource(),
                                         StringArgumentType.getString(ctx, "offer"))))));
+        root.then(Commands.literal("control")
+                .then(Commands.argument("stock", StringArgumentType.word())
+                        .executes(ctx -> showControl(ctx.getSource(),
+                                StringArgumentType.getString(ctx, "stock")))));
         root.then(Commands.literal("merge")
                 .then(Commands.argument("source", StringArgumentType.word())
                         .then(Commands.argument("target", StringArgumentType.word())
@@ -181,6 +207,86 @@ public class CompanyCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("Company " + sourceName + " merged into " + targetName + "."), false);
+        return 1;
+    }
+
+    private static int createPublicOffer(CommandSourceStack source, ServerPlayer seller, String stockId,
+                                         long price, int quantity) throws CommandSyntaxException {
+        ServerPlayer buyer = source.getPlayerOrException();
+        EconomySavedData economy = EconomySavedData.get(source.getServer());
+        if (seller.getUUID().equals(buyer.getUUID()) || price <= 0 || quantity <= 0 || !economy.isListed(stockId)
+                || economy.holdings(stockId, seller.getUUID()) < quantity) {
+            source.sendFailure(Component.literal("The stock is not listed or the shareholder lacks enough shares."));
+            return 0;
+        }
+        PublicTakeoverSavedData.Offer offer = new PublicTakeoverSavedData.Offer(
+                java.util.UUID.randomUUID().toString().substring(0, 8), buyer.getUUID(), seller.getUUID(), stockId,
+                price, quantity, source.getServer().overworld().getGameTime());
+        PublicTakeoverSavedData.get(source.getServer()).add(offer);
+        seller.sendSystemMessage(Component.literal("Public takeover offer " + offer.id() + " received for "
+                + quantity + " shares at USD " + price + " each."));
+        buyer.sendSystemMessage(Component.literal("Public takeover offer sent: " + offer.id()));
+        return 1;
+    }
+
+    private static int listPublicOffers(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        long now = source.getServer().overworld().getGameTime();
+        int count = 0;
+        for (PublicTakeoverSavedData.Offer offer : PublicTakeoverSavedData.get(source.getServer()).offers()) {
+            if (offer.buyerUuid().equals(player.getUUID()) || offer.sellerUuid().equals(player.getUUID())) {
+                long left = Math.max(0L, PublicTakeoverSavedData.OFFER_TTL - (now - offer.createdTick()));
+                source.sendSuccess(() -> Component.literal("Public offer " + offer.id() + " | " + offer.stockId()
+                        + " | " + offer.quantity() + " shares @ USD " + offer.pricePerShare()
+                        + " | " + left + " ticks left"), false);
+                count++;
+            }
+        }
+        if (count == 0) source.sendSuccess(() -> Component.literal("No public takeover offers."), false);
+        return count;
+    }
+
+    private static int acceptPublicOffer(CommandSourceStack source, String id) throws CommandSyntaxException {
+        ServerPlayer seller = source.getPlayerOrException();
+        PublicTakeoverSavedData data = PublicTakeoverSavedData.get(source.getServer());
+        PublicTakeoverSavedData.Offer offer = data.find(id);
+        ServerPlayer buyer = offer == null ? null : source.getServer().getPlayerList().getPlayer(offer.buyerUuid());
+        long now = source.getServer().overworld().getGameTime();
+        if (offer == null || buyer == null || now - offer.createdTick() > PublicTakeoverSavedData.OFFER_TTL
+                || !offer.sellerUuid().equals(seller.getUUID())
+                || !CompanyHelper.acceptPublicOffer(seller, buyer, offer)) {
+            source.sendFailure(Component.literal("Public offer expired, invalid, buyer offline, or funds are insufficient."));
+            return 0;
+        }
+        data.remove(id);
+        seller.sendSystemMessage(Component.literal("Public share sale completed."));
+        buyer.sendSystemMessage(Component.literal("Public share purchase completed."));
+        return 1;
+    }
+
+    private static int rejectPublicOffer(CommandSourceStack source, String id) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        PublicTakeoverSavedData data = PublicTakeoverSavedData.get(source.getServer());
+        PublicTakeoverSavedData.Offer offer = data.find(id);
+        if (offer == null || (!offer.sellerUuid().equals(player.getUUID()) && !offer.buyerUuid().equals(player.getUUID()))) {
+            source.sendFailure(Component.literal("Public offer not found."));
+            return 0;
+        }
+        data.remove(id);
+        source.sendSuccess(() -> Component.literal("Public offer cancelled."), false);
+        return 1;
+    }
+
+    private static int showControl(CommandSourceStack source, String stockId) {
+        EconomySavedData data = EconomySavedData.get(source.getServer());
+        if (!data.isListed(stockId)) {
+            source.sendFailure(Component.literal("Listed company stock not found."));
+            return 0;
+        }
+        java.util.UUID controller = CompanyHelper.controller(source.getServer(), stockId);
+        String message = controller == null ? "No shareholder currently controls " + stockId
+                : "Controlling shareholder of " + stockId + ": " + controller;
+        source.sendSuccess(() -> Component.literal(message), false);
         return 1;
     }
 }

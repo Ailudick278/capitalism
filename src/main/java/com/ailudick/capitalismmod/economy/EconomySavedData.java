@@ -85,6 +85,16 @@ public final class EconomySavedData extends SavedData {
     private void seedAbstractStocks() {
         for (Stock stock : Stocks.ALL) {
             ensureStock(stock.id(), stock.initialPrice());
+            if (stock.id().equals("test_company") && history.get(stock.id()).isEmpty()) {
+                long price = stock.initialPrice();
+                for (int i = 0; i < 30; i++) {
+                    long next = Math.max(1L, price + (i % 9) - 4L);
+                    addCandle(stock.id(), new Candle(price, Math.max(price, next),
+                            Math.min(price, next), next));
+                    price = next;
+                }
+                putPrice(stock.id(), price);
+            }
         }
     }
 
@@ -205,7 +215,7 @@ public final class EconomySavedData extends SavedData {
         Map<String, Long> holders = shareholders.computeIfAbsent(stockId, k -> new HashMap<>());
         String key = playerId.toString();
         long next = EconomyMath.add(holders.getOrDefault(key, 0L), delta);
-        if (next < 0) {
+        if (next < 0 || (delta > 0 && next == -1)) {
             next = 0;
         }
         if (next == 0) {

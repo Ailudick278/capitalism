@@ -45,6 +45,18 @@ public class Config {
             .comment("Credit limit for credit accounts, in base units (yuan fen). 100000 = 1000 yuan.")
             .defineInRange("creditLimit", 100000L, 0L, Long.MAX_VALUE);
 
+    public static final ModConfigSpec.IntValue MAX_DEBIT_ACCOUNTS = BUILDER
+            .comment("Maximum number of debit accounts one player may open.")
+            .defineInRange("maxDebitAccounts", 3, 1, 16);
+
+    public static final ModConfigSpec.IntValue MAX_CREDIT_ACCOUNTS = BUILDER
+            .comment("Maximum number of credit accounts one player may open.")
+            .defineInRange("maxCreditAccounts", 1, 1, 16);
+
+    public static final ModConfigSpec.ConfigValue<String> CROSS_BORDER_BASE_CURRENCY = BUILDER
+            .comment("Base currency used by cross-border services, for example cny, usd, eur, or rub.")
+            .define("crossBorderBaseCurrency", "cny");
+
     public static final ModConfigSpec.IntValue LOAN_TERM_DAYS = BUILDER
             .comment("Number of Minecraft days before a bank loan becomes overdue.")
             .defineInRange("loanTermDays", 30, 1, 3650);
@@ -66,6 +78,22 @@ public class Config {
     public static final ModConfigSpec.LongValue REGIONAL_SHIPPING_TICKS = BUILDER
             .comment("Transport time per region crossed in ticks; 12000 ticks is 10 Minecraft minutes.")
             .defineInRange("regionalShippingTicks", 12000L, 20L, 240000L);
+
+    public static final ModConfigSpec.DoubleValue LOGISTICS_RISK_RATE = BUILDER
+            .comment("Base probability of cargo damage when a shipment reaches its destination.")
+            .defineInRange("logisticsRiskRate", 0.03, 0.0, 1.0);
+
+    public static final ModConfigSpec.LongValue LOGISTICS_DISRUPTION_TICKS = BUILDER
+            .comment("Extra delay caused by a logistics disruption.")
+            .defineInRange("logisticsDisruptionTicks", 2400L, 20L, 240000L);
+
+    public static final ModConfigSpec.DoubleValue LOGISTICS_INSURANCE_RATE = BUILDER
+            .comment("Insurance premium as a fraction of the declared cargo value.")
+            .defineInRange("logisticsInsuranceRate", 0.05, 0.0, 1.0);
+
+    public static final ModConfigSpec.LongValue LOGISTICS_DECLARED_VALUE = BUILDER
+            .comment("Default declared value per cargo item in USD for logistics insurance.")
+            .defineInRange("logisticsDeclaredValue", 10L, 1L, Long.MAX_VALUE);
 
     // Daily commodity price limit band as a fraction of the previous close (0.10 = ±10%).
     public static final ModConfigSpec.DoubleValue COMMODITY_PRICE_LIMIT = BUILDER

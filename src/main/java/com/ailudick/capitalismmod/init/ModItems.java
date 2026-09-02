@@ -126,8 +126,6 @@ public class ModItems {
             () -> new BankCard(true, new Item.Properties().stacksTo(16)));
 
     // Block items.
-    public static final DeferredItem<BlockItem> SHOP = ITEMS.register("shop",
-            () -> new BlockItem(ModBlocks.SHOP_BLOCK.get(), new Item.Properties()));
     public static final DeferredItem<BlockItem> BANK = ITEMS.register("bank",
             () -> new BlockItem(ModBlocks.BANK_BLOCK.get(), new Item.Properties()));
     public static final DeferredItem<BlockItem> BUSINESS_BUREAU = ITEMS.register("business_bureau",
@@ -152,6 +150,12 @@ public class ModItems {
             () -> new BlockItem(ModBlocks.BOND_MARKET_BLOCK.get(), new Item.Properties()));
     public static final DeferredItem<BlockItem> PROCUREMENT = ITEMS.register("procurement",
             () -> new BlockItem(ModBlocks.PROCUREMENT_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> LOGISTICS_CENTER = ITEMS.register("logistics_center",
+            () -> new BlockItem(ModBlocks.LOGISTICS_CENTER_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> TRANSFER_STATION = ITEMS.register("transfer_station",
+            () -> new BlockItem(ModBlocks.TRANSFER_STATION_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> PORT = ITEMS.register("port",
+            () -> new BlockItem(ModBlocks.PORT_BLOCK.get(), new Item.Properties()));
 
     // Business license.
     public static final DeferredItem<BusinessLicense> BUSINESS_LICENSE = ITEMS.register("business_license",

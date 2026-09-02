@@ -64,35 +64,35 @@ public final class MarketRepairCommand {
         int fixed = 0;
         EconomySavedData stocks = EconomySavedData.get(server);
         for (StockOrder order : new ArrayList<>(stocks.orders())) {
-            if (!invalidStock(order) || !validUuid(order.ownerId()) || order.quantity() <= 0
-                    || !stocks.isStock(order.stockId())) {
+            if (!invalidStock(order)) {
                 continue;
             }
-            UUID owner = UUID.fromString(order.ownerId());
             stocks.removeOrder(order.id());
-            if (order.sell()) {
-                stocks.addShares(order.stockId(), owner, order.quantity());
-            } else {
-                refund(server, owner, order.quantity(), order.pricePerUnit());
+            if (validUuid(order.ownerId()) && order.quantity() > 0 && stocks.isStock(order.stockId())) {
+                UUID owner = UUID.fromString(order.ownerId());
+                if (order.sell()) {
+                    stocks.addShares(order.stockId(), owner, order.quantity());
+                } else {
+                    refund(server, owner, order.quantity(), order.pricePerUnit());
+                }
             }
             fixed++;
         }
         CommoditySavedData commodities = CommoditySavedData.get(server);
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
         for (MarketOrder order : new ArrayList<>(commodities.orders())) {
-            if (!invalidCommodity(order) || !validUuid(order.ownerId()) || order.quantity() <= 0) {
+            if (!invalidCommodity(order)) {
                 continue;
             }
             Item item = order.commodity().getItem();
-            if (item == Items.AIR) {
-                continue;
-            }
-            UUID owner = UUID.fromString(order.ownerId());
             commodities.removeOrder(order.id());
-            if (order.sell()) {
-                warehouse.credit(owner, item, order.quantity());
-            } else {
-                refund(server, owner, order.quantity(), order.pricePerUnit());
+            if (validUuid(order.ownerId()) && order.quantity() > 0 && item != Items.AIR) {
+                UUID owner = UUID.fromString(order.ownerId());
+                if (order.sell()) {
+                    warehouse.credit(owner, item, order.quantity());
+                } else {
+                    refund(server, owner, order.quantity(), order.pricePerUnit());
+                }
             }
             fixed++;
         }

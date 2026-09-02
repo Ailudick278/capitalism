@@ -1,124 +1,110 @@
-# 资本主义模组（Capitalism Mod）
+# Capitalism Mod
 
-一个面向 Minecraft 1.21.1 的经济模拟模组，提供货币、银行、公司产业链、商品市场、证券、物流、拍卖和玩家金融等玩法。
+## Recent currency asset updates
 
-本项目基于 NeoForge 1.21.1。金额内部以子单位保存：1 主单位 = 100 子单位。
+USD and CNY banknote items use separate front and back textures. Source artwork is kept in `texture/`, while packaged textures are copied to `src/main/resources/assets/capitalismmod/textures/item/`.
 
-## 核心玩法
+The banknote models are thin and centered, with different materials on their two sides. Right-clicking a currency item has no special action and does not consume the item.
 
-### 货币与钱包
+After building, copy the JAR to the local test instance:
 
-- 支持 USD、CNY、EUR、RUB 四种货币。
-- 提供纸币和硬币等不同面额。
-- 支持货币兑换和浮动汇率。
-- 付款时优先使用背包中的实体货币，再使用银行账户余额。
+```powershell
+$env:GRADLE_USER_HOME = (Join-Path (Get-Location) '.gradle-user')
+.\gradlew.bat build -x test --no-daemon --console=plain
+Copy-Item .\build\libs\capitalismmod-1.0.0.jar `
+  "$env:APPDATA\.minecraft\versions\mod test\mods\capitalismmod-1.0.0.jar" -Force
+```
+
+一个面向 Minecraft 1.21.1 的 NeoForge 经济模拟模组。模组以“货币—银行—企业—市场—物流”为核心，提供玩家金融、企业经营和商品交易玩法。
+
+## 项目信息
+
+| 项目 | 内容 |
+|---|---|
+| Minecraft | 1.21.1 |
+| NeoForge | 21.1.248 |
+| Mod ID | `capitalismmod` |
+| 模组版本 | 1.0.0 |
+| Java 包名 | `com.ailudick.capitalismmod` |
+| JEI | 可选软依赖 |
+
+金额在内部使用最小货币单位保存，以避免浮点数误差。当前支持 USD、CNY、EUR 和 RUB 四种货币。
+
+## 主要功能
+
+### 货币与汇率
+
+- 支持 USD、CNY、EUR、RUB，以及纸币、硬币、银行卡、信用卡和发票。
+- 支持货币兑换和浮动汇率；服务器会定期尝试获取外部汇率，网络不可用时使用内置汇率。
+- 汇率和更新时间会同步到客户端。
+- 支付时优先使用背包中的实体货币，再使用银行账户余额。
 
 ### 银行系统
 
-- 借记卡和信用卡使用 19 位银联格式卡号，并包含 Luhn 校验位。
-- 支持活期存款、定期存款、贷款、转账和外汇兑换。
-- 贷款包含期限、利息和逾期罚息，跨行转账支持手续费。
-- 每个 Minecraft 日自动结算利息，服务器重启后会根据世界时间补算遗漏的结算日。
-- 银行流水可在界面或 `/economylog` 中查看。
+- 支持借记账户、信用账户、活期存款和定期存款。
+- 支持存款、取款、转账、货币兑换和贷款。
+- 银行卡使用 19 位卡号，并包含 Luhn 校验位。
+- 贷款支持期限、利息和逾期罚息；跨行转账会收取手续费。
+- 每个 Minecraft 日自动结算利息，并在服务器重启后补算遗漏的结算日。
+- 银行界面显示个人总资产，并统一折算为 USD。
 
 ### 公司与产业链
 
-- 工商局可以注册公司并选择行业。
-- 行业生产由 `config/capitalismmod/industries.json` 驱动。
-- 公司生产需要消耗仓库中的投入品，投入不足时会停产。
-- 公司产出进入仓库，也可以挂牌供应给其他玩家。
-- 支持公司升级、企业所得税、维护费和公司金库。
-- 上游采矿/农业、中游制造、下游能源/交通/建筑/零售等行业可以形成产业链。
+- 通过工商局注册公司并选择行业。
+- 行业生产规则由 `config/capitalismmod/industries.json` 驱动。
+- 公司生产会消耗仓库中的投入品，并将产出存入仓库。
+- 支持公司升级、企业所得税、维护费、公司金库、公司收购和同类公司合并。
+- 支持上市公司公开收购要约，以及采矿、农业、制造、能源、交通、建筑和零售等产业链。
 
-### 公司收购与合并
+### 商品市场与供应链
 
-买方可以向其他玩家的未上市公司发起收购报价：
-
-```text
-/company acquire <卖家> <公司> <价格>
-```
-
-卖家可以查看并处理报价：
-
-```text
-/company takeover list
-/company takeover accept <报价ID>
-/company takeover reject <报价ID>
-```
-
-收购完成后，公司经营权、行业、等级、公司金库和累计欠税转移给买方。买卖双方必须同时在线，目标公司不能已上市，买方也不能已有同名公司。
-
-同一玩家名下的两家同类型未上市公司可以合并：
-
-```text
-/company merge <来源公司> <目标公司>
-```
-
-合并后等级、公司金库和欠税会合并到目标公司，来源公司被移除。
-
-### 股票与证券
-
-- 通过证监会为公司 IPO，发行数量与公司等级相关。
-- 支持股票限价单、部分成交、K 线、分红和涨跌停。
-- 支持场外股票转让。
-- 股票价格会受到成交量和公司基本面的影响。
-
-### 债券
-
-- 支持购买政府债券。
-- 债券拥有面值、年利率和到期日。
-- 支持提前赎回和到期自动兑付。
-
-### 商品现货与期货
-
+- 玩家和公司可以发布 B2B 供应报价，采购订单支持预扣款、部分交付和后续补发。
 - 商品现货市场使用限价订单簿自动撮合。
-- 商品采用实物交割，卖方需要先将货物存入仓库。
-- 商品价格受供需、公司生产和公司消耗影响。
-- 期货支持做多、做空、保证金、逐日盯市和强制平仓。
-- 期货合约到期后进行现金结算，价格会逐渐向现货价格收敛。
+- 商品交易采用实物交割，卖方需要先将货物存入仓库。
+- 支持仓库存取、采购订单和市场订单同步。
 
-### 地区贸易与物流
+### 物流基础设施
 
-- 世界按照坐标划分贸易区域，供应报价会记录供应商所在区域。
-- 同区域采购即时交割；跨区域采购会生成持久化物流货运。
-- 货物到达后自动进入买方仓库，买方离线时也能正常收货。
-- 近距离自动走公路，单批容量 64。
-- 中距离自动走铁路，单批容量 256，运输时间更短。
-- 远距离自动走海运，单批容量 512，适合大宗货物。
-- `/logistics` 可查看当前贸易区域、货物起终点、运输方式和预计剩余 tick。
+- 跨贸易区域的订单会进入持久化物流运输流程。
+- 支持物流中心、转运站和港口三类设施。
+- 设施会影响运输时间、容量和货损风险，并可降低对应路线的运输风险。
+- 支持运输保险；货物损失时可按申报价值赔付。
 
-配置项：`tradeRegionSize` 控制区域大小；`regionalShippingTicks` 控制跨区运输基础时间。
+### 证券、债券与期货
 
-### 拍卖与玩家金融
+- 通过证券委员会为公司进行 IPO。
+- 股票支持限价单、部分成交、K 线、分红、涨跌停和场外转让。
+- 股票价格会受到成交量和公司基本面的影响。
+- 内置“测试公司”股票，初始价格为 100 USD，用于测试行情曲线、盘口和买卖流程。
+- 支持政府债券的购买、提前赎回和到期兑付。
+- 期货支持做多、做空、保证金、逐日盯市、强制平仓和到期现金结算。
 
-- 拍卖行支持挂拍、竞价、超价退款和到期结算，无人竞价时货物退回卖方。
-- 支持玩家之间的 P2P 借贷、还款和逾期罚息。
-- 支持玩家之间场外转让股票。
 
-### 商店、税务与统计
+### 拍卖、玩家金融与税务
 
-- 商店支持使用任意模组货币购买配置商品。
-- 村民交易可以使用模组货币。
-- 商店购物会生成发票，可在税务局申请报销。
-- `/ranking` 查看财富排名，`/economystats` 查看服务器经济统计。
-- 经济新闻会播报大额成交和异常价格波动。
+- 拍卖行支持挂牌、竞价、超价退款和到期结算；无人竞价时拍品退回卖方。
+- 支持玩家之间的 P2P 借贷、还款、逾期罚息和场外股票转让。
+- 商店购买会生成发票，可在税务局申请报销。
+- 提供财富排行榜、服务器经济统计和经济新闻播报。
 
 ## 方块与设施
 
-| 方块 | 作用 |
+| 方块 | 用途 |
 |---|---|
-| 商店 | 使用货币购买物品 |
 | 银行 | 开户、存取款、贷款、转账、兑换和查看流水 |
 | 工商局 | 注册公司和领取营业执照 |
-| 仓库 | 存取物品，作为公司原料库和市场交割库 |
-| 采购台 | 查看 B2B 供应报价并下单 |
-| 大宗商品交易所 | 商品现货交易 |
+| 仓库 | 存取物品，作为公司和市场的交割仓库 |
+| 采购台 | 查看供应报价并下单 |
+| 物流中心 | 提升区域间运输容量和效率 |
+| 转运站 | 提升铁路运输容量和效率 |
+| 港口 | 提升海运容量和效率 |
+| 商品交易所 | 商品现货交易 |
 | 期货交易所 | 商品期货交易 |
 | 证券交易所 | 股票交易和行情查看 |
 | 债券市场 | 购买、赎回和兑付政府债券 |
 | 拍卖行 | 挂拍和竞价 |
-| 证监会 | 公司 IPO |
-| 税务局 | 缴纳企业所得税和发票报销 |
+| 证券委员会 | 公司 IPO |
+| 税务局 | 缴纳企业所得税和报销发票 |
 
 ## 常用命令
 
@@ -131,14 +117,16 @@
 | `/fx` | 查看汇率 |
 | `/company list` | 查看公司 |
 | `/company upgrade <公司>` | 升级公司 |
-| `/company withdraw <公司> <货币> <金额>` | 提取公司金库 |
+| `/company withdraw <公司> <货币> <金额>` | 提取公司金库资金 |
 | `/company acquire <卖家> <公司> <价格>` | 发起公司收购 |
 | `/company takeover list` | 查看收购报价 |
 | `/company takeover accept <报价ID>` | 接受收购报价 |
 | `/company takeover reject <报价ID>` | 拒绝收购报价 |
-| `/company merge <来源公司> <目标公司>` | 合并同类型公司 |
+| `/company merge <来源公司> <目标公司>` | 合并同类公司 |
+| `/company control <股票ID>` | 查看控股股东 |
 | `/offer <公司> <商品> <价格>` | 发布 B2B 供应报价 |
-| `/logistics` | 查看当前区域和在途货物 |
+| `/logistics` | 查看贸易区域和在途货物 |
+| `/logistics insure <货运ID>` | 为在途货物购买保险 |
 | `/shares give <玩家> <股票> <数量>` | 场外转让股票 |
 | `/lend <玩家> <货币> <金额> <天数> <利率%>` | 发起 P2P 借贷 |
 | `/repay <借据ID>` | 偿还借款 |
@@ -146,71 +134,95 @@
 | `/economylog` | 查看个人经济流水 |
 | `/marketorders` | 查看自己的市场订单 |
 | `/markettrades` | 查看自己的成交记录 |
-| `/ranking` | 查看财富排名 |
+| `/ranking` | 查看财富排行榜 |
 | `/economystats` | 查看服务器经济统计 |
 | `/marketrepair scan` | 管理员扫描异常市场订单 |
 | `/marketrepair fix` | 管理员修复可识别的异常订单 |
 
+证券、债券、期货、拍卖和税务相关操作也可以通过对应的游戏界面完成。
+
 ## 配置
 
-配置文件位于 `config/capitalismmod-common.toml`。
+配置文件位于：
+
+```text
+config/capitalismmod-common.toml
+```
+
+常用配置项：
 
 | 配置项 | 默认值 | 说明 |
 |---|---:|---|
-| `depositRatePerYear` | 0.05 | 活期存款年利率 |
-| `loanRatePerYear` | 0.10 | 贷款年利率 |
-| `termDepositRatePerYear` | 0.08 | 定期存款年利率 |
-| `financeRatePerYear` | 0.05 | 金融公司金库年化收益率 |
-| `creditLimit` | 100000 | 信用额度，单位为子单位 |
-| `loanTermDays` | 30 | 贷款逾期天数 |
-| `termDepositMaxDays` | 3650 | 定期存款最长天数 |
-| `transferFeeRate` | 0.001 | 转账手续费比例 |
-| `incomeTaxRate` | 0.25 | 企业所得税率 |
-| `companyMaintenancePerLevel` | 1 | 公司维护费 |
-| `invoiceRefundRate` | 0.10 | 发票报销比例 |
-| `tradeRegionSize` | 512 | 贸易区域大小 |
-| `regionalShippingTicks` | 12000 | 跨区运输基础时间 |
-| `commodityPriceLimit` | 0.10 | 商品涨跌停幅度 |
-| `stockPriceLimit` | 0.10 | 股票涨跌停幅度 |
-| `futuresMarginRate` | 0.10 | 期货保证金率 |
-| `futuresExpiryDays` | 7 | 期货合约期限 |
-| `bondFaceValue` | 100 | 政府债券面值 |
-| `bondRatePerYear` | 0.05 | 政府债券年利率 |
-| `bondMaturityDays` | 30 | 政府债券期限 |
+| `depositRatePerYear` | `0.05` | 活期存款年利率 |
+| `loanRatePerYear` | `0.10` | 贷款年利率 |
+| `termDepositRatePerYear` | `0.08` | 定期存款年利率 |
+| `creditLimit` | `100000` | 信用额度，使用最小货币单位 |
+| `maxDebitAccounts` | `3` | 每名玩家最多持有的借记账户数 |
+| `maxCreditAccounts` | `1` | 每名玩家最多持有的信用账户数 |
+| `transferFeeRate` | `0.001` | 转账手续费率 |
+| `incomeTaxRate` | `0.25` | 企业所得税率 |
+| `tradeRegionSize` | `512` | 贸易区域边长 |
+| `regionalShippingTicks` | `12000` | 跨区域运输基础时间 |
+| `logisticsRiskRate` | `0.03` | 基础货损风险 |
+| `logisticsInsuranceRate` | `0.05` | 物流保险费率 |
+| `commodityPriceLimit` | `0.10` | 商品涨跌停幅度 |
+| `stockPriceLimit` | `0.10` | 股票涨跌停幅度 |
+| `futuresMarginRate` | `0.10` | 期货保证金率 |
+| `futuresExpiryDays` | `7` | 期货合约期限 |
+| `bondFaceValue` | `100` | 政府债券面值 |
+| `bondRatePerYear` | `0.05` | 政府债券年利率 |
+| `bondMaturityDays` | `30` | 政府债券期限 |
 
-产业链、商店商品、商品列表和抽象股票可以通过 `config/capitalismmod/*.json` 进行数据驱动配置。
+产业链、商店商品、商品列表和抽象股票等数据可通过以下 JSON 文件配置：
 
-## 快速开始
+```text
+config/capitalismmod/*.json
+```
 
-1. 使用调试棒或管理员命令 `/money` 获取初始资金。
-2. 放置银行并开户，存入资金或申请贷款。
-3. 放置工商局，注册一家采矿、农业或制造公司。
-4. 放置仓库，存入生产所需的原料。
-5. 等待公司生产，或使用 `/offer` 向其他玩家销售产出。
-6. 使用采购台购买外部原料；跨区域订单会进入物流运输。
-7. 使用证监会进行 IPO，或与其他玩家进行公司收购和合并。
-8. 在商品交易所、期货交易所、证券交易所和拍卖行进行交易。
-9. 在税务局缴纳企业所得税并报销发票。
+## 开发与构建
 
-## 构建
-
-Windows：
+### Windows
 
 ```powershell
 $env:GRADLE_USER_HOME = (Join-Path (Get-Location) '.gradle-user')
 .\gradlew.bat build
 ```
 
-Linux/macOS：
+### Linux/macOS
 
 ```bash
 ./gradlew build
 ```
 
-构建产物位于 `build/libs/`。
+构建产物位于 `build/libs/`。常用开发任务：
 
-## 许可与说明
+```powershell
+.\gradlew.bat runClient
+.\gradlew.bat test
+```
 
-- 本项目基于 NeoForge MDK 模板开发。
-- 汇率数据仅用于游戏内演示和经济玩法，不构成现实金融建议。
-- 产业链配置允许服务器管理员根据整合包需求进行调整。
+## 目录结构
+
+```text
+src/main/java/com/ailudick/capitalismmod/
+├── bank/          银行账户与金融操作
+├── company/       公司、产业链与收购
+├── currency/      货币与汇率
+├── economy/       经济数据与个人资产
+├── futures/       期货
+├── loan/          玩家借贷
+├── market/        商品市场与物流
+├── network/       客户端/服务端网络同步
+├── shop/          商店报价
+├── stock/         股票市场
+├── supply/        B2B 供应市场
+└── screen/        游戏界面
+```
+
+## 免责声明
+
+本模组中的汇率、金融产品和经济数据仅用于游戏内模拟与玩法展示，不构成现实世界的投资、金融或其他专业建议。
+
+## 许可证
+
+本项目基于 NeoForge MDK 模板开发。当前许可证配置为 `All Rights Reserved`，具体授权范围以项目发布者的说明为准。

@@ -146,6 +146,20 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+// Copy the built mod into the local Minecraft test instance after every build.
+// Override with -PmodTestModsDir=<path> when using a different instance.
+def modTestModsDir = providers.gradleProperty('modTestModsDir')
+        .orElse('C:/Users/常翔/AppData/Roaming/.minecraft/versions/mod test/mods')
+        .get()
+tasks.register('copyModJar', Copy) {
+    dependsOn tasks.named('jar')
+    from tasks.named('jar')
+    into file(modTestModsDir)
+}
+tasks.named('build') {
+    dependsOn tasks.named('copyModJar')
+}
+
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

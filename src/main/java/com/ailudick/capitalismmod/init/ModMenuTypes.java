@@ -11,7 +11,6 @@ import com.ailudick.capitalismmod.menu.CompanyMenu;
 import com.ailudick.capitalismmod.menu.ConglomerateMenu;
 import com.ailudick.capitalismmod.menu.FuturesExchangeMenu;
 import com.ailudick.capitalismmod.menu.SecuritiesCommissionMenu;
-import com.ailudick.capitalismmod.menu.ShopMenu;
 import com.ailudick.capitalismmod.menu.StockExchangeMenu;
 import com.ailudick.capitalismmod.menu.TaxBureauMenu;
 import com.ailudick.capitalismmod.menu.WarehouseMenu;
@@ -25,8 +24,6 @@ public class ModMenuTypes {
     public static final DeferredRegister<MenuType<?>> MENUS =
             DeferredRegister.create(Registries.MENU, CapitalismMod.MODID);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<ShopMenu>> SHOP_MENU =
-            MENUS.register("shop_menu", () -> new MenuType<>(ShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
     public static final DeferredHolder<MenuType<?>, MenuType<BankMenu>> BANK_MENU =
             MENUS.register("bank_menu", () -> new MenuType<>(BankMenu::new, FeatureFlags.DEFAULT_FLAGS));

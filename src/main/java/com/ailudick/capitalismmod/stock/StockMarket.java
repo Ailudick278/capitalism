@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Server-side stock market: a limit-order book plus periodic price updates.
@@ -128,6 +129,20 @@ public final class StockMarket {
         data.setDirty();
     }
 
+    /** Fast local animation for the built-in test stock used by the exchange UI. */
+    public static void updateTestStock(MinecraftServer server) {
+        EconomySavedData data = EconomySavedData.get(server);
+        String id = "test_company";
+        if (!Stocks.exists(id)) return;
+        long oldPrice = Math.max(1L, data.price(id));
+        long next = Math.max(1L, oldPrice + ThreadLocalRandom.current().nextLong(-3L, 4L));
+        data.ensureStock(id, oldPrice);
+        data.putPrice(id, next);
+        data.addCandle(id, new Candle(oldPrice, Math.max(oldPrice, next),
+                Math.min(oldPrice, next), next));
+        data.setDirty();
+    }
+
     /** Rolls the trading day: the previous close becomes the current price for every stock. */
     public static void closeDay(MinecraftServer server) {
         EconomySavedData data = EconomySavedData.get(server);
@@ -161,7 +176,7 @@ public final class StockMarket {
         int remaining = quantity;
         long spent = 0L;
 
-        List<StockOrder> sells = crossingSells(data, stockId, pricePerUnit);
+        List<StockOrder> sells = crossingSells(data, stockId, pricePerUnit, player.getStringUUID());
         for (StockOrder sell : sells) {
             if (remaining <= 0) {
                 break;
@@ -200,7 +215,7 @@ public final class StockMarket {
         data.addShares(stockId, player.getUUID(), -quantity);
         int remaining = quantity;
 
-        List<StockOrder> buys = crossingBuys(data, stockId, pricePerUnit);
+        List<StockOrder> buys = crossingBuys(data, stockId, pricePerUnit, player.getStringUUID());
         for (StockOrder buy : buys) {
             if (remaining <= 0) {
                 break;
@@ -227,10 +242,11 @@ public final class StockMarket {
     }
 
     /** Sell orders for {@code stockId} with ask ≤ {@code limit}, best (lowest) ask first. */
-    private static List<StockOrder> crossingSells(EconomySavedData data, String stockId, long limit) {
+    private static List<StockOrder> crossingSells(EconomySavedData data, String stockId, long limit, String ownerId) {
         List<StockOrder> result = new ArrayList<>();
         for (StockOrder order : data.orders()) {
-            if (order.stockId().equals(stockId) && order.sell() && order.pricePerUnit() <= limit) {
+            if (order.stockId().equals(stockId) && order.sell() && !order.ownerId().equals(ownerId)
+                    && order.pricePerUnit() <= limit) {
                 result.add(order);
             }
         }
@@ -239,10 +255,11 @@ public final class StockMarket {
     }
 
     /** Buy orders for {@code stockId} with bid ≥ {@code limit}, best (highest) bid first. */
-    private static List<StockOrder> crossingBuys(EconomySavedData data, String stockId, long limit) {
+    private static List<StockOrder> crossingBuys(EconomySavedData data, String stockId, long limit, String ownerId) {
         List<StockOrder> result = new ArrayList<>();
         for (StockOrder order : data.orders()) {
-            if (order.stockId().equals(stockId) && !order.sell() && order.pricePerUnit() >= limit) {
+            if (order.stockId().equals(stockId) && !order.sell() && !order.ownerId().equals(ownerId)
+                    && order.pricePerUnit() >= limit) {
                 result.add(order);
             }
         }

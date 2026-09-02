@@ -58,6 +58,14 @@ public final class BankAccountHelper {
         return getAccounts(player).get(accountId);
     }
 
+    public static boolean canOpenAccount(Player player, boolean credit) {
+        long count = getAccounts(player).values().stream()
+                .filter(account -> account.credit() == credit)
+                .count();
+        int limit = credit ? Config.MAX_CREDIT_ACCOUNTS.get() : Config.MAX_DEBIT_ACCOUNTS.get();
+        return count < limit;
+    }
+
     /**
      * Applies one Minecraft day of interest to every account: deposit interest on balances,
      * loan interest on debts, and a tick on each term deposit (maturing it when due).
@@ -142,12 +150,11 @@ public final class BankAccountHelper {
 
         if (deposit) {
             // physical items -> account
-            if (EconomyHelper.countItems(player, currency) < amount) {
-                return false;
-            }
-            EconomyHelper.consumeItems(player, currency, amount);
             long newBalance = safeAdd(accountBalance, amount);
             if (newBalance == Long.MAX_VALUE && accountBalance != Long.MAX_VALUE) {
+                return false;
+            }
+            if (!EconomyHelper.consumeItemsWithChange(player, currency, amount)) {
                 return false;
             }
             account = account.withBalance(currency.id(), newBalance)
@@ -163,6 +170,28 @@ public final class BankAccountHelper {
         }
 
         updateAccount(player, account);
+        return true;
+    }
+
+    /** Exchanges funds held by one selected bank account between two currencies. */
+    public static boolean exchange(Player player, String accountId, Currency from, Currency to,
+                                   long amount, long converted) {
+        if (amount <= 0 || converted <= 0 || from.equals(to)) {
+            return false;
+        }
+        BankAccount account = getAccount(player, accountId);
+        if (account == null || account.getBalance(from.id()) < amount) {
+            return false;
+        }
+        long targetBalance = account.getBalance(to.id());
+        if (Long.MAX_VALUE - targetBalance < converted) {
+            return false;
+        }
+        BankAccount updated = account.withBalance(from.id(), account.getBalance(from.id()) - amount)
+                .withBalance(to.id(), targetBalance + converted)
+                .withTransaction(new BankTransaction("exchange", from.id(), -amount))
+                .withTransaction(new BankTransaction("exchange", to.id(), converted));
+        updateAccount(player, updated);
         return true;
     }
 

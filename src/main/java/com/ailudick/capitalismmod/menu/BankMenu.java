@@ -12,6 +12,7 @@ import java.util.Map;
 
 public class BankMenu extends AbstractContainerMenu {
     private Map<String, BankAccount> accounts = new HashMap<>();
+    private Map<String, Long> personalAssets = new HashMap<>();
 
     public BankMenu(int containerId, Inventory playerInventory) {
         super(ModMenuTypes.BANK_MENU.get(), containerId);
@@ -23,6 +24,14 @@ public class BankMenu extends AbstractContainerMenu {
 
     public void setAccounts(Map<String, BankAccount> accounts) {
         this.accounts = accounts;
+    }
+
+    public Map<String, Long> getPersonalAssets() {
+        return personalAssets;
+    }
+
+    public void setPersonalAssets(Map<String, Long> personalAssets) {
+        this.personalAssets = personalAssets;
     }
 
     @Override

@@ -9,7 +9,6 @@ import com.ailudick.capitalismmod.block.BusinessBureau;
 import com.ailudick.capitalismmod.block.CommodityExchangeBlock;
 import com.ailudick.capitalismmod.block.FuturesExchangeBlock;
 import com.ailudick.capitalismmod.block.CompanyBlock;
-import com.ailudick.capitalismmod.block.ShopBlock;
 import com.ailudick.capitalismmod.block.StockExchangeBlock;
 import com.ailudick.capitalismmod.block.TaxBureau;
 import com.ailudick.capitalismmod.block.SecuritiesCommission;
@@ -22,8 +21,6 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public class ModBlocks {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(CapitalismMod.MODID);
 
-    public static final DeferredBlock<Block> SHOP_BLOCK = BLOCKS.register("shop",
-            () -> new ShopBlock(BlockBehaviour.Properties.of().strength(3.0f)));
     public static final DeferredBlock<Block> BANK_BLOCK = BLOCKS.register("bank",
             () -> new BankBlock(BlockBehaviour.Properties.of().strength(3.0f)));
     public static final DeferredBlock<Block> BUSINESS_BUREAU_BLOCK = BLOCKS.register("business_bureau",
@@ -48,4 +45,10 @@ public class ModBlocks {
             () -> new BondMarketBlock(BlockBehaviour.Properties.of().strength(3.0f)));
     public static final DeferredBlock<Block> PROCUREMENT_BLOCK = BLOCKS.register("procurement",
             () -> new ProcurementBlock(BlockBehaviour.Properties.of().strength(3.0f)));
+    public static final DeferredBlock<Block> LOGISTICS_CENTER_BLOCK = BLOCKS.register("logistics_center",
+            () -> new Block(BlockBehaviour.Properties.of().strength(3.0f)));
+    public static final DeferredBlock<Block> TRANSFER_STATION_BLOCK = BLOCKS.register("transfer_station",
+            () -> new Block(BlockBehaviour.Properties.of().strength(3.0f)));
+    public static final DeferredBlock<Block> PORT_BLOCK = BLOCKS.register("port",
+            () -> new Block(BlockBehaviour.Properties.of().strength(3.0f)));
 }

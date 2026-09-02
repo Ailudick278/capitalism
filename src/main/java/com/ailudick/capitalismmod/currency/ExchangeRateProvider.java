@@ -1,7 +1,11 @@
 package com.ailudick.capitalismmod.currency;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 /**
  * The current exchange rates, in base units (fen per currency unit).
@@ -14,6 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ExchangeRateProvider {
     private static final Map<String, Long> ANCHORS = new ConcurrentHashMap<>();
     private static volatile boolean live = false;
+    private static volatile String lastUpdated = "尚未更新";
+    private static final DateTimeFormatter UPDATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     static {
         for (Currency currency : Currencies.ALL) {
@@ -49,6 +55,25 @@ public final class ExchangeRateProvider {
     /** Marks the anchors as freshly fetched. */
     public static void setLive(boolean value) {
         live = value;
+    }
+
+    /** Records the local time when a complete live-rate update finished. */
+    public static void markUpdated() {
+        lastUpdated = OffsetDateTime.now(ZoneId.systemDefault()).format(UPDATE_FORMAT);
+    }
+
+    public static String lastUpdated() {
+        return lastUpdated;
+    }
+
+    public static Map<String, Long> snapshot() {
+        return new HashMap<>(ANCHORS);
+    }
+
+    public static void applySnapshot(Map<String, Long> anchors, String updatedAt, boolean liveValue) {
+        anchors.forEach(ExchangeRateProvider::setAnchor);
+        lastUpdated = updatedAt;
+        live = liveValue;
     }
 
     /**

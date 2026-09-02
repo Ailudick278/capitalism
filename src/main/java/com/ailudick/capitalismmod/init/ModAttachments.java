@@ -29,4 +29,18 @@ public class ModAttachments {
                     () -> AttachmentType.<Conglomerate>builder(() -> Conglomerate.create(""))
                             .serialize(Conglomerate.CODEC)
                             .build());
+
+    // Last Minecraft day for which bank interest was applied to this player.
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> LAST_BANK_SETTLEMENT_DAY =
+            ATTACHMENT_TYPES.register("last_bank_settlement_day",
+                    () -> AttachmentType.<Long>builder(() -> -1L)
+                            .serialize(com.mojang.serialization.Codec.LONG)
+                            .build());
+
+    // World tick at which the player last replaced a bank card.
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> LAST_CARD_REPLACEMENT_TICK =
+            ATTACHMENT_TYPES.register("last_card_replacement_tick",
+                    () -> AttachmentType.<Long>builder(() -> Long.MIN_VALUE)
+                            .serialize(com.mojang.serialization.Codec.LONG)
+                            .build());
 }

@@ -11,8 +11,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 /**
- * A bank card, either a debit card or a credit card. Blank cards can open an account;
- * a bound card records its account number.
+ * A bank card, either a debit card or a credit card. A bound card records its account number.
  */
 public class BankCard extends Item {
     private final boolean credit;

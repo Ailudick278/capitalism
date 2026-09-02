@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 import java.util.ArrayList;
 
@@ -34,15 +35,22 @@ public final class EconomySettlementTickHandler {
             return;
         }
         while (lastDay < currentDay) {
-            settleOneDay(event.getServer());
+            settleOneDay(event.getServer(), lastDay + 1);
             lastDay++;
             state.setLastSettlementDay(lastDay);
         }
     }
 
-    private static void settleOneDay(net.minecraft.server.MinecraftServer server) {
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
+        }
+    }
+
+    private static void settleOneDay(net.minecraft.server.MinecraftServer server, long settlementDay) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            BankAccountHelper.applyDailyInterest(player);
+            settlePlayerToDay(player, settlementDay);
         }
 
         PeerLoanSavedData loans = PeerLoanSavedData.get(server);
@@ -55,5 +63,17 @@ public final class EconomySettlementTickHandler {
         FuturesMarket.settleDay(server);
         CommodityMarket.closeDay(server);
         StockMarket.closeDay(server);
+    }
+
+    private static void settlePlayerToDay(ServerPlayer player, long targetDay) {
+        long lastDay = player.getData(com.ailudick.capitalismmod.init.ModAttachments.LAST_BANK_SETTLEMENT_DAY);
+        if (lastDay < 0) {
+            lastDay = targetDay;
+        }
+        while (lastDay < targetDay) {
+            BankAccountHelper.applyDailyInterest(player);
+            lastDay++;
+        }
+        player.setData(com.ailudick.capitalismmod.init.ModAttachments.LAST_BANK_SETTLEMENT_DAY, lastDay);
     }
 }

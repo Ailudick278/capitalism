@@ -71,7 +71,7 @@ public final class CommodityMarket {
         }
 
         int remaining = quantity;
-        for (MarketOrder buy : crossingBuys(data, itemId, pricePerUnit)) {
+        for (MarketOrder buy : crossingBuys(data, itemId, pricePerUnit, player.getStringUUID())) {
             if (remaining <= 0) {
                 break;
             }
@@ -117,7 +117,7 @@ public final class CommodityMarket {
 
         int remaining = quantity;
         long spent = 0L;
-        for (MarketOrder sell : crossingSells(data, itemId, pricePerUnit)) {
+        for (MarketOrder sell : crossingSells(data, itemId, pricePerUnit, player.getStringUUID())) {
             if (remaining <= 0) {
                 break;
             }
@@ -224,10 +224,11 @@ public final class CommodityMarket {
     // ---- matching internals ----
 
     /** Buy orders for {@code itemId} with bid ≥ {@code limit}, best (highest) bid first. */
-    private static List<MarketOrder> crossingBuys(CommoditySavedData data, String itemId, long limit) {
+    private static List<MarketOrder> crossingBuys(CommoditySavedData data, String itemId, long limit, String ownerId) {
         List<MarketOrder> result = new ArrayList<>();
         for (MarketOrder order : data.orders()) {
-            if (!order.sell() && Commodities.id(order.commodity()).equals(itemId) && order.pricePerUnit() >= limit) {
+            if (!order.sell() && !order.ownerId().equals(ownerId)
+                    && Commodities.id(order.commodity()).equals(itemId) && order.pricePerUnit() >= limit) {
                 result.add(order);
             }
         }
@@ -236,10 +237,11 @@ public final class CommodityMarket {
     }
 
     /** Sell orders for {@code itemId} with ask ≤ {@code limit}, best (lowest) ask first. */
-    private static List<MarketOrder> crossingSells(CommoditySavedData data, String itemId, long limit) {
+    private static List<MarketOrder> crossingSells(CommoditySavedData data, String itemId, long limit, String ownerId) {
         List<MarketOrder> result = new ArrayList<>();
         for (MarketOrder order : data.orders()) {
-            if (order.sell() && Commodities.id(order.commodity()).equals(itemId) && order.pricePerUnit() <= limit) {
+            if (order.sell() && !order.ownerId().equals(ownerId)
+                    && Commodities.id(order.commodity()).equals(itemId) && order.pricePerUnit() <= limit) {
                 result.add(order);
             }
         }

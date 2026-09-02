@@ -11,6 +11,7 @@ import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import com.ailudick.capitalismmod.market.TransportMode;
+import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -56,6 +57,15 @@ public final class SupplyMarket {
         data.addOffer(new SupplyOffer(UUID.randomUUID().toString(), player.getUUID(), companyName, itemId, price,
                 TradeRegion.of(player.blockPosition())));
         return true;
+    }
+
+    public static void removeOffersForCompany(MinecraftServer server, UUID ownerUuid, String companyName) {
+        SupplyMarketSavedData data = SupplyMarketSavedData.get(server);
+        for (SupplyOffer offer : new ArrayList<>(data.offers())) {
+            if (offer.ownerUuid().equals(ownerUuid) && offer.companyName().equals(companyName)) {
+                data.removeOffer(offer.id());
+            }
+        }
     }
 
     /** Places a buy order: pays up front, fills from supplier stock, backorders the rest. */
@@ -144,9 +154,11 @@ public final class SupplyMarket {
         }
         long distance = TradeRegion.distance(origin, destination);
         TransportMode transport = TransportMode.forDistance(distance);
+        LogisticsInfrastructureSavedData infrastructure = LogisticsInfrastructureSavedData.get(server);
         long delay;
         try {
             delay = transport.travelTicks(Config.REGIONAL_SHIPPING_TICKS.get(), distance);
+            delay = infrastructure.adjustTravelTicks(delay, origin, destination, transport);
             delay = Math.addExact(server.overworld().getGameTime(), delay);
         } catch (ArithmeticException e) {
             delay = Long.MAX_VALUE;
@@ -154,10 +166,11 @@ public final class SupplyMarket {
         String itemId = BuiltInRegistries.ITEM.getKey(item).toString();
         LogisticsSavedData data = LogisticsSavedData.get(server);
         int remaining = quantity;
+        int capacity = transport.capacity() + infrastructure.capacityBonus(origin, destination, transport);
         while (remaining > 0) {
-            int batch = Math.min(remaining, transport.capacity());
+            int batch = Math.min(remaining, capacity);
             data.add(new LogisticsSavedData.Shipment(UUID.randomUUID().toString(), buyer, itemId, batch, delay,
-                    origin, destination, transport));
+                    origin, destination, transport, false));
             remaining -= batch;
         }
     }

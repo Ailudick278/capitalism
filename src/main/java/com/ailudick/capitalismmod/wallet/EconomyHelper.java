@@ -13,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -92,12 +93,80 @@ public final class EconomyHelper {
         return success;
     }
 
+    /**
+     * Removes physical currency worth at least {@code amount} and returns the
+     * excess as change. This is used for deposits, where a player may only have
+     * a denomination larger than the requested amount.
+     */
+    public static boolean consumeItemsWithChange(Player player, Currency currency, long amount) {
+        if (amount <= 0) {
+            return false;
+        }
+
+        Map<Item, Long> plan = new HashMap<>();
+        long selected = 0L;
+        List<Map.Entry<Long, Item>> denominations = CurrencyItem.denominations(currency.id());
+        // Deposit from smaller denominations first so exact payment is preferred.
+        for (int i = denominations.size() - 1; i >= 0; i--) {
+            Map.Entry<Long, Item> denomination = denominations.get(i);
+            long value = denomination.getKey();
+            long available = 0L;
+            for (ItemStack stack : player.getInventory().items) {
+                if (stack.getItem() == denomination.getValue()) {
+                    available += stack.getCount();
+                }
+            }
+            if (available <= 0) {
+                continue;
+            }
+
+            long needed = amount - selected;
+            long take = needed / value + (needed % value == 0 ? 0 : 1);
+            take = Math.min(take, available);
+            if (take > 0) {
+                plan.put(denomination.getValue(), take);
+                try {
+                    selected = Math.addExact(selected, Math.multiplyExact(take, value));
+                } catch (ArithmeticException e) {
+                    return false;
+                }
+            }
+            if (selected >= amount) {
+                break;
+            }
+        }
+        if (selected < amount) {
+            return false;
+        }
+
+        for (Map.Entry<Item, Long> entry : plan.entrySet()) {
+            long remaining = entry.getValue();
+            for (ItemStack stack : player.getInventory().items) {
+                if (remaining <= 0) {
+                    break;
+                }
+                if (stack.getItem() == entry.getKey()) {
+                    int take = (int) Math.min(remaining, stack.getCount());
+                    stack.shrink(take);
+                    remaining -= take;
+                }
+            }
+        }
+
+        long change = selected - amount;
+        if (change > 0) {
+            giveMoney(player, currency, change);
+        }
+        return true;
+    }
+
     /** Gives {@code amount} of {@code currency} as physical items (greedy denominations). */
     public static void giveMoney(Player player, Currency currency, long amount) {
         if (amount <= 0) {
             return;
         }
         long remaining = amount;
+        // Always issue change greedily: largest denominations first.
         for (Map.Entry<Long, Item> denom : CurrencyItem.denominations(currency.id())) {
             if (remaining <= 0) {
                 break;

@@ -1,6 +1,5 @@
 package com.ailudick.capitalismmod.currency;
 
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
@@ -53,9 +52,6 @@ public class CurrencyItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (!level.isClientSide) {
-            player.sendSystemMessage(Component.translatable("message.capitalismmod.deposit_at_bank"));
-        }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
 }

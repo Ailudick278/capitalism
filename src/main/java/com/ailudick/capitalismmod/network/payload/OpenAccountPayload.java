@@ -8,9 +8,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Client -> Server: open a new bank account using a blank card.
+ * Client -> Server: open a new bank account. The bank issues the card after opening.
  *
- * @param credit whether to open a credit account (requires a credit card)
+ * @param credit whether to open a credit account
  */
 public record OpenAccountPayload(boolean credit) implements CustomPacketPayload {
     public static final Type<OpenAccountPayload> TYPE =

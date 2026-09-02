@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Loads data-driven config (shop offers, commodities, stocks) from config/capitalismmod/*.json.
@@ -28,6 +29,8 @@ import java.util.Map;
  */
 public final class CapitalismData {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Set<String> REMOVED_RESERVED_STOCKS = Set.of(
+            "mining", "tech", "energy", "agriculture");
 
     private static List<ShopOffer> shopOffers = new ArrayList<>();
     private static List<ItemStack> commodities = new ArrayList<>();
@@ -105,9 +108,22 @@ public final class CapitalismData {
         List<StockJson> raw = read(dir.resolve("stocks.json"), StockJson[].class, defaultStocks());
         List<Stock> result = new ArrayList<>();
         for (StockJson j : raw) {
+            if (REMOVED_RESERVED_STOCKS.contains(j.id)) {
+                continue;
+            }
+            // Accept the old field name so existing worlds keep their US tab
+            // classification after live-data support was removed.
+            if (j.us_market || j.real_market || isFormerUsStock(j.id)) continue;
             result.add(new Stock(j.id, j.name_key, j.initial_price));
         }
+        if (result.stream().noneMatch(stock -> stock.id().equals("test_company"))) {
+            result.add(new Stock("test_company", "stock.capitalismmod.test_company", 100));
+        }
         return result;
+    }
+
+    private static boolean isFormerUsStock(String id) {
+        return Set.of("AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "TSLA").contains(id);
     }
 
     private static List<IndustrySpec> loadIndustries(Path dir) {
@@ -178,12 +194,7 @@ public final class CapitalismData {
     }
 
     private static List<StockJson> defaultStocks() {
-        return List.of(
-                new StockJson("mining", "stock.capitalismmod.mining", 100),
-                new StockJson("tech", "stock.capitalismmod.tech", 200),
-                new StockJson("energy", "stock.capitalismmod.energy", 150),
-                new StockJson("agriculture", "stock.capitalismmod.agriculture", 80)
-        );
+        return List.of(new StockJson("test_company", "stock.capitalismmod.test_company", 100));
     }
 
     // JSON types (public fields for Gson deserialization).
@@ -225,6 +236,9 @@ public final class CapitalismData {
         public String id = "mining";
         public String name_key = "stock.capitalismmod.mining";
         public long initial_price = 100;
+        public boolean us_market = false;
+        /** Legacy config compatibility; this no longer enables any network feed. */
+        public boolean real_market = false;
 
         public StockJson() {
         }
@@ -234,6 +248,7 @@ public final class CapitalismData {
             this.name_key = name_key;
             this.initial_price = initial_price;
         }
+
     }
 
     private static List<IndustryJson> defaultIndustries() {

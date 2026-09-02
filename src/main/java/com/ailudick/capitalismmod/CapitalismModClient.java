@@ -12,7 +12,6 @@ import com.ailudick.capitalismmod.screen.CompanyScreen;
 import com.ailudick.capitalismmod.screen.FuturesExchangeScreen;
 import com.ailudick.capitalismmod.screen.ConglomerateScreen;
 import com.ailudick.capitalismmod.screen.SecuritiesCommissionScreen;
-import com.ailudick.capitalismmod.screen.ShopScreen;
 import com.ailudick.capitalismmod.screen.StockExchangeScreen;
 import com.ailudick.capitalismmod.screen.TaxBureauScreen;
 import com.ailudick.capitalismmod.screen.WarehouseScreen;
@@ -35,7 +34,6 @@ public class CapitalismModClient {
     }
 
     static void registerMenuScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenuTypes.SHOP_MENU.get(), ShopScreen::new);
         event.register(ModMenuTypes.BANK_MENU.get(), BankScreen::new);
         event.register(ModMenuTypes.BUSINESS_LICENSE_MENU.get(), BusinessLicenseScreen::new);
         event.register(ModMenuTypes.CONGLOMERATE_MENU.get(), ConglomerateScreen::new);

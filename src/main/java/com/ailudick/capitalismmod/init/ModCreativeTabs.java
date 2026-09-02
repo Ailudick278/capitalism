@@ -65,7 +65,6 @@ public class ModCreativeTabs {
                         output.accept(ModItems.RUB_1000.get());
                         output.accept(ModItems.DEBIT_CARD.get());
                         output.accept(ModItems.CREDIT_CARD.get());
-                        output.accept(ModItems.SHOP.get());
                         output.accept(ModItems.BANK.get());
                         output.accept(ModItems.BUSINESS_BUREAU.get());
                         output.accept(ModItems.BUSINESS_LICENSE.get());
@@ -81,6 +80,9 @@ public class ModCreativeTabs {
                         output.accept(ModItems.AUCTION_HOUSE.get());
                         output.accept(ModItems.BOND_MARKET.get());
                         output.accept(ModItems.PROCUREMENT.get());
+                        output.accept(ModItems.LOGISTICS_CENTER.get());
+                        output.accept(ModItems.TRANSFER_STATION.get());
+                        output.accept(ModItems.PORT.get());
                     })
                     .build());
 }

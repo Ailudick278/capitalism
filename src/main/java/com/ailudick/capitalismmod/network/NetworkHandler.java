@@ -1,7 +1,6 @@
 package com.ailudick.capitalismmod.network;
 
 import com.ailudick.capitalismmod.network.payload.BankTransactionPayload;
-import com.ailudick.capitalismmod.network.payload.BuyItemPayload;
 import com.ailudick.capitalismmod.network.payload.CancelOrderPayload;
 import com.ailudick.capitalismmod.network.payload.CreateCompanyPayload;
 import com.ailudick.capitalismmod.network.payload.OpenConglomeratePayload;
@@ -20,9 +19,11 @@ import com.ailudick.capitalismmod.network.payload.RedeemInvoicesPayload;
 import com.ailudick.capitalismmod.network.payload.WithdrawCompanyPayload;
 import com.ailudick.capitalismmod.network.payload.UpgradeCompanyPayload;
 import com.ailudick.capitalismmod.network.payload.SyncBankAccountsPayload;
+import com.ailudick.capitalismmod.network.payload.SyncPersonalAssetsPayload;
+import com.ailudick.capitalismmod.network.payload.SyncExchangeRatesPayload;
+import com.ailudick.capitalismmod.network.payload.OperationResultPayload;
 import com.ailudick.capitalismmod.network.payload.SyncCommodityPayload;
 import com.ailudick.capitalismmod.network.payload.SyncMarketOrdersPayload;
-import com.ailudick.capitalismmod.network.payload.SyncShopDataPayload;
 import com.ailudick.capitalismmod.network.payload.SyncStocksPayload;
 import com.ailudick.capitalismmod.network.payload.PlaceStockOrderPayload;
 import com.ailudick.capitalismmod.network.payload.CancelStockOrderPayload;
@@ -53,7 +54,6 @@ public class NetworkHandler {
         PayloadRegistrar registrar = event.registrar("1");
 
         // Client -> Server.
-        registrar.playToServer(BuyItemPayload.TYPE, BuyItemPayload.STREAM_CODEC, ServerPayloadHandler::handleBuyItem);
         registrar.playToServer(ExchangePayload.TYPE, ExchangePayload.STREAM_CODEC, ServerPayloadHandler::handleExchange);
         registrar.playToServer(OpenAccountPayload.TYPE, OpenAccountPayload.STREAM_CODEC, ServerPayloadHandler::handleOpenAccount);
         registrar.playToServer(BankTransactionPayload.TYPE, BankTransactionPayload.STREAM_CODEC, ServerPayloadHandler::handleBankTransaction);
@@ -87,8 +87,10 @@ public class NetworkHandler {
         registrar.playToServer(PlaceSupplyOrderPayload.TYPE, PlaceSupplyOrderPayload.STREAM_CODEC, ServerPayloadHandler::handlePlaceSupplyOrder);
 
         // Server -> Client.
-        registrar.playToClient(SyncShopDataPayload.TYPE, SyncShopDataPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncShopData);
         registrar.playToClient(SyncBankAccountsPayload.TYPE, SyncBankAccountsPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncBankAccounts);
+        registrar.playToClient(SyncPersonalAssetsPayload.TYPE, SyncPersonalAssetsPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncPersonalAssets);
+        registrar.playToClient(SyncExchangeRatesPayload.TYPE, SyncExchangeRatesPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncExchangeRates);
+        registrar.playToClient(OperationResultPayload.TYPE, OperationResultPayload.STREAM_CODEC, ClientPayloadHandler::handleOperationResult);
         registrar.playToClient(SyncMarketOrdersPayload.TYPE, SyncMarketOrdersPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncMarketOrders);
         registrar.playToClient(SyncCommodityPayload.TYPE, SyncCommodityPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncCommodity);
         registrar.playToClient(SyncStocksPayload.TYPE, SyncStocksPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncStocks);

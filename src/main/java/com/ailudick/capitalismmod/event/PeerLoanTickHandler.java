@@ -1,11 +1,12 @@
 package com.ailudick.capitalismmod.event;
 
-import com.ailudick.capitalismmod.CapitalismMod;
-import net.neoforged.fml.common.EventBusSubscriber;
-
 /**
- * Ticks peer-loan maturities once per Minecraft day.
+ * Legacy marker retained for source compatibility. Peer-loan maturities are
+ * settled by {@link EconomySettlementTickHandler}; this class must not be
+ * registered as an empty event subscriber.
  */
-@EventBusSubscriber(modid = CapitalismMod.MODID)
-public class PeerLoanTickHandler {
+@Deprecated(forRemoval = false)
+public final class PeerLoanTickHandler {
+    private PeerLoanTickHandler() {
+    }
 }
