@@ -41,7 +41,8 @@ public final class AuctionMarket {
     public static boolean bid(ServerPlayer player, String auctionId, long amount) {
         AuctionSavedData data = AuctionSavedData.get(player.getServer());
         Auction auction = data.findAuction(auctionId);
-        if (auction == null || auction.endTick() <= player.getServer().getTickCount()) {
+        if (auction == null || auction.endTick() <= player.getServer().getTickCount()
+                || auction.seller().equals(player.getUUID())) {
             return false;
         }
         if (amount < auction.startingPrice() || amount <= auction.currentBid()) {

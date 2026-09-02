@@ -12,7 +12,6 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 @EventBusSubscriber(modid = CapitalismMod.MODID)
 public class StockTickHandler {
     private static int tickCounter = 0;
-    private static int dayCounter = 0;
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
@@ -20,11 +19,6 @@ public class StockTickHandler {
         if (tickCounter >= 600) { // 600 ticks = 30 seconds
             tickCounter = 0;
             StockMarket.updatePrices(event.getServer());
-        }
-        dayCounter++;
-        if (dayCounter >= 24000) { // 24000 ticks = 1 Minecraft day
-            dayCounter = 0;
-            StockMarket.closeDay(event.getServer());
         }
     }
 }

@@ -34,8 +34,15 @@ public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId,
 
     /** Interest currently due (major units), doubled when overdue. */
     public long interestDue() {
+        if (principal <= 0 || totalDays <= 0 || !Double.isFinite(ratePerYear) || ratePerYear < 0) {
+            return 0;
+        }
         int elapsed = Math.max(0, totalDays - daysRemaining);
         double multiplier = daysRemaining < 0 ? 2.0 : 1.0;
-        return (long) (principal * ratePerYear / 365.0 * elapsed * multiplier);
+        double interest = principal * ratePerYear / 365.0 * elapsed * multiplier;
+        if (!Double.isFinite(interest) || interest >= Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0, (long) interest);
     }
 }

@@ -50,16 +50,17 @@ public class LoanCommand {
     }
 
     private static int lend(ServerPlayer lender, ServerPlayer borrower, String currencyId, long amount, int days, double ratePercent) {
-        if (!Currencies.exists(currencyId)) {
+        long amountMinor = Money.toMinor(amount);
+        if (!Currencies.exists(currencyId) || amountMinor <= 0 || !Double.isFinite(ratePercent) || ratePercent < 0) {
             lender.sendSystemMessage(Component.translatable("command.capitalismmod.unknown_currency"));
             return 0;
         }
         Currency currency = Currencies.byId(currencyId);
-        if (!EconomyHelper.tryPay(lender, currency, Money.toMinor(amount))) {
+        if (!EconomyHelper.tryPay(lender, currency, amountMinor)) {
             lender.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
             return 0;
         }
-        EconomyHelper.giveMoney(borrower, currency, Money.toMinor(amount));
+        EconomyHelper.giveMoney(borrower, currency, amountMinor);
         PeerLoanSavedData.get(lender.getServer()).addLoan(new PeerLoan(
                 UUID.randomUUID().toString(), lender.getUUID(), borrower.getUUID(),
                 currencyId, amount, ratePercent / 100.0, days, days));
@@ -78,16 +79,28 @@ public class LoanCommand {
             return 0;
         }
         Currency currency = Currencies.byId(loan.currencyId());
-        long total = loan.principal() + loan.interestDue();
-        if (!EconomyHelper.tryPay(borrower, currency, Money.toMinor(total))) {
+        if (currency == null || loan.principal() <= 0) {
+            borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_not_found"));
+            return 0;
+        }
+        long interest = loan.interestDue();
+        long total;
+        try {
+            total = Math.addExact(loan.principal(), interest);
+        } catch (ArithmeticException e) {
+            borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
+            return 0;
+        }
+        long totalMinor = Money.toMinor(total);
+        if (totalMinor <= 0 || !EconomyHelper.tryPay(borrower, currency, totalMinor)) {
             borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
             return 0;
         }
         ServerPlayer lender = borrower.getServer().getPlayerList().getPlayer(loan.lender());
         if (lender != null) {
-            EconomyHelper.giveMoney(lender, currency, Money.toMinor(total));
+            EconomyHelper.giveMoney(lender, currency, totalMinor);
         } else {
-            MarketMailboxSavedData.get(borrower.getServer()).creditMoney(loan.lender(), currency.id(), Money.toMinor(total));
+            MarketMailboxSavedData.get(borrower.getServer()).creditMoney(loan.lender(), currency.id(), totalMinor);
         }
         data.removeLoan(loanId);
         borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",

@@ -86,7 +86,8 @@ public final class CommodityMarket {
             data.addNetVolume(itemId, -fill);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
-            NeoForge.EVENT_BUS.post(new TradeCompletedEvent(null, player, commodity, fill, "usd", gross));
+            NeoForge.EVENT_BUS.post(new TradeCompletedEvent(null, player, commodity, fill, "usd", gross,
+                    "commodity", commission(gross)));
         }
 
         if (remaining > 0) {
@@ -133,7 +134,8 @@ public final class CommodityMarket {
             spent += gross;
             remaining -= fill;
             reduceOrRemove(data, sell, fill);
-            NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, seller, commodity, fill, "usd", gross));
+            NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, seller, commodity, fill, "usd", gross,
+                    "commodity", commission(gross)));
         }
 
         if (remaining > 0) {

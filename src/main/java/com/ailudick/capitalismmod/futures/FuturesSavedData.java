@@ -131,7 +131,16 @@ public final class FuturesSavedData extends SavedData {
     }
 
     public void addMarginBalance(UUID playerId, long delta) {
-        setMarginBalance(playerId, marginBalance(playerId) + delta);
+        long current = marginBalance(playerId);
+        long next;
+        if (delta > 0 && current > Long.MAX_VALUE - delta) {
+            next = Long.MAX_VALUE;
+        } else if (delta < 0 && current < Long.MIN_VALUE - delta) {
+            next = 0;
+        } else {
+            next = current + delta;
+        }
+        setMarginBalance(playerId, next);
     }
 
     // ---- positions ----

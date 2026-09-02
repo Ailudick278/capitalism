@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.company;
 
+import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.world.entity.player.Player;
 
@@ -11,14 +12,17 @@ import java.util.Map;
  * {@link Industries} (config), except finance which earns interest on its treasury.
  */
 public final class CompanyEconomy {
-    /** Finance interest: treasury(usd) * level / 200 = 0.5% * level per tick. */
-    private static final long FINANCE_INTEREST_DIVISOR = 200L;
+    /** One production cycle is 30 seconds, or 1/40 of a Minecraft day. */
+    private static final double PRODUCTION_CYCLES_PER_DAY = 40.0;
 
     private CompanyEconomy() {
     }
 
     /** USD income for one tick. Finance uses treasury interest; others use data-driven income × level. */
     public static long incomePerTick(Company company, Player owner) {
+        if (company.level() <= 0) {
+            return 0L;
+        }
         if ("finance".equals(company.type())) {
             return financeIncome(company);
         }
@@ -31,6 +35,9 @@ public final class CompanyEconomy {
 
     /** Cost (USD) to upgrade from {@code level} to {@code level + 1}: 1000 * level^2. */
     public static long upgradeCost(int level) {
+        if (level <= 0) {
+            return -1L;
+        }
         long squared = EconomyMath.multiply(level, level);
         if (squared < 0) {
             return Long.MAX_VALUE;
@@ -52,17 +59,30 @@ public final class CompanyEconomy {
 
     private static Map<String, Integer> scale(Map<String, Integer> perLevel, int level) {
         Map<String, Integer> result = new HashMap<>();
+        if (level <= 0) {
+            return result;
+        }
         for (Map.Entry<String, Integer> entry : perLevel.entrySet()) {
-            result.put(entry.getKey(), entry.getValue() * level);
+            int amount = entry.getValue();
+            if (amount <= 0) {
+                continue;
+            }
+            long scaled = (long) amount * level;
+            result.put(entry.getKey(), (int) Math.min(Integer.MAX_VALUE, scaled));
         }
         return result;
     }
 
     private static long financeIncome(Company company) {
-        long scaled = EconomyMath.multiply(company.treasuryOf("usd"), company.level());
-        if (scaled <= 0) {
+        long treasury = company.treasuryOf("usd");
+        if (treasury <= 0) {
             return 0L;
         }
-        return scaled / FINANCE_INTEREST_DIVISOR;
+        double income = treasury * Config.FINANCE_RATE_PER_YEAR.get() / 365.0
+                / PRODUCTION_CYCLES_PER_DAY * company.level();
+        if (!Double.isFinite(income) || income >= Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0L, (long) income);
     }
 }

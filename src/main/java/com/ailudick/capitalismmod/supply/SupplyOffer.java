@@ -14,7 +14,11 @@ import java.util.UUID;
  * @param ownerUuid   the company owner's UUID
  * @param companyName the company name (unique per owner)
  */
-public record SupplyOffer(String id, UUID ownerUuid, String companyName, String itemId, long price) {
+public record SupplyOffer(String id, UUID ownerUuid, String companyName, String itemId, long price, String region) {
+
+    public SupplyOffer(String id, UUID ownerUuid, String companyName, String itemId, long price) {
+        this(id, ownerUuid, companyName, itemId, price, "unknown");
+    }
 
     private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
 
@@ -23,7 +27,8 @@ public record SupplyOffer(String id, UUID ownerUuid, String companyName, String 
             UUID_CODEC.fieldOf("ownerUuid").forGetter(SupplyOffer::ownerUuid),
             Codec.STRING.fieldOf("companyName").forGetter(SupplyOffer::companyName),
             Codec.STRING.fieldOf("itemId").forGetter(SupplyOffer::itemId),
-            Codec.LONG.fieldOf("price").forGetter(SupplyOffer::price)
+            Codec.LONG.fieldOf("price").forGetter(SupplyOffer::price),
+            Codec.STRING.optionalFieldOf("region", "unknown").forGetter(SupplyOffer::region)
     ).apply(instance, SupplyOffer::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SupplyOffer> STREAM_CODEC = StreamCodec.composite(
@@ -32,5 +37,6 @@ public record SupplyOffer(String id, UUID ownerUuid, String companyName, String 
             ByteBufCodecs.STRING_UTF8, SupplyOffer::companyName,
             ByteBufCodecs.STRING_UTF8, SupplyOffer::itemId,
             ByteBufCodecs.VAR_LONG, SupplyOffer::price,
-            (id, owner, companyName, itemId, price) -> new SupplyOffer(id, UUID.fromString(owner), companyName, itemId, price));
+            ByteBufCodecs.STRING_UTF8, SupplyOffer::region,
+            (id, owner, companyName, itemId, price, region) -> new SupplyOffer(id, UUID.fromString(owner), companyName, itemId, price, region));
 }

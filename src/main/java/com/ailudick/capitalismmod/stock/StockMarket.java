@@ -2,6 +2,9 @@ package com.ailudick.capitalismmod.stock;
 
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
+import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.event.TradeCompletedEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import com.ailudick.capitalismmod.event.EconomyNews;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
@@ -174,6 +177,8 @@ public final class StockMarket {
             spent += gross;
             remaining -= fill;
             reduceOrRemove(data, sell, fill);
+            NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, null, null,
+                    fill, "usd", gross, "stock", duty(gross), stockId));
         }
 
         if (remaining > 0) {
@@ -210,6 +215,8 @@ public final class StockMarket {
             data.addNetVolume(stockId, -fill);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
+            NeoForge.EVENT_BUS.post(new TradeCompletedEvent(null, player, null,
+                    fill, "usd", gross, "stock", duty(gross), stockId));
         }
 
         if (remaining > 0) {
@@ -261,8 +268,9 @@ public final class StockMarket {
         if (prevClose <= 0) {
             return true;
         }
-        long lower = prevClose * 9 / 10;
-        long upper = prevClose * 11 / 10;
+        double limit = Config.STOCK_PRICE_LIMIT.get();
+        long lower = (long) (prevClose * (1 - limit));
+        long upper = (long) (prevClose * (1 + limit));
         return price >= lower && price <= upper;
     }
 
@@ -271,8 +279,9 @@ public final class StockMarket {
         if (prevClose <= 0) {
             return newPrice;
         }
-        long lower = prevClose * 9 / 10;
-        long upper = prevClose * 11 / 10;
+        double limit = Config.STOCK_PRICE_LIMIT.get();
+        long lower = (long) (prevClose * (1 - limit));
+        long upper = (long) (prevClose * (1 + limit));
         return Math.max(lower, Math.min(newPrice, upper));
     }
 

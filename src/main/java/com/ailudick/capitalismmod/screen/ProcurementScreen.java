@@ -105,7 +105,8 @@ public class ProcurementScreen extends AbstractContainerScreen<ProcurementMenu> 
         List<SupplyOffer> offers = offersForSelected();
         for (int i = 0; i < Math.min(4, offers.size()); i++) {
             SupplyOffer offer = offers.get(i);
-            graphics.drawString(font, Component.literal(offer.companyName() + " $" + offer.price()),
+            graphics.drawString(font, Component.literal(offer.companyName() + " $" + offer.price()
+                            + " [" + offer.region() + "]"),
                     leftPos + 8, topPos + 86 + i * 18, GuiStyles.TEXT, false);
         }
 
@@ -113,7 +114,8 @@ public class ProcurementScreen extends AbstractContainerScreen<ProcurementMenu> 
                 leftPos + 8, topPos + 164, GuiStyles.TEXT, false);
         for (int i = 0; i < Math.min(3, menu.getOrders().size()); i++) {
             PurchaseOrder order = menu.getOrders().get(i);
-            graphics.drawString(font, Component.literal(order.companyName() + " " + order.remaining() + "x"),
+            graphics.drawString(font, Component.literal(order.companyName() + " " + order.remaining() + "x"
+                            + " [" + order.destinationRegion() + "]"),
                     leftPos + 8, topPos + 176 + i * 18, GuiStyles.TEXT, false);
         }
     }

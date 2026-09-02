@@ -5,6 +5,8 @@ import com.ailudick.capitalismmod.bank.BankAccountHelper;
 import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.CurrencyItem;
 import com.ailudick.capitalismmod.event.WalletChangedEvent;
+import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
+import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -26,7 +28,11 @@ public final class EconomyHelper {
         long total = 0;
         for (ItemStack stack : player.getInventory().items) {
             if (stack.getItem() instanceof CurrencyItem item && item.currency().equals(currency)) {
-                total += item.value() * stack.getCount();
+                long value = EconomyMath.multiply(item.value(), stack.getCount());
+                total = value < 0 ? Long.MAX_VALUE : EconomyMath.add(total, value);
+                if (total < 0) {
+                    return Long.MAX_VALUE;
+                }
             }
         }
         return total;
@@ -36,34 +42,52 @@ public final class EconomyHelper {
     public static long totalAccountBalance(Player player, Currency currency) {
         long total = 0;
         for (BankAccount account : BankAccountHelper.getAccounts(player).values()) {
-            total += account.getBalance(currency.id());
+            long balance = account.getBalance(currency.id());
+            total = EconomyMath.add(total, balance);
+            if (total < 0) {
+                return Long.MAX_VALUE;
+            }
         }
         return total;
     }
 
     /** Total available balance: physical items + bank accounts. */
     public static long getBalance(Player player, Currency currency) {
-        return countItems(player, currency) + totalAccountBalance(player, currency);
+        long items = countItems(player, currency);
+        long accounts = totalAccountBalance(player, currency);
+        long total = EconomyMath.add(items, accounts);
+        return total < 0 ? Long.MAX_VALUE : total;
     }
 
     /** Pays {@code amount}: consumes currency items first, then falls back to bank accounts. */
     public static boolean tryPay(Player player, Currency currency, long amount) {
-        if (amount <= 0) {
+        if (amount < 0) {
+            return false;
+        }
+        if (amount == 0) {
             return true;
         }
         long items = countItems(player, currency);
         if (items >= amount) {
             consumeItems(player, currency, amount);
             postChanged(player, currency);
+            log(player, "支付", currency, amount);
             return true;
         }
         long remaining = amount - items;
+        // Check the account side before consuming any physical currency. This
+        // keeps a failed payment atomic instead of destroying the item portion
+        // when the combined balance is insufficient.
+        if (totalAccountBalance(player, currency) < remaining) {
+            return false;
+        }
         if (items > 0) {
             consumeItems(player, currency, items);
         }
         boolean success = trySpendFromAccounts(player, currency, remaining);
         if (success) {
             postChanged(player, currency);
+            log(player, "支付", currency, amount);
         }
         return success;
     }
@@ -95,6 +119,14 @@ public final class EconomyHelper {
             }
         }
         postChanged(player, currency);
+        log(player, "收入", currency, amount);
+    }
+
+    private static void log(Player player, String action, Currency currency, long amount) {
+        if (player.getServer() != null) {
+            EconomyLogSavedData.get(player.getServer()).append(
+                    player.getServer().overworld().getGameTime(), player.getUUID(), action, currency.id(), amount);
+        }
     }
 
     /** Consumes exactly {@code amount} worth of currency items (caller must ensure enough). */

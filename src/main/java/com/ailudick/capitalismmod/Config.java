@@ -20,10 +20,20 @@ public class Config {
             .comment("Term deposit interest rate per Minecraft year (0.08 = 8% per year).")
             .defineInRange("termDepositRatePerYear", 0.08, 0.0, 1.0);
 
+    // Finance-company annual return on treasury, distributed once per production cycle.
+    public static final ModConfigSpec.DoubleValue FINANCE_RATE_PER_YEAR = BUILDER
+            .comment("Annual return for finance companies, distributed over Minecraft days and production cycles.")
+            .defineInRange("financeRatePerYear", 0.05, 0.0, 1.0);
+
     // Corporate income tax rate applied to company income (0.25 = 25%).
     public static final ModConfigSpec.DoubleValue INCOME_TAX_RATE = BUILDER
             .comment("Corporate income tax rate applied to company income (0.25 = 25%).")
             .defineInRange("incomeTaxRate", 0.25, 0.0, 1.0);
+
+    // Operating cost in USD per company level and production cycle.
+    public static final ModConfigSpec.LongValue COMPANY_MAINTENANCE_PER_LEVEL = BUILDER
+            .comment("Company maintenance cost in USD per level and production cycle; 0 disables it.")
+            .defineInRange("companyMaintenancePerLevel", 1L, 0L, Long.MAX_VALUE);
 
     // Fraction of invoice value refunded at the tax bureau (0.10 = 10%).
     public static final ModConfigSpec.DoubleValue INVOICE_REFUND_RATE = BUILDER
@@ -35,10 +45,37 @@ public class Config {
             .comment("Credit limit for credit accounts, in base units (yuan fen). 100000 = 1000 yuan.")
             .defineInRange("creditLimit", 100000L, 0L, Long.MAX_VALUE);
 
+    public static final ModConfigSpec.IntValue LOAN_TERM_DAYS = BUILDER
+            .comment("Number of Minecraft days before a bank loan becomes overdue.")
+            .defineInRange("loanTermDays", 30, 1, 3650);
+
+    public static final ModConfigSpec.IntValue TERM_DEPOSIT_MAX_DAYS = BUILDER
+            .comment("Maximum number of Minecraft days for a fixed-term deposit.")
+            .defineInRange("termDepositMaxDays", 3650, 1, 3650);
+
+    public static final ModConfigSpec.DoubleValue TRANSFER_FEE_RATE = BUILDER
+            .comment("Inter-account transfer fee as a fraction of the amount (0.001 = 0.1%).")
+            .defineInRange("transferFeeRate", 0.001, 0.0, 1.0);
+
+    // Width/depth of one trade region in blocks.
+    public static final ModConfigSpec.IntValue TRADE_REGION_SIZE = BUILDER
+            .comment("Trade region size in blocks used for regional logistics.")
+            .defineInRange("tradeRegionSize", 512, 32, 16384);
+
+    // Transport time per region crossed, in ticks; 12000 ticks = 10 Minecraft minutes.
+    public static final ModConfigSpec.LongValue REGIONAL_SHIPPING_TICKS = BUILDER
+            .comment("Transport time per region crossed in ticks; 12000 ticks is 10 Minecraft minutes.")
+            .defineInRange("regionalShippingTicks", 12000L, 20L, 240000L);
+
     // Daily commodity price limit band as a fraction of the previous close (0.10 = ±10%).
     public static final ModConfigSpec.DoubleValue COMMODITY_PRICE_LIMIT = BUILDER
             .comment("Commodity price limit band as a fraction of the previous close (0.10 = ±10%).")
             .defineInRange("commodityPriceLimit", 0.10, 0.0, 1.0);
+
+    // Daily stock price limit band as a fraction of the previous close (0.10 = 10%).
+    public static final ModConfigSpec.DoubleValue STOCK_PRICE_LIMIT = BUILDER
+            .comment("Stock price limit band as a fraction of the previous close (0.10 = 10%).")
+            .defineInRange("stockPriceLimit", 0.10, 0.0, 1.0);
 
     // Futures margin rate (fraction of notional value required as margin). 0.10 = 10x leverage.
     public static final ModConfigSpec.DoubleValue FUTURES_MARGIN_RATE = BUILDER

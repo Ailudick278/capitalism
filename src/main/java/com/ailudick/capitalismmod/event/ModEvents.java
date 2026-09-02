@@ -11,6 +11,13 @@ import com.ailudick.capitalismmod.command.FxCommand;
 import com.ailudick.capitalismmod.command.MoneyCommand;
 import com.ailudick.capitalismmod.command.OfferCommand;
 import com.ailudick.capitalismmod.command.PayCommand;
+import com.ailudick.capitalismmod.command.EconomyLogCommand;
+import com.ailudick.capitalismmod.command.MarketOrdersCommand;
+import com.ailudick.capitalismmod.command.EconomyStatsCommand;
+import com.ailudick.capitalismmod.command.MarketRepairCommand;
+import com.ailudick.capitalismmod.command.MarketTradesCommand;
+import com.ailudick.capitalismmod.command.LogisticsCommand;
+import com.ailudick.capitalismmod.command.CapitalismCommand;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -33,5 +40,12 @@ public class ModEvents {
         TransferSharesCommand.register(dispatcher);
         LoanCommand.register(dispatcher);
         OfferCommand.register(dispatcher);
+        EconomyLogCommand.register(dispatcher);
+        MarketOrdersCommand.register(dispatcher);
+        EconomyStatsCommand.register(dispatcher);
+        MarketRepairCommand.register(dispatcher);
+        MarketTradesCommand.register(dispatcher);
+        LogisticsCommand.register(dispatcher);
+        CapitalismCommand.register(dispatcher);
     }
 }

@@ -60,6 +60,7 @@ public final class AuctionSavedData extends SavedData {
         for (int i = 0; i < auctions.size(); i++) {
             if (auctions.get(i).id().equals(auction.id())) {
                 auctions.set(i, auction);
+                setDirty();
                 return;
             }
         }

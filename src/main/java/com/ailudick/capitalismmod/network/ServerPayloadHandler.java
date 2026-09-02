@@ -128,7 +128,7 @@ public class ServerPayloadHandler {
                 player.drop(invoice, false);
             }
 
-            NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, null, offer.item(), offer.item().getCount(), offer.currencyId(), offer.price()));
+            NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, null, offer.item(), offer.item().getCount(), offer.currencyId(), offer.price(), "shop", 0));
         });
     }
 
@@ -231,6 +231,9 @@ public class ServerPayloadHandler {
     public static void handleTransfer(TransferPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player)) {
+                return;
+            }
+            if (!Currencies.exists(payload.currencyId())) {
                 return;
             }
             boolean success = BankAccountHelper.transferBetween(player, payload.fromAccountId(), payload.targetAccountId(), payload.currencyId(), Money.toMinor(payload.amount()));

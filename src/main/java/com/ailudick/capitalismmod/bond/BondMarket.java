@@ -24,8 +24,14 @@ public final class BondMarket {
             return false;
         }
         long faceValue = Config.BOND_FACE_VALUE.get();
-        long total = faceValue * count;
-        if (!EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(total))) {
+        long total;
+        try {
+            total = Math.multiplyExact(faceValue, count);
+        } catch (ArithmeticException e) {
+            return false;
+        }
+        long totalMinor = Money.toMinor(total);
+        if (total <= 0 || totalMinor < 0 || !EconomyHelper.tryPay(player, Currencies.USD, totalMinor)) {
             return false;
         }
         BondSavedData data = BondSavedData.get(player.getServer());
@@ -44,8 +50,17 @@ public final class BondMarket {
         if (holding == null || !holding.holder().equals(player.getUUID())) {
             return false;
         }
-        long payout = holding.faceValue() + holding.accruedInterest();
-        EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(payout));
+        long payout;
+        try {
+            payout = Math.addExact(holding.faceValue(), holding.accruedInterest());
+        } catch (ArithmeticException e) {
+            return false;
+        }
+        long payoutMinor = Money.toMinor(payout);
+        if (payout <= 0 || payoutMinor < 0) {
+            return false;
+        }
+        EconomyHelper.giveMoney(player, Currencies.USD, payoutMinor);
         data.removeHolding(holdingId);
         return true;
     }
@@ -60,12 +75,21 @@ public final class BondMarket {
                 continue;
             }
             long coupon = (long) (holding.faceValue() * holding.ratePerYear() * holding.totalDays() / 365.0);
-            long payout = holding.faceValue() + coupon;
+            long payout;
+            try {
+                payout = Math.addExact(holding.faceValue(), coupon);
+            } catch (ArithmeticException e) {
+                continue;
+            }
+            long payoutMinor = Money.toMinor(payout);
+            if (payout <= 0 || payoutMinor < 0) {
+                continue;
+            }
             ServerPlayer holder = server.getPlayerList().getPlayer(holding.holder());
             if (holder != null) {
-                EconomyHelper.giveMoney(holder, Currencies.USD, Money.toMinor(payout));
+                EconomyHelper.giveMoney(holder, Currencies.USD, payoutMinor);
             } else {
-                MarketMailboxSavedData.get(server).creditMoney(holding.holder(), "usd", Money.toMinor(payout));
+                MarketMailboxSavedData.get(server).creditMoney(holding.holder(), "usd", payoutMinor);
             }
             data.removeHolding(holding.id());
         }

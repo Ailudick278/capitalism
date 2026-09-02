@@ -429,6 +429,12 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                 Component type = Component.translatable(account.credit() ? "gui.capitalismmod.credit" : "gui.capitalismmod.debit");
                 graphics.drawString(font, type.copy().append(Component.literal("  " + BankCardNumber.format(account.id()))),
                         leftPos + 8, topPos + 180, GuiStyles.TEXT_DIM, false);
+                for (int i = 0; i < Currencies.ALL.size(); i++) {
+                    Currency currency = Currencies.ALL.get(i);
+                    graphics.drawString(font, Component.translatable(currency.nameKey()).copy()
+                                    .append(Component.literal(" " + Money.format(account.getBalance(currency.id())))),
+                            leftPos + 90, topPos + 180 + i * 12, GuiStyles.TEXT, false);
+                }
             } else {
                 graphics.drawString(font, Component.translatable("gui.capitalismmod.no_account"),
                         leftPos + 8, topPos + 180, GuiStyles.TEXT_DIM, false);

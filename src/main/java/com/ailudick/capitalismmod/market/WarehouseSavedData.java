@@ -57,8 +57,15 @@ public final class WarehouseSavedData extends SavedData {
             return;
         }
         String itemId = BuiltInRegistries.ITEM.getKey(item).toString();
-        storage.computeIfAbsent(playerId.toString(), k -> new HashMap<>()).merge(itemId, count, Integer::sum);
+        storage.computeIfAbsent(playerId.toString(), k -> new HashMap<>()).merge(itemId, count, WarehouseSavedData::saturatingAdd);
         setDirty();
+    }
+
+    private static int saturatingAdd(int left, int right) {
+        if (right > Integer.MAX_VALUE - left) {
+            return Integer.MAX_VALUE;
+        }
+        return left + right;
     }
 
     /** Removes {@code count} of {@code item} from the warehouse, returning {@code false} if insufficient. */

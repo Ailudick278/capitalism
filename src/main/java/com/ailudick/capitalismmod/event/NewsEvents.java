@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.event;
 
 import com.ailudick.capitalismmod.CapitalismMod;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 
@@ -22,7 +23,9 @@ public class NewsEvents {
         if (server == null) {
             return;
         }
+        Component item = event.getItem() != null && !event.getItem().isEmpty()
+                ? event.getItem().getHoverName() : Component.literal(event.getAssetId() == null ? "unknown" : event.getAssetId());
         EconomyNews.broadcast(server, "news.capitalismmod.big_trade",
-                event.getQuantity(), event.getItem().getHoverName(), event.getTotal());
+                event.getQuantity(), item, event.getTotal());
     }
 }

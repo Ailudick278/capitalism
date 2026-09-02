@@ -47,7 +47,13 @@ public record Company(String name, String type, int level, Map<String, Long> tre
     }
 
     public Company addTaxOwed(long amount) {
-        return new Company(name, type, level, treasury, taxOwed + amount);
+        long updated;
+        try {
+            updated = Math.addExact(taxOwed, amount);
+        } catch (ArithmeticException e) {
+            updated = Long.MAX_VALUE;
+        }
+        return new Company(name, type, level, treasury, updated);
     }
 
     /** Adds {@code amount} to the given currency's treasury balance. Returns {@code this} unchanged on overflow. */

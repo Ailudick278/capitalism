@@ -119,7 +119,7 @@ public final class FuturesMarket {
         long price = data.price(position.itemId());
         long pnl = pnl(position, price);
         data.removePosition(positionId);
-        data.addMarginBalance(player.getUUID(), position.margin() + pnl);
+        data.addMarginBalance(player.getUUID(), safeAdd(position.margin(), pnl));
         data.addNetVolume(position.itemId(), position.longSide() ? -position.quantity() : position.quantity());
         data.setDirty();
         return true;
@@ -201,5 +201,15 @@ public final class FuturesMarket {
     private static long pnl(Position position, long price) {
         long diff = position.longSide() ? price - position.entryPrice() : position.entryPrice() - price;
         return EconomyMath.multiply(position.quantity(), diff);
+    }
+
+    private static long safeAdd(long left, long right) {
+        if (right > 0 && left > Long.MAX_VALUE - right) {
+            return Long.MAX_VALUE;
+        }
+        if (right < 0 && left < Long.MIN_VALUE - right) {
+            return Long.MIN_VALUE;
+        }
+        return left + right;
     }
 }

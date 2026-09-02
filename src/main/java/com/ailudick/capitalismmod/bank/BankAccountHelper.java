@@ -25,9 +25,6 @@ import java.util.Map;
  */
 public final class BankAccountHelper {
     /** Minecraft days until a loan matures; overdue loans incur a penalty rate. */
-    private static final int LOAN_TERM_DAYS = 30;
-    /** Transfer fee divisor: amount / 1000 = 0.1%, minimum 1. */
-    private static final long TRANSFER_FEE_DIVISOR = 1000L;
     /** Interest multiplier applied once a loan is overdue. */
     private static final double OVERDUE_RATE_MULTIPLIER = 2.0;
 
@@ -81,9 +78,12 @@ public final class BankAccountHelper {
             Map<String, Long> newDebts = new HashMap<>(account.debts());
             List<BankTransaction> txs = new ArrayList<>(account.transactions());
             for (Map.Entry<String, Long> entry : newBalances.entrySet()) {
-                long interest = (long) (entry.getValue() * depositRate);
+                if (entry.getValue() <= 0) {
+                    continue;
+                }
+                long interest = safeInterest(entry.getValue(), depositRate);
                 if (interest > 0) {
-                    entry.setValue(entry.getValue() + interest);
+                    entry.setValue(safeAdd(entry.getValue(), interest));
                     txs.add(new BankTransaction("interest", entry.getKey(), interest));
                     changed = true;
                 }
@@ -97,9 +97,12 @@ public final class BankAccountHelper {
             boolean overdue = hasDebt && loanDaysRemaining < 0;
             double effectiveLoanRate = overdue ? loanRate * OVERDUE_RATE_MULTIPLIER : loanRate;
             for (Map.Entry<String, Long> entry : newDebts.entrySet()) {
-                long interest = (long) (entry.getValue() * effectiveLoanRate);
+                if (entry.getValue() <= 0) {
+                    continue;
+                }
+                long interest = safeInterest(entry.getValue(), effectiveLoanRate);
                 if (interest > 0) {
-                    entry.setValue(entry.getValue() + interest);
+                    entry.setValue(safeAdd(entry.getValue(), interest));
                     txs.add(new BankTransaction("interest", entry.getKey(), -interest));
                     changed = true;
                 }
@@ -109,8 +112,9 @@ public final class BankAccountHelper {
             for (TermDeposit term : account.termDeposits()) {
                 TermDeposit ticked = term.tick();
                 if (ticked.daysRemaining() <= 0) {
-                    long payout = term.principal() + term.interest();
-                    newBalances.merge(term.currencyId(), payout, Long::sum);
+                    long payout = safeAdd(term.principal(), term.interest());
+                    long balance = newBalances.getOrDefault(term.currencyId(), 0L);
+                    newBalances.put(term.currencyId(), safeAdd(balance, payout));
                     txs.add(new BankTransaction("term_maturity", term.currencyId(), payout));
                 } else {
                     newTerms.add(ticked);
@@ -142,7 +146,11 @@ public final class BankAccountHelper {
                 return false;
             }
             EconomyHelper.consumeItems(player, currency, amount);
-            account = account.withBalance(currency.id(), accountBalance + amount)
+            long newBalance = safeAdd(accountBalance, amount);
+            if (newBalance == Long.MAX_VALUE && accountBalance != Long.MAX_VALUE) {
+                return false;
+            }
+            account = account.withBalance(currency.id(), newBalance)
                     .withTransaction(new BankTransaction("deposit", currency.id(), amount));
         } else {
             // account -> physical items
@@ -173,14 +181,18 @@ public final class BankAccountHelper {
             return false;
         }
         long existingDebtInBase = totalDebtInBase(account);
+        long newDebt = safeAdd(account.getDebt(currency.id()), amount);
+        if (newDebt == Long.MAX_VALUE && account.getDebt(currency.id()) != Long.MAX_VALUE) {
+            return false;
+        }
         long combined = EconomyMath.add(existingDebtInBase, newDebtInBase);
         if (combined < 0 || combined > Config.CREDIT_LIMIT.get()) {
             return false;
         }
 
-        int loanDays = existingDebtInBase == 0 ? LOAN_TERM_DAYS : account.loanDaysRemaining();
+        int loanDays = existingDebtInBase == 0 ? Config.LOAN_TERM_DAYS.get() : account.loanDaysRemaining();
         EconomyHelper.giveMoney(player, currency, amount);
-        updateAccount(player, account.withDebt(currency.id(), account.getDebt(currency.id()) + amount)
+        updateAccount(player, account.withDebt(currency.id(), newDebt)
                 .withLoanDaysRemaining(loanDays)
                 .withTransaction(new BankTransaction("loan", currency.id(), amount)));
         NeoForge.EVENT_BUS.post(new LoanTakenEvent(player, accountId, currency.id(), amount));
@@ -214,7 +226,8 @@ public final class BankAccountHelper {
 
     /** Opens a fixed-term deposit, moving {@code amount} out of the demand balance for {@code termDays} days. */
     public static boolean openTermDeposit(Player player, String accountId, String currencyId, long amount, int termDays) {
-        if (amount <= 0 || termDays <= 0 || !Currencies.exists(currencyId)) {
+        if (amount <= 0 || termDays <= 0 || termDays > Config.TERM_DEPOSIT_MAX_DAYS.get()
+                || !Currencies.exists(currencyId)) {
             return false;
         }
         BankAccount account = getAccount(player, accountId);
@@ -222,7 +235,7 @@ public final class BankAccountHelper {
             return false;
         }
         double dailyRate = Config.TERM_DEPOSIT_RATE_PER_YEAR.get() / 365.0;
-        long interest = (long) (amount * dailyRate * termDays);
+        long interest = safeInterest(amount, dailyRate * termDays);
         List<TermDeposit> terms = new ArrayList<>(account.termDeposits());
         terms.add(new TermDeposit(currencyId, amount, interest, termDays));
         account = account.withBalance(currencyId, account.getBalance(currencyId) - amount)
@@ -241,7 +254,7 @@ public final class BankAccountHelper {
         TermDeposit term = account.termDeposits().get(index);
         List<TermDeposit> terms = new ArrayList<>(account.termDeposits());
         terms.remove(index);
-        account = account.withBalance(term.currencyId(), account.getBalance(term.currencyId()) + term.principal())
+        account = account.withBalance(term.currencyId(), safeAdd(account.getBalance(term.currencyId()), term.principal()))
                 .withTermDeposits(terms)
                 .withTransaction(new BankTransaction("term_withdraw", term.currencyId(), term.principal()));
         updateAccount(player, account);
@@ -272,7 +285,23 @@ public final class BankAccountHelper {
     }
 
     private static long transferFee(long amount) {
-        return Math.max(1L, amount / TRANSFER_FEE_DIVISOR);
+        return Math.max(1L, (long) (amount * Config.TRANSFER_FEE_RATE.get()));
+    }
+
+    private static long safeInterest(long principal, double rate) {
+        double value = principal * rate;
+        if (!Double.isFinite(value) || value >= Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0L, (long) value);
+    }
+
+    private static long safeAdd(long left, long right) {
+        try {
+            return Math.addExact(left, right);
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
+        }
     }
 
     private static ServerPlayer findAccountOwner(MinecraftServer server, String accountId) {

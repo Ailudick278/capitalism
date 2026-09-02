@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.screen;
 
 import com.ailudick.capitalismmod.client.GuiStyles;
 import com.ailudick.capitalismmod.company.Company;
+import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.menu.CompanyMenu;
 import com.ailudick.capitalismmod.network.payload.UpgradeCompanyPayload;
 import com.ailudick.capitalismmod.network.payload.WithdrawCompanyPayload;
@@ -83,9 +84,16 @@ public class CompanyScreen extends AbstractContainerScreen<CompanyMenu> {
             String name = entry.getKey();
             Company company = entry.getValue();
             int y = topPos + 28 + i * 26;
-            graphics.drawString(font, name + " Lv." + company.level(), leftPos + 8, y, GuiStyles.TEXT, false);
+            graphics.drawString(font, name + " Lv." + company.level() + " " + company.type(), leftPos + 8, y, GuiStyles.TEXT, false);
             graphics.drawString(font, "$" + company.treasuryOf("usd") + " 税$" + company.taxOwed(),
                     leftPos + 8, y + 11, GuiStyles.TEXT_DIM, false);
+            long maintenance;
+            try {
+                maintenance = Math.multiplyExact(Config.COMPANY_MAINTENANCE_PER_LEVEL.get(), Math.max(0, company.level()));
+            } catch (ArithmeticException e) {
+                maintenance = Long.MAX_VALUE;
+            }
+            graphics.drawString(font, "维护费 $" + maintenance, leftPos + 8, y + 20, GuiStyles.TEXT_DIM, false);
             i++;
         }
     }

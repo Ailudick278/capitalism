@@ -113,13 +113,22 @@ public final class CompanyHelper {
                 updated.put(entry.getKey(), company);
                 continue;
             }
+            if (!canProduceOutputs(server, company)) {
+                updated.put(entry.getKey(), company);
+                continue;
+            }
             if (!consumeInputs(server, player, company)) {
                 updated.put(entry.getKey(), company);
                 continue;
             }
             produceOutputs(server, player, company);
-            long tax = (long) (income * Config.INCOME_TAX_RATE.get());
-            long net = income - tax;
+            long tax = safeRate(income, Config.INCOME_TAX_RATE.get());
+            long maintenance = EconomyMath.multiply(Config.COMPANY_MAINTENANCE_PER_LEVEL.get(), company.level());
+            if (maintenance < 0) {
+                maintenance = Long.MAX_VALUE;
+            }
+            long net = income > tax ? income - tax : 0L;
+            net = net > maintenance ? net - maintenance : 0L;
             Company taxed = company.addTaxOwed(tax);
             if (data != null && data.isListed(stockId(player, company.name()))) {
                 distributeDividend(server, stockId(player, company.name()), net);
@@ -143,16 +152,14 @@ public final class CompanyHelper {
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
         for (Map.Entry<String, Integer> input : inputs.entrySet()) {
             Item item = parseItem(input.getKey());
-            if (item != null && warehouse.count(player.getUUID(), input.getKey()) < input.getValue()) {
+            if (item == null || input.getValue() <= 0
+                    || warehouse.count(player.getUUID(), input.getKey()) < input.getValue()) {
                 return false;
             }
         }
         CommoditySavedData commodityData = CommoditySavedData.get(server);
         for (Map.Entry<String, Integer> input : inputs.entrySet()) {
             Item item = parseItem(input.getKey());
-            if (item == null) {
-                continue;
-            }
             warehouse.consume(player.getUUID(), item, input.getValue());
             commodityData.addSupply(input.getKey(), -input.getValue());
         }
@@ -168,7 +175,7 @@ public final class CompanyHelper {
         CommoditySavedData commodityData = CommoditySavedData.get(server);
         for (Map.Entry<String, Integer> output : CompanyEconomy.outputs(company).entrySet()) {
             Item item = parseItem(output.getKey());
-            if (item == null) {
+            if (item == null || output.getValue() <= 0) {
                 continue;
             }
             warehouse.credit(player.getUUID(), item, output.getValue());
@@ -178,9 +185,33 @@ public final class CompanyHelper {
         }
     }
 
+    private static boolean canProduceOutputs(MinecraftServer server, Company company) {
+        if (server == null) {
+            return true;
+        }
+        for (Map.Entry<String, Integer> output : CompanyEconomy.outputs(company).entrySet()) {
+            if (output.getValue() <= 0 || parseItem(output.getKey()) == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static long safeRate(long amount, double rate) {
+        double value = amount * rate;
+        if (!Double.isFinite(value) || value >= Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0L, (long) value);
+    }
+
     private static Item parseItem(String itemId) {
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
-        return (item == null || item == Items.AIR) ? null : item;
+        try {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+            return (item == null || item == Items.AIR) ? null : item;
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return null;
+        }
     }
 
     /** Lists a company on the stock exchange, issuing all shares to the founder. */
@@ -234,7 +265,11 @@ public final class CompanyHelper {
         if (company == null || company.treasuryOf(currencyId) < amount) {
             return false;
         }
-        EconomyHelper.giveMoney(player, Currencies.byId(currencyId), Money.toMinor(amount));
+        long amountMinor = Money.toMinor(amount);
+        if (amountMinor <= 0) {
+            return false;
+        }
+        EconomyHelper.giveMoney(player, Currencies.byId(currencyId), amountMinor);
 
         Map<String, Long> treasury = new HashMap<>(company.treasury());
         treasury.put(currencyId, company.treasuryOf(currencyId) - amount);
@@ -264,6 +299,52 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Transfers an unlisted company from seller to buyer after the buyer pays the agreed price. */
+    public static boolean acquire(ServerPlayer seller, ServerPlayer buyer, AcquisitionSavedData.Offer offer) {
+        if (offer == null || !offer.sellerUuid().equals(seller.getUUID())
+                || !offer.buyerUuid().equals(buyer.getUUID()) || seller.getUUID().equals(buyer.getUUID())
+                || offer.price() <= 0) {
+            return false;
+        }
+        Company company = getCompany(seller, offer.companyName());
+        if (company == null || getCompany(buyer, offer.companyName()) != null
+                || isListed(seller, offer.companyName())) {
+            return false;
+        }
+        if (!EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(offer.price()))) {
+            return false;
+        }
+        removeCompany(seller, company.name());
+        putCompany(buyer, company.name(), company);
+        EconomyHelper.giveMoney(seller, Currencies.USD, Money.toMinor(offer.price()));
+        return true;
+    }
+
+    /** Merges two unlisted companies owned by one player; both must use the same industry. */
+    public static boolean merge(Player player, String sourceName, String targetName) {
+        if (sourceName.equals(targetName)) {
+            return false;
+        }
+        Company source = getCompany(player, sourceName);
+        Company target = getCompany(player, targetName);
+        if (source == null || target == null || !source.type().equals(target.type())) {
+            return false;
+        }
+        if (isListed(player, sourceName) || isListed(player, targetName)) {
+            return false;
+        }
+        int level = Math.min(Integer.MAX_VALUE, Math.max(1, source.level()) + Math.max(1, target.level()));
+        Map<String, Long> treasury = new HashMap<>(target.treasury());
+        for (Map.Entry<String, Long> entry : source.treasury().entrySet()) {
+            treasury.merge(entry.getKey(), entry.getValue(), (a, b) -> EconomyMath.add(a, b));
+        }
+        Company merged = new Company(target.name(), target.type(), level, treasury,
+                EconomyMath.add(target.taxOwed(), source.taxOwed()));
+        removeCompany(player, sourceName);
+        putCompany(player, targetName, merged);
+        return true;
+    }
+
     /** Distributes {@code income} to the shareholders of a listed company, proportional to holdings. */
     private static void distributeDividend(MinecraftServer server, String stockId, long income) {
         EconomySavedData data = EconomySavedData.get(server);
@@ -287,7 +368,7 @@ public final class CompanyHelper {
             if (holder != null) {
                 EconomyHelper.giveMoney(holder, Currencies.USD, Money.toMinor(portion));
             } else {
-                MarketMailboxSavedData.get(server).creditMoney(holderId, "usd", portion);
+                MarketMailboxSavedData.get(server).creditMoney(holderId, "usd", Money.toMinor(portion));
             }
         }
     }
@@ -296,6 +377,20 @@ public final class CompanyHelper {
         Conglomerate conglomerate = getConglomerate(player);
         Map<String, Company> companies = new HashMap<>(conglomerate.companies());
         companies.put(name, company);
+        player.setData(ModAttachments.CONGLOMERATE, new Conglomerate(conglomerate.name(), companies));
+    }
+
+    private static void putCompany(Player player, String name, Company company) {
+        Map<String, Company> companies = new HashMap<>(getCompanies(player));
+        companies.put(name, company);
+        Conglomerate conglomerate = getConglomerate(player);
+        player.setData(ModAttachments.CONGLOMERATE, new Conglomerate(conglomerate.name(), companies));
+    }
+
+    private static void removeCompany(Player player, String name) {
+        Map<String, Company> companies = new HashMap<>(getCompanies(player));
+        companies.remove(name);
+        Conglomerate conglomerate = getConglomerate(player);
         player.setData(ModAttachments.CONGLOMERATE, new Conglomerate(conglomerate.name(), companies));
     }
 }

@@ -42,7 +42,7 @@ public final class MarketMailboxSavedData extends SavedData {
         if (amount <= 0) {
             return;
         }
-        money.computeIfAbsent(playerId, k -> new HashMap<>()).merge(currencyId, amount, Long::sum);
+        money.computeIfAbsent(playerId, k -> new HashMap<>()).merge(currencyId, amount, MarketMailboxSavedData::saturatingAdd);
         setDirty();
     }
 
@@ -51,8 +51,23 @@ public final class MarketMailboxSavedData extends SavedData {
             return;
         }
         String itemId = BuiltInRegistries.ITEM.getKey(item).toString();
-        items.computeIfAbsent(playerId, k -> new HashMap<>()).merge(itemId, count, Integer::sum);
+        items.computeIfAbsent(playerId, k -> new HashMap<>()).merge(itemId, count, MarketMailboxSavedData::saturatingAdd);
         setDirty();
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        try {
+            return Math.addExact(left, right);
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static int saturatingAdd(int left, int right) {
+        if (right > Integer.MAX_VALUE - left) {
+            return Integer.MAX_VALUE;
+        }
+        return left + right;
     }
 
     /** Hands over and clears everything owed to this player. */

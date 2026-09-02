@@ -14,7 +14,11 @@ public final class Money {
 
     /** Converts a major-unit amount (whole dollars / yuan / ...) to minor units. */
     public static long toMinor(long major) {
-        return major * MINOR_UNITS_PER_UNIT;
+        try {
+            return Math.multiplyExact(major, MINOR_UNITS_PER_UNIT);
+        } catch (ArithmeticException e) {
+            return -1;
+        }
     }
 
     /** Formats a minor-unit amount as a major-unit string ("7", "7.25", "-0.05"). */
