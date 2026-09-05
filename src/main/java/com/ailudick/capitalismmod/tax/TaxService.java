@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.List;
+import java.util.Comparator;
 import java.util.UUID;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
@@ -104,7 +105,7 @@ public final class TaxService {
         String currencyId = first.currencyId();
         List<TaxBill> payable = new java.util.ArrayList<>();
         long remaining = amount;
-        for (TaxBill candidate : ledger.bills()) {
+        for (TaxBill candidate : orderedForPayment(ledger.bills())) {
             if (remaining <= 0L) break;
             if (!candidate.subject().equals(subject) || candidate.paid()
                     || !candidate.declared() || !currencyId.equals(candidate.currencyId())) continue;
@@ -193,7 +194,7 @@ public final class TaxService {
 
         long remaining = amount;
         long settled = 0L;
-        for (TaxBill bill : ledger.bills()) {
+        for (TaxBill bill : orderedForPayment(ledger.bills())) {
             if (remaining <= 0L) break;
             if (!bill.subject().equals(subject) || bill.paid()) continue;
             long payment = Math.min(remaining, bill.outstanding());
@@ -301,5 +302,23 @@ public final class TaxService {
 
     private static long addSaturated(long left, long right) {
         return left > Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right;
+    }
+
+    /**
+     * Tax payments normally clear the oldest due liability first. Keeping this
+     * ordering in one place also makes proceeds-withholding settlements match
+     * wallet payments instead of depending on SavedData insertion order.
+     */
+    private static List<TaxBill> orderedForPayment(List<TaxBill> bills) {
+        return bills.stream().sorted(Comparator
+                .comparingLong(TaxService::paymentPriority)
+                .thenComparingLong(TaxBill::createdAt)
+                .thenComparing(TaxBill::id)).toList();
+    }
+
+    private static long paymentPriority(TaxBill bill) {
+        if (bill == null) return Long.MAX_VALUE;
+        if (bill.dueAt() > 0L) return bill.dueAt();
+        return bill.createdAt();
     }
 }
