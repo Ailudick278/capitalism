@@ -68,7 +68,7 @@ public final class WorldMapScreen extends AbstractContainerScreen<WorldMapMenu> 
         graphics.drawString(font,
                 Component.literal(String.format(java.util.Locale.ROOT, "缩放：×%.4f", viewport.zoom())),
                 mapX + 6, mapY + 6, GuiStyles.TEXT, true);
-        worldMapWidget.drawSelectionInfo(graphics, font, menu,
+        worldMapWidget.drawSelectionDetails(graphics, font, menu,
                 worldMapWidget.hoveredChunkX(), worldMapWidget.hoveredChunkZ(),
                 worldMapWidget.hasHoveredChunk());
     }

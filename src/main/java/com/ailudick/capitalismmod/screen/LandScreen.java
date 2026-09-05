@@ -649,7 +649,7 @@ public class LandScreen<T extends AbstractContainerMenu> extends AbstractContain
                 Component.literal(String.format(Locale.ROOT, "缩放：×%.4f", viewport.zoom())),
                 mapX + 6, mapY + 6, GuiStyles.TEXT, true);
         if (standaloneMap && menu instanceof WorldMapMenu worldMapMenu) {
-            worldMapWidget.drawSelectionInfo(graphics, font, worldMapMenu,
+            worldMapWidget.drawSelectionDetails(graphics, font, worldMapMenu,
                     worldMapWidget.hoveredChunkX(), worldMapWidget.hoveredChunkZ(),
                     worldMapWidget.hasHoveredChunk());
         }

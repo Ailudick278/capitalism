@@ -326,6 +326,31 @@ public final class WorldMapWidget {
         graphics.drawString(font, Component.literal(text), x + 9, y + 23, GuiStyles.TEXT, true);
     }
 
+    public void drawSelectionDetails(GuiGraphics graphics, Font font, WorldMapMenu menu,
+                                     int hoveredChunkX, int hoveredChunkZ, boolean hasHoveredChunk) {
+        int chunkX = menu.hasSelectedChunk ? menu.selectedChunkX : hoveredChunkX;
+        int chunkZ = menu.hasSelectedChunk ? menu.selectedChunkZ : hoveredChunkZ;
+        if (!menu.hasSelectedChunk && !hasHoveredChunk) return;
+        var land = menu.landCell(chunkX, chunkZ);
+        var oil = menu.oilField(chunkX, chunkZ);
+        var site = menu.companySite(chunkX, chunkZ);
+        String landStatus = land == null || !land.claimed() ? "unclaimed"
+                : land.auction() ? "auction" : land.ownedByPlayer() ? "your land" : "owned land";
+        String oilStatus = oil == null ? "no oil field"
+                : "oil " + oil.remainingReserve() + "/" + oil.initialReserve();
+        String siteStatus = site == null ? "no company site" : "site " + site.companyName();
+        String[] lines = {"Chunk " + chunkX + ", " + chunkZ, landStatus, oilStatus, siteStatus};
+        int textWidth = 0;
+        for (String line : lines) textWidth = Math.max(textWidth, font.width(line));
+        int lineHeight = 11;
+        graphics.fill(x + 4, y + 20, x + textWidth + 14,
+                y + 24 + lines.length * lineHeight, 0xB0101820);
+        for (int i = 0; i < lines.length; i++) {
+            graphics.drawString(font, Component.literal(lines[i]), x + 9, y + 23 + i * lineHeight,
+                    i == 0 ? GuiStyles.TEXT : GuiStyles.TEXT_DIM, true);
+        }
+    }
+
     public void requestVisibleTiles(AbstractContainerMenu menu) {
         if (!(menu instanceof WorldMapMenu) && !(menu instanceof LandMenu)) return;
         int centerChunkX = (int) Math.floor(viewport.centerX() / 16.0);

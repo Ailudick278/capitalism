@@ -92,6 +92,10 @@ public class WorldMapMenu extends AbstractContainerMenu {
         return List.copyOf(companySites.values());
     }
 
+    public com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload.Site companySite(int chunkX, int chunkZ) {
+        return companySites.get(key(chunkX, chunkZ));
+    }
+
     private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xFFFFFFFFL); }
 
     @Override public ItemStack quickMoveStack(Player player, int index) { return ItemStack.EMPTY; }
