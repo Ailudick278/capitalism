@@ -38,6 +38,10 @@ public final class CompanyLoanHelper {
                 CompanyLedgerSavedData.get(server).entries(company.companyId()),
                 server.overworld().getGameTime(), lookback, existingDebt, amount);
         if (!cashFlow.approved()) return null;
+        CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
+                cashFlow.operatingCashFlow(), CompanyLoanSavedData.get(server).forCompany(company.companyId()),
+                amount, days, ratePercent / 100.0, cashFlow.hasOperatingHistory());
+        if (!debtService.approved()) return null;
         if (!CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), amount,
                 "loan_proceeds", "Company loan principal received")) return null;
         String id = UUID.randomUUID().toString();
