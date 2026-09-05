@@ -33,6 +33,9 @@ import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxType;
+import com.ailudick.capitalismmod.data.CapitalismData;
+import com.ailudick.capitalismmod.company.IndustrySpec;
+import com.ailudick.capitalismmod.company.ProductionRecipe;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -53,6 +56,7 @@ public class CompanyCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         var root = Commands.literal("company");
         root.then(Commands.literal("list").executes(ctx -> list(ctx.getSource())));
+        root.then(Commands.literal("recipes").executes(ctx -> recipes(ctx.getSource())));
         root.then(Commands.literal("site")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> registerSite(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -408,6 +412,27 @@ public class CompanyCommand {
                 + ", payroll " + statement.payrollLiabilities() + ", freight payable " + statement.freightPayables()
                 + "), equity: USD " + statement.equity()), false);
         return 1;
+    }
+
+    private static int recipes(CommandSourceStack source) {
+        int count = 0;
+        for (IndustrySpec industry : CapitalismData.getIndustries()) {
+            source.sendSuccess(() -> Component.literal("Industry " + industry.id()
+                    + " | default machine " + industry.machineType()), false);
+            for (ProductionRecipe recipe : industry.recipes()) {
+                source.sendSuccess(() -> Component.literal("  " + recipe.id()
+                        + " | machine " + recipe.machineType()
+                        + " | workers " + recipe.workersPerCycle()
+                        + " | inputs " + recipe.inputs()
+                        + " | outputs " + recipe.outputs()
+                        + " | income USD " + recipe.income()), false);
+                count++;
+            }
+        }
+        if (count == 0) {
+            source.sendSuccess(() -> Component.literal("No production recipes are loaded."), false);
+        }
+        return count;
     }
 
     private static int metrics(CommandSourceStack source, String name, long days) throws CommandSyntaxException {
