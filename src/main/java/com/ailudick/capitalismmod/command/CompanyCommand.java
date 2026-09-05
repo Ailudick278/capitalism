@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.company.CompanyTypes;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
 import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
+import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
 import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
@@ -54,6 +55,12 @@ public class CompanyCommand {
         root.then(Commands.literal("statement")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> statement(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("metrics")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> metrics(ctx.getSource(), StringArgumentType.getString(ctx, "name"), 90L))
+                        .then(Commands.argument("days", IntegerArgumentType.integer(1, 360))
+                                .executes(ctx -> metrics(ctx.getSource(), StringArgumentType.getString(ctx, "name"),
+                                        IntegerArgumentType.getInteger(ctx, "days"))))));
         root.then(Commands.literal("contribute")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .then(Commands.argument("amount", LongArgumentType.longArg(1))
@@ -309,6 +316,27 @@ public class CompanyCommand {
                 + " (tax " + statement.taxLiabilities() + ", loans " + statement.loanLiabilities()
                 + ", payroll " + statement.payrollLiabilities()
                 + "), equity: USD " + statement.equity()), false);
+        return 1;
+    }
+
+    private static int metrics(CommandSourceStack source, String name, long days) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        CompanyOperatingSnapshot metrics = CompanyOperatingSnapshot.from(player.getServer(), company, days);
+        source.sendSuccess(() -> Component.literal("Operating metrics (last " + metrics.lookbackDays()
+                + " days): revenue USD " + metrics.revenue() + ", expenses USD "
+                + metrics.operatingExpenses() + ", operating cash flow USD "
+                + metrics.operatingCashFlow()), false);
+        source.sendSuccess(() -> Component.literal("Workforce " + metrics.activeWorkers()
+                + ", daily payroll USD " + metrics.dailyPayroll() + ", machines "
+                + metrics.machineUnits() + ", parallel capacity " + metrics.parallelCapacity()), false);
+        source.sendSuccess(() -> Component.literal("Production: successful " + metrics.successfulBatches()
+                + ", failed cycles " + metrics.failedCycles() + ", assets USD " + metrics.assets()
+                + ", equity USD " + metrics.equity()), false);
         return 1;
     }
 
