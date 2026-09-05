@@ -247,7 +247,9 @@ public final class CapitalismData {
                 new CommodityJson("capitalismmod:electric_lamp", 120),
                 new CommodityJson("capitalismmod:flour", 8),
                 new CommodityJson("capitalismmod:metal_can", 18),
-                new CommodityJson("capitalismmod:canned_food", 50)
+                new CommodityJson("capitalismmod:canned_food", 50),
+                new CommodityJson("capitalismmod:machine_frame", 90),
+                new CommodityJson("capitalismmod:electric_motor", 110)
         );
     }
 
@@ -332,7 +334,9 @@ public final class CapitalismData {
                         new RecipeJson("flour", Map.of("minecraft:wheat", 1), Map.of("capitalismmod:flour", 1), 35, "milling_machine", 1, 1, 3),
                         new RecipeJson("bread", Map.of("capitalismmod:flour", 1, "minecraft:sugar", 1), Map.of("minecraft:bread", 1), 55, "food_processor", 2, 1, 4),
                         new RecipeJson("metal_can", Map.of("minecraft:iron_ingot", 1), Map.of("capitalismmod:metal_can", 1), 45, "rolling_mill", 1, 1, 3),
-                        new RecipeJson("canned_food", Map.of("minecraft:wheat", 1, "capitalismmod:metal_can", 1), Map.of("capitalismmod:canned_food", 1), 90, "assembly_line", 3, 2, 8)),
+                        new RecipeJson("canned_food", Map.of("minecraft:wheat", 1, "capitalismmod:metal_can", 1), Map.of("capitalismmod:canned_food", 1), 90, "assembly_line", 3, 2, 8),
+                        new RecipeJson("machine_frame", Map.of("capitalismmod:steel_sheet", 2, "minecraft:iron_ingot", 2), Map.of("capitalismmod:machine_frame", 1), 105, "rolling_mill", 2, 2, 5),
+                        new RecipeJson("electric_motor", Map.of("capitalismmod:copper_wire", 2, "minecraft:iron_ingot", 1, "minecraft:redstone", 1), Map.of("capitalismmod:electric_motor", 1), 130, "lathe", 2, 2, 5)),
                 new IndustryJson("utilities", Map.of("minecraft:coal", 1), Map.of(), 60),
                 new IndustryJson("construction", Map.of("minecraft:rail", 1), Map.of(), 50),
                 new IndustryJson("transport", Map.of("minecraft:coal", 1), Map.of(), 45),

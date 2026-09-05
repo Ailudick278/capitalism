@@ -208,4 +208,8 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> CANNED_FOOD = ITEMS.register("canned_food",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> MACHINE_FRAME = ITEMS.register("machine_frame",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ELECTRIC_MOTOR = ITEMS.register("electric_motor",
+            () -> new Item(new Item.Properties().stacksTo(64)));
 }

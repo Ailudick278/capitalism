@@ -14,8 +14,8 @@ public enum MachineType {
     MILLING_MACHINE("milling_machine", 1500L, 5L, Map.of("minecraft:iron_ingot", 5, "minecraft:redstone", 2)),
     FOOD_PROCESSOR("food_processor", 1000L, 3L, Map.of("minecraft:iron_ingot", 3, "minecraft:copper_ingot", 2)),
     ROLLING_MILL("rolling_mill", 2200L, 6L, Map.of("minecraft:iron_ingot", 6, "minecraft:coal", 2)),
-    ASSEMBLY_LINE("assembly_line", 3000L, 8L, Map.of("minecraft:iron_ingot", 8, "minecraft:copper_ingot", 4,
-            "minecraft:redstone", 2, "minecraft:glass", 1));
+    ASSEMBLY_LINE("assembly_line", 3000L, 8L, Map.of("capitalismmod:machine_frame", 2,
+            "capitalismmod:electric_motor", 2, "minecraft:glass", 1));
 
     private final String id;
     private final long purchasePrice;
