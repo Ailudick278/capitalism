@@ -353,8 +353,11 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Operating sites require owned or leased land that is not frozen or auctioned."));
             return 0;
         }
-        CompanySiteSavedData.get(player.getServer()).set(new CompanySiteSavedData.Site(
-                company.companyId(), dimension, chunk.x, chunk.z));
+        if (!CompanySiteSavedData.get(player.getServer()).set(new CompanySiteSavedData.Site(
+                company.companyId(), dimension, chunk.x, chunk.z))) {
+            source.sendFailure(Component.literal("The company has reached its configured operating-site limit."));
+            return 0;
+        }
         OilFieldSavedData.Field field = OilFieldSavedData.get(player.getServer()).prospect(
                 dimension, chunk.x, chunk.z);
         if (field == null) {

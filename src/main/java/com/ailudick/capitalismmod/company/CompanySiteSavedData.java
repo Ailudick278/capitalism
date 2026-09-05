@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.company;
 
+import com.ailudick.capitalismmod.Config;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -41,15 +42,19 @@ public final class CompanySiteSavedData extends SavedData {
                 .filter(site -> dimension.equals(site.dimension())).toList();
     }
 
-    public void set(Site site) {
+    public boolean set(Site site) {
         if (site == null || site.companyId() == null || site.companyId().isBlank()
-                || site.dimension() == null || site.dimension().isBlank()) return;
+                || site.dimension() == null || site.dimension().isBlank()) return false;
         List<Site> companySites = new ArrayList<>(sites.getOrDefault(site.companyId(), List.of()));
+        boolean alreadyRegistered = companySites.stream().anyMatch(existing -> existing.dimension().equals(site.dimension())
+                && existing.chunkX() == site.chunkX() && existing.chunkZ() == site.chunkZ());
+        if (!alreadyRegistered && companySites.size() >= Config.MAX_COMPANY_SITES.get()) return false;
         companySites.removeIf(existing -> existing.dimension().equals(site.dimension())
                 && existing.chunkX() == site.chunkX() && existing.chunkZ() == site.chunkZ());
         companySites.add(site);
         sites.put(site.companyId(), companySites);
         setDirty();
+        return true;
     }
 
     public void remove(String companyId) {

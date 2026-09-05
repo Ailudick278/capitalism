@@ -27,6 +27,10 @@ public class Config {
             .comment("Maximum number of land chunks one player may own per dimension.")
             .defineInRange("maxLandClaims", 9, 1, 1024);
 
+    public static final ModConfigSpec.IntValue MAX_COMPANY_SITES = BUILDER
+            .comment("Maximum number of registered operating sites per company.")
+            .defineInRange("maxCompanySites", 16, 1, 1024);
+
     public static final ModConfigSpec.BooleanValue REQUIRE_ADJACENT_LAND_CLAIMS = BUILDER
             .comment("Whether new land claims must be directly adjacent to the player's existing land.")
             .define("requireAdjacentLandClaims", false);
