@@ -71,8 +71,7 @@ public final class CompanyFreightContractSavedData extends SavedData {
         if (shipmentId == null || shipmentId.isBlank()) return null;
         for (int i = contracts.size() - 1; i >= 0; i--) {
             Contract contract = contracts.get(i);
-            if (shipmentId.equals(contract.shipmentId()) && !"cancelled".equals(contract.status())
-                    && !"settled".equals(contract.status())) return contract;
+            if (shipmentId.equals(contract.shipmentId()) && isOpen(contract.status())) return contract;
         }
         return null;
     }
@@ -81,6 +80,10 @@ public final class CompanyFreightContractSavedData extends SavedData {
         if (companyId == null || companyId.isBlank()) return List.of();
         return contracts.stream().filter(contract -> companyId.equals(contract.buyerCompanyId())
                 || companyId.equals(contract.carrierCompanyId())).toList();
+    }
+
+    private static boolean isOpen(String status) {
+        return "offered".equals(status) || "accepted".equals(status);
     }
 
     public Contract offer(String shipmentId, String buyerCompanyId, String carrierCompanyId,
