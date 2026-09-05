@@ -46,7 +46,6 @@ import com.ailudick.capitalismmod.network.payload.OpenTermDepositPayload;
 import com.ailudick.capitalismmod.network.payload.WithdrawTermDepositPayload;
 import com.ailudick.capitalismmod.network.payload.PayTaxPayload;
 import com.ailudick.capitalismmod.network.payload.WithdrawCompanyPayload;
-import com.ailudick.capitalismmod.network.payload.UpgradeCompanyPayload;
 import com.ailudick.capitalismmod.network.payload.SyncBankAccountsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncPersonalAssetsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncExchangeRatesPayload;
@@ -100,7 +99,6 @@ public class NetworkHandler {
         registrar.playToServer(ReviewTaxRefundPayload.TYPE, ReviewTaxRefundPayload.STREAM_CODEC, ServerPayloadHandler::handleReviewTaxRefund);
         registrar.playToServer(ManageTaxRefundNotificationsPayload.TYPE, ManageTaxRefundNotificationsPayload.STREAM_CODEC, ServerPayloadHandler::handleManageTaxRefundNotifications);
         registrar.playToServer(WithdrawCompanyPayload.TYPE, WithdrawCompanyPayload.STREAM_CODEC, ServerPayloadHandler::handleWithdrawCompany);
-        registrar.playToServer(UpgradeCompanyPayload.TYPE, UpgradeCompanyPayload.STREAM_CODEC, ServerPayloadHandler::handleUpgradeCompany);
         registrar.playToServer(PlaceOrderPayload.TYPE, PlaceOrderPayload.STREAM_CODEC, ServerPayloadHandler::handlePlaceOrder);
         registrar.playToServer(CancelOrderPayload.TYPE, CancelOrderPayload.STREAM_CODEC, ServerPayloadHandler::handleCancelOrder);
         registrar.playToServer(PlaceStockOrderPayload.TYPE, PlaceStockOrderPayload.STREAM_CODEC, ServerPayloadHandler::handlePlaceStockOrder);

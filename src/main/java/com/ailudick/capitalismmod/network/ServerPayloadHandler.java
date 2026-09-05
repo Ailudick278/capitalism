@@ -30,7 +30,6 @@ import com.ailudick.capitalismmod.network.payload.SyncTaxBillsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncTaxCorrectionRequestsPayload;
 import com.ailudick.capitalismmod.network.payload.ReviewTaxCorrectionRequestPayload;
 import com.ailudick.capitalismmod.network.payload.WithdrawCompanyPayload;
-import com.ailudick.capitalismmod.network.payload.UpgradeCompanyPayload;
 import com.ailudick.capitalismmod.network.payload.SyncBankAccountsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncPersonalAssetsPayload;
 import com.ailudick.capitalismmod.network.payload.OperationResultPayload;
@@ -501,15 +500,6 @@ public class ServerPayloadHandler {
             }
             Conglomerate conglomerate = CompanyHelper.getConglomerate(player);
             PacketDistributor.sendToPlayer(player, new SyncConglomeratePayload(conglomerate.name(), CompanyHelper.getCompanies(player)));
-        });
-    }
-
-    public static void handleUpgradeCompany(UpgradeCompanyPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer player)) {
-                return;
-            }
-            player.displayClientMessage(Component.literal("Company levels have been removed; use /company contribute <name> <amount> to add paid-in capital."), true);
         });
     }
 

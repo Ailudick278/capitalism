@@ -32,7 +32,7 @@ public final class CapitalismCommand {
             case "company", "公司" -> {
                 player.sendSystemMessage(Component.literal("公司：在工商局注册公司，把原料放入仓库后按产业链生产。"));
                 player.sendSystemMessage(Component.literal("公司每个生产周期会计入税款和维护费，原料不足会停产。"));
-                player.sendSystemMessage(Component.literal("使用 /company list、/company upgrade、/company withdraw 管理公司。"));
+                player.sendSystemMessage(Component.literal("使用 /company list、status、metrics、statement、contribute、withdraw 管理公司；企业规模由经营指标体现。"));
             }
             case "business", "个体户" -> {
                 player.sendSystemMessage(Component.literal("个体户：先登记经营名称和经营范围，再使用独立经营账户管理经营资金。"));
