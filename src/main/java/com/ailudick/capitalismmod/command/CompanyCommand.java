@@ -60,6 +60,10 @@ public class CompanyCommand {
         root.then(Commands.literal("list").executes(ctx -> list(ctx.getSource())));
         root.then(Commands.literal("recipes").executes(ctx -> recipes(ctx.getSource())));
         root.then(Commands.literal("site")
+                .then(Commands.literal("remove")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .executes(ctx -> removeSite(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name")))))
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> registerSite(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("status")
@@ -361,6 +365,25 @@ public class CompanyCommand {
                     + " chunk " + chunk.x + ", " + chunk.z + "; oil reserve remaining: "
                     + field.remainingReserve()), false);
         }
+        return 1;
+    }
+
+    private static int removeSite(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null || player.getServer() == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        ChunkPos chunk = new ChunkPos(player.blockPosition());
+        String dimension = player.level().dimension().location().toString();
+        if (!CompanySiteSavedData.get(player.getServer()).removeAt(company.companyId(), dimension,
+                chunk.x, chunk.z)) {
+            source.sendFailure(Component.literal("No operating site is registered for this company at the current chunk."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Operating site deregistered at " + dimension
+                + " chunk " + chunk.x + ", " + chunk.z + "."), false);
         return 1;
     }
 

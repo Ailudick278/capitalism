@@ -56,6 +56,18 @@ public final class CompanySiteSavedData extends SavedData {
         if (companyId != null && sites.remove(companyId) != null) setDirty();
     }
 
+    public boolean removeAt(String companyId, String dimension, int chunkX, int chunkZ) {
+        if (companyId == null || dimension == null || dimension.isBlank()) return false;
+        List<Site> companySites = sites.get(companyId);
+        if (companySites == null) return false;
+        boolean changed = companySites.removeIf(site -> dimension.equals(site.dimension())
+                && site.chunkX() == chunkX && site.chunkZ() == chunkZ);
+        if (!changed) return false;
+        if (companySites.isEmpty()) sites.remove(companyId);
+        setDirty();
+        return true;
+    }
+
     /** Transfers every registered operating site during a company merger. */
     public void transferCompany(String sourceId, String targetId) {
         if (sourceId == null || targetId == null || sourceId.isBlank()
