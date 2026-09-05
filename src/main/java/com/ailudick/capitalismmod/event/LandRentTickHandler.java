@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.land.LandClaim;
+import com.ailudick.capitalismmod.land.LandHelper;
 import com.ailudick.capitalismmod.land.LandSavedData;
 import com.ailudick.capitalismmod.land.LandOperationLogSavedData;
 import com.ailudick.capitalismmod.land.LandPermissionSavedData;
@@ -118,7 +119,8 @@ public final class LandRentTickHandler {
                     continue;
                 }
                 TaxSubject landTaxSubject = new TaxSubject(TaxType.LAND, claim.id(), auction.ownerUuid());
-                long legacyTaxMinor = Money.toMinorSaturated(Math.max(claim.taxOwed(), auction.taxOwed()));
+                long unifiedTaxMajor = LandHelper.taxOwed(server, claim);
+                long legacyTaxMinor = Money.toMinorSaturated(Math.max(unifiedTaxMajor, auction.taxOwed()));
                 if (legacyTaxMinor > TaxService.outstanding(server, landTaxSubject)) {
                     TaxService.ensureOutstanding(server, landTaxSubject, Config.defaultCurrencyId(), legacyTaxMinor,
                             now, claim.taxDueAt(), claim.taxGraceUntil());
@@ -166,12 +168,13 @@ public final class LandRentTickHandler {
             }
             for (LandClaim claim : data.claims().values()) {
                 long disposalAt = claim.taxGraceUntil() + Config.LAND_TAX_DISPOSAL_DAYS.get() * TICKS_PER_DAY;
-                if (claim.taxOwed() > 0L && claim.taxGraceUntil() > 0L && now >= disposalAt
+                long unifiedTaxOwed = LandHelper.taxOwed(server, claim);
+                if (unifiedTaxOwed > 0L && claim.taxGraceUntil() > 0L && now >= disposalAt
                         && auctions.get(claim.id()) == null) {
                     long startPrice = Math.max(0L, Math.round(LandValuationHelper.suggestedPrice(server.overworld(), claim)
                             * Config.LAND_AUCTION_START_RATE.get()));
                     auctions.put(new LandAuctionSavedData.Auction(claim.id(), claim.ownerUuid(), claim.dimension(),
-                            claim.chunkX(), claim.chunkZ(), now, claim.taxOwed(), startPrice, 0L, null,
+                            claim.chunkX(), claim.chunkZ(), now, unifiedTaxOwed, startPrice, 0L, null,
                             now + Config.LAND_AUCTION_DURATION_DAYS.get() * TICKS_PER_DAY));
                     notifyPlayer(server, claim.ownerUuid(), "土地已进入逾期处置列表，可补缴欠税后使用 /land redeem 赎回");
                 }
