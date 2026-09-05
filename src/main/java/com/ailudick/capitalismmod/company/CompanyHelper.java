@@ -262,6 +262,9 @@ public final class CompanyHelper {
             return false;
         }
         if (!CompanyLifecycleService.canOperate(server, company.companyId())) return false;
+        // Unpaid wages are a persistent labor liability. Employees do not
+        // continue producing new batches while the liability is outstanding.
+        if (CompanyPayrollSavedData.get(server).unpaid(company.companyId()) > 0L) return false;
         ProductionRecipe recipe = CompanyEconomy.recipe(company);
         if (recipe == null) return false;
         boolean serviceCycle = recipe.isService();
