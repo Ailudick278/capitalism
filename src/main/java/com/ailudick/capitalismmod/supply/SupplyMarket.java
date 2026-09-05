@@ -195,6 +195,7 @@ public final class SupplyMarket {
         }
         long lifetime = PerpetualCalendar.ticksForDays(expiryDays);
         SupplyMarketSavedData data = SupplyMarketSavedData.get(server);
+        SupplySettlementSavedData settlements = SupplySettlementSavedData.get(server);
         for (PurchaseOrder order : new ArrayList<>(data.orders())) {
             // Legacy orders have no reliable price or creation time and are retained for admin repair.
             if (order.createdAt() <= 0L || order.unitPrice() <= 0L
@@ -204,6 +205,10 @@ public final class SupplyMarket {
             long refund = EconomyMath.multiply(order.unitPrice(), order.remaining());
             long refundMinor = refund < 0L ? -1L : Money.toMinor(refund);
             if (refundMinor < 0L) {
+                continue;
+            }
+            if (settlements.hasOrderRefund(order.id())) {
+                data.removeOrder(order.id());
                 continue;
             }
             boolean refundedToCompany = false;
@@ -221,6 +226,7 @@ public final class SupplyMarket {
                 TaxTransactionService.reverseInputCredit(server, order.buyerUuid(), Currencies.USD.id(),
                         creditToReverse, "supply_order:" + order.id(), now);
             }
+            settlements.recordOrderRefund(order.id());
             SupplyOrderAuditService.record(server, order,
                     refundedToCompany ? "EXPIRED_REFUND_COMPANY" : "EXPIRED_REFUND",
                     order.remaining(), refund);
@@ -299,6 +305,8 @@ public final class SupplyMarket {
     private static void paySupplier(MinecraftServer server, UUID supplierUuid, String companyName,
                                     long amount, String sourceId) {
         if (server == null || supplierUuid == null || amount <= 0L) return;
+        SupplySettlementSavedData settlements = SupplySettlementSavedData.get(server);
+        if (settlements.hasSupplierPayment(sourceId)) return;
         long now = server.overworld().getGameTime();
         TaxTransactionService.assess(server, TaxType.VAT, supplierUuid, Currencies.USD.id(),
                 Money.toMinorSaturated(amount), "supply-sale:" + sourceId, now);
@@ -306,6 +314,7 @@ public final class SupplyMarket {
         if (company != null && CompanyHelper.creditTreasury(server, company.companyId(), Currencies.USD.id(), amount)) {
             CompanyHelper.recordTaxableIncome(server, company, "supply_sale:" + sourceId,
                     amount, Currencies.USD.id(), now);
+            settlements.recordSupplierPayment(sourceId);
             return;
         }
         ServerPlayer supplier = server.getPlayerList().getPlayer(supplierUuid);
@@ -314,6 +323,7 @@ public final class SupplyMarket {
         } else {
             MarketMailboxSavedData.get(server).creditMoney(supplierUuid, "usd", Money.toMinor(amount));
         }
+        settlements.recordSupplierPayment(sourceId);
     }
 
     private static void deliverOrShip(MinecraftServer server, UUID buyer, Item item, int quantity,
