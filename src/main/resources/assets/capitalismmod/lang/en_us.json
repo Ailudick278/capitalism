@@ -386,4 +386,8 @@
   ,"item.capitalismmod.copper_foil": "Copper Foil"
   ,"item.capitalismmod.solder": "Solder"
   ,"item.capitalismmod.smd_components": "Surface-Mount Components"
+  ,"item.capitalismmod.silicon_die": "Silicon Die"
+  ,"item.capitalismmod.tested_die": "Tested Silicon Die"
+  ,"item.capitalismmod.lead_frame": "Lead Frame"
+  ,"item.capitalismmod.mold_compound": "Mold Compound"
 }

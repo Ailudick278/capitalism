@@ -260,6 +260,14 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> SILICON_WAFER = ITEMS.register("silicon_wafer",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SILICON_DIE = ITEMS.register("silicon_die",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> TESTED_DIE = ITEMS.register("tested_die",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LEAD_FRAME = ITEMS.register("lead_frame",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> MOLD_COMPOUND = ITEMS.register("mold_compound",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PACKAGED_CHIP = ITEMS.register("packaged_chip",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> CIRCUIT_BOARD = ITEMS.register("circuit_board",

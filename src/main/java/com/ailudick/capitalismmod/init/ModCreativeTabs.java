@@ -118,6 +118,10 @@ public class ModCreativeTabs {
                         output.accept(ModItems.FAN_CONTROL.get());
                         output.accept(ModItems.POLYSILICON.get());
                         output.accept(ModItems.SILICON_WAFER.get());
+                        output.accept(ModItems.SILICON_DIE.get());
+                        output.accept(ModItems.TESTED_DIE.get());
+                        output.accept(ModItems.LEAD_FRAME.get());
+                        output.accept(ModItems.MOLD_COMPOUND.get());
                         output.accept(ModItems.PACKAGED_CHIP.get());
                         output.accept(ModItems.CIRCUIT_BOARD.get());
                         output.accept(ModItems.PCB_SUBSTRATE.get());
