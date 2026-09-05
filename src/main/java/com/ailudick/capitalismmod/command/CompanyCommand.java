@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
 import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
 import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
+import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
 import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanySiteSavedData;
@@ -69,6 +70,10 @@ public class CompanyCommand {
                         .then(Commands.argument("days", IntegerArgumentType.integer(1, 360))
                                 .executes(ctx -> metrics(ctx.getSource(), StringArgumentType.getString(ctx, "name"),
                                 IntegerArgumentType.getInteger(ctx, "days"))))));
+        root.then(Commands.literal("quality")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> quality(ctx.getSource(),
+                                StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("credit")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> credit(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -386,6 +391,29 @@ public class CompanyCommand {
         source.sendSuccess(() -> Component.literal("Failure reasons: " + metrics.failureReasons()), false);
         source.sendSuccess(() -> Component.literal("Average recorded product quality: "
                 + metrics.averageProductQuality() + "/100 (new production only)"), false);
+        return 1;
+    }
+
+    private static int quality(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        Map<String, CompanyQualitySavedData.ProductQuality> products =
+                CompanyQualitySavedData.get(player.getServer()).all(company.companyId());
+        source.sendSuccess(() -> Component.literal("Product quality ledger for " + company.name()
+                + " (newly recorded production only):"), false);
+        if (products.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No quality batches recorded."), false);
+            return 1;
+        }
+        products.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
+            CompanyQualitySavedData.ProductQuality quality = entry.getValue();
+            source.sendSuccess(() -> Component.literal(entry.getKey() + " | units " + quality.units()
+                    + " | average score " + quality.averageScore() + "/100"), false);
+        });
         return 1;
     }
 

@@ -46,6 +46,10 @@ public final class CompanyQualitySavedData extends SavedData {
         return products.getOrDefault(companyId, Map.of()).get(itemId);
     }
 
+    public Map<String, ProductQuality> all(String companyId) {
+        return Map.copyOf(products.getOrDefault(companyId, Map.of()));
+    }
+
     public int averageScore(String companyId) {
         Map<String, ProductQuality> company = products.getOrDefault(companyId, Map.of());
         long units = 0L;
