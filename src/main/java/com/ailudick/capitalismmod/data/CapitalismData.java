@@ -103,7 +103,20 @@ public final class CapitalismData {
     }
 
     private static List<ItemStack> loadCommodities(Path dir) {
-        List<CommodityJson> raw = read(dir.resolve("commodities.json"), CommodityJson[].class, defaultCommodities());
+        List<CommodityJson> defaults = defaultCommodities();
+        List<CommodityJson> configured = read(dir.resolve("commodities.json"), CommodityJson[].class, defaults);
+        List<CommodityJson> raw = new ArrayList<>(configured);
+        Set<String> configuredIds = new java.util.HashSet<>();
+        for (CommodityJson commodity : raw) {
+            if (commodity != null && commodity.item != null && !commodity.item.isBlank()) {
+                configuredIds.add(commodity.item);
+            }
+        }
+        for (CommodityJson commodity : defaults) {
+            if (commodity != null && commodity.item != null && configuredIds.add(commodity.item)) {
+                raw.add(commodity);
+            }
+        }
         List<ItemStack> result = new ArrayList<>();
         Map<String, Long> prices = new HashMap<>();
         List<String> itemIds = new ArrayList<>();
