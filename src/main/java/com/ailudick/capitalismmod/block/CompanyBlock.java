@@ -19,7 +19,7 @@ import java.util.HashMap;
 
 /**
  * Company (公司) block. Opens a GUI where the player views and manages their
- * companies (upgrade and withdraw). No block entity needed.
+ * companies (status, metrics and treasury operations). No block entity needed.
  */
 public class CompanyBlock extends Block {
     public CompanyBlock(Properties properties) {

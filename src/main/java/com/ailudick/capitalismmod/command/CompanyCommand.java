@@ -331,6 +331,8 @@ public class CompanyCommand {
                 + " days): revenue USD " + metrics.revenue() + ", expenses USD "
                 + metrics.operatingExpenses() + ", operating cash flow USD "
                 + metrics.operatingCashFlow()), false);
+        source.sendSuccess(() -> Component.literal("Statistical size profile: " + metrics.sizeProfile().label()
+                + " (annualized turnover proxy USD " + metrics.annualizedRevenue() + "; report only, no upgrade effect)"), false);
         source.sendSuccess(() -> Component.literal("Workforce " + metrics.activeWorkers()
                 + ", gross daily wages USD " + metrics.grossDailyWages()
                 + ", employer contributions USD " + metrics.employerDailyContributions()

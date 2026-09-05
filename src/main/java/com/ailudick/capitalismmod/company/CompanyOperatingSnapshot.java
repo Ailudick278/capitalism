@@ -15,6 +15,20 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
                                        long employerDailyContributions, long dailyLaborCost,
                                        int machineUnits, int parallelCapacity, long successfulBatches,
                                        long failedCycles, long assets, long equity) {
+    public CompanySizeProfile sizeProfile() {
+        return CompanySizeProfile.classify(activeWorkers, annualizedRevenue(), assets);
+    }
+
+    /** Annualized turnover proxy used only for the statistical size label. */
+    public long annualizedRevenue() {
+        if (revenue <= 0L || lookbackDays <= 0L) return 0L;
+        try {
+            return Math.multiplyExact(revenue, 365L) / lookbackDays;
+        } catch (ArithmeticException ignored) {
+            return Long.MAX_VALUE;
+        }
+    }
+
     public static CompanyOperatingSnapshot from(MinecraftServer server, Company company, long lookbackDays) {
         long days = Math.max(1L, Math.min(360L, lookbackDays));
         if (server == null || company == null) {
