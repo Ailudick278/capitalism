@@ -161,7 +161,15 @@ public final class SupplyMarket {
         }
         int filled = Math.min(quantity, stock);
         if (filled > 0) {
-            warehouse.consume(supplierOwner, item, filled);
+            // Re-check the actual mutation result before creating delivery,
+            // inventory-cost, tax, or supplier-payment records. The stock
+            // snapshot above can be stale when an order is settled after
+            // another inventory mutation in the same server tick.
+            if (!warehouse.consume(supplierOwner, item, filled)) {
+                filled = 0;
+            }
+        }
+        if (filled > 0) {
             if (supplierCompany != null) {
                 CompanyHelper.recordInventorySale(buyer.getServer(), supplierCompany.companyId(),
                         offer.itemId(), filled, orderSource);
@@ -338,7 +346,11 @@ public final class SupplyMarket {
             if (deliver <= 0) {
                 continue;
             }
-            warehouse.consume(resolvedOwner, item, deliver);
+            // Do not create a delivery from a stale stock snapshot. Every
+            // downstream side effect is conditional on the actual debit.
+            if (!warehouse.consume(resolvedOwner, item, deliver)) {
+                continue;
+            }
             if (supplierCompany != null) {
                 CompanyHelper.recordInventorySale(server, supplierCompany.companyId(),
                         order.itemId(), deliver, order.id() + ":delivery:" + order.remaining());
