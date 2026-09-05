@@ -11,8 +11,6 @@ import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.List;
 import java.util.UUID;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
@@ -223,16 +221,8 @@ public final class TaxService {
     public static TaxBill updateLateFee(MinecraftServer server, TaxBill bill, long now) {
         if (!bill.declared() || bill.dueAt() <= 0L || now <= bill.dueAt() || bill.paid()) return bill;
         long daysLate = Math.max(1L, (now - bill.dueAt()) / PerpetualCalendar.TICKS_PER_DAY);
-        long daily;
-        try {
-            daily = BigDecimal.valueOf(bill.amount())
-                    .multiply(BigDecimal.valueOf(Config.TAX_LATE_FEE_RATE_PER_DAY.get()))
-                    .setScale(0, RoundingMode.DOWN).longValueExact();
-        } catch (ArithmeticException e) {
-            daily = Long.MAX_VALUE;
-        }
-        daily = Math.max(1L, daily);
-        long fee = daily > Long.MAX_VALUE / daysLate ? Long.MAX_VALUE : daily * daysLate;
+        long fee = TaxLateFeeCalculator.calculate(bill.amount(), daysLate,
+                Config.TAX_LATE_FEE_RATE_PER_DAY.get());
         if (fee <= bill.lateFeeAmount() && bill.lateFeeUpdatedAt() == now) return bill;
         TaxBill updated = bill.withLateFee(fee, now);
         TaxLedgerSavedData.get(server).replace(updated);
