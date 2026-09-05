@@ -31,15 +31,17 @@ public final class AuctionMarket {
         }
         Item item = Commodities.get(commodityIndex).getItem();
         String itemId = Commodities.id(Commodities.get(commodityIndex));
-        if (!WarehouseSavedData.get(player.getServer()).consume(player.getUUID(), item, quantity)) {
-            return false;
-        }
         long durationTicks;
         long endTick;
         try {
             durationTicks = Math.multiplyExact((long) durationSeconds, 20L);
             endTick = Math.addExact(player.getServer().overworld().getGameTime(), durationTicks);
         } catch (ArithmeticException exception) {
+            return false;
+        }
+        // Validate the complete listing before escrow so an invalid duration
+        // cannot remove goods without creating a recoverable auction record.
+        if (!WarehouseSavedData.get(player.getServer()).consume(player.getUUID(), item, quantity)) {
             return false;
         }
         AuctionSavedData.get(player.getServer()).addAuction(new Auction(
