@@ -54,6 +54,38 @@ public final class CompanyPayrollSavedData extends SavedData {
         setDirty();
     }
 
+    /**
+     * Moves payroll liabilities and their audit trail during a legal merger.
+     * The surviving company must inherit unpaid wages; otherwise a removed
+     * company could leave employees with an uncollectable liability.
+     */
+    public void transferCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.isBlank()
+                || targetId.isBlank() || sourceId.equals(targetId)) return;
+        Account source = accounts.remove(sourceId);
+        Account target = accounts.get(targetId);
+        if (source != null) {
+            long sourceUnpaid = Math.max(0L, source.unpaidWages());
+            long targetUnpaid = target == null ? 0L : Math.max(0L, target.unpaidWages());
+            accounts.put(targetId, new Account(targetId, add(targetUnpaid, sourceUnpaid),
+                    Math.max(source.lastSettlementDay(), target == null ? -1L : target.lastSettlementDay())));
+        }
+        boolean movedPayment = false;
+        for (int i = 0; i < payments.size(); i++) {
+            Payment payment = payments.get(i);
+            if (!sourceId.equals(payment.companyId())) continue;
+            payments.set(i, new Payment(targetId, payment.settlementDay(), payment.amount(),
+                    payment.unpaidBefore(), payment.unpaidAfter()));
+            movedPayment = true;
+        }
+        if (source != null || movedPayment) setDirty();
+    }
+
+    private static long add(long left, long right) {
+        if (left >= Long.MAX_VALUE - right) return Long.MAX_VALUE;
+        return left + right;
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag accountList = new ListTag();
