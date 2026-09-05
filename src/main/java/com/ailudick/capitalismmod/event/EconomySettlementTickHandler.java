@@ -86,6 +86,9 @@ public final class EconomySettlementTickHandler {
         CompanyLoanSavedData companyLoans = CompanyLoanSavedData.get(server);
         CompanySavedData companies = CompanySavedData.get(server);
         for (CompanyLoan loan : new ArrayList<>(companyLoans.loans())) {
+            if (loan.lastSettlementDay() >= settlementDay) {
+                continue;
+            }
             int nextDays = loan.daysRemaining() - 1;
             Company company = companies.get(loan.companyId());
             if (company != null && !Company.UNASSIGNED_OWNER.equals(company.ownerUuid())) {
@@ -99,7 +102,7 @@ public final class EconomySettlementTickHandler {
                             "Company loan " + shortId + " is overdue. Penalty interest is now applied.");
                 }
             }
-            companyLoans.replace(loan.withDaysRemaining(nextDays));
+            companyLoans.replace(loan.withDaysRemaining(nextDays).withLastSettlementDay(settlementDay));
         }
 
         BondMarket.settleMaturity(server);

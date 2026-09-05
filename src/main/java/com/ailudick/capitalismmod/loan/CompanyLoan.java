@@ -5,7 +5,12 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 /** A bank-style loan whose borrower is a company rather than a player. */
 public record CompanyLoan(String id, String companyId, String currencyId, long principal,
-                          double ratePerYear, int totalDays, int daysRemaining, long interestPaid) {
+                          double ratePerYear, int totalDays, int daysRemaining, long interestPaid,
+                          long lastSettlementDay) {
+    public CompanyLoan(String id, String companyId, String currencyId, long principal,
+                       double ratePerYear, int totalDays, int daysRemaining, long interestPaid) {
+        this(id, companyId, currencyId, principal, ratePerYear, totalDays, daysRemaining, interestPaid, -1L);
+    }
     /** Lazy like the peer-loan codec, so pure interest calculations work in unit tests. */
     public static Codec<CompanyLoan> codec() { return Codecs.CODEC; }
 
@@ -18,28 +23,34 @@ public record CompanyLoan(String id, String companyId, String currencyId, long p
                 Codec.DOUBLE.fieldOf("ratePerYear").forGetter(CompanyLoan::ratePerYear),
                 Codec.INT.fieldOf("totalDays").forGetter(CompanyLoan::totalDays),
                 Codec.INT.fieldOf("daysRemaining").forGetter(CompanyLoan::daysRemaining),
-                Codec.LONG.optionalFieldOf("interestPaid", 0L).forGetter(CompanyLoan::interestPaid)
+                Codec.LONG.optionalFieldOf("interestPaid", 0L).forGetter(CompanyLoan::interestPaid),
+                Codec.LONG.optionalFieldOf("lastSettlementDay", -1L).forGetter(CompanyLoan::lastSettlementDay)
         ).apply(instance, CompanyLoan::new));
     }
 
     public CompanyLoan withDaysRemaining(int value) {
         return new CompanyLoan(id, companyId, currencyId, principal, ratePerYear,
-                totalDays, value, interestPaid);
+                totalDays, value, interestPaid, lastSettlementDay);
     }
 
     public CompanyLoan withCompanyId(String newCompanyId) {
         return new CompanyLoan(id, newCompanyId, currencyId, principal, ratePerYear,
-                totalDays, daysRemaining, interestPaid);
+                totalDays, daysRemaining, interestPaid, lastSettlementDay);
     }
 
     public CompanyLoan withInterestPaid(long value) {
         return new CompanyLoan(id, companyId, currencyId, principal, ratePerYear,
-                totalDays, daysRemaining, Math.max(0L, value));
+                totalDays, daysRemaining, Math.max(0L, value), lastSettlementDay);
     }
 
     public CompanyLoan withPrincipal(long value) {
         return new CompanyLoan(id, companyId, currencyId, Math.max(0L, value), ratePerYear,
-                totalDays, daysRemaining, interestPaid);
+                totalDays, daysRemaining, interestPaid, lastSettlementDay);
+    }
+
+    public CompanyLoan withLastSettlementDay(long value) {
+        return new CompanyLoan(id, companyId, currencyId, principal, ratePerYear,
+                totalDays, daysRemaining, interestPaid, value);
     }
 
     public long interestDue() {
