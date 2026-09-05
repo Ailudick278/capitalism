@@ -24,6 +24,8 @@ import java.util.Map;
  * Central helpers for the player's bank accounts (open / deposit / withdraw / loan / repay / interest / term deposits / transfer).
  */
 public final class BankAccountHelper {
+    /** Fractional minor-unit precision carried between daily settlements. */
+    private static final long INTEREST_SCALE = 1_000_000L;
     /** Minecraft days until a loan matures; overdue loans incur a penalty rate. */
     /** Interest multiplier applied once a loan is overdue. */
     private static final double OVERDUE_RATE_MULTIPLIER = 2.0;
@@ -84,12 +86,18 @@ public final class BankAccountHelper {
         for (BankAccount account : new HashMap<>(accounts).values()) {
             Map<String, Long> newBalances = new HashMap<>(account.balances());
             Map<String, Long> newDebts = new HashMap<>(account.debts());
+            Map<String, Long> depositRemainders = new HashMap<>(account.depositInterestRemainders());
+            Map<String, Long> loanRemainders = new HashMap<>(account.loanInterestRemainders());
             List<BankTransaction> txs = new ArrayList<>(account.transactions());
             for (Map.Entry<String, Long> entry : newBalances.entrySet()) {
                 if (entry.getValue() <= 0) {
+                    depositRemainders.remove(entry.getKey());
                     continue;
                 }
-                long interest = safeInterest(entry.getValue(), depositRate);
+                InterestAccrual accrual = accrueInterest(entry.getValue(), depositRate,
+                        depositRemainders.getOrDefault(entry.getKey(), 0L));
+                depositRemainders.put(entry.getKey(), accrual.remainder());
+                long interest = accrual.wholeMinorUnits();
                 if (interest > 0) {
                     entry.setValue(safeAdd(entry.getValue(), interest));
                     txs.add(new BankTransaction("interest", entry.getKey(), interest));
@@ -106,9 +114,13 @@ public final class BankAccountHelper {
             double effectiveLoanRate = overdue ? loanRate * OVERDUE_RATE_MULTIPLIER : loanRate;
             for (Map.Entry<String, Long> entry : newDebts.entrySet()) {
                 if (entry.getValue() <= 0) {
+                    loanRemainders.remove(entry.getKey());
                     continue;
                 }
-                long interest = safeInterest(entry.getValue(), effectiveLoanRate);
+                InterestAccrual accrual = accrueInterest(entry.getValue(), effectiveLoanRate,
+                        loanRemainders.getOrDefault(entry.getKey(), 0L));
+                loanRemainders.put(entry.getKey(), accrual.remainder());
+                long interest = accrual.wholeMinorUnits();
                 if (interest > 0) {
                     entry.setValue(safeAdd(entry.getValue(), interest));
                     txs.add(new BankTransaction("interest", entry.getKey(), -interest));
@@ -129,7 +141,8 @@ public final class BankAccountHelper {
                 }
                 changed = true;
             }
-            updated.put(account.id(), account.withBalancesAndDebts(newBalances, newDebts)
+            updated.put(account.id(), account.withBalancesAndDebtsAndInterest(newBalances, newDebts,
+                            depositRemainders, loanRemainders)
                     .withTransactions(txs).withTermDeposits(newTerms).withLoanDaysRemaining(loanDaysRemaining));
         }
         if (changed) {
@@ -324,6 +337,22 @@ public final class BankAccountHelper {
         }
         return Math.max(0L, (long) value);
     }
+
+    private static InterestAccrual accrueInterest(long principal, double rate, long remainder) {
+        if (principal <= 0L || !Double.isFinite(rate) || rate <= 0.0) {
+            return new InterestAccrual(0L, Math.max(0L, remainder));
+        }
+        double scaled = principal * rate * INTEREST_SCALE;
+        if (!Double.isFinite(scaled) || scaled >= Long.MAX_VALUE) {
+            return new InterestAccrual(Long.MAX_VALUE, 0L);
+        }
+        long scaledWhole = Math.max(0L, (long) scaled);
+        long totalScaled = scaledWhole > Long.MAX_VALUE - remainder
+                ? Long.MAX_VALUE : scaledWhole + remainder;
+        return new InterestAccrual(totalScaled / INTEREST_SCALE, totalScaled % INTEREST_SCALE);
+    }
+
+    private record InterestAccrual(long wholeMinorUnits, long remainder) {}
 
     private static long safeAdd(long left, long right) {
         try {
