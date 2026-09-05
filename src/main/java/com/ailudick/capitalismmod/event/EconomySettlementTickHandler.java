@@ -105,7 +105,7 @@ public final class EconomySettlementTickHandler {
             companyLoans.replace(loan.withDaysRemaining(nextDays).withLastSettlementDay(settlementDay));
         }
 
-        BondMarket.settleMaturity(server);
+        BondMarket.settleMaturity(server, settlementDay);
         FuturesMarket.settleDay(server);
         CommodityMarket.expireOrders(server, server.overworld().getGameTime());
         StockMarket.expireOrders(server, server.overworld().getGameTime());

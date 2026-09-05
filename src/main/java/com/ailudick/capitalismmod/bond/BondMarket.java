@@ -7,6 +7,7 @@ import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -67,11 +68,22 @@ public final class BondMarket {
 
     /** Ticks bond maturities; pays out full face value plus coupon at maturity. */
     public static void settleMaturity(MinecraftServer server) {
+        settleMaturity(server, server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY);
+    }
+
+    /** Ticks bond maturities once for the supplied settlement day. */
+    public static void settleMaturity(MinecraftServer server, long settlementDay) {
         BondSavedData data = BondSavedData.get(server);
+        BondSettlementSavedData settlements = BondSettlementSavedData.get(server);
         for (BondHolding holding : new ArrayList<>(data.holdings())) {
+            if (settlements.has(holding.id())) {
+                data.removeHolding(holding.id());
+                continue;
+            }
+            if (holding.lastSettlementDay() >= settlementDay) continue;
             int remaining = holding.daysToMaturity() - 1;
             if (remaining > 0) {
-                data.replaceHolding(holding.withDaysToMaturity(remaining));
+                data.replaceHolding(holding.withDaysToMaturity(remaining).withLastSettlementDay(settlementDay));
                 continue;
             }
             long coupon = (long) (holding.faceValue() * holding.ratePerYear() * holding.totalDays() / 365.0);
@@ -91,6 +103,7 @@ public final class BondMarket {
             } else {
                 MarketMailboxSavedData.get(server).creditMoney(holding.holder(), "usd", payoutMinor);
             }
+            settlements.record(holding.id());
             data.removeHolding(holding.id());
         }
     }

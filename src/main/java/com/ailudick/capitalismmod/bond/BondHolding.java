@@ -16,7 +16,13 @@ import java.util.UUID;
  * @param totalDays      original term in Minecraft days
  * @param daysToMaturity days until maturity
  */
-public record BondHolding(String id, UUID holder, long faceValue, double ratePerYear, int totalDays, int daysToMaturity) {
+public record BondHolding(String id, UUID holder, long faceValue, double ratePerYear, int totalDays,
+                          int daysToMaturity, long lastSettlementDay) {
+
+    public BondHolding(String id, UUID holder, long faceValue, double ratePerYear,
+                       int totalDays, int daysToMaturity) {
+        this(id, holder, faceValue, ratePerYear, totalDays, daysToMaturity, -1L);
+    }
 
     private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
 
@@ -26,11 +32,16 @@ public record BondHolding(String id, UUID holder, long faceValue, double ratePer
             Codec.LONG.fieldOf("faceValue").forGetter(BondHolding::faceValue),
             Codec.DOUBLE.fieldOf("ratePerYear").forGetter(BondHolding::ratePerYear),
             Codec.INT.fieldOf("totalDays").forGetter(BondHolding::totalDays),
-            Codec.INT.fieldOf("daysToMaturity").forGetter(BondHolding::daysToMaturity)
+            Codec.INT.fieldOf("daysToMaturity").forGetter(BondHolding::daysToMaturity),
+            Codec.LONG.optionalFieldOf("lastSettlementDay", -1L).forGetter(BondHolding::lastSettlementDay)
     ).apply(instance, BondHolding::new));
 
     public BondHolding withDaysToMaturity(int newDays) {
-        return new BondHolding(id, holder, faceValue, ratePerYear, totalDays, newDays);
+        return new BondHolding(id, holder, faceValue, ratePerYear, totalDays, newDays, lastSettlementDay);
+    }
+
+    public BondHolding withLastSettlementDay(long day) {
+        return new BondHolding(id, holder, faceValue, ratePerYear, totalDays, daysToMaturity, day);
     }
 
     public static final StreamCodec<RegistryFriendlyByteBuf, BondHolding> STREAM_CODEC = StreamCodec.composite(
