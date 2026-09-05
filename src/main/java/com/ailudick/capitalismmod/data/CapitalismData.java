@@ -154,11 +154,20 @@ public final class CapitalismData {
         for (IndustryJson industry : defaults) defaultById.put(industry.id, industry);
         List<IndustrySpec> result = new ArrayList<>();
         for (IndustryJson j : raw) {
-            // Older configs predate selectable recipes. Add the maintained default
-            // chain only when the author has not supplied a recipe list.
+            // Merge maintained recipes by ID. This keeps pack-author recipes intact
+            // while making newly added official recipes available to existing worlds.
             IndustryJson maintained = defaultById.get(j.id);
-            if ((j.recipes == null || j.recipes.isEmpty()) && maintained != null) {
-                j.recipes = maintained.recipes;
+            if (maintained != null) {
+                List<RecipeJson> configured = j.recipes == null
+                        ? new ArrayList<>() : new ArrayList<>(j.recipes);
+                Set<String> configuredIds = new java.util.HashSet<>();
+                for (RecipeJson recipe : configured) {
+                    if (recipe != null && recipe.id != null) configuredIds.add(recipe.id);
+                }
+                for (RecipeJson recipe : maintained.recipes) {
+                    if (recipe != null && configuredIds.add(recipe.id)) configured.add(recipe);
+                }
+                j.recipes = configured;
             }
             List<ProductionRecipe> recipes = new ArrayList<>();
             if (j.recipes != null) {
