@@ -141,7 +141,8 @@ public final class LandHelper {
     public static boolean release(ServerPlayer player, int chunkX, int chunkZ) {
         String id = player.level().dimension().location() + ":" + chunkX + ":" + chunkZ;
         LandClaim claim = LandSavedData.get(player.getServer()).get(id);
-        if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || isTaxFrozen(player, claim)) return false;
+        if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || isTaxFrozen(player, claim)
+                || claim.leaseeUuid() != null || claim.leaseDebt() > 0L) return false;
         LandSavedData.get(player.getServer()).remove(id);
         LandPermissionSavedData.get(player.getServer()).remove(id);
         long refund = Math.round(Config.LAND_CLAIM_PRICE.get() * Config.LAND_RELEASE_REFUND_RATE.get());
@@ -180,7 +181,8 @@ public final class LandHelper {
         if (days <= 0 || rent < 0 || targetUuid.equals(player.getUUID())) return false;
         String id = player.level().dimension().location() + ":" + chunkX + ":" + chunkZ;
         LandClaim claim = LandSavedData.get(player.getServer()).get(id);
-        if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || isTaxFrozen(player, claim)) return false;
+        if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || isTaxFrozen(player, claim)
+                || claim.leaseeUuid() != null || claim.leaseDebt() > 0L) return false;
         long until = player.level().getGameTime() + PerpetualCalendar.ticksForDays(days);
         LandSavedData.get(player.getServer()).put(claim.withLease(targetUuid, until, rent));
         LandOperationLogSavedData.get(player.getServer()).record(player.level().getGameTime(), player.getUUID(),
