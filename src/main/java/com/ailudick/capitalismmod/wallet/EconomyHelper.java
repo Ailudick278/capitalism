@@ -70,11 +70,27 @@ public final class EconomyHelper {
             return true;
         }
         long items = countItems(player, currency);
-        if (items >= amount) {
-            consumeItems(player, currency, amount);
+        // Accept a larger physical denomination only when it can be consumed
+        // and the excess returned as change. This prevents a successful
+        // payment that removes no items when, for example, paying 3 with one
+        // 5-value coin.
+        if (items >= amount && consumeItemsWithChange(player, currency, amount)) {
             postChanged(player, currency);
             log(player, "支付", currency, amount);
             return true;
+        }
+        // If the physical denominations cannot make a valid payment plan,
+        // leave them untouched and use an account balance for the full amount.
+        if (items >= amount) {
+            if (totalAccountBalance(player, currency) < amount) {
+                return false;
+            }
+            boolean success = trySpendFromAccounts(player, currency, amount);
+            if (success) {
+                postChanged(player, currency);
+                log(player, "鏀粯", currency, amount);
+            }
+            return success;
         }
         long remaining = amount - items;
         // Check the account side before consuming any physical currency. This
