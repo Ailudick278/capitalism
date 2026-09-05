@@ -77,6 +77,19 @@ public final class CompanyLoanHelper {
                     .withPrincipal(loan.principal() - principalPayment);
             data.replace(updated);
         }
+        if (interestPayment > 0L) {
+            Company current = CompanySavedData.get(server).get(company.companyId());
+            if (current != null) {
+                long occurredAt = server.overworld().getGameTime();
+                CompanyHelper.recordTaxableExpense(server, current,
+                        "loan_interest:" + loan.id() + ":" + occurredAt,
+                        interestPayment, loan.currencyId(), occurredAt);
+                CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                        current.companyId(), occurredAt, "interest_expense", loan.currencyId(),
+                        -interestPayment, current.treasuryOf(loan.currencyId()),
+                        "Company loan interest expense"));
+            }
+        }
         CompanyLoanPaymentSavedData.get(server).append(new CompanyLoanPaymentSavedData.Payment(
                 loan.id(), loan.companyId(), server.overworld().getGameTime(), payment,
                 interestPayment, principalPayment, Math.max(0L, loan.principal() - principalPayment),
