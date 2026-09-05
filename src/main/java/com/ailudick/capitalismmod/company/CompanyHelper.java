@@ -549,6 +549,8 @@ public final class CompanyHelper {
                 .anyMatch(contract -> contract.id().equals(contractId));
         if (!found) return false;
         CompanyLaborSavedData.get(server).remove(company.companyId(), contractId);
+        CompanySiteAllocationSavedData.get(server).trimWorkerCount(company.companyId(),
+                CompanyLaborSavedData.get(server).activeWorkers(company.companyId()));
         return true;
     }
 
@@ -649,6 +651,9 @@ public final class CompanyHelper {
             equipment.install(company.companyId(), type, count);
             return false;
         }
+        CompanyEquipmentSavedData.Equipment remainingEquipment = equipment.get(company.companyId(), type);
+        CompanySiteAllocationSavedData.get(server).trimMachineCount(company.companyId(), type.id(),
+                remainingEquipment == null ? 0 : remainingEquipment.count());
         long occurredAt = server.overworld().getGameTime();
         CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
                 company.companyId(), occurredAt, "equipment_disposal_book_value", Currencies.USD.id(),

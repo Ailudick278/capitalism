@@ -122,6 +122,8 @@ public final class CompanyLifecycleService {
         long remaining = current.treasuryOf(Currencies.USD.id());
         if (remaining > 0L) CompanyHelper.withdraw(player, current.name(), Currencies.USD.id(), remaining);
         CompanyLaborSavedData.get(server).clear(company.companyId());
+        CompanySiteAllocationSavedData.get(server).remove(company.companyId());
+        CompanySiteSavedData.get(server).remove(company.companyId());
         CompanyStatusSavedData.get(server).set(new CompanyStatusSavedData.Status(company.companyId(), "DISSOLVED",
                 server.overworld().getGameTime(), "liquidation completed"));
         return true;

@@ -135,6 +135,48 @@ public final class CompanySiteAllocationSavedData extends SavedData {
         return maximum;
     }
 
+    /** Removes machine allocations that can no longer be backed by company assets. */
+    public void trimMachineCount(String companyId, String machineType, int maximum) {
+        if (companyId == null || machineType == null || maximum < 0) return;
+        int remaining = maximum;
+        boolean changed = false;
+        for (Map.Entry<String, Allocation> entry : new ArrayList<>(allocations.entrySet())) {
+            Allocation allocation = entry.getValue();
+            if (!companyId.equals(allocation.companyId())) continue;
+            int current = allocation.machines().getOrDefault(machineType, 0);
+            if (current <= 0) continue;
+            int kept = Math.min(current, remaining);
+            remaining -= kept;
+            if (kept == current) continue;
+            Map<String, Integer> machines = new HashMap<>(allocation.machines());
+            if (kept <= 0) machines.remove(machineType); else machines.put(machineType, kept);
+            if (machines.isEmpty() && allocation.workers() <= 0) allocations.remove(entry.getKey());
+            else allocations.put(entry.getKey(), new Allocation(allocation.companyId(), allocation.dimension(),
+                    allocation.chunkX(), allocation.chunkZ(), machines, allocation.workers()));
+            changed = true;
+        }
+        if (changed) setDirty();
+    }
+
+    /** Removes worker allocations that can no longer be backed by active contracts. */
+    public void trimWorkerCount(String companyId, int maximum) {
+        if (companyId == null || maximum < 0) return;
+        int remaining = maximum;
+        boolean changed = false;
+        for (Map.Entry<String, Allocation> entry : new ArrayList<>(allocations.entrySet())) {
+            Allocation allocation = entry.getValue();
+            if (!companyId.equals(allocation.companyId()) || allocation.workers() <= 0) continue;
+            int kept = Math.min(allocation.workers(), remaining);
+            remaining -= kept;
+            if (kept == allocation.workers()) continue;
+            if (allocation.machines().isEmpty() && kept <= 0) allocations.remove(entry.getKey());
+            else allocations.put(entry.getKey(), new Allocation(allocation.companyId(), allocation.dimension(),
+                    allocation.chunkX(), allocation.chunkZ(), allocation.machines(), kept));
+            changed = true;
+        }
+        if (changed) setDirty();
+    }
+
     public List<Allocation> forCompany(String companyId) {
         if (companyId == null || companyId.isBlank()) return List.of();
         return allocations.values().stream().filter(value -> companyId.equals(value.companyId())).toList();
