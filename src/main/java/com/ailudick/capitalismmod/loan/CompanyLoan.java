@@ -46,4 +46,16 @@ public record CompanyLoan(String id, String companyId, String currencyId, long p
         long accrued = Math.max(0L, (long) interest);
         return accrued > interestPaid ? accrued - interestPaid : 0L;
     }
+
+    public boolean isOverdue() {
+        return daysRemaining < 0;
+    }
+
+    public boolean becomesDueAfter(int nextDaysRemaining) {
+        return daysRemaining > 0 && nextDaysRemaining <= 0;
+    }
+
+    public boolean becomesOverdueAfter(int nextDaysRemaining) {
+        return daysRemaining >= 0 && nextDaysRemaining < 0;
+    }
 }

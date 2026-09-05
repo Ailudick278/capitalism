@@ -11,6 +11,8 @@ import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanNotificationService;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
+import com.ailudick.capitalismmod.company.Company;
+import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
@@ -78,8 +80,21 @@ public final class EconomySettlementTickHandler {
         loans.setDirty();
 
         CompanyLoanSavedData companyLoans = CompanyLoanSavedData.get(server);
+        CompanySavedData companies = CompanySavedData.get(server);
         for (CompanyLoan loan : new ArrayList<>(companyLoans.loans())) {
-            companyLoans.replace(loan.withDaysRemaining(loan.daysRemaining() - 1));
+            int nextDays = loan.daysRemaining() - 1;
+            Company company = companies.get(loan.companyId());
+            if (company != null && !Company.UNASSIGNED_OWNER.equals(company.ownerUuid())) {
+                String shortId = loan.id().substring(0, Math.min(8, loan.id().length()));
+                if (loan.becomesDueAfter(nextDays)) {
+                    PeerLoanNotificationService.notify(server, company.ownerUuid(), "company-due:" + loan.id(),
+                            "Company loan " + shortId + " is due. Repay principal and interest.");
+                } else if (loan.becomesOverdueAfter(nextDays)) {
+                    PeerLoanNotificationService.notify(server, company.ownerUuid(), "company-overdue:" + loan.id(),
+                            "Company loan " + shortId + " is overdue. Penalty interest is now applied.");
+                }
+            }
+            companyLoans.replace(loan.withDaysRemaining(nextDays));
         }
 
         BondMarket.settleMaturity(server);
