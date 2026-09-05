@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
+import com.ailudick.capitalismmod.company.CompanyQualityHoldSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.business.IndividualBusinessHelper;
 import com.ailudick.capitalismmod.business.IndividualBusiness;
@@ -154,6 +155,10 @@ public final class SupplyMarket {
         InventoryOwner supplierOwner = supplierCompany == null
                 ? InventoryOwner.player(offer.ownerUuid()) : InventoryOwner.company(supplierCompany.companyId());
         int stock = warehouse.count(supplierOwner, offer.itemId());
+        if (supplierCompany != null) {
+            stock = CompanyQualityHoldSavedData.get(buyer.getServer())
+                    .availableUnits(supplierCompany.companyId(), offer.itemId(), stock);
+        }
         int filled = Math.min(quantity, stock);
         if (filled > 0) {
             warehouse.consume(supplierOwner, item, filled);
@@ -285,6 +290,10 @@ public final class SupplyMarket {
             InventoryOwner resolvedOwner = supplierCompany == null ? supplierOwner
                     : InventoryOwner.company(supplierCompany.companyId());
             int stock = warehouse.count(resolvedOwner, itemId);
+            if (supplierCompany != null) {
+                stock = CompanyQualityHoldSavedData.get(server)
+                        .availableUnits(supplierCompany.companyId(), itemId, stock);
+            }
             int deliver = Math.min(order.remaining(), stock);
             if (deliver <= 0) {
                 continue;

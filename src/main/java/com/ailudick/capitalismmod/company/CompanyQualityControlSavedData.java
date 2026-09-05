@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.company;
 
+import com.ailudick.capitalismmod.Config;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderLookup;
@@ -56,8 +57,10 @@ public final class CompanyQualityControlSavedData extends SavedData {
     public void screen(CompanyProductionBatchSavedData.Batch batch, long at) {
         if (batch == null || batch.id() == null || batch.id().isBlank()) return;
         if (find(batch.companyId(), batch.id()) != null) return;
-        String status = batch.qualityScore() >= 80 ? "released"
-                : batch.qualityScore() >= 60 ? "conditional" : "review";
+        int releaseThreshold = Config.COMPANY_QUALITY_RELEASE_THRESHOLD.get();
+        int conditionalThreshold = Math.min(60, Math.max(0, releaseThreshold - 1));
+        String status = batch.qualityScore() >= releaseThreshold ? "released"
+                : batch.qualityScore() >= conditionalThreshold ? "conditional" : "review";
         String reason = status.equals("released") ? "process_score_pass"
                 : status.equals("conditional") ? "process_score_conditional" : "process_score_review";
         upsert(new Inspection(batch.id(), batch.companyId(), status, batch.qualityScore(), reason, at, 0L));

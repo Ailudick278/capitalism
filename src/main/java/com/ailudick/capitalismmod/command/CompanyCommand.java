@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
 import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
 import com.ailudick.capitalismmod.company.CompanyProductionBatchSavedData;
 import com.ailudick.capitalismmod.company.CompanyQualityControlSavedData;
+import com.ailudick.capitalismmod.company.CompanyQualityHoldSavedData;
 import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
@@ -807,6 +808,9 @@ public class CompanyCommand {
             source.sendFailure(Component.literal(
                     "Quality review failed: batch not found or status must be released, rework, or rejected."));
             return 0;
+        }
+        if ("released".equalsIgnoreCase(status)) {
+            CompanyQualityHoldSavedData.get(player.getServer()).releaseBatch(company.companyId(), batchId);
         }
         source.sendSuccess(() -> Component.literal("Quality disposition recorded: " + status
                 + " for batch " + batchId), false);

@@ -720,7 +720,16 @@ public final class CompanyHelper {
         if (server == null || company == null) return false;
         Map<String, Integer> inputs = CompanyEconomy.inputs(company);
         InventoryOwner owner = InventoryOwner.company(company.companyId());
-        return WarehouseSavedData.get(server).canConsumeBatch(owner, inputs);
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        CompanyQualityHoldSavedData holds = CompanyQualityHoldSavedData.get(server);
+        for (Map.Entry<String, Integer> input : inputs.entrySet()) {
+            int required = input.getValue() == null ? 0 : input.getValue();
+            if (required <= 0 || parseItem(input.getKey()) == null
+                    || holds.availableUnits(company.companyId(), input.getKey(), warehouse.count(owner, input.getKey())) < required) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Deposits outputs, records their conversion cost, then fulfills backorders. */
@@ -763,6 +772,7 @@ public final class CompanyHelper {
                 server.overworld().getGameTime());
         CompanyProductionBatchSavedData.get(server).record(batch);
         CompanyQualityControlSavedData.get(server).screen(batch, batch.createdAt());
+        CompanyQualityHoldSavedData.get(server).hold(batch);
     }
 
     /** Game-scale process-quality proxy based on active skill and equipment condition. */
@@ -1041,6 +1051,7 @@ public final class CompanyHelper {
             CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyProductionBatchSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyQualityControlSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
+            CompanyQualityHoldSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyLoanSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanySiteSavedData.get(server).remove(source.companyId());
         }
