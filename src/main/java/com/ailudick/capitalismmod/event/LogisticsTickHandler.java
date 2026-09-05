@@ -54,6 +54,13 @@ public final class LogisticsTickHandler {
                     shipment.originRegion(), shipment.destinationRegion(), shipment.transport()));
             if (risk > 0.0 && Math.random() < risk) {
                 if (shipment.insured()) {
+                    LogisticsClaimSavedData claims = LogisticsClaimSavedData.get(server);
+                    // If a previous tick completed the payout but failed before removing
+                    // the shipment, never pay the same shipment a second time.
+                    if (claims.hasShipment(shipment.id())) {
+                        data.remove(shipment.id());
+                        continue;
+                    }
                     long insuredValue;
                     try {
                         insuredValue = Math.multiplyExact((long) shipment.quantity(), Config.LOGISTICS_DECLARED_VALUE.get());
@@ -73,7 +80,7 @@ public final class LogisticsTickHandler {
                     } else {
                         MarketMailboxSavedData.get(server).creditMoney(shipment.buyer(), "usd", Money.toMinor(payout));
                     }
-                    LogisticsClaimSavedData.get(server).settle(new LogisticsClaimSavedData.Claim(
+                    claims.settle(new LogisticsClaimSavedData.Claim(
                             java.util.UUID.randomUUID().toString(), shipment.id(), shipment.buyer(), insuredValue,
                             actualLoss, payout, now, "settled"));
                     data.remove(shipment.id());

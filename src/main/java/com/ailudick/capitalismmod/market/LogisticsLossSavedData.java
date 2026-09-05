@@ -42,6 +42,11 @@ public final class LogisticsLossSavedData extends SavedData {
         return List.copyOf(losses);
     }
 
+    public boolean hasShipment(String shipmentId) {
+        return shipmentId != null && !shipmentId.isBlank()
+                && losses.stream().anyMatch(existing -> shipmentId.equals(existing.shipmentId()));
+    }
+
     public List<Loss> unreadFor(UUID buyer) {
         return losses.stream().filter(loss -> loss.buyer().equals(buyer) && !loss.acknowledged()).toList();
     }
@@ -49,7 +54,7 @@ public final class LogisticsLossSavedData extends SavedData {
     public void add(Loss loss) {
         if (loss == null || loss.shipmentId() == null || loss.shipmentId().isBlank()
                 || loss.buyer() == null || loss.quantity() <= 0 || loss.itemId() == null
-                || loss.itemId().isBlank() || losses.stream().anyMatch(existing -> existing.shipmentId().equals(loss.shipmentId()))) {
+                || loss.itemId().isBlank() || hasShipment(loss.shipmentId())) {
             return;
         }
         losses.add(loss);

@@ -14,6 +14,11 @@ public final class LogisticsLossService {
 
     public static void record(MinecraftServer server, LogisticsSavedData.Shipment shipment) {
         LogisticsLossSavedData data = LogisticsLossSavedData.get(server);
+        // A retry can happen after the shipment was processed but before it was removed.
+        // The loss ledger is the durable idempotency key for the loss path.
+        if (data.hasShipment(shipment.id())) {
+            return;
+        }
         data.add(new LogisticsLossSavedData.Loss(shipment.id(), shipment.buyer(), shipment.itemId(),
                 shipment.quantity(), shipment.originRegion(), shipment.destinationRegion(), shipment.transport(),
                 shipment.disruptionCount() + 1, server.overworld().getGameTime(), false, shipment.supplyOrderId(),

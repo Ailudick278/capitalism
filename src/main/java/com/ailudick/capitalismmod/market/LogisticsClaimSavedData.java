@@ -33,9 +33,14 @@ public final class LogisticsClaimSavedData extends SavedData {
         return List.copyOf(claims);
     }
 
+    public boolean hasShipment(String shipmentId) {
+        return shipmentId != null && !shipmentId.isBlank()
+                && claims.stream().anyMatch(existing -> shipmentId.equals(existing.shipmentId()));
+    }
+
     public void settle(Claim claim) {
         if (claim == null || claim.shipmentId() == null || claim.shipmentId().isBlank()
-                || claim.buyer() == null || claims.stream().anyMatch(existing -> existing.shipmentId().equals(claim.shipmentId()))) {
+                || claim.buyer() == null || hasShipment(claim.shipmentId())) {
             return;
         }
         claims.add(claim);
