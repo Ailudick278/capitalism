@@ -19,4 +19,9 @@ public record ProductionRecipe(String id, Map<String, Integer> inputs, Map<Strin
     public ProductionRecipe(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, long income) {
         this(id, inputs, outputs, income, "none", outputs == null || outputs.isEmpty() ? 0 : 1, 0L, 0L);
     }
+
+    /** A service cycle settles revenue directly instead of producing warehouse items. */
+    public boolean isService() {
+        return outputs.isEmpty() && income > 0L;
+    }
 }

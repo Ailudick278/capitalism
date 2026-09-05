@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.init.ModAttachments;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
+import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
@@ -257,13 +258,21 @@ public final class CompanyHelper {
 
     /** Runs one atomic recipe batch: all inputs are checked before any are consumed. */
     public static boolean runProductionCycle(MinecraftServer server, Company company) {
-        if (server == null || company == null || company.registeredCapital() <= 0
-                || CompanyEconomy.outputs(company).isEmpty() || !canProduceOutputs(server, company)) {
+        if (server == null || company == null || company.registeredCapital() <= 0) {
             return false;
         }
         if (!CompanyLifecycleService.canOperate(server, company.companyId())) return false;
         ProductionRecipe recipe = CompanyEconomy.recipe(company);
         if (recipe == null) return false;
+        boolean serviceCycle = recipe.isService();
+        if (!serviceCycle && recipe.outputs().isEmpty()) return false;
+        if (!canProduceOutputs(server, company) || !canConsumeInputs(server, company)) return false;
+        if (serviceCycle) {
+            Company current = CompanySavedData.get(server).get(company.companyId());
+            if (current == null || EconomyMath.add(current.treasuryOf(Currencies.USD.id()), recipe.income()) < 0L) {
+                return false;
+            }
+        }
         MachineType machine = MachineType.parse(recipe.machineType());
         if (machine == null) return false;
         CompanyLaborSavedData labor = CompanyLaborSavedData.get(server);
@@ -291,6 +300,18 @@ public final class CompanyHelper {
         }
         if (!consumeInputs(server, company)) {
             return false;
+        }
+        if (serviceCycle) {
+            long occurredAt = server.overworld().getGameTime();
+            if (!creditTreasury(server, company.companyId(), Currencies.USD.id(), recipe.income())) {
+                return false;
+            }
+            Company current = CompanySavedData.get(server).get(company.companyId());
+            if (current != null) {
+                recordTaxableIncome(server, current,
+                        "service_cycle:" + UUID.randomUUID(), recipe.income(),
+                        Currencies.USD.id(), occurredAt);
+            }
         }
         produceOutputs(server, company);
         CompanyEquipmentSavedData.get(server).use(company.companyId(), machine);
@@ -451,6 +472,13 @@ public final class CompanyHelper {
             commodityData.addSupply(input.getKey(), -input.getValue());
         }
         return true;
+    }
+
+    private static boolean canConsumeInputs(MinecraftServer server, Company company) {
+        if (server == null || company == null) return false;
+        Map<String, Integer> inputs = CompanyEconomy.inputs(company);
+        InventoryOwner owner = InventoryOwner.company(company.companyId());
+        return WarehouseSavedData.get(server).canConsumeBatch(owner, inputs);
     }
 
     /** Deposits the company's outputs into the warehouse, recording supply. */
