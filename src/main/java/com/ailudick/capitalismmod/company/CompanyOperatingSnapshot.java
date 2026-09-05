@@ -11,7 +11,8 @@ import net.minecraft.server.MinecraftServer;
  * company ledger and therefore also works for offline companies.
  */
 public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long operatingExpenses,
-                                       long costOfSales, long grossProfit, long operatingCashFlow,
+                                       long costOfSales, long grossProfit, long operatingProfit,
+                                       long operatingCashFlow,
                                        int activeWorkers, long grossDailyWages,
                                        long employerDailyContributions, long dailyLaborCost,
                                        int machineUnits, int parallelCapacity, long successfulBatches,
@@ -33,7 +34,7 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
     public static CompanyOperatingSnapshot from(MinecraftServer server, Company company, long lookbackDays) {
         long days = Math.max(1L, Math.min(360L, lookbackDays));
         if (server == null || company == null) {
-            return new CompanyOperatingSnapshot(days, 0L, 0L, 0L, 0L, 0L, 0, 0L, 0L, 0L, 0, 0,
+            return new CompanyOperatingSnapshot(days, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0L, 0L, 0L, 0, 0,
                     0L, 0L, 0L, 0L);
         }
 
@@ -75,7 +76,9 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
         long failed = production == null ? 0L : Math.max(0L, production.failedCycles());
         CompanyFinancialSnapshot financial = CompanyFinancialSnapshot.from(server, company);
         long grossProfit = subtractFloorZero(revenue, costOfSales);
-        return new CompanyOperatingSnapshot(days, revenue, expenses, costOfSales, grossProfit, cashFlow, workers, grossWages,
+        long otherOperatingExpenses = subtractFloorZero(expenses, costOfSales);
+        long operatingProfit = subtractFloorZero(grossProfit, otherOperatingExpenses);
+        return new CompanyOperatingSnapshot(days, revenue, expenses, costOfSales, grossProfit, operatingProfit, cashFlow, workers, grossWages,
                 employerContributions, dailyLaborCost, machineUnits, capacity, successful, failed,
                 financial.assets(), financial.equity());
     }
