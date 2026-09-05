@@ -155,6 +155,10 @@ def modTestModsDir = providers.gradleProperty('modTestModsDir')
 modTestModsDir = providers.gradleProperty('modTestModsDir')
         .orElse('C:/Users/常翔/AppData/Roaming/.minecraft/versions/mod test/mods')
         .get()
+// Keep the default test instance explicit; this also avoids mojibake in older generated build files.
+if (!providers.gradleProperty('modTestModsDir').isPresent()) {
+    modTestModsDir = 'C:/Users/' + '\u5e38\u7fd4' + '/AppData/Roaming/.minecraft/versions/mod test/mods'
+}
 tasks.register('copyModJar', Copy) {
     // The destination is an external local Minecraft instance and may contain
     // files Gradle cannot inspect. State tracking is not useful for this

@@ -224,6 +224,10 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> NAPHTHA = ITEMS.register("naphtha",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ETHYLENE = ITEMS.register("ethylene",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PROPYLENE = ITEMS.register("propylene",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FUEL_OIL = ITEMS.register("fuel_oil",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PLASTIC_PELLETS = ITEMS.register("plastic_pellets",
