@@ -186,6 +186,18 @@ public class Config {
             .comment("Number of Minecraft days before a new supply backorder expires; 0 disables expiry.")
             .defineInRange("supplyOrderExpiryDays", 30, 0, 3650);
 
+    public static final ModConfigSpec.BooleanValue COMPANY_PRODUCTION_ENABLED = BUILDER
+            .comment("Whether companies run their configured production recipes automatically.")
+            .define("companyProductionEnabled", true);
+
+    public static final ModConfigSpec.LongValue COMPANY_PRODUCTION_CYCLE_TICKS = BUILDER
+            .comment("Ticks between company production attempts; 600 ticks is 30 seconds.")
+            .defineInRange("companyProductionCycleTicks", 600L, 20L, 24000L);
+
+    public static final ModConfigSpec.IntValue COMPANY_PRODUCTION_MAX_CATCHUP_CYCLES = BUILDER
+            .comment("Maximum production cycles simulated after a server restart or long offline period.")
+            .defineInRange("companyProductionMaxCatchupCycles", 240, 1, 10000);
+
     // Futures margin rate (fraction of notional value required as margin). 0.10 = 10x leverage.
     public static final ModConfigSpec.DoubleValue FUTURES_MARGIN_RATE = BUILDER
             .comment("Futures margin rate (fraction of notional value required as margin). 0.10 = 10x leverage.")

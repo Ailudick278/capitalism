@@ -83,6 +83,9 @@ public final class CompanyHelper {
         Company updated = company.addTreasury(currencyId, amount);
         if (updated == company) return false;
         data.put(updated);
+        CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                company.companyId(), server.overworld().getGameTime(), "revenue", currencyId,
+                amount, updated.treasuryOf(currencyId), "供应市场销售收入"));
         return true;
     }
 
@@ -183,8 +186,21 @@ public final class CompanyHelper {
         // Kept as an integration hook for the future order settlement service.
     }
 
+    /** Runs one atomic recipe cycle: all inputs are checked before any are consumed. */
+    public static boolean runProductionCycle(MinecraftServer server, Company company) {
+        if (server == null || company == null || company.level() <= 0
+                || CompanyEconomy.outputs(company).isEmpty() || !canProduceOutputs(server, company)) {
+            return false;
+        }
+        if (!consumeInputs(server, company)) {
+            return false;
+        }
+        produceOutputs(server, company);
+        return true;
+    }
+
     /** Consumes the company's inputs from the warehouse, recording demand. Returns false if any input is short. */
-    private static boolean consumeInputs(MinecraftServer server, Player player, Company company) {
+    private static boolean consumeInputs(MinecraftServer server, Company company) {
         if (server == null) {
             return true;
         }
@@ -209,7 +225,7 @@ public final class CompanyHelper {
     }
 
     /** Deposits the company's outputs into the warehouse, recording supply. */
-    private static void produceOutputs(MinecraftServer server, Player player, Company company) {
+    private static void produceOutputs(MinecraftServer server, Company company) {
         if (server == null) {
             return;
         }
@@ -227,7 +243,7 @@ public final class CompanyHelper {
             // automatically fulfill any backorders for this commodity
             SupplyMarket.fulfill(server,
                     com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId()),
-                    player.getUUID(), output.getKey());
+                    company.ownerUuid(), output.getKey());
         }
     }
 
@@ -322,6 +338,9 @@ public final class CompanyHelper {
         Map<String, Long> treasury = new HashMap<>(company.treasury());
         treasury.put(currencyId, company.treasuryOf(currencyId) - amount);
         setCompany(player, name, company.withTreasury(treasury));
+        CompanyLedgerSavedData.get(player.getServer()).append(new CompanyLedgerEntry(
+                company.companyId(), player.getServer().overworld().getGameTime(), "owner_withdrawal",
+                currencyId, -amount, company.treasuryOf(currencyId) - amount, "业主提款"));
         return true;
     }
 

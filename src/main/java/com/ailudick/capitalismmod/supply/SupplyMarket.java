@@ -128,7 +128,7 @@ public final class SupplyMarket {
             deliverOrShip(buyer.getServer(), buyer.getUUID(), item, filled, offer.region(),
                     TradeRegion.of(buyer.blockPosition()));
         }
-        paySupplier(buyer.getServer(), offer, total);
+        paySupplier(buyer.getServer(), offer, total, orderSource);
 
         int remaining = quantity - filled;
         if (remaining > 0) {
@@ -199,9 +199,11 @@ public final class SupplyMarket {
         }
     }
 
-    private static void paySupplier(MinecraftServer server, SupplyOffer offer, long amount) {
+    private static void paySupplier(MinecraftServer server, SupplyOffer offer, long amount, String sourceId) {
         Company company = CompanyHelper.findCompany(server, offer.ownerUuid(), offer.companyName());
         if (company != null && CompanyHelper.creditTreasury(server, company.companyId(), Currencies.USD.id(), amount)) {
+            CompanyHelper.recordTaxableIncome(server, company, "supply_sale:" + sourceId,
+                    amount, Currencies.USD.id(), server.overworld().getGameTime());
             return;
         }
         UUID supplierUuid = offer.ownerUuid();

@@ -253,8 +253,8 @@ public final class CapitalismData {
 
     private static List<IndustryJson> defaultIndustries() {
         return List.of(
-                new IndustryJson("mining", Map.of(), Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1, "minecraft:gold_ingot", 1), 55),
-                new IndustryJson("agriculture", Map.of(), Map.of("minecraft:wheat", 1), 35),
+                new IndustryJson("mining", Map.of("minecraft:iron_ore", 1), Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1, "minecraft:gold_ingot", 1), 55),
+                new IndustryJson("agriculture", Map.of("minecraft:wheat_seeds", 1), Map.of("minecraft:wheat", 1), 35),
                 new IndustryJson("manufacturing", Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1), Map.of("minecraft:rail", 1), 80),
                 new IndustryJson("utilities", Map.of("minecraft:coal", 1), Map.of(), 60),
                 new IndustryJson("construction", Map.of("minecraft:rail", 1), Map.of(), 50),

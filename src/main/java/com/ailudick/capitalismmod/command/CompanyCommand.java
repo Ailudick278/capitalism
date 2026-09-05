@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.company.AcquisitionSavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.PublicTakeoverSavedData;
 import com.ailudick.capitalismmod.company.CompanyTypes;
+import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
@@ -36,7 +37,11 @@ public class CompanyCommand {
                                         .executes(ctx -> withdraw(ctx.getSource(),
                                                 StringArgumentType.getString(ctx, "name"),
                                                 StringArgumentType.getString(ctx, "currency"),
-                                                LongArgumentType.getLong(ctx, "amount")))))));
+                                        LongArgumentType.getLong(ctx, "amount")))))));
+        root.then(Commands.literal("ledger")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> ledger(ctx.getSource(),
+                                StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("acquire")
                 .then(Commands.argument("seller", EntityArgument.player())
                         .then(Commands.argument("company", StringArgumentType.word())
@@ -132,6 +137,25 @@ public class CompanyCommand {
         player.sendSystemMessage(Component.translatable("command.capitalismmod.company_withdrawn",
                 name, amount, Component.translatable(currency.nameKey())));
         return 1;
+    }
+
+    private static int ledger(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.translatable("command.capitalismmod.company_not_found", name));
+            return 0;
+        }
+        var entries = CompanyLedgerSavedData.get(player.getServer()).entries(company.companyId());
+        for (var entry : entries) {
+            source.sendSuccess(() -> Component.literal(entry.type() + " | " + entry.amount()
+                    + " " + entry.currencyId() + " | 余额 " + entry.balanceAfter()
+                    + " | " + entry.description()), false);
+        }
+        if (entries.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("该企业暂无账务记录。"), false);
+        }
+        return entries.size();
     }
 
     private static int createOffer(CommandSourceStack source, ServerPlayer seller, String company, long price)
