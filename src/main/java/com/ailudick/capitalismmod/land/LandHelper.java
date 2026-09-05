@@ -229,16 +229,31 @@ public final class LandHelper {
 
     public static boolean payTax(ServerPlayer player, long amount) {
         LandClaim claim = at(player, player.blockPosition());
-        if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || amount <= 0
-                || claim.taxOwed() < amount) return false;
+        if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || amount <= 0) return false;
         TaxSubject subject = new TaxSubject(TaxType.LAND, claim.id(), claim.ownerUuid());
-        TaxService.ensureOutstanding(player.getServer(), subject, Config.defaultCurrencyId(), Money.toMinorSaturated(claim.taxOwed()),
+        long legacyDebtMinor = Money.toMinorSaturated(claim.taxOwed());
+        TaxService.ensureOutstanding(player.getServer(), subject, Config.defaultCurrencyId(), legacyDebtMinor,
                 player.level().getGameTime(), claim.taxDueAt(), claim.taxGraceUntil());
-        if (!TaxService.pay(player, subject, Money.toMinorSaturated(amount))) return false;
+        long outstandingMinor = TaxService.outstanding(player.getServer(), subject);
+        long paymentMinor = Money.toMinorSaturated(amount);
+        if (outstandingMinor <= 0L || paymentMinor <= 0L || paymentMinor > outstandingMinor) return false;
+        var bill = com.ailudick.capitalismmod.tax.TaxLedgerSavedData.get(player.getServer()).bills().stream()
+                .filter(entry -> entry.subject().equals(subject) && !entry.paid()).findFirst().orElse(null);
+        if (bill == null) return false;
+        if (!bill.declared()) TaxService.declare(player, bill.id());
+        if (!TaxService.pay(player, subject, paymentMinor)) return false;
         long remaining = TaxService.outstanding(player.getServer(), subject);
         LandSavedData.get(player.getServer()).put(remaining == 0L
                 ? claim.withTaxSchedule(0L, 0L, 0L)
                 : claim.withTaxSchedule(Money.toMajorCeiling(remaining), claim.taxDueAt(), claim.taxGraceUntil()));
         return true;
+    }
+
+    /** Unified tax-ledger liability for one land claim, including legacy mirror data. */
+    public static long taxOwed(ServerPlayer player, LandClaim claim) {
+        if (player == null || claim == null) return 0L;
+        TaxSubject subject = new TaxSubject(TaxType.LAND, claim.id(), claim.ownerUuid());
+        long ledger = TaxService.outstanding(player.getServer(), subject);
+        return Money.toMajorCeiling(Math.max(ledger, Money.toMinorSaturated(claim.taxOwed())));
     }
 }

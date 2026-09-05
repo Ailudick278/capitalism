@@ -248,7 +248,7 @@ public final class LandCommand {
             source.sendFailure(Component.literal("当前土地不在处置列表中"));
             return 0;
         }
-        long owed = claim.taxOwed();
+        long owed = LandHelper.taxOwed(player, claim);
         if (owed <= 0L || !LandHelper.payTax(player, owed)) {
             source.sendFailure(Component.literal("赎回失败：请准备足额余额缴清欠税"));
             return 0;
