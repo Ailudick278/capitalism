@@ -248,6 +248,46 @@ public final class SupplyMarket {
         }
     }
 
+    /** Cancels an undelivered backorder and refunds only its remaining escrow. */
+    public static boolean cancelOrder(ServerPlayer buyer, String orderId) {
+        if (buyer == null || orderId == null || orderId.isBlank()) return false;
+        MinecraftServer server = buyer.getServer();
+        SupplyMarketSavedData data = SupplyMarketSavedData.get(server);
+        PurchaseOrder order = data.orders().stream()
+                .filter(candidate -> candidate.id().equals(orderId)
+                        && candidate.buyerUuid().equals(buyer.getUUID()))
+                .findFirst().orElse(null);
+        if (order == null || order.remaining() <= 0 || order.unitPrice() <= 0L) return false;
+        SupplySettlementSavedData settlements = SupplySettlementSavedData.get(server);
+        if (settlements.hasOrderRefund(order.id())) {
+            data.removeOrder(order.id());
+            return true;
+        }
+        long refund = EconomyMath.multiply(order.unitPrice(), order.remaining());
+        long refundMinor = refund < 0L ? -1L : Money.toMinor(refund);
+        if (refundMinor < 0L) return false;
+
+        boolean refundedToCompany = false;
+        if (order.buyerCompanyId() != null && !order.buyerCompanyId().isBlank()) {
+            Company company = CompanySavedData.get(server).get(order.buyerCompanyId());
+            refundedToCompany = company != null && company.ownerUuid().equals(buyer.getUUID())
+                    && CompanyHelper.creditTreasuryNonOperating(server, company.companyId(),
+                    Currencies.USD.id(), refund, "supply_cancel_refund", "Cancelled undelivered supply order refund");
+        }
+        if (!refundedToCompany) {
+            MarketMailboxSavedData.get(server).creditMoney(buyer.getUUID(), Currencies.USD.id(), refundMinor);
+        }
+        long creditToReverse = proportionalInputCredit(order);
+        if (creditToReverse > 0L) {
+            TaxTransactionService.reverseInputCredit(server, buyer.getUUID(), Currencies.USD.id(),
+                    creditToReverse, "supply_order:" + order.id(), server.overworld().getGameTime());
+        }
+        settlements.recordOrderRefund(order.id());
+        SupplyOrderAuditService.record(server, order, "CANCELLED_REFUND", order.remaining(), refund);
+        data.removeOrder(order.id());
+        return true;
+    }
+
     private static long proportionalInputCredit(PurchaseOrder order) {
         if (order == null || order.inputCreditMinor() <= 0L || order.remaining() <= 0
                 || order.originalQuantity() <= 0) return 0L;

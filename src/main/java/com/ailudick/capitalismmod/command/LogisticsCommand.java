@@ -49,6 +49,10 @@ public final class LogisticsCommand {
                         .then(Commands.argument("id", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(ctx -> order(ctx.getSource(),
                                         com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "id")))))
+                .then(Commands.literal("cancel")
+                        .then(Commands.argument("id", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                .executes(ctx -> cancel(ctx.getSource(),
+                                        com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "id")))))
                 .then(Commands.literal("insure")
                         .then(Commands.argument("shipment", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(ctx -> insure(ctx.getSource(),
@@ -212,6 +216,23 @@ public final class LogisticsCommand {
                     + " | amount " + event.amount() + " | tick " + event.occurredAt()), false);
         }
         return events.size();
+    }
+
+    private static int cancel(CommandSourceStack source, String orderId) {
+        ServerPlayer player;
+        try {
+            player = source.getPlayerOrException();
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            source.sendFailure(Component.literal("This command can only be used by a player."));
+            return 0;
+        }
+        boolean cancelled = com.ailudick.capitalismmod.supply.SupplyMarket.cancelOrder(player, orderId);
+        if (!cancelled) {
+            source.sendFailure(Component.literal("Order not found, already delivered, or not cancellable."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Undelivered supply order cancelled; remaining escrow refunded."), false);
+        return 1;
     }
 
     private static int insure(CommandSourceStack source, String id) {
