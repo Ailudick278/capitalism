@@ -14,12 +14,16 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  */
 public record TermDeposit(String currencyId, long principal, long interest, int daysRemaining) {
 
-    public static final Codec<TermDeposit> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    public static Codec<TermDeposit> codec() { return Codecs.CODEC; }
+
+    private static final class Codecs {
+        private static final Codec<TermDeposit> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.STRING.fieldOf("currencyId").forGetter(TermDeposit::currencyId),
             Codec.LONG.fieldOf("principal").forGetter(TermDeposit::principal),
             Codec.LONG.fieldOf("interest").forGetter(TermDeposit::interest),
             Codec.INT.fieldOf("daysRemaining").forGetter(TermDeposit::daysRemaining)
-    ).apply(instance, TermDeposit::new));
+        ).apply(instance, TermDeposit::new));
+    }
 
     public TermDeposit tick() {
         return new TermDeposit(currencyId, principal, interest, daysRemaining - 1);

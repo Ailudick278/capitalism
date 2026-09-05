@@ -14,5 +14,8 @@
 
 ## Follow-up
 
-- Add direct bank-settlement tests covering small balances, partial repayment, and save/load round trips.
+- Added regression tests for remainder retention, the legacy constructor defaults, and clearing a balance/debt.
+- Codec compatibility remains implemented through optional fields; the current unit-test classpath does not expose Minecraft's Codec runtime.
+- Bank, transaction, and term-deposit codecs are now lazily initialized, allowing pure account tests to load without eagerly starting the data-fixer runtime.
+- A future test pass should cover full daily settlement with small balances and partial repayment.
 - Review whether bank transaction history should expose accumulated-but-not-yet-posted interest.

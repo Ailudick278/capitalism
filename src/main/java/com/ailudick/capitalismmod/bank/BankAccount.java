@@ -15,20 +15,25 @@ public record BankAccount(String id, boolean credit, Map<String, Long> balances,
                           Map<String, Long> loanInterestRemainders) {
     private static final int MAX_TRANSACTIONS = 50;
 
-    public static final Codec<BankAccount> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.STRING.fieldOf("id").forGetter(BankAccount::id),
-            Codec.BOOL.fieldOf("credit").forGetter(BankAccount::credit),
-            Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("balances").forGetter(BankAccount::balances),
-            Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("debts").forGetter(BankAccount::debts),
-            BankTransaction.CODEC.listOf().fieldOf("transactions").forGetter(BankAccount::transactions),
-            TermDeposit.CODEC.listOf().fieldOf("termDeposits").forGetter(BankAccount::termDeposits),
-            Codec.INT.fieldOf("loanDaysRemaining").forGetter(BankAccount::loanDaysRemaining),
-            Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("depositInterestRemainders", Map.of())
-                    .forGetter(BankAccount::depositInterestRemainders),
-            Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("loanInterestRemainders", Map.of())
-                    .forGetter(BankAccount::loanInterestRemainders)
-    ).apply(instance, (id, credit, balances, debts, transactions, terms, days, depositRemainders, loanRemainders) ->
-            new BankAccount(id, credit, balances, debts, transactions, terms, days, depositRemainders, loanRemainders)));
+    /** Lazily initialized so pure account calculations do not load Minecraft's data-fixer runtime. */
+    public static Codec<BankAccount> codec() { return Codecs.CODEC; }
+
+    private static final class Codecs {
+        private static final Codec<BankAccount> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.STRING.fieldOf("id").forGetter(BankAccount::id),
+                Codec.BOOL.fieldOf("credit").forGetter(BankAccount::credit),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("balances").forGetter(BankAccount::balances),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("debts").forGetter(BankAccount::debts),
+                BankTransaction.codec().listOf().fieldOf("transactions").forGetter(BankAccount::transactions),
+                TermDeposit.codec().listOf().fieldOf("termDeposits").forGetter(BankAccount::termDeposits),
+                Codec.INT.fieldOf("loanDaysRemaining").forGetter(BankAccount::loanDaysRemaining),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("depositInterestRemainders", Map.of())
+                        .forGetter(BankAccount::depositInterestRemainders),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("loanInterestRemainders", Map.of())
+                        .forGetter(BankAccount::loanInterestRemainders)
+        ).apply(instance, (id, credit, balances, debts, transactions, terms, days, depositRemainders, loanRemainders) ->
+                new BankAccount(id, credit, balances, debts, transactions, terms, days, depositRemainders, loanRemainders)));
+    }
 
     public static BankAccount create(String id, boolean credit) {
         return new BankAccount(id, credit, new HashMap<>(), new HashMap<>(), new ArrayList<>(), new ArrayList<>(),

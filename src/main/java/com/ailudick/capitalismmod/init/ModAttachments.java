@@ -24,7 +24,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Map<String, BankAccount>>> BANK_ACCOUNTS =
             ATTACHMENT_TYPES.register("bank_accounts",
                     () -> AttachmentType.<Map<String, BankAccount>>builder(() -> new HashMap<String, BankAccount>())
-                            .serialize(Codec.unboundedMap(Codec.STRING, BankAccount.CODEC))
+                            .serialize(Codec.unboundedMap(Codec.STRING, BankAccount.codec()))
                             .build());
 
     // Player's conglomerate (group): created lazily when the player registers a company.

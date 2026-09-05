@@ -19,7 +19,7 @@ public record SyncBankAccountsPayload(Map<String, BankAccount> accounts) impleme
             new Type<>(ResourceLocation.fromNamespaceAndPath(CapitalismMod.MODID, "sync_bank_accounts"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncBankAccountsPayload> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.map(HashMap::new, ByteBufCodecs.STRING_UTF8, ByteBufCodecs.fromCodec(BankAccount.CODEC)), SyncBankAccountsPayload::accounts,
+            ByteBufCodecs.map(HashMap::new, ByteBufCodecs.STRING_UTF8, ByteBufCodecs.fromCodec(BankAccount.codec())), SyncBankAccountsPayload::accounts,
             SyncBankAccountsPayload::new);
 
     @Override

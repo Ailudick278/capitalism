@@ -12,9 +12,13 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  */
 public record BankTransaction(String type, String currencyId, long amount) {
 
-    public static final Codec<BankTransaction> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    public static Codec<BankTransaction> codec() { return Codecs.CODEC; }
+
+    private static final class Codecs {
+        private static final Codec<BankTransaction> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.STRING.fieldOf("type").forGetter(BankTransaction::type),
             Codec.STRING.fieldOf("currencyId").forGetter(BankTransaction::currencyId),
             Codec.LONG.fieldOf("amount").forGetter(BankTransaction::amount)
-    ).apply(instance, BankTransaction::new));
+        ).apply(instance, BankTransaction::new));
+    }
 }
