@@ -17,6 +17,7 @@ import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
+import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -94,9 +95,11 @@ public final class LogisticsTickHandler {
                     claims.settle(new LogisticsClaimSavedData.Claim(
                             java.util.UUID.randomUUID().toString(), shipment.id(), shipment.buyer(), insuredValue,
                             actualLoss, payout, now, "settled"));
+                    CompanyFreightContractSavedData.get(server).closeForLoss(shipment.id());
                     data.remove(shipment.id());
                 } else if (shipment.disruptionCount() + 1 >= Config.LOGISTICS_MAX_DISRUPTIONS.get()) {
                     LogisticsLossService.record(server, shipment);
+                    CompanyFreightContractSavedData.get(server).closeForLoss(shipment.id());
                     data.remove(shipment.id());
                 } else {
                     data.replace(new LogisticsSavedData.Shipment(shipment.id(), shipment.buyer(), shipment.itemId(),

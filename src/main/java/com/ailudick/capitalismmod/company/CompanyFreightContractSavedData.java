@@ -147,6 +147,23 @@ public final class CompanyFreightContractSavedData extends SavedData {
         return false;
     }
 
+    /** Closes an open contract when the shipment is lost before delivery. */
+    public boolean closeForLoss(String shipmentId) {
+        if (shipmentId == null || shipmentId.isBlank()) return false;
+        for (int i = 0; i < contracts.size(); i++) {
+            Contract contract = contracts.get(i);
+            if (shipmentId.equals(contract.shipmentId())
+                    && ("offered".equals(contract.status()) || "accepted".equals(contract.status()))) {
+                contracts.set(i, new Contract(contract.id(), contract.shipmentId(), contract.buyerCompanyId(),
+                        contract.carrierCompanyId(), contract.quotedCost(), contract.createdAt(),
+                        contract.acceptedAt(), contract.expiresAt(), "loss"));
+                setDirty();
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Marks open offers and accepted contracts past their term as expired. */
     public int expire(long now) {
         int changed = 0;
