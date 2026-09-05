@@ -30,6 +30,9 @@ public class CompanyCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         var root = Commands.literal("company");
         root.then(Commands.literal("list").executes(ctx -> list(ctx.getSource())));
+        root.then(Commands.literal("statement")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> statement(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("contribute")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .then(Commands.argument("amount", LongArgumentType.longArg(1))
@@ -167,6 +170,22 @@ public class CompanyCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("Contributed USD " + amount + " as paid-in capital."), false);
+        return 1;
+    }
+
+    private static int statement(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        var statement = com.ailudick.capitalismmod.company.CompanyFinancialSnapshot.from(player.getServer(), company);
+        source.sendSuccess(() -> Component.literal("Assets: USD " + statement.assets()
+                + " (cash " + statement.cash() + ", inventory " + statement.inventory()
+                + ", equipment " + statement.equipment() + ")"), false);
+        source.sendSuccess(() -> Component.literal("Liabilities: USD " + statement.liabilities()
+                + " (tax " + statement.taxLiabilities() + "), equity: USD " + statement.equity()), false);
         return 1;
     }
 

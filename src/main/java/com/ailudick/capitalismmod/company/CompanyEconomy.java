@@ -17,7 +17,7 @@ public final class CompanyEconomy {
     private CompanyEconomy() {
     }
 
-    /** USD income for one tick. Finance uses treasury interest; others use data-driven income × level. */
+    /** USD income for one tick. Production recipes describe one batch per cycle. */
     public static long incomePerTick(Company company, Player owner) {
         if (company == null || company.registeredCapital() <= 0) {
             return 0L;
@@ -32,12 +32,12 @@ public final class CompanyEconomy {
         return recipe(company).income();
     }
 
-    /** Commodities produced per tick (item id -> count), scaled by level. */
+    /** Commodities produced by one production batch. */
     public static Map<String, Integer> outputs(Company company) {
         return recipe(company).outputs();
     }
 
-    /** Commodities consumed per tick (item id -> count), scaled by level. */
+    /** Commodities consumed by one production batch. */
     public static Map<String, Integer> inputs(Company company) {
         return recipe(company).inputs();
     }

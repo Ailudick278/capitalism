@@ -18,6 +18,9 @@ separate accounting and operating metrics.
 - IPO share count and fundamental value are derived from registered capital.
 - Mergers add registered capital instead of adding levels.
 - The company and securities screens show capital rather than `Lv.`.
+- Added `/company statement`, a read-only balance-sheet snapshot showing cash,
+  inventory, equipment, liabilities and derived equity from the persisted
+  company resources.
 - Old serialized companies without `registeredCapital` load with the safe
   default of 1000 major currency units; new saves never write `level`.
 
@@ -39,3 +42,12 @@ a universal level.
 - Add production scheduling so multiple machines and workers create parallel
   batches without changing recipe quantities.
 - Add revenue, employee-count and asset-based reports for company comparison.
+
+## Reference material
+
+- [IFRS Conceptual Framework](https://www.ifrs.org/issued-standards/list-of-standards/conceptual-framework/)
+  separates assets, liabilities, equity, income and expenses, and treats owner
+  contributions as distinct from income.
+- [SEC Beginners' Guide to Financial Statements](https://www.sec.gov/about/reports-publications/beginners-guide-financial-statements)
+  explains the balance-sheet equation and the distinction between cash,
+  inventory, fixed assets and liabilities.

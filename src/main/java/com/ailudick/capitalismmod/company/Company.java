@@ -9,11 +9,12 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * A company owned by a player. Produces income over time based on its type and level.
+ * A company owned by a player. Its scale is expressed through capital, labor,
+ * equipment and production capacity rather than a universal level.
  *
  * @param name     company name (unique per owner)
  * @param type     company type id (see {@link CompanyTypes})
- * @param level    company level, drives income (starts at 1)
+ * @param registeredCapital subscribed/registered capital in major currency units
  * @param treasury currency id -> amount of undistributed profit (major units)
  * @param taxOwed  legacy compatibility mirror of unpaid corporate income tax (USD, major units)
  */

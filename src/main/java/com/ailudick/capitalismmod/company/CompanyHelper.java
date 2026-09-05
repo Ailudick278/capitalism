@@ -433,6 +433,7 @@ public final class CompanyHelper {
         Company company = getCompany(player, name);
         if (company == null || !EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(amount))) return false;
         long capital = EconomyMath.add(company.registeredCapital(), amount);
+        if (capital < 0L || company.treasuryOf(Currencies.USD.id()) > Long.MAX_VALUE - amount) return false;
         Company funded = company.withRegisteredCapital(capital).addTreasury(Currencies.USD.id(), amount);
         if (funded == company) return false;
         setCompany(player, name, funded);
