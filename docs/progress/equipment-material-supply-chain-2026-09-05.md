@@ -8,6 +8,7 @@
 - Equipment material consumption is atomic and reduces commodity supply after the machine is installed.
 - Existing installed equipment remains valid because the new requirement applies only to future purchases.
 - If the material reservation fails after the cash debit, the cash purchase is rolled back as a non-operating ledger entry.
+- The equipment BOMs were checked for dependency cycles and use upstream vanilla raw materials, so a machine never requires a downstream product that can only be made by that same machine class.
 
 ## Real-world alignment
 
