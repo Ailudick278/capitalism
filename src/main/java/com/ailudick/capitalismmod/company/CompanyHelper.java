@@ -280,10 +280,13 @@ public final class CompanyHelper {
         if (player.getServer() != null) {
             CompanySavedData.get(player.getServer()).put(company);
             net.minecraft.world.level.ChunkPos chunk = new net.minecraft.world.level.ChunkPos(player.blockPosition());
-            CompanySiteSavedData.get(player.getServer()).set(new CompanySiteSavedData.Site(company.companyId(),
-                    player.level().dimension().location().toString(), chunk.x, chunk.z));
-            OilFieldSavedData.get(player.getServer()).prospect(player.level().dimension().location().toString(),
-                    chunk.x, chunk.z);
+            String dimension = player.level().dimension().location().toString();
+            if (com.ailudick.capitalismmod.land.LandHelper.hasCommercialRight(player.getServer(), dimension,
+                    chunk.x, chunk.z, company.ownerUuid())) {
+                CompanySiteSavedData.get(player.getServer()).set(new CompanySiteSavedData.Site(company.companyId(),
+                        dimension, chunk.x, chunk.z));
+                OilFieldSavedData.get(player.getServer()).prospect(dimension, chunk.x, chunk.z);
+            }
         }
         return true;
     }
@@ -339,6 +342,8 @@ public final class CompanyHelper {
         if (machine == MachineType.OIL_WELL) {
             CompanySiteSavedData.Site site = CompanySiteSavedData.get(server).get(company.companyId());
             if (site == null) return false;
+            if (!com.ailudick.capitalismmod.land.LandHelper.hasCommercialRight(server, site.dimension(),
+                    site.chunkX(), site.chunkZ(), company.ownerUuid())) return false;
             oilField = OilFieldSavedData.get(server).get(site.dimension(), site.chunkX(), site.chunkZ());
             if (!OilFieldSavedData.get(server).canExtract(oilField, 3L)) return false;
         }

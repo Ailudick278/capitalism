@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanySiteSavedData;
 import com.ailudick.capitalismmod.company.OilFieldSavedData;
+import com.ailudick.capitalismmod.land.LandHelper;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
 import com.ailudick.capitalismmod.loan.CompanyLoanHelper;
@@ -246,6 +247,10 @@ public class CompanyCommand {
         }
         ChunkPos chunk = new ChunkPos(player.blockPosition());
         String dimension = player.level().dimension().location().toString();
+        if (!LandHelper.hasCommercialRight(player.getServer(), dimension, chunk.x, chunk.z, company.ownerUuid())) {
+            source.sendFailure(Component.literal("Operating sites require owned or leased land that is not frozen or auctioned."));
+            return 0;
+        }
         CompanySiteSavedData.get(player.getServer()).set(new CompanySiteSavedData.Site(
                 company.companyId(), dimension, chunk.x, chunk.z));
         OilFieldSavedData.Field field = OilFieldSavedData.get(player.getServer()).prospect(

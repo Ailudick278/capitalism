@@ -11,6 +11,7 @@ import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.List;
@@ -80,6 +81,21 @@ public final class LandHelper {
         boolean auction = LandAuctionSavedData.get(player.getServer()).get(claim.id()) != null;
         return LandStatus.resolve(taxOwed(player, claim), claim.taxDueAt(), claim.taxGraceUntil(), auction,
                 player.level().getGameTime());
+    }
+
+    /** Checks the durable land right required for a company operating site. */
+    public static boolean hasCommercialRight(MinecraftServer server, String dimension,
+                                              int chunkX, int chunkZ, UUID operator) {
+        if (server == null || dimension == null || dimension.isBlank() || operator == null) return false;
+        LandClaim claim = LandSavedData.get(server).get(dimension + ":" + chunkX + ":" + chunkZ);
+        if (claim == null) return false;
+        long now = server.overworld().getGameTime();
+        LandStatus status = LandStatus.resolve(claim.taxOwed(), claim.taxDueAt(), claim.taxGraceUntil(),
+                LandAuctionSavedData.get(server).get(claim.id()) != null, now);
+        if (status == LandStatus.TAX_FROZEN || status == LandStatus.AUCTION) return false;
+        if (claim.ownerUuid().equals(operator)) return true;
+        return claim.leaseeUuid() != null && claim.leaseeUuid().equals(operator)
+                && claim.leaseUntil() > now && claim.leaseDebt() <= 0L;
     }
 
     public static LandClaim.Role roleAt(ServerPlayer player, BlockPos pos) {
