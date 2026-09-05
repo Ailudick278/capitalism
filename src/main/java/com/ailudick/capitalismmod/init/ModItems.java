@@ -286,6 +286,10 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY_ELECTROLYTE = ITEMS.register("battery_electrolyte",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BATTERY_PACK = ITEMS.register("battery_pack",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BLACK_MASS = ITEMS.register("black_mass",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY = ITEMS.register("battery",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> SMARTPHONE = ITEMS.register("smartphone",

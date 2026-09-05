@@ -128,6 +128,8 @@ public class ModCreativeTabs {
                         output.accept(ModItems.CATHODE_ACTIVE_MATERIAL.get());
                         output.accept(ModItems.BATTERY_SEPARATOR.get());
                         output.accept(ModItems.BATTERY_ELECTROLYTE.get());
+                        output.accept(ModItems.BATTERY_PACK.get());
+                        output.accept(ModItems.BLACK_MASS.get());
                         output.accept(ModItems.BATTERY.get());
                         output.accept(ModItems.SMARTPHONE.get());
                         output.accept(ModItems.ELECTRIC_FAN.get());

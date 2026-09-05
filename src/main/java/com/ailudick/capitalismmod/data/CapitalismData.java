@@ -329,6 +329,8 @@ public final class CapitalismData {
                 new CommodityJson("capitalismmod:cathode_active_material", 145),
                 new CommodityJson("capitalismmod:battery_separator", 42),
                 new CommodityJson("capitalismmod:battery_electrolyte", 75),
+                new CommodityJson("capitalismmod:battery_pack", 420),
+                new CommodityJson("capitalismmod:black_mass", 155),
                 new CommodityJson("capitalismmod:battery", 95),
                 new CommodityJson("capitalismmod:smartphone", 650),
                 new CommodityJson("capitalismmod:electric_fan", 240)
@@ -464,6 +466,9 @@ public final class CapitalismData {
                         new RecipeJson("battery_electrolyte", Map.of("capitalismmod:lithium_carbonate", 1, "capitalismmod:lpg", 1), Map.of("capitalismmod:battery_electrolyte", 1), 125, "battery_materials", 3, 6, 10),
                         new RecipeJson("lithium_ion_cell", Map.of("capitalismmod:cathode_active_material", 1, "capitalismmod:graphite_anode", 1, "capitalismmod:battery_separator", 1, "capitalismmod:battery_electrolyte", 1, "capitalismmod:copper_wire", 1), Map.of("capitalismmod:battery_cell", 2), 260, "battery_cell_line", 4, 8, 13),
                         new RecipeJson("lithium_ion_battery", Map.of("capitalismmod:battery_cell", 2, "capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:battery", 1), 145, "electronics_assembly", 2, 4, 8),
+                        new RecipeJson("battery_pack", Map.of("capitalismmod:battery", 4, "capitalismmod:circuit_board", 1, "capitalismmod:steel_sheet", 1, "capitalismmod:plastic_pellets", 2), Map.of("capitalismmod:battery_pack", 1), 520, "electronics_assembly", 4, 8, 14),
+                        new RecipeJson("battery_pack_shredding", Map.of("capitalismmod:battery_pack", 1), Map.of("capitalismmod:black_mass", 2), 210, "battery_recycler", 3, 7, 12),
+                        new RecipeJson("black_mass_hydrometallurgy", Map.of("capitalismmod:black_mass", 2), Map.of("capitalismmod:lithium_carbonate", 1, "capitalismmod:graphite_anode", 1, "capitalismmod:cathode_active_material", 1), 330, "battery_recycler", 4, 9, 15),
                         new RecipeJson("smartphone", Map.of("capitalismmod:circuit_board", 1, "capitalismmod:battery", 1, "capitalismmod:display_panel", 1, "capitalismmod:phone_casing", 1, "capitalismmod:camera_module", 1, "capitalismmod:speaker_module", 1, "capitalismmod:microphone_module", 1, "capitalismmod:charging_port", 1), Map.of("capitalismmod:smartphone", 1), 650, "electronics_assembly", 4, 6, 12),
                         new RecipeJson("electric_fan", Map.of("capitalismmod:electric_motor", 1, "capitalismmod:fan_blades", 1, "capitalismmod:fan_control", 1, "capitalismmod:machine_frame", 1), Map.of("capitalismmod:electric_fan", 1), 240, "assembly_line", 3, 3, 9),
                         new RecipeJson("power_adapter", Map.of("capitalismmod:circuit_board", 1, "capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:power_adapter", 1), 180, "smt_line", 2, 4, 9),
