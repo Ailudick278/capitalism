@@ -119,6 +119,10 @@ public class CompanyCommand {
                         .then(Commands.argument("contractId", StringArgumentType.word())
                                 .executes(ctx -> acceptFreight(ctx.getSource(),
                                         StringArgumentType.getString(ctx, "contractId")))))
+                .then(Commands.literal("cancel")
+                        .then(Commands.argument("contractId", StringArgumentType.word())
+                                .executes(ctx -> cancelFreight(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "contractId")))))
                 .then(Commands.literal("contracts")
                         .then(Commands.argument("name", StringArgumentType.word())
                                 .executes(ctx -> freightContracts(ctx.getSource(),
@@ -742,6 +746,32 @@ public class CompanyCommand {
                         + " | carrier " + contract.carrierCompanyId() + " | USD " + contract.quotedCost()
                         + " | expires " + contract.expiresAt() + " | " + contract.status()), false));
         return contracts.size();
+    }
+
+    private static int cancelFreight(CommandSourceStack source, String contractId)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        CompanyFreightContractSavedData data = CompanyFreightContractSavedData.get(source.getServer());
+        data.expire(source.getServer().overworld().getGameTime());
+        CompanyFreightContractSavedData.Contract contract = data.find(contractId);
+        if (contract == null) {
+            source.sendFailure(Component.literal("Freight contract not found."));
+            return 0;
+        }
+        Company buyer = CompanySavedData.get(source.getServer()).get(contract.buyerCompanyId());
+        Company carrier = CompanySavedData.get(source.getServer()).get(contract.carrierCompanyId());
+        boolean authorized = buyer != null && buyer.ownerUuid().equals(player.getUUID())
+                || carrier != null && carrier.ownerUuid().equals(player.getUUID());
+        if (!authorized || (!"offered".equals(contract.status()) && !"accepted".equals(contract.status()))) {
+            source.sendFailure(Component.literal("Only the buyer or carrier owner can cancel an open contract."));
+            return 0;
+        }
+        if (!data.cancel(contract.id())) {
+            source.sendFailure(Component.literal("Freight contract could not be cancelled."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Freight contract " + contract.id() + " cancelled."), false);
+        return 1;
     }
 
     private static int qualityReview(CommandSourceStack source, String name, String batchId, String status)

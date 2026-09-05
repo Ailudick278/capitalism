@@ -9,6 +9,8 @@
 - 报价必须与该运输单当前未结运输应付账款的估算金额一致，避免合同金额与资产负债表脱节。
 - 承运运输企业所有者可接受报价：
   `/company logistics accept <contractId>`。
+- 买方或承运方所有者可以取消尚未结算的报价/合同：
+  `/company logistics cancel <contractId>`；取消后同一运输单可以重新报价。
 - 可通过 `/company logistics contracts <企业名>` 查看企业参与的运输合同。
 - 运输结算现在会检查活动合同：如果存在合同，必须由正确的买方和承运方签订且状态为 accepted；结算完成后合同转为 settled。
 - 没有合同的旧运输记录仍允许使用原有直接结算入口，保证旧存档兼容。
