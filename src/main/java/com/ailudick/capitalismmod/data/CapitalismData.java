@@ -90,7 +90,17 @@ public final class CapitalismData {
     }
 
     private static List<ShopOffer> loadShopOffers(Path dir) {
-        List<ShopOfferJson> raw = read(dir.resolve("shop_offers.json"), ShopOfferJson[].class, defaultShopOffers());
+        List<ShopOfferJson> defaults = defaultShopOffers();
+        List<ShopOfferJson> raw = new ArrayList<>(read(dir.resolve("shop_offers.json"), ShopOfferJson[].class, defaults));
+        Set<String> configuredOffers = new java.util.HashSet<>();
+        for (ShopOfferJson offer : raw) {
+            if (offer != null && offer.item != null && !offer.item.isBlank()) {
+                configuredOffers.add(offer.item + "|" + offer.currency);
+            }
+        }
+        for (ShopOfferJson offer : defaults) {
+            if (offer != null && configuredOffers.add(offer.item + "|" + offer.currency)) raw.add(offer);
+        }
         List<ShopOffer> result = new ArrayList<>();
         for (ShopOfferJson j : raw) {
             Item item = parseItem(j.item);
@@ -139,7 +149,15 @@ public final class CapitalismData {
     }
 
     private static List<Stock> loadStocks(Path dir) {
-        List<StockJson> raw = read(dir.resolve("stocks.json"), StockJson[].class, defaultStocks());
+        List<StockJson> defaults = defaultStocks();
+        List<StockJson> raw = new ArrayList<>(read(dir.resolve("stocks.json"), StockJson[].class, defaults));
+        Set<String> configuredStockIds = new java.util.HashSet<>();
+        for (StockJson stock : raw) {
+            if (stock != null && stock.id != null && !stock.id.isBlank()) configuredStockIds.add(stock.id);
+        }
+        for (StockJson stock : defaults) {
+            if (stock != null && configuredStockIds.add(stock.id)) raw.add(stock);
+        }
         List<Stock> result = new ArrayList<>();
         for (StockJson j : raw) {
             if (REMOVED_RESERVED_STOCKS.contains(j.id)) {
