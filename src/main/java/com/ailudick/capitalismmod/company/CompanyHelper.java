@@ -260,6 +260,7 @@ public final class CompanyHelper {
                 || CompanyEconomy.outputs(company).isEmpty() || !canProduceOutputs(server, company)) {
             return false;
         }
+        if (!CompanyLifecycleService.canOperate(server, company.companyId())) return false;
         ProductionRecipe recipe = CompanyEconomy.recipe(company);
         if (recipe == null) return false;
         MachineType machine = MachineType.parse(recipe.machineType());

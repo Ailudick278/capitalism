@@ -9,6 +9,8 @@ import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
 import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
 import com.ailudick.capitalismmod.company.Industries;
+import com.ailudick.capitalismmod.company.CompanyLifecycleService;
+import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
 import com.ailudick.capitalismmod.loan.CompanyLoanHelper;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
@@ -34,6 +36,15 @@ public class CompanyCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         var root = Commands.literal("company");
         root.then(Commands.literal("list").executes(ctx -> list(ctx.getSource())));
+        root.then(Commands.literal("status")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> status(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("suspend")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> suspend(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("resume")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> resume(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("statement")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> statement(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -210,6 +221,43 @@ public class CompanyCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("Contributed USD " + amount + " as paid-in capital."), false);
+        return 1;
+    }
+
+    private static int status(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        String state = CompanyLifecycleService.status(player.getServer(), company.companyId());
+        var record = com.ailudick.capitalismmod.company.CompanyStatusSavedData.get(player.getServer()).record(company.companyId());
+        source.sendSuccess(() -> Component.literal("Company status: " + state
+                + (record == null || record.reason().isBlank() ? "" : " | " + record.reason())), false);
+        return 1;
+    }
+
+    private static int suspend(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null || !CompanyLifecycleService.suspend(player, company, "suspended by owner")) {
+            source.sendFailure(Component.literal("Company cannot be suspended."));
+            return 0;
+        }
+        SupplyMarket.removeOffersForCompany(player.getServer(), player.getUUID(), company.name());
+        source.sendSuccess(() -> Component.literal("Company suspended; production and new supply listings are paused."), false);
+        return 1;
+    }
+
+    private static int resume(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null || !CompanyLifecycleService.resume(player, company)) {
+            source.sendFailure(Component.literal("Company cannot be resumed."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Company resumed."), false);
         return 1;
     }
 

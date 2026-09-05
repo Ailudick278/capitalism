@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyEconomy;
 import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.business.IndividualBusinessHelper;
 import com.ailudick.capitalismmod.business.IndividualBusiness;
 import com.ailudick.capitalismmod.currency.Currencies;
@@ -48,6 +49,7 @@ public final class SupplyMarket {
         if (company == null) {
             return false;
         }
+        if (!CompanyLifecycleService.canOperate(player.getServer(), company.companyId())) return false;
         if (!CompanyEconomy.outputs(company).containsKey(itemId)) {
             return false;
         }
