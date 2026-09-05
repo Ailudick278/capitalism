@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.company;
 
+import com.ailudick.capitalismmod.util.EconomyMath;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderLookup;
@@ -72,14 +73,39 @@ public final class CompanyEquipmentSavedData extends SavedData {
 
     /** Applies one production-cycle wear to the installed machine group. */
     public boolean use(String companyId, MachineType type) {
-        if (type == null || type == MachineType.NONE) return true;
+        return useAndMeasureBookValueLoss(companyId, type) >= 0L;
+    }
+
+    /**
+     * Applies one production-cycle wear and returns the resulting book-value
+     * loss. The condition percentage is used as a units-of-production proxy;
+     * the difference between the pre- and post-use carrying values preserves
+     * the full asset cost over the machine's useful life.
+     */
+    public long useAndMeasureBookValueLoss(String companyId, MachineType type) {
+        if (type == null || type == MachineType.NONE) return 0L;
         Map<String, Equipment> company = new HashMap<>(equipment.getOrDefault(companyId, Map.of()));
         Equipment current = company.get(type.id());
-        if (current == null || current.count() <= 0 || current.condition() <= 0) return false;
-        company.put(type.id(), new Equipment(type.id(), current.count(), Math.max(0, current.condition() - 1)));
+        if (current == null || current.count() <= 0 || current.condition() <= 0) return -1L;
+        long gross = EconomyMath.multiply(Math.max(0L, type.purchasePrice()), current.count());
+        if (gross < 0L) gross = Long.MAX_VALUE;
+        long before = carryingValue(gross, current.condition());
+        int nextCondition = Math.max(0, current.condition() - 1);
+        long after = carryingValue(gross, nextCondition);
+        company.put(type.id(), new Equipment(type.id(), current.count(), nextCondition));
         equipment.put(companyId, company);
         setDirty();
-        return true;
+        return Math.max(0L, before - after);
+    }
+
+    private static long carryingValue(long gross, int condition) {
+        if (gross <= 0L || condition <= 0) return 0L;
+        if (gross == Long.MAX_VALUE) return Long.MAX_VALUE;
+        int normalized = Math.min(100, condition);
+        long whole = EconomyMath.multiply(gross / 100L, normalized);
+        long remainder = gross % 100L * normalized / 100L;
+        long value = EconomyMath.add(whole, remainder);
+        return value < 0L ? Long.MAX_VALUE : value;
     }
 
     public boolean restore(String companyId, MachineType type, int targetCondition) {

@@ -369,10 +369,22 @@ public final class CompanyHelper {
                         Currencies.USD.id(), occurredAt);
             }
         }
+        long equipmentDepreciation = machine == MachineType.NONE ? 0L
+                : CompanyEquipmentSavedData.get(server).useAndMeasureBookValueLoss(company.companyId(), machine);
+        if (equipmentDepreciation < 0L) return false;
         long conversionCost = EconomyMath.add(inputConsumption.cost(), cost);
+        conversionCost = EconomyMath.add(Math.max(0L, conversionCost), equipmentDepreciation);
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
         produceOutputs(server, company, conversionCost);
-        CompanyEquipmentSavedData.get(server).use(company.companyId(), machine);
+        if (equipmentDepreciation > 0L) {
+            Company current = CompanySavedData.get(server).get(company.companyId());
+            if (current != null) {
+                recordNonCashExpense(server, current,
+                        "depreciation:" + company.companyId() + ":" + UUID.randomUUID(),
+                        equipmentDepreciation, Currencies.USD.id(),
+                        "Production equipment depreciation");
+            }
+        }
         return true;
     }
 

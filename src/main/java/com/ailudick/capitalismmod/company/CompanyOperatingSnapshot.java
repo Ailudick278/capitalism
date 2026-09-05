@@ -99,7 +99,8 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
     }
 
     private static boolean isCashFlow(CompanyLedgerEntry entry) {
-        return !isCostOfSales(entry) && !"inventory_loss".equals(entry.type());
+        return !isCostOfSales(entry) && !"inventory_loss".equals(entry.type())
+                && !"accrued_expense".equals(entry.type());
     }
 
     private static boolean isProfitExpense(CompanyLedgerEntry entry) {
