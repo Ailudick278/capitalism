@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
+import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
 import com.ailudick.capitalismmod.market.LogisticsClaimSavedData;
 import com.ailudick.capitalismmod.supply.SupplyOrderAuditSavedData;
@@ -37,6 +38,7 @@ public final class LogisticsCommand {
                 .executes(ctx -> list(ctx.getSource()))
                 .then(Commands.literal("losses").executes(ctx -> losses(ctx.getSource())))
                 .then(Commands.literal("claims").executes(ctx -> claims(ctx.getSource())))
+                .then(Commands.literal("costs").executes(ctx -> costs(ctx.getSource())))
                 .then(Commands.literal("repair")
                         .requires(source -> source.hasPermission(2))
                         .executes(ctx -> repair(ctx.getSource(), 0))
@@ -119,6 +121,29 @@ public final class LogisticsCommand {
         if (records.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No insurance claim records."), false);
         }
+        return records.size();
+    }
+
+    private static int costs(CommandSourceStack source) {
+        ServerPlayer player;
+        try {
+            player = source.getPlayerOrException();
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            source.sendFailure(Component.literal("This command can only be used by a player."));
+            return 0;
+        }
+        var records = LogisticsCostSavedData.get(source.getServer()).forBuyer(player.getUUID());
+        source.sendSuccess(() -> Component.literal("=== Logistics fuel cost plans ==="), false);
+        int start = Math.max(0, records.size() - 20);
+        for (int i = start; i < records.size(); i++) {
+            var plan = records.get(i);
+            source.sendSuccess(() -> Component.literal(plan.shipmentId().substring(0,
+                            Math.min(8, plan.shipmentId().length())) + " | " + plan.itemId()
+                    + " x" + plan.quantity() + " | " + plan.transport().id()
+                    + " | fuel " + plan.fuelUnits() + "x " + plan.fuelItemId()
+                    + " | estimated USD " + plan.estimatedCost()), false);
+        }
+        if (records.isEmpty()) source.sendSuccess(() -> Component.literal("No fuel cost plans."), false);
         return records.size();
     }
 

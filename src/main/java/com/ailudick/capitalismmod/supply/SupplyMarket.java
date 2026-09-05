@@ -17,6 +17,7 @@ import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
+import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import com.ailudick.capitalismmod.market.TransportMode;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
@@ -385,6 +386,20 @@ public final class SupplyMarket {
             data.add(new LogisticsSavedData.Shipment(UUID.randomUUID().toString(), buyer, itemId, batch, delay,
                     origin, destination, transport, false, 0, supplyOrderId, buyerCompanyId, unitPrice,
                     supplierUuid));
+            String shipmentId = data.shipments().get(data.shipments().size() - 1).id();
+            int fuelUnits = transport.estimatedFuelUnits(batch, distance);
+            long fuelUnitPrice = Math.max(0L, com.ailudick.capitalismmod.market.CommoditySavedData
+                    .get(server).price(transport.fuelItemId()));
+            long estimatedFuelCost;
+            try {
+                estimatedFuelCost = Math.multiplyExact((long) fuelUnits, fuelUnitPrice);
+            } catch (ArithmeticException e) {
+                estimatedFuelCost = Long.MAX_VALUE;
+            }
+            LogisticsCostSavedData.get(server).record(new LogisticsCostSavedData.FuelPlan(
+                    shipmentId, buyer, itemId, batch, origin, destination, transport,
+                    transport.fuelItemId(), fuelUnits, fuelUnitPrice, estimatedFuelCost,
+                    server.overworld().getGameTime()));
             remaining -= batch;
         }
     }
