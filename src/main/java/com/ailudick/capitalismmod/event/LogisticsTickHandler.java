@@ -29,6 +29,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /** Delivers due cargo into persistent warehouses, including for offline buyers. */
 @EventBusSubscriber(modid = CapitalismMod.MODID)
@@ -80,7 +82,9 @@ public final class LogisticsTickHandler {
                         insuredValue = Long.MAX_VALUE;
                     }
                     long actualLoss = actualLoss(shipment, insuredValue);
-                    long payout = Math.min(insuredValue, actualLoss);
+                    long coveredLoss = Math.min(insuredValue, actualLoss);
+                    long deductible = insuranceDeductible(insuredValue, coveredLoss);
+                    long payout = Math.max(0L, coveredLoss - deductible);
                     CompanyFreightContractSavedData.Contract freightContract =
                             CompanyFreightContractSavedData.get(server).activeForShipment(shipment.id());
                     String carrierCompanyId = freightContract == null ? "" : freightContract.carrierCompanyId();
@@ -97,7 +101,7 @@ public final class LogisticsTickHandler {
                     }
                     claims.settle(new LogisticsClaimSavedData.Claim(
                             java.util.UUID.randomUUID().toString(), shipment.id(), shipment.buyer(), insuredValue,
-                            actualLoss, payout, now, "settled", carrierCompanyId));
+                            actualLoss, payout, now, "settled", carrierCompanyId, deductible));
                     CompanyFreightContractSavedData.get(server).closeForLoss(shipment.id());
                     data.remove(shipment.id());
                 } else if (shipment.disruptionCount() + 1 >= Config.LOGISTICS_MAX_DISRUPTIONS.get()) {
@@ -143,6 +147,19 @@ public final class LogisticsTickHandler {
                         shipment.itemId(), shipment.quantity(), now));
             }
             data.remove(shipment.id());
+        }
+    }
+
+    private static long insuranceDeductible(long insuredValue, long coveredLoss) {
+        if (insuredValue <= 0L || coveredLoss <= 0L) return 0L;
+        try {
+            return BigDecimal.valueOf(insuredValue)
+                    .multiply(BigDecimal.valueOf(Config.LOGISTICS_INSURANCE_DEDUCTIBLE_RATE.get()))
+                    .setScale(0, RoundingMode.CEILING)
+                    .min(BigDecimal.valueOf(coveredLoss))
+                    .longValueExact();
+        } catch (ArithmeticException e) {
+            return coveredLoss;
         }
     }
 

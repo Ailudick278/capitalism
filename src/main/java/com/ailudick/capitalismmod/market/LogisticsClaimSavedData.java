@@ -19,14 +19,21 @@ public final class LogisticsClaimSavedData extends SavedData {
 
     public record Claim(String claimId, String shipmentId, UUID buyer, long insuredValue,
                         long actualLoss, long payout, long decidedAt, String status,
-                        String carrierCompanyId) {
+                        String carrierCompanyId, long deductible) {
         public Claim(String claimId, String shipmentId, UUID buyer, long insuredValue,
                      long actualLoss, long payout, long decidedAt, String status) {
-            this(claimId, shipmentId, buyer, insuredValue, actualLoss, payout, decidedAt, status, "");
+            this(claimId, shipmentId, buyer, insuredValue, actualLoss, payout, decidedAt, status, "", 0L);
+        }
+
+        public Claim(String claimId, String shipmentId, UUID buyer, long insuredValue,
+                     long actualLoss, long payout, long decidedAt, String status, String carrierCompanyId) {
+            this(claimId, shipmentId, buyer, insuredValue, actualLoss, payout, decidedAt, status,
+                    carrierCompanyId, 0L);
         }
 
         public Claim {
             carrierCompanyId = carrierCompanyId == null ? "" : carrierCompanyId;
+            deductible = Math.max(0L, deductible);
         }
     }
 
@@ -73,6 +80,7 @@ public final class LogisticsClaimSavedData extends SavedData {
             entry.putLong("decidedAt", claim.decidedAt());
             entry.putString("status", claim.status());
             if (!claim.carrierCompanyId().isBlank()) entry.putString("carrierCompanyId", claim.carrierCompanyId());
+            entry.putLong("deductible", claim.deductible());
             list.add(entry);
         }
         tag.put("claims", list);
@@ -89,7 +97,7 @@ public final class LogisticsClaimSavedData extends SavedData {
                         entry.getUUID("buyer"), Math.max(0L, entry.getLong("insuredValue")),
                         Math.max(0L, entry.getLong("actualLoss")), Math.max(0L, entry.getLong("payout")),
                         Math.max(0L, entry.getLong("decidedAt")), entry.getString("status"),
-                        entry.getString("carrierCompanyId")));
+                        entry.getString("carrierCompanyId"), Math.max(0L, entry.getLong("deductible"))));
             }
         }
         while (data.claims.size() > MAX_RECORDS) {

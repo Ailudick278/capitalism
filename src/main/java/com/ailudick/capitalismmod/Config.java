@@ -209,6 +209,10 @@ public class Config {
             .comment("Insurance premium as a fraction of the declared cargo value.")
             .defineInRange("logisticsInsuranceRate", 0.05, 0.0, 1.0);
 
+    public static final ModConfigSpec.DoubleValue LOGISTICS_INSURANCE_DEDUCTIBLE_RATE = BUILDER
+            .comment("Insurance deductible as a fraction of the declared cargo value.")
+            .defineInRange("logisticsInsuranceDeductibleRate", 0.10, 0.0, 1.0);
+
     public static final ModConfigSpec.LongValue LOGISTICS_DECLARED_VALUE = BUILDER
             .comment("Default declared value per cargo item in USD for logistics insurance.")
             .defineInRange("logisticsDeclaredValue", 10L, 1L, Long.MAX_VALUE);
