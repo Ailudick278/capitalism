@@ -18,6 +18,8 @@ import com.ailudick.capitalismmod.market.TransportMode;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.tax.TaxTransactionService;
+import com.ailudick.capitalismmod.tax.TaxType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -108,12 +110,18 @@ public final class SupplyMarket {
         if (buyerCompany != null) {
             CompanyHelper.recordTaxableExpense(buyer.getServer(), buyerCompany, orderSource,
                     total, Currencies.USD.id(), buyer.getServer().overworld().getGameTime());
+            TaxTransactionService.recordInputCredit(buyer.getServer(), buyerCompany.ownerUuid(),
+                    Currencies.USD.id(), Money.toMinorSaturated(total), orderSource,
+                    buyer.getServer().overworld().getGameTime());
         } else {
             IndividualBusiness business = IndividualBusinessHelper.get(buyer);
             if (business != null && "active".equals(business.status())) {
                 IndividualBusinessHelper.recordTaxableExpense(buyer, business, orderSource, total,
                         buyer.getServer().overworld().getGameTime(), offer.itemId() + " x" + quantity
                                 + " from " + offer.companyName());
+                TaxTransactionService.recordInputCredit(buyer.getServer(), business.ownerUuid(),
+                        Currencies.USD.id(), Money.toMinorSaturated(total), orderSource,
+                        buyer.getServer().overworld().getGameTime());
             }
         }
 
@@ -200,10 +208,13 @@ public final class SupplyMarket {
     }
 
     private static void paySupplier(MinecraftServer server, SupplyOffer offer, long amount, String sourceId) {
+        long now = server.overworld().getGameTime();
+        TaxTransactionService.assess(server, TaxType.VAT, offer.ownerUuid(), Currencies.USD.id(),
+                Money.toMinorSaturated(amount), "supply-sale:" + sourceId, now);
         Company company = CompanyHelper.findCompany(server, offer.ownerUuid(), offer.companyName());
         if (company != null && CompanyHelper.creditTreasury(server, company.companyId(), Currencies.USD.id(), amount)) {
             CompanyHelper.recordTaxableIncome(server, company, "supply_sale:" + sourceId,
-                    amount, Currencies.USD.id(), server.overworld().getGameTime());
+                    amount, Currencies.USD.id(), now);
             return;
         }
         UUID supplierUuid = offer.ownerUuid();

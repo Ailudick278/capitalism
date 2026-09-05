@@ -21,8 +21,31 @@ public final class TaxTransactionService {
         TaxRule rule = TaxRuleService.current(server, type, now);
         long taxAmount = TaxRuleService.taxMinor(server, type, grossAmountMinor, now);
         if (taxAmount <= 0L) return null;
-        TaxSubject subject = new TaxSubject(type, sourceEventId, taxpayerUuid);
+        TaxSubject subject = subjectFor(type, taxpayerUuid, sourceEventId);
+        if (type == TaxType.VAT) {
+            taxAmount -= TaxCreditSavedData.get(server).consume(subject, currencyId, taxAmount);
+            if (taxAmount <= 0L) return null;
+        }
         return TaxService.createBill(server, subject, currencyId, taxAmount, now, now, now,
                 sourceEventId, now, now, grossAmountMinor, rule.rateBasisPoints());
+    }
+
+    /** Records VAT paid on a qualifying business input for later output-tax deduction. */
+    public static long recordInputCredit(MinecraftServer server, UUID taxpayerUuid, String currencyId,
+                                         long grossAmountMinor, String sourceEventId, long now) {
+        if (taxpayerUuid == null || grossAmountMinor <= 0L || sourceEventId == null || sourceEventId.isBlank()) {
+            return 0L;
+        }
+        long credit = TaxRuleService.taxMinor(server, TaxType.VAT, grossAmountMinor, now);
+        if (credit <= 0L) return 0L;
+        TaxSubject subject = subjectFor(TaxType.VAT, taxpayerUuid, sourceEventId);
+        TaxCreditSavedData.get(server).add(subject, currencyId, credit,
+                "vat-input:" + sourceEventId, now, now, now);
+        return credit;
+    }
+
+    private static TaxSubject subjectFor(TaxType type, UUID taxpayerUuid, String sourceEventId) {
+        String subjectId = type == TaxType.VAT ? "vat:" + taxpayerUuid : sourceEventId;
+        return new TaxSubject(type, subjectId, taxpayerUuid);
     }
 }
