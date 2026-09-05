@@ -19,6 +19,7 @@ public class WorldMapMenu extends AbstractContainerMenu {
     private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload.Cell> landOverlay = new HashMap<>();
     private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload.OilField> oilFields = new HashMap<>();
     private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload.Site> companySites = new HashMap<>();
+    private final List<com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload.Node> logisticsNodes = new java.util.ArrayList<>();
     public int selectedChunkX;
     public int selectedChunkZ;
     public boolean hasSelectedChunk;
@@ -94,6 +95,15 @@ public class WorldMapMenu extends AbstractContainerMenu {
 
     public com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload.Site companySite(int chunkX, int chunkZ) {
         return companySites.get(key(chunkX, chunkZ));
+    }
+
+    public void setLogisticsNodes(com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload data) {
+        logisticsNodes.clear();
+        logisticsNodes.addAll(data.nodes());
+    }
+
+    public List<com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload.Node> logisticsNodes() {
+        return List.copyOf(logisticsNodes);
     }
 
     private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xFFFFFFFFL); }

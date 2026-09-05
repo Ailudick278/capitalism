@@ -237,6 +237,35 @@ public final class WorldMapWidget {
         drawCompanySites(graphics, menu.companySites());
     }
 
+    public void drawLogisticsNodeOverlay(GuiGraphics graphics, WorldMapMenu menu) {
+        drawLogisticsNodes(graphics, menu.logisticsNodes());
+    }
+
+    public void drawLogisticsNodeOverlay(GuiGraphics graphics, LandMenu menu) {
+        drawLogisticsNodes(graphics, menu.logisticsNodes());
+    }
+
+    private void drawLogisticsNodes(GuiGraphics graphics,
+                                    java.util.List<com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload.Node> nodes) {
+        float blockSize = viewport.zoom();
+        for (var node : nodes) {
+            float screenX = viewport.screenX(node.chunkX() * 16.0 + 8.0, x + width / 2.0F);
+            float screenZ = viewport.screenZ(node.chunkZ() * 16.0 + 8.0, y + height / 2.0F);
+            float size = Math.max(3.0F, Math.min(7.0F, blockSize * 2.5F));
+            int color = switch (node.facility()) {
+                case "port" -> 0xFF29B6F6;
+                case "transfer_station" -> 0xFFFFCA28;
+                default -> 0xFF66BB6A;
+            };
+            int cx = Math.round(screenX);
+            int cz = Math.round(screenZ);
+            graphics.fill(cx - (int) size, cz - (int) size, cx + (int) size + 1,
+                    cz + (int) size + 1, color);
+            drawBorder(graphics, cx - size - 1.0F, cz - size - 1.0F,
+                    size * 2.0F + 2.0F, 0xD0FFFFFF);
+        }
+    }
+
     private void drawCompanySites(GuiGraphics graphics,
                                   java.util.List<com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload.Site> sites) {
         float blockSize = viewport.zoom();

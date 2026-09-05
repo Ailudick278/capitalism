@@ -636,12 +636,14 @@ public class LandScreen<T extends AbstractContainerMenu> extends AbstractContain
             worldMapWidget.drawLandOverlay(graphics, (LandMenu) menu);
             worldMapWidget.drawOilFieldOverlay(graphics, (LandMenu) menu);
             worldMapWidget.drawCompanySiteOverlay(graphics, (LandMenu) menu);
+            worldMapWidget.drawLogisticsNodeOverlay(graphics, (LandMenu) menu);
         } else if (menu instanceof WorldMapMenu worldMapMenu) {
             worldMapWidget.drawWorldMapLandOverlay(graphics, worldMapMenu,
                     worldMapWidget.hoveredChunkX(), worldMapWidget.hoveredChunkZ(),
                     worldMapWidget.hasHoveredChunk());
             worldMapWidget.drawOilFieldOverlay(graphics, worldMapMenu);
             worldMapWidget.drawCompanySiteOverlay(graphics, worldMapMenu);
+            worldMapWidget.drawLogisticsNodeOverlay(graphics, worldMapMenu);
         }
         worldMapWidget.drawPlayerMarker(graphics);
         graphics.disableScissor();

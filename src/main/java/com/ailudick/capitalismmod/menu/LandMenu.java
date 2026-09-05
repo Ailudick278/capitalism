@@ -56,6 +56,7 @@ public class LandMenu extends AbstractContainerMenu {
     private final Map<Long, int[]> mapTiles = new HashMap<>();
     private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload.OilField> oilFields = new HashMap<>();
     private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload.Site> companySites = new HashMap<>();
+    private final List<com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload.Node> logisticsNodes = new java.util.ArrayList<>();
 
     public LandMenu(int containerId, Inventory inventory) {
         this(ModMenuTypes.LAND_MENU.get(), containerId);
@@ -113,6 +114,15 @@ public class LandMenu extends AbstractContainerMenu {
 
     public List<com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload.Site> companySites() {
         return List.copyOf(companySites.values());
+    }
+
+    public void setLogisticsNodes(com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload data) {
+        logisticsNodes.clear();
+        logisticsNodes.addAll(data.nodes());
+    }
+
+    public List<com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload.Node> logisticsNodes() {
+        return List.copyOf(logisticsNodes);
     }
 
     private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xFFFFFFFFL); }

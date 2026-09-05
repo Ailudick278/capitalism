@@ -62,6 +62,8 @@ import com.ailudick.capitalismmod.network.payload.SyncLandLogsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload;
 import com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload;
 import com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload;
+import com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload;
+import com.ailudick.capitalismmod.market.LogisticsNodeSavedData;
 import com.ailudick.capitalismmod.company.CompanySiteSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.OilFieldSavedData;
@@ -1158,6 +1160,7 @@ public class ServerPayloadHandler {
                     Config.WORLD_MAP_DISCOVERY_RADIUS.get());
             sendResourceOverlay(player);
             sendCompanySiteOverlay(player);
+            sendLogisticsNodeOverlay(player);
         });
     }
 
@@ -1168,6 +1171,7 @@ public class ServerPayloadHandler {
             sendLandOverlay(player, payload.centerChunkX(), payload.centerChunkZ(), payload.radius());
             sendResourceOverlay(player);
             sendCompanySiteOverlay(player);
+            sendLogisticsNodeOverlay(player);
         });
     }
 
@@ -1198,6 +1202,18 @@ public class ServerPayloadHandler {
                     company.name(), company.type()));
         }
         PacketDistributor.sendToPlayer(player, new SyncCompanySiteOverlayPayload(dimension, List.copyOf(sites)));
+    }
+
+    private static void sendLogisticsNodeOverlay(ServerPlayer player) {
+        String dimension = player.serverLevel().dimension().location().toString();
+        WorldMapTileSavedData tiles = WorldMapTileSavedData.get(player.getServer());
+        List<SyncLogisticsNodeOverlayPayload.Node> nodes = new ArrayList<>();
+        for (LogisticsNodeSavedData.Node node : LogisticsNodeSavedData.get(player.getServer()).inDimension(dimension)) {
+            if (tiles.get(dimension + ":" + node.chunkX() + ":" + node.chunkZ()) != null) {
+                nodes.add(new SyncLogisticsNodeOverlayPayload.Node(node.chunkX(), node.chunkZ(), node.facility()));
+            }
+        }
+        PacketDistributor.sendToPlayer(player, new SyncLogisticsNodeOverlayPayload(dimension, List.copyOf(nodes)));
     }
 
     private static void sendLandOverlay(ServerPlayer player, int centerChunkX, int centerChunkZ, int requestedRadius) {

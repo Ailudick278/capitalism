@@ -43,6 +43,7 @@ import com.ailudick.capitalismmod.network.payload.SyncLandLogsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload;
 import com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload;
 import com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload;
+import com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandPermissionsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandSalePayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandOwnershipPayload;
@@ -114,6 +115,13 @@ public class ClientPayloadHandler {
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof WorldMapMenu menu) menu.setCompanySites(payload);
             else if (context.player().containerMenu instanceof LandMenu menu) menu.setCompanySites(payload);
+        });
+    }
+
+    public static void handleSyncLogisticsNodes(SyncLogisticsNodeOverlayPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player().containerMenu instanceof WorldMapMenu menu) menu.setLogisticsNodes(payload);
+            else if (context.player().containerMenu instanceof LandMenu menu) menu.setLogisticsNodes(payload);
         });
     }
 
