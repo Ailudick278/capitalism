@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
+import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
@@ -24,10 +25,35 @@ public final class LogisticsCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("logistics")
                 .executes(ctx -> list(ctx.getSource()))
+                .then(Commands.literal("losses").executes(ctx -> losses(ctx.getSource())))
                 .then(Commands.literal("insure")
                         .then(Commands.argument("shipment", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(ctx -> insure(ctx.getSource(),
                                         com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "shipment"))))));
+    }
+
+    private static int losses(CommandSourceStack source) {
+        ServerPlayer player;
+        try {
+            player = source.getPlayerOrException();
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            source.sendFailure(Component.literal("This command can only be used by a player."));
+            return 0;
+        }
+        var records = LogisticsLossSavedData.get(source.getServer()).losses().stream()
+                .filter(loss -> loss.buyer().equals(player.getUUID())).toList();
+        source.sendSuccess(() -> Component.literal("=== Logistics loss records ==="), false);
+        int start = Math.max(0, records.size() - 20);
+        for (int i = start; i < records.size(); i++) {
+            var loss = records.get(i);
+            source.sendSuccess(() -> Component.literal(loss.itemId() + " x" + loss.quantity()
+                    + " | " + loss.originRegion() + " -> " + loss.destinationRegion()
+                    + " | disruptions " + loss.disruptionCount()), false);
+        }
+        if (records.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No lost cargo records."), false);
+        }
+        return records.size();
     }
 
     private static int list(CommandSourceStack source) {

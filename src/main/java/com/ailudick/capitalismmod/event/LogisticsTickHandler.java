@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.event;
 
 import com.ailudick.capitalismmod.CapitalismMod;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
+import com.ailudick.capitalismmod.market.LogisticsLossService;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
@@ -55,6 +56,7 @@ public final class LogisticsTickHandler {
                     MarketMailboxSavedData.get(server).creditMoney(shipment.buyer(), "usd", Money.toMinor(payout));
                     data.remove(shipment.id());
                 } else if (shipment.disruptionCount() + 1 >= Config.LOGISTICS_MAX_DISRUPTIONS.get()) {
+                    LogisticsLossService.record(server, shipment);
                     data.remove(shipment.id());
                 } else {
                     data.replace(new LogisticsSavedData.Shipment(shipment.id(), shipment.buyer(), shipment.itemId(),
