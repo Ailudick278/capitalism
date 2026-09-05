@@ -3,8 +3,10 @@ package com.ailudick.capitalismmod.command;
 import com.ailudick.capitalismmod.bank.BankAccount;
 import com.ailudick.capitalismmod.bank.BankAccountHelper;
 import com.ailudick.capitalismmod.bank.BankTransaction;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Money;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -12,7 +14,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /** Read-only account statement and transaction summary. */
 public final class BankStatementCommand {
@@ -23,10 +27,14 @@ public final class BankStatementCommand {
         dispatcher.register(Commands.literal("bankstatement")
                 .then(Commands.argument("account", StringArgumentType.word())
                         .executes(ctx -> statement(ctx.getSource(),
-                                StringArgumentType.getString(ctx, "account")))));
+                                StringArgumentType.getString(ctx, "account"), 0))
+                        .then(Commands.argument("days", IntegerArgumentType.integer(1, 360))
+                                .executes(ctx -> statement(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "account"),
+                                        IntegerArgumentType.getInteger(ctx, "days"))))));
     }
 
-    private static int statement(CommandSourceStack source, String accountId) {
+    private static int statement(CommandSourceStack source, String accountId, int days) {
         ServerPlayer player;
         try {
             player = source.getPlayerOrException();
@@ -39,7 +47,8 @@ public final class BankStatementCommand {
             source.sendFailure(Component.literal("Bank account not found."));
             return 0;
         }
-        source.sendSuccess(() -> Component.literal("=== Bank statement " + account.id() + " ==="), false);
+        source.sendSuccess(() -> Component.literal("=== Bank statement " + account.id()
+                + (days > 0 ? " / last " + days + " days" : " / retained history") + " ==="), false);
         source.sendSuccess(() -> Component.literal("Account type: " + (account.credit() ? "credit" : "debit")), false);
         for (Map.Entry<String, Long> entry : account.balances().entrySet()) {
             source.sendSuccess(() -> Component.literal("Balance " + entry.getKey().toUpperCase()
@@ -51,8 +60,13 @@ public final class BankStatementCommand {
                         + ": " + Money.format(entry.getValue())), false);
             }
         }
+        long now = player.level().getGameTime();
+        long start = days > 0 ? now - PerpetualCalendar.ticksForDays(days) : Long.MIN_VALUE;
+        List<BankTransaction> visible = account.transactions().stream()
+                .filter(transaction -> days <= 0 || transaction.occurredAt() >= start)
+                .collect(Collectors.toList());
         Map<String, long[]> summary = new HashMap<>();
-        for (BankTransaction transaction : account.transactions()) {
+        for (BankTransaction transaction : visible) {
             long[] totals = summary.computeIfAbsent(transaction.currencyId(), ignored -> new long[2]);
             if (transaction.amount() >= 0L) {
                 totals[0] = addSaturated(totals[0], transaction.amount());
@@ -70,13 +84,16 @@ public final class BankStatementCommand {
                     + " | debits " + Money.format(totals[1])), false);
         }
         source.sendSuccess(() -> Component.literal("Recent transactions (up to "
-                + account.transactions().size() + ")"), false);
-        int start = Math.max(0, account.transactions().size() - 10);
-        for (int i = start; i < account.transactions().size(); i++) {
-            BankTransaction transaction = account.transactions().get(i);
-            source.sendSuccess(() -> Component.literal(transaction.type() + " | "
+                + visible.size() + ")"), false);
+        int first = Math.max(0, visible.size() - 10);
+        for (int i = first; i < visible.size(); i++) {
+            BankTransaction transaction = visible.get(i);
+            String occurred = transaction.occurredAt() < 0L
+                    ? "legacy"
+                    : PerpetualCalendar.formatMinecraftTicks(transaction.occurredAt());
+            source.sendSuccess(() -> Component.literal(occurred + " | " + transaction.type() + " | "
                     + transaction.currencyId().toUpperCase() + " "
-                    + Money.format(transaction.amount())), false);
+                    + Money.format(transaction.amount()) + " | ref " + transaction.reference()), false);
         }
         return 1;
     }

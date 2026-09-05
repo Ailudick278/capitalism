@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.bank;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.world.entity.player.Player;
 
 /**
  * A single entry in a bank account's transaction history.
@@ -9,8 +10,23 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  * @param type       one of "deposit", "withdraw", "loan", "repay", "interest", "transfer_out", "transfer_fee", "transfer_in"
  * @param currencyId currency the transaction is denominated in
  * @param amount     signed amount (positive = into the account / earned, negative = out / owed)
+ * @param occurredAt world tick when the transaction was recorded; -1 means legacy data
+ * @param reference  stable human-readable source/reference, when available
  */
-public record BankTransaction(String type, String currencyId, long amount) {
+public record BankTransaction(String type, String currencyId, long amount, long occurredAt, String reference) {
+
+    public BankTransaction(String type, String currencyId, long amount) {
+        this(type, currencyId, amount, -1L, "legacy");
+    }
+
+    public BankTransaction {
+        reference = reference == null ? "" : reference;
+    }
+
+    public static BankTransaction now(Player player, String type, String currencyId, long amount) {
+        long tick = player == null || player.level() == null ? -1L : player.level().getGameTime();
+        return new BankTransaction(type, currencyId, amount, tick, type);
+    }
 
     public static Codec<BankTransaction> codec() { return Codecs.CODEC; }
 
@@ -18,7 +34,9 @@ public record BankTransaction(String type, String currencyId, long amount) {
         private static final Codec<BankTransaction> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.STRING.fieldOf("type").forGetter(BankTransaction::type),
             Codec.STRING.fieldOf("currencyId").forGetter(BankTransaction::currencyId),
-            Codec.LONG.fieldOf("amount").forGetter(BankTransaction::amount)
+            Codec.LONG.fieldOf("amount").forGetter(BankTransaction::amount),
+            Codec.LONG.optionalFieldOf("occurredAt", -1L).forGetter(BankTransaction::occurredAt),
+            Codec.STRING.optionalFieldOf("reference", "legacy").forGetter(BankTransaction::reference)
         ).apply(instance, BankTransaction::new));
     }
 }

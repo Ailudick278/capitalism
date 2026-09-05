@@ -107,7 +107,7 @@ public final class BankAccountHelper {
                 long interest = accrual.wholeMinorUnits();
                 if (interest > 0) {
                     entry.setValue(safeAdd(entry.getValue(), interest));
-                    txs.add(new BankTransaction("interest", entry.getKey(), interest));
+                    txs.add(BankTransaction.now(player, "interest", entry.getKey(), interest));
                     changed = true;
                 }
             }
@@ -130,7 +130,7 @@ public final class BankAccountHelper {
                 long interest = accrual.wholeMinorUnits();
                 if (interest > 0) {
                     entry.setValue(safeAdd(entry.getValue(), interest));
-                    txs.add(new BankTransaction("interest", entry.getKey(), -interest));
+                    txs.add(BankTransaction.now(player, "interest", entry.getKey(), -interest));
                     changed = true;
                 }
             }
@@ -142,7 +142,7 @@ public final class BankAccountHelper {
                     long payout = safeAdd(term.principal(), term.interest());
                     long balance = newBalances.getOrDefault(term.currencyId(), 0L);
                     newBalances.put(term.currencyId(), safeAdd(balance, payout));
-                    txs.add(new BankTransaction("term_maturity", term.currencyId(), payout));
+                    txs.add(BankTransaction.now(player, "term_maturity", term.currencyId(), payout));
                 } else {
                     newTerms.add(ticked);
                 }
@@ -179,14 +179,14 @@ public final class BankAccountHelper {
                 return false;
             }
             account = account.withBalance(currency.id(), newBalance)
-                    .withTransaction(new BankTransaction("deposit", currency.id(), amount));
+                    .withTransaction(BankTransaction.now(player, "deposit", currency.id(), amount));
         } else {
             // account -> physical items
             if (accountBalance < amount) {
                 return false;
             }
             account = account.withBalance(currency.id(), accountBalance - amount)
-                    .withTransaction(new BankTransaction("withdraw", currency.id(), -amount));
+                    .withTransaction(BankTransaction.now(player, "withdraw", currency.id(), -amount));
             EconomyHelper.giveMoney(player, currency, amount);
         }
 
@@ -210,8 +210,8 @@ public final class BankAccountHelper {
         }
         BankAccount updated = account.withBalance(from.id(), account.getBalance(from.id()) - amount)
                 .withBalance(to.id(), targetBalance + converted)
-                .withTransaction(new BankTransaction("exchange", from.id(), -amount))
-                .withTransaction(new BankTransaction("exchange", to.id(), converted));
+                .withTransaction(BankTransaction.now(player, "exchange", from.id(), -amount))
+                .withTransaction(BankTransaction.now(player, "exchange", to.id(), converted));
         updateAccount(player, updated);
         return true;
     }
@@ -245,7 +245,7 @@ public final class BankAccountHelper {
         EconomyHelper.giveMoney(player, currency, amount);
         updateAccount(player, account.withDebt(currency.id(), newDebt)
                 .withLoanDaysRemaining(loanDays)
-                .withTransaction(new BankTransaction("loan", currency.id(), amount)));
+                .withTransaction(BankTransaction.now(player, "loan", currency.id(), amount)));
         NeoForge.EVENT_BUS.post(new LoanTakenEvent(player, accountId, currency.id(), amount));
         return true;
     }
@@ -267,7 +267,7 @@ public final class BankAccountHelper {
             return false;
         }
         BankAccount updated = account.withDebt(currency.id(), debt - amount)
-                .withTransaction(new BankTransaction("repay", currency.id(), -amount));
+                .withTransaction(BankTransaction.now(player, "repay", currency.id(), -amount));
         if (totalDebtInBase(updated) == 0) {
             updated = updated.withLoanDaysRemaining(0);
         }
@@ -291,7 +291,7 @@ public final class BankAccountHelper {
         terms.add(new TermDeposit(currencyId, amount, interest, termDays));
         account = account.withBalance(currencyId, account.getBalance(currencyId) - amount)
                 .withTermDeposits(terms)
-                .withTransaction(new BankTransaction("term_deposit", currencyId, -amount));
+                .withTransaction(BankTransaction.now(player, "term_deposit", currencyId, -amount));
         updateAccount(player, account);
         return true;
     }
@@ -307,7 +307,7 @@ public final class BankAccountHelper {
         terms.remove(index);
         account = account.withBalance(term.currencyId(), safeAdd(account.getBalance(term.currencyId()), term.principal()))
                 .withTermDeposits(terms)
-                .withTransaction(new BankTransaction("term_withdraw", term.currencyId(), term.principal()));
+                .withTransaction(BankTransaction.now(player, "term_withdraw", term.currencyId(), term.principal()));
         updateAccount(player, account);
         return true;
     }
@@ -332,13 +332,13 @@ public final class BankAccountHelper {
             return false;
         }
         BankAccount senderUpdated = from.withBalance(currencyId, from.getBalance(currencyId) - total)
-                .withTransaction(new BankTransaction("transfer_out", currencyId, -amount));
+                .withTransaction(BankTransaction.now(sender, "transfer_out", currencyId, -amount));
         if (fee > 0L) {
-            senderUpdated = senderUpdated.withTransaction(new BankTransaction("transfer_fee", currencyId, -fee));
+            senderUpdated = senderUpdated.withTransaction(BankTransaction.now(sender, "transfer_fee", currencyId, -fee));
         }
         updateAccount(sender, senderUpdated);
         updateAccount(target, to.withBalance(currencyId, targetBalance)
-                .withTransaction(new BankTransaction("transfer_in", currencyId, amount)));
+                .withTransaction(BankTransaction.now(sender, "transfer_in", currencyId, amount)));
         return true;
     }
 
