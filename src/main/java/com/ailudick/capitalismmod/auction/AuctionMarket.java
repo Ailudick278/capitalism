@@ -93,22 +93,33 @@ public final class AuctionMarket {
     public static boolean cancelAuction(ServerPlayer player, String auctionId) {
         if (player == null || auctionId == null || auctionId.isBlank()) return false;
         AuctionSavedData data = AuctionSavedData.get(player.getServer());
+        AuctionSettlementSavedData settlements = AuctionSettlementSavedData.get(player.getServer());
         Auction auction = data.findAuction(auctionId);
         if (auction == null || !auction.seller().equals(player.getUUID())
                 || !auction.currentBidder().isEmpty()) return false;
         var commodity = Commodities.byId(auction.itemId());
         if (commodity == null || auction.quantity() <= 0) return false;
-        data.removeAuction(auction.id());
+        if (settlements.has(auction.id())) {
+            data.removeAuction(auction.id());
+            return true;
+        }
         WarehouseSavedData.get(player.getServer()).credit(player.getUUID(), commodity.getItem(), auction.quantity());
+        settlements.record(auction.id());
+        data.removeAuction(auction.id());
         return true;
     }
 
     /** Settles all auctions whose end time has passed. */
     public static void settleExpired(MinecraftServer server) {
         AuctionSavedData data = AuctionSavedData.get(server);
+        AuctionSettlementSavedData settlements = AuctionSettlementSavedData.get(server);
         long now = server.overworld().getGameTime();
         for (Auction auction : new ArrayList<>(data.auctions())) {
             if (auction.endTick() > now) {
+                continue;
+            }
+            if (settlements.has(auction.id())) {
+                data.removeAuction(auction.id());
                 continue;
             }
             Item item = Commodities.byId(auction.itemId()) == null ? null : Commodities.byId(auction.itemId()).getItem();
@@ -146,6 +157,7 @@ public final class AuctionMarket {
                         Money.toMinorSaturated(auction.currentBid()), "auction-sale:" + auction.id(),
                         server.overworld().getGameTime());
             }
+            settlements.record(auction.id());
             data.removeAuction(auction.id());
         }
     }
