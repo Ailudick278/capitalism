@@ -6,6 +6,7 @@
 - Orders paid from a company treasury are refunded to that company's treasury.
 - Personal orders and legacy orders without a valid company continue to refund the buyer's mailbox.
 - The supply-order audit distinguishes company-treasury refunds from personal mailbox refunds.
+- Unused VAT input credit is proportionally reversed when an undelivered part of a prepaid order expires, with a separate tax-invoice audit entry.
 
 ## Real-world alignment
 

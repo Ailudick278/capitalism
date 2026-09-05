@@ -61,6 +61,21 @@ public final class TaxTransactionService {
         return credit;
     }
 
+    /** Reverses unused input VAT credit when the underlying purchase is refunded. */
+    public static long reverseInputCredit(MinecraftServer server, UUID taxpayerUuid, String currencyId,
+                                          long amountMinor, String sourceEventId, long now) {
+        if (server == null || taxpayerUuid == null || amountMinor <= 0L
+                || sourceEventId == null || sourceEventId.isBlank()) return 0L;
+        long reversed = TaxCreditSavedData.get(server).reverseSource(
+                taxpayerUuid, currencyId, sourceEventId, amountMinor);
+        if (reversed > 0L) {
+            TaxInvoiceSavedData.get(server).add(new TaxInvoiceSavedData.Invoice(
+                    UUID.randomUUID().toString(), "vat-reversal:" + sourceEventId + ":" + now,
+                    taxpayerUuid, currencyId, 0L, 0L, -reversed, now, "input-reversal"));
+        }
+        return reversed;
+    }
+
     private static TaxSubject subjectFor(TaxType type, UUID taxpayerUuid, String sourceEventId) {
         String subjectId = type == TaxType.VAT ? "vat:" + taxpayerUuid : sourceEventId;
         return new TaxSubject(type, subjectId, taxpayerUuid);

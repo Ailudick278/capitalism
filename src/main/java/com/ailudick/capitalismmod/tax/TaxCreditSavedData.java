@@ -140,6 +140,42 @@ public final class TaxCreditSavedData extends SavedData {
         return used;
     }
 
+    /** Reverses unused input VAT credit that came from a cancelled or refunded source event. */
+    public long reverseSource(UUID taxpayerUuid, String currencyId, String sourceEventId, long amount) {
+        if (taxpayerUuid == null || currencyId == null || sourceEventId == null
+                || sourceEventId.isBlank() || amount <= 0L) return 0L;
+        String sourceId = "vat-input:" + sourceEventId;
+        TaxSubject subject = new TaxSubject(TaxType.VAT, "vat:" + taxpayerUuid, taxpayerUuid);
+        String creditKey = key(subject, currencyId);
+        long balance = credits.getOrDefault(creditKey, 0L);
+        long sourceBalance = lots.stream()
+                .filter(lot -> lot.taxpayerUuid().equals(taxpayerUuid)
+                        && lot.currencyId().equals(currencyId)
+                        && lot.sourceId().equals(sourceId))
+                .mapToLong(CreditLot::amount)
+                .sum();
+        long reversed = Math.min(amount, Math.min(balance, Math.max(0L, sourceBalance)));
+        if (reversed <= 0L) return 0L;
+        long remainingCredit = balance - reversed;
+        if (remainingCredit == 0L) credits.remove(creditKey);
+        else credits.put(creditKey, remainingCredit);
+
+        long remaining = reversed;
+        for (int i = 0; i < lots.size() && remaining > 0L; i++) {
+            CreditLot lot = lots.get(i);
+            if (!lot.taxpayerUuid().equals(taxpayerUuid) || !lot.currencyId().equals(currencyId)
+                    || !lot.sourceId().equals(sourceId) || lot.amount() <= 0L) continue;
+            long used = Math.min(remaining, lot.amount());
+            remaining -= used;
+            if (used == lot.amount()) lots.remove(i--);
+            else lots.set(i, new CreditLot(lot.taxpayerUuid(), lot.currencyId(), lot.subjectType(),
+                    lot.subjectId(), lot.sourceId(), lot.periodStart(), lot.periodEnd(), lot.createdAt(),
+                    lot.amount() - used));
+        }
+        setDirty();
+        return reversed;
+    }
+
     public boolean hasAppliedSource(String sourceId) {
         return sourceId != null && !sourceId.isBlank() && appliedSources.contains(sourceId);
     }

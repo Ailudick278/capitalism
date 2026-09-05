@@ -112,6 +112,7 @@ public final class SupplyMarket {
         String supplyOrderId = UUID.randomUUID().toString();
         String buyerCompanyId = buyerCompany == null ? "" : buyerCompany.companyId();
         String orderSource = "supply_order:" + supplyOrderId;
+        long inputCreditMinor = 0L;
         if (buyerCompany != null) {
             if (!CompanyHelper.debitTreasury(buyer.getServer(), buyerCompany.companyId(), Currencies.USD.id(),
                     total, "supply_purchase", "采购原料并取得存货")) {
@@ -123,7 +124,7 @@ public final class SupplyMarket {
         SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "CREATED", buyer.getUUID(),
                 offer.ownerUuid(), offer.itemId(), quantity, total);
         if (buyerCompany != null) {
-            TaxTransactionService.recordInputCredit(buyer.getServer(), buyerCompany.ownerUuid(),
+            inputCreditMinor = TaxTransactionService.recordInputCredit(buyer.getServer(), buyerCompany.ownerUuid(),
                     Currencies.USD.id(), Money.toMinorSaturated(total), orderSource,
                     buyer.getServer().overworld().getGameTime());
         } else {
@@ -132,7 +133,7 @@ public final class SupplyMarket {
                 IndividualBusinessHelper.recordTaxableExpense(buyer, business, orderSource, total,
                         buyer.getServer().overworld().getGameTime(), offer.itemId() + " x" + quantity
                                 + " from " + offer.companyName());
-                TaxTransactionService.recordInputCredit(buyer.getServer(), business.ownerUuid(),
+                inputCreditMinor = TaxTransactionService.recordInputCredit(buyer.getServer(), business.ownerUuid(),
                         Currencies.USD.id(), Money.toMinorSaturated(total), orderSource,
                         buyer.getServer().overworld().getGameTime());
             }
@@ -158,10 +159,13 @@ public final class SupplyMarket {
 
         int remaining = quantity - filled;
         if (remaining > 0) {
-            data.addOrder(new PurchaseOrder(supplyOrderId, buyer.getUUID(),
+            PurchaseOrder backorder = new PurchaseOrder(supplyOrderId, buyer.getUUID(),
                     offer.ownerUuid(), offer.companyName(), offer.itemId(), remaining, offer.region(),
                     TradeRegion.of(buyer.blockPosition()), offer.price(),
-                    buyer.getServer().overworld().getGameTime(), buyerCompanyId));
+                    buyer.getServer().overworld().getGameTime(), buyerCompanyId)
+                    .withOriginalQuantity(quantity)
+                    .withInputCreditMinor(inputCreditMinor);
+            data.addOrder(backorder);
             SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "BACKORDERED", buyer.getUUID(),
                     offer.ownerUuid(), offer.itemId(), remaining, EconomyMath.multiply(offer.price(), remaining));
         } else {
@@ -200,10 +204,26 @@ public final class SupplyMarket {
             if (!refundedToCompany) {
                 MarketMailboxSavedData.get(server).creditMoney(order.buyerUuid(), Currencies.USD.id(), refundMinor);
             }
+            long creditToReverse = proportionalInputCredit(order);
+            if (creditToReverse > 0L) {
+                TaxTransactionService.reverseInputCredit(server, order.buyerUuid(), Currencies.USD.id(),
+                        creditToReverse, "supply_order:" + order.id(), now);
+            }
             SupplyOrderAuditService.record(server, order,
                     refundedToCompany ? "EXPIRED_REFUND_COMPANY" : "EXPIRED_REFUND",
                     order.remaining(), refund);
             data.removeOrder(order.id());
+        }
+    }
+
+    private static long proportionalInputCredit(PurchaseOrder order) {
+        if (order == null || order.inputCreditMinor() <= 0L || order.remaining() <= 0
+                || order.originalQuantity() <= 0) return 0L;
+        try {
+            return Math.multiplyExact(order.inputCreditMinor(), (long) order.remaining())
+                    / order.originalQuantity();
+        } catch (ArithmeticException e) {
+            return order.inputCreditMinor();
         }
     }
 
