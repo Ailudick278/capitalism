@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.tax.TaxService;
 import com.ailudick.capitalismmod.tax.TaxSubject;
 import com.ailudick.capitalismmod.tax.TaxType;
+import com.ailudick.capitalismmod.economy.EconomySavedData;
 
 /** Applies the small legal-status state machine currently supported by companies. */
 public final class CompanyLifecycleService {
@@ -48,6 +49,17 @@ public final class CompanyLifecycleService {
         if (!"ACTIVE".equals(data.statusOf(companyId))) return false;
         data.set(new CompanyStatusSavedData.Status(companyId, "SUSPENDED",
                 server.overworld().getGameTime(), reason == null ? "regulatory suspension" : reason));
+        return true;
+    }
+
+    public static boolean beginLiquidation(ServerPlayer player, Company company) {
+        if (player == null || company == null || !company.ownerUuid().equals(player.getUUID())) return false;
+        CompanyStatusSavedData data = CompanyStatusSavedData.get(player.getServer());
+        String current = data.statusOf(company.companyId());
+        if ("LIQUIDATING".equals(current) || "DISSOLVED".equals(current)
+                || EconomySavedData.get(player.getServer()).isListed(company.companyId())) return false;
+        data.set(new CompanyStatusSavedData.Status(company.companyId(), "LIQUIDATING",
+                player.getServer().overworld().getGameTime(), "liquidation opened by owner"));
         return true;
     }
 }

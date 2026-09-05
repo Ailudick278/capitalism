@@ -45,6 +45,9 @@ public class CompanyCommand {
         root.then(Commands.literal("resume")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> resume(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("liquidate")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> liquidate(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("statement")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> statement(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -258,6 +261,18 @@ public class CompanyCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("Company resumed."), false);
+        return 1;
+    }
+
+    private static int liquidate(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null || !CompanyLifecycleService.beginLiquidation(player, company)) {
+            source.sendFailure(Component.literal("Company cannot enter liquidation (it may be listed or already closed)."));
+            return 0;
+        }
+        SupplyMarket.removeOffersForCompany(player.getServer(), player.getUUID(), company.name());
+        source.sendSuccess(() -> Component.literal("Liquidation opened; operations and new listings are paused."), false);
         return 1;
     }
 
