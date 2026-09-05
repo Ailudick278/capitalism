@@ -130,7 +130,8 @@ public final class CapitalismData {
         List<IndustryJson> raw = read(dir.resolve("industries.json"), IndustryJson[].class, defaultIndustries());
         List<IndustrySpec> result = new ArrayList<>();
         for (IndustryJson j : raw) {
-            result.add(new IndustrySpec(j.id, j.inputs, j.outputs, j.income));
+            result.add(new IndustrySpec(j.id, j.inputs, j.outputs, j.income, j.machine_type,
+                    j.workers_per_cycle, j.energy_cost, j.maintenance_cost));
         }
         return result;
     }
@@ -253,9 +254,9 @@ public final class CapitalismData {
 
     private static List<IndustryJson> defaultIndustries() {
         return List.of(
-                new IndustryJson("mining", Map.of("minecraft:iron_ore", 1), Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1, "minecraft:gold_ingot", 1), 55),
-                new IndustryJson("agriculture", Map.of("minecraft:wheat_seeds", 1), Map.of("minecraft:wheat", 1), 35),
-                new IndustryJson("manufacturing", Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1), Map.of("minecraft:rail", 1), 80),
+                new IndustryJson("mining", Map.of("minecraft:iron_ore", 1), Map.of("minecraft:iron_ingot", 1), 55, "ore_processor", 2, 1, 2),
+                new IndustryJson("agriculture", Map.of("minecraft:wheat_seeds", 1), Map.of("minecraft:wheat", 1), 35, "farm_plot", 1, 1, 1),
+                new IndustryJson("manufacturing", Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1), Map.of("minecraft:rail", 1), 80, "rolling_mill", 2, 2, 4),
                 new IndustryJson("utilities", Map.of("minecraft:coal", 1), Map.of(), 60),
                 new IndustryJson("construction", Map.of("minecraft:rail", 1), Map.of(), 50),
                 new IndustryJson("transport", Map.of("minecraft:coal", 1), Map.of(), 45),
@@ -281,6 +282,10 @@ public final class CapitalismData {
         public Map<String, Integer> inputs = new HashMap<>();
         public Map<String, Integer> outputs = new HashMap<>();
         public long income = 55;
+        public String machine_type = "none";
+        public int workers_per_cycle = 0;
+        public long energy_cost = 0L;
+        public long maintenance_cost = 0L;
 
         public IndustryJson() {
         }
@@ -290,6 +295,16 @@ public final class CapitalismData {
             this.inputs = new HashMap<>(inputs);
             this.outputs = new HashMap<>(outputs);
             this.income = income;
+            this.workers_per_cycle = outputs.isEmpty() ? 0 : 1;
+        }
+
+        public IndustryJson(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, long income,
+                            String machineType, int workers, long energy, long maintenance) {
+            this(id, inputs, outputs, income);
+            this.machine_type = machineType;
+            this.workers_per_cycle = workers;
+            this.energy_cost = energy;
+            this.maintenance_cost = maintenance;
         }
     }
 }

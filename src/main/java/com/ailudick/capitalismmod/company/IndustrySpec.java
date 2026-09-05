@@ -10,5 +10,9 @@ import java.util.Map;
  * @param outputs item id -> quantity produced per level per tick
  * @param income  USD income per level per tick (finance uses a special formula)
  */
-public record IndustrySpec(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, long income) {
+public record IndustrySpec(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, long income,
+                           String machineType, int workersPerCycle, long energyCost, long maintenanceCost) {
+    public IndustrySpec(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, long income) {
+        this(id, inputs, outputs, income, "none", outputs.isEmpty() ? 0 : 1, 0L, 0L);
+    }
 }

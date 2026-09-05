@@ -6,6 +6,8 @@ import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.PublicTakeoverSavedData;
 import com.ailudick.capitalismmod.company.CompanyTypes;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
+import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
+import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
@@ -42,6 +44,36 @@ public class CompanyCommand {
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> ledger(ctx.getSource(),
                                 StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("hire")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("role", StringArgumentType.word())
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 10000))
+                                        .then(Commands.argument("dailyWage", LongArgumentType.longArg(1))
+                                                .then(Commands.argument("skill", IntegerArgumentType.integer(0, 100))
+                                                        .executes(ctx -> hire(ctx.getSource(),
+                                                                StringArgumentType.getString(ctx, "name"),
+                                                                StringArgumentType.getString(ctx, "role"),
+                                                                IntegerArgumentType.getInteger(ctx, "count"),
+                                                                LongArgumentType.getLong(ctx, "dailyWage"),
+                                                                IntegerArgumentType.getInteger(ctx, "skill")))))))));
+        root.then(Commands.literal("fire")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("contract", StringArgumentType.word())
+                                .executes(ctx -> fire(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"),
+                                        StringArgumentType.getString(ctx, "contract"))))));
+        root.then(Commands.literal("machine")
+                .then(Commands.literal("install")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .then(Commands.argument("type", StringArgumentType.word())
+                                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 10000))
+                                                .executes(ctx -> installMachine(ctx.getSource(),
+                                                        StringArgumentType.getString(ctx, "name"),
+                                                        StringArgumentType.getString(ctx, "type"),
+                                                        IntegerArgumentType.getInteger(ctx, "count"))))))));
+        root.then(Commands.literal("operations")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> operations(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("acquire")
                 .then(Commands.argument("seller", EntityArgument.player())
                         .then(Commands.argument("company", StringArgumentType.word())
@@ -156,6 +188,62 @@ public class CompanyCommand {
             source.sendSuccess(() -> Component.literal("该企业暂无账务记录。"), false);
         }
         return entries.size();
+    }
+
+    private static int hire(CommandSourceStack source, String name, String role, int count,
+                            long dailyWage, int skill) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CompanyHelper.hire(player, name, role, count, dailyWage, skill)) {
+            source.sendFailure(Component.literal("Unable to hire: invalid company or workforce values."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Hired " + count + " " + role + " worker(s)."), false);
+        return 1;
+    }
+
+    private static int fire(CommandSourceStack source, String name, String contract) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CompanyHelper.fire(player, name, contract)) {
+            source.sendFailure(Component.literal("Worker contract not found."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Worker contract terminated."), false);
+        return 1;
+    }
+
+    private static int installMachine(CommandSourceStack source, String name, String type, int count)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CompanyHelper.installMachine(player, name, type, count)) {
+            source.sendFailure(Component.literal("Unable to install machine: invalid type or insufficient company funds."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Installed " + count + " " + type + "."), false);
+        return 1;
+    }
+
+    private static int operations(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        MinecraftServer server = player.getServer();
+        var labor = CompanyLaborSavedData.get(server);
+        source.sendSuccess(() -> Component.literal("Workers: " + labor.activeWorkers(company.companyId())
+                + ", daily wages: USD " + labor.dailyWages(company.companyId())
+                + ", average skill: " + labor.averageSkill(company.companyId())), false);
+        for (var contract : labor.contracts(company.companyId())) {
+            source.sendSuccess(() -> Component.literal("Contract " + contract.id() + " | " + contract.role()
+                    + " x" + contract.count() + " | wage " + contract.dailyWage()
+                    + " | skill " + contract.skill()), false);
+        }
+        for (var entry : CompanyEquipmentSavedData.get(server).all(company.companyId()).values()) {
+            source.sendSuccess(() -> Component.literal("Machine " + entry.machineType() + " x" + entry.count()
+                    + " | condition " + entry.condition()), false);
+        }
+        return 1;
     }
 
     private static int createOffer(CommandSourceStack source, ServerPlayer seller, String company, long price)

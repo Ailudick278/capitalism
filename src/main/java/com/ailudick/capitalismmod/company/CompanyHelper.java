@@ -89,6 +89,28 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Debits a company's treasury and records the expense before production continues. */
+    public static boolean debitTreasury(MinecraftServer server, String companyId, String currencyId,
+                                        long amount, String type, String description) {
+        if (server == null || companyId == null || currencyId == null || amount < 0L) return false;
+        CompanySavedData data = CompanySavedData.get(server);
+        Company company = data.get(companyId);
+        if (company == null || company.treasuryOf(currencyId) < amount) return false;
+        Map<String, Long> treasury = new HashMap<>(company.treasury());
+        long balance = company.treasuryOf(currencyId) - amount;
+        treasury.put(currencyId, balance);
+        Company updated = company.withTreasury(treasury);
+        data.put(updated);
+        if (amount > 0L) {
+            CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                    company.companyId(), server.overworld().getGameTime(), type, currencyId,
+                    -amount, balance, description));
+            recordTaxableExpense(server, company, type + ":" + server.overworld().getGameTime(),
+                    amount, currencyId, server.overworld().getGameTime());
+        }
+        return true;
+    }
+
     /** Records a confirmed company revenue event and assesses corporate income tax once. */
     public static boolean recordTaxableIncome(MinecraftServer server, Company company, String sourceId,
                                               long revenue, String currencyId, long occurredAt) {
@@ -192,10 +214,81 @@ public final class CompanyHelper {
                 || CompanyEconomy.outputs(company).isEmpty() || !canProduceOutputs(server, company)) {
             return false;
         }
+        IndustrySpec spec = Industries.byId(company.type());
+        if (spec == null) return false;
+        MachineType machine = MachineType.parse(spec.machineType());
+        if (machine == null) return false;
+        CompanyLaborSavedData labor = CompanyLaborSavedData.get(server);
+        if (spec.workersPerCycle() > 0 && labor.activeWorkers(company.companyId()) < spec.workersPerCycle()) {
+            return false;
+        }
+        if (machine != MachineType.NONE
+                && CompanyEquipmentSavedData.get(server).count(company.companyId(), machine) <= 0) {
+            return false;
+        }
+        long wages = labor.dailyWages(company.companyId()) == Long.MAX_VALUE
+                ? Long.MAX_VALUE : labor.dailyWages(company.companyId()) / 40L;
+        long machineCost = machine == MachineType.NONE ? 0L : machine.maintenancePerCycle();
+        long cost;
+        try {
+            cost = Math.addExact(Math.addExact(wages, Math.max(0L, spec.energyCost())),
+                    Math.addExact(Math.max(0L, spec.maintenanceCost()), machineCost));
+        } catch (ArithmeticException e) {
+            return false;
+        }
+        if (!consumeInputsPreview(server, company) || !debitTreasury(server, company.companyId(),
+                Currencies.USD.id(), cost, "production_expense", "生产周期劳动力、能源与设备维护成本")) {
+            return false;
+        }
         if (!consumeInputs(server, company)) {
             return false;
         }
         produceOutputs(server, company);
+        return true;
+    }
+
+    private static boolean consumeInputsPreview(MinecraftServer server, Company company) {
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        var owner = com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
+        for (Map.Entry<String, Integer> input : CompanyEconomy.inputs(company).entrySet()) {
+            if (input.getValue() <= 0 || parseItem(input.getKey()) == null
+                    || warehouse.count(owner, input.getKey()) < input.getValue()) return false;
+        }
+        return true;
+    }
+
+    public static boolean hire(Player player, String name, String role, int count, long dailyWage, int skill) {
+        MinecraftServer server = player.getServer();
+        Company company = getCompany(player, name);
+        if (server == null || company == null || role == null || role.isBlank()
+                || count <= 0 || count > 10000 || dailyWage <= 0 || dailyWage > Long.MAX_VALUE / count
+                || skill < 0 || skill > 100) return false;
+        CompanyLaborSavedData.get(server).add(new CompanyLaborSavedData.WorkerContract(
+                UUID.randomUUID().toString(), company.companyId(), role.trim(), count, dailyWage, skill, true));
+        return true;
+    }
+
+    public static boolean fire(Player player, String name, String contractId) {
+        MinecraftServer server = player.getServer();
+        Company company = getCompany(player, name);
+        if (server == null || company == null || contractId == null) return false;
+        boolean found = CompanyLaborSavedData.get(server).contracts(company.companyId()).stream()
+                .anyMatch(contract -> contract.id().equals(contractId));
+        if (!found) return false;
+        CompanyLaborSavedData.get(server).remove(company.companyId(), contractId);
+        return true;
+    }
+
+    public static boolean installMachine(Player player, String name, String machineId, int count) {
+        MinecraftServer server = player.getServer();
+        Company company = getCompany(player, name);
+        MachineType type = MachineType.parse(machineId);
+        if (server == null || company == null || type == null || type == MachineType.NONE || count <= 0
+                || count > 10000 || type.purchasePrice() > Long.MAX_VALUE / count) return false;
+        long cost = type.purchasePrice() * count;
+        if (!debitTreasury(server, company.companyId(), Currencies.USD.id(), cost,
+                "equipment_purchase", "购买生产设备 " + type.id() + " x" + count)) return false;
+        CompanyEquipmentSavedData.get(server).install(company.companyId(), type, count);
         return true;
     }
 
