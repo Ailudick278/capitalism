@@ -60,6 +60,8 @@ import com.ailudick.capitalismmod.network.payload.SyncLandPayload;
 import com.ailudick.capitalismmod.network.payload.SyncOwnedLandsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandLogsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload;
+import com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload;
+import com.ailudick.capitalismmod.company.OilFieldSavedData;
 import com.ailudick.capitalismmod.network.payload.RenameConglomeratePayload;
 import com.ailudick.capitalismmod.network.payload.SyncConglomeratePayload;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
@@ -1151,6 +1153,7 @@ public class ServerPayloadHandler {
             sendAllWorldMapTiles(player);
             sendLandOverlay(player, player.chunkPosition().x, player.chunkPosition().z,
                     Config.WORLD_MAP_DISCOVERY_RADIUS.get());
+            sendResourceOverlay(player);
         });
     }
 
@@ -1159,7 +1162,21 @@ public class ServerPayloadHandler {
             if (!(context.player() instanceof ServerPlayer player)) return;
             sendWorldMapTiles(player, payload.centerChunkX(), payload.centerChunkZ(), payload.radius(), payload.discover());
             sendLandOverlay(player, payload.centerChunkX(), payload.centerChunkZ(), payload.radius());
+            sendResourceOverlay(player);
         });
+    }
+
+    private static void sendResourceOverlay(ServerPlayer player) {
+        String dimension = player.serverLevel().dimension().location().toString();
+        WorldMapTileSavedData tiles = WorldMapTileSavedData.get(player.getServer());
+        List<SyncResourceOverlayPayload.OilField> fields = new ArrayList<>();
+        for (OilFieldSavedData.Field field : OilFieldSavedData.get(player.getServer()).fieldsInDimension(dimension)) {
+            if (tiles.get(dimension + ":" + field.chunkX() + ":" + field.chunkZ()) != null) {
+                fields.add(new SyncResourceOverlayPayload.OilField(field.chunkX(), field.chunkZ(),
+                        field.remainingReserve(), field.initialReserve()));
+            }
+        }
+        PacketDistributor.sendToPlayer(player, new SyncResourceOverlayPayload(dimension, List.copyOf(fields)));
     }
 
     private static void sendLandOverlay(ServerPlayer player, int centerChunkX, int centerChunkZ, int requestedRadius) {

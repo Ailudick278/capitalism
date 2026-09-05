@@ -9,6 +9,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 /** Persistent finite petroleum reserves keyed by dimension and chunk. */
@@ -31,6 +32,11 @@ public final class OilFieldSavedData extends SavedData {
 
     public Field get(String dimension, int chunkX, int chunkZ) {
         return fields.get(key(dimension, chunkX, chunkZ));
+    }
+
+    public List<Field> fieldsInDimension(String dimension) {
+        if (dimension == null || dimension.isBlank()) return List.of();
+        return fields.values().stream().filter(field -> dimension.equals(field.dimension())).toList();
     }
 
     /** Returns an existing field, or creates one only when deterministic prospecting finds it. */

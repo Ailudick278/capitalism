@@ -17,6 +17,7 @@ public class WorldMapMenu extends AbstractContainerMenu {
     public int chunkZ;
     private final Map<Long, int[]> tiles = new HashMap<>();
     private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload.Cell> landOverlay = new HashMap<>();
+    private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload.OilField> oilFields = new HashMap<>();
     public int selectedChunkX;
     public int selectedChunkZ;
     public boolean hasSelectedChunk;
@@ -66,6 +67,19 @@ public class WorldMapMenu extends AbstractContainerMenu {
 
     public List<com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload.Cell> landOverlay() {
         return List.copyOf(landOverlay.values());
+    }
+
+    public void setResourceOverlay(com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload data) {
+        oilFields.clear();
+        for (var field : data.oilFields()) oilFields.put(key(field.chunkX(), field.chunkZ()), field);
+    }
+
+    public com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload.OilField oilField(int chunkX, int chunkZ) {
+        return oilFields.get(key(chunkX, chunkZ));
+    }
+
+    public List<com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload.OilField> oilFields() {
+        return List.copyOf(oilFields.values());
     }
 
     private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xFFFFFFFFL); }

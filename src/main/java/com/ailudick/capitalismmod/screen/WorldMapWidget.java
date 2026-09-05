@@ -219,6 +219,34 @@ public final class WorldMapWidget {
         }
     }
 
+    public void drawOilFieldOverlay(GuiGraphics graphics, WorldMapMenu menu) {
+        drawOilFields(graphics, menu.exploredChunks(), menu.oilFields());
+    }
+
+    public void drawOilFieldOverlay(GuiGraphics graphics, LandMenu menu) {
+        java.util.List<long[]> explored = menu.oilFields().stream()
+                .map(field -> new long[]{field.chunkX(), field.chunkZ()}).toList();
+        drawOilFields(graphics, explored, menu.oilFields());
+    }
+
+    private void drawOilFields(GuiGraphics graphics, java.util.List<long[]> explored,
+                               java.util.List<com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload.OilField> fields) {
+        float blockSize = viewport.zoom();
+        for (var field : fields) {
+            float screenX = viewport.screenX(field.chunkX() * 16.0 + 8.0, x + width / 2.0F);
+            float screenZ = viewport.screenZ(field.chunkZ() * 16.0 + 8.0, y + height / 2.0F);
+            float radius = Math.max(3.0F, Math.min(9.0F, blockSize * 4.0F));
+            double ratio = field.initialReserve() <= 0L ? 0.0
+                    : Math.max(0.0, Math.min(1.0, (double) field.remainingReserve() / field.initialReserve()));
+            int color = ratio <= 0.0 ? 0xFF6B7280 : ratio < 0.25 ? 0xFFF59E0B : 0xFF38BDF8;
+            int cx = Math.round(screenX);
+            int cz = Math.round(screenZ);
+            graphics.fill(cx - (int) radius, cz - 1, cx + (int) radius + 1, cz + 2, color);
+            graphics.fill(cx - 1, cz - (int) radius, cx + 2, cz + (int) radius + 1, color);
+            drawBorder(graphics, cx - radius, cz - radius, radius * 2.0F, 0xD0FFFFFF);
+        }
+    }
+
     public void drawChunkGrid(GuiGraphics graphics, LandMenu menu) {
         double centerWorldX = viewport.centerX();
         double centerWorldZ = viewport.centerZ();

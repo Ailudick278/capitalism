@@ -41,6 +41,7 @@ import com.ailudick.capitalismmod.network.payload.SyncLandPayload;
 import com.ailudick.capitalismmod.network.payload.SyncOwnedLandsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandLogsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload;
+import com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandPermissionsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandSalePayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandOwnershipPayload;
@@ -98,6 +99,13 @@ public class ClientPayloadHandler {
     public static void handleSyncLandOverlay(SyncLandOverlayPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof WorldMapMenu menu) menu.setLandOverlay(payload);
+        });
+    }
+
+    public static void handleSyncResourceOverlay(SyncResourceOverlayPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player().containerMenu instanceof WorldMapMenu menu) menu.setResourceOverlay(payload);
+            else if (context.player().containerMenu instanceof LandMenu menu) menu.setResourceOverlay(payload);
         });
     }
 

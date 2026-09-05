@@ -61,6 +61,7 @@ public final class WorldMapScreen extends AbstractContainerScreen<WorldMapMenu> 
         worldMapWidget.drawWorldMapLandOverlay(graphics, menu,
                 worldMapWidget.hoveredChunkX(), worldMapWidget.hoveredChunkZ(),
                 worldMapWidget.hasHoveredChunk());
+        worldMapWidget.drawOilFieldOverlay(graphics, menu);
         worldMapWidget.drawPlayerMarker(graphics);
         graphics.disableScissor();
         graphics.drawString(font,
