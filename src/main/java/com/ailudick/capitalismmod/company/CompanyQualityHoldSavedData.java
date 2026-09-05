@@ -64,6 +64,12 @@ public final class CompanyQualityHoldSavedData extends SavedData {
         return Math.max(0, warehouseUnits - heldUnits(companyId, itemId));
     }
 
+    public List<Hold> forBatch(String companyId, String batchId) {
+        if (companyId == null || batchId == null) return List.of();
+        return holds.stream().filter(hold -> companyId.equals(hold.companyId())
+                && batchId.equals(hold.batchId())).toList();
+    }
+
     public void hold(CompanyProductionBatchSavedData.Batch batch) {
         if (batch == null || batch.qualityScore() >= Config.COMPANY_QUALITY_RELEASE_THRESHOLD.get()) return;
         releaseBatch(batch.companyId(), batch.id());
@@ -81,6 +87,10 @@ public final class CompanyQualityHoldSavedData extends SavedData {
         boolean changed = holds.removeIf(hold -> companyId.equals(hold.companyId()) && batchId.equals(hold.batchId()));
         if (changed) setDirty();
         return changed;
+    }
+
+    public boolean removeBatch(String companyId, String batchId) {
+        return releaseBatch(companyId, batchId);
     }
 
     public void mergeCompany(String sourceId, String targetId) {

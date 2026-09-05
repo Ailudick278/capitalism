@@ -79,6 +79,15 @@ public final class CompanyProductionBatchSavedData extends SavedData {
         return List.copyOf(result);
     }
 
+    public Batch find(String companyId, String batchId) {
+        if (companyId == null || batchId == null) return null;
+        for (int i = batches.size() - 1; i >= 0; i--) {
+            Batch batch = batches.get(i);
+            if (companyId.equals(batch.companyId()) && batchId.equals(batch.id())) return batch;
+        }
+        return null;
+    }
+
     public void mergeCompany(String sourceId, String targetId) {
         if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
         boolean changed = false;

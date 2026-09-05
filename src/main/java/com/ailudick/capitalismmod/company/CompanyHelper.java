@@ -246,6 +246,42 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Disposes the held output of a rejected quality batch and recognizes its inventory loss. */
+    public static long disposeQualityBatch(MinecraftServer server, Company company, String batchId) {
+        if (server == null || company == null || batchId == null || batchId.isBlank()) return 0L;
+        CompanyQualityHoldSavedData holds = CompanyQualityHoldSavedData.get(server);
+        var held = holds.forBatch(company.companyId(), batchId);
+        if (held.isEmpty()) return 0L;
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        InventoryOwner owner = InventoryOwner.company(company.companyId());
+        CompanyInventoryCostSavedData costs = CompanyInventoryCostSavedData.get(server);
+        long loss = 0L;
+        for (CompanyQualityHoldSavedData.Hold hold : held) {
+            Item item = parseItem(hold.itemId());
+            if (item == null) continue;
+            int quantity = Math.min(hold.quantity(), warehouse.count(owner, hold.itemId()));
+            if (quantity <= 0 || !warehouse.consume(owner, item, quantity)) continue;
+            CompanyInventoryCostSavedData.Consumption tracked = costs.consume(
+                    company.companyId(), hold.itemId(), quantity);
+            int untracked = quantity - tracked.quantity();
+            long fallback = untracked <= 0 ? 0L
+                    : EconomyMath.multiply(Math.max(0L, CommoditySavedData.get(server).price(hold.itemId())), untracked);
+            loss = EconomyMath.add(loss, EconomyMath.add(tracked.cost(), fallback));
+            CompanyQualitySavedData.get(server).consume(company.companyId(), hold.itemId(), quantity);
+        }
+        holds.removeBatch(company.companyId(), batchId);
+        if (loss > 0L) {
+            long now = server.overworld().getGameTime();
+            recordTaxableExpense(server, company, "quality_rejection:" + batchId,
+                    loss, Currencies.USD.id(), now);
+            CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                    company.companyId(), now, "quality_rejection_loss", Currencies.USD.id(),
+                    -loss, company.treasuryOf(Currencies.USD.id()),
+                    "Disposed rejected production batch " + batchId));
+        }
+        return loss;
+    }
+
     public static boolean exists(Player player, String name) {
         return getCompanies(player).containsKey(name);
     }
