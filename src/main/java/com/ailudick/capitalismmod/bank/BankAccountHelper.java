@@ -305,7 +305,8 @@ public final class BankAccountHelper {
 
     /** Transfers {@code amount} between two accounts by number. Both players must be online. */
     public static boolean transferBetween(ServerPlayer sender, String fromAccountId, String targetAccountId, String currencyId, long amount) {
-        if (amount <= 0 || !Currencies.exists(currencyId) || fromAccountId.equals(targetAccountId)) {
+        if (amount <= 0 || !Currencies.exists(currencyId)
+                || java.util.Objects.equals(fromAccountId, targetAccountId)) {
             return false;
         }
         ServerPlayer target = findAccountOwner(sender.getServer(), targetAccountId);
@@ -316,18 +317,24 @@ public final class BankAccountHelper {
         BankAccount to = getAccount(target, targetAccountId);
         long fee = transferFee(amount);
         long total = EconomyMath.add(amount, fee);
-        if (from == null || to == null || total < 0 || from.getBalance(currencyId) < total) {
+        long targetBalance = to == null ? -1L : EconomyMath.add(to.getBalance(currencyId), amount);
+        if (from == null || to == null || fee < 0L || total < 0L
+                || targetBalance < 0L || from.getBalance(currencyId) < total) {
             return false;
         }
         updateAccount(sender, from.withBalance(currencyId, from.getBalance(currencyId) - total)
                 .withTransaction(new BankTransaction("transfer_out", currencyId, -total)));
-        updateAccount(target, to.withBalance(currencyId, to.getBalance(currencyId) + amount)
+        updateAccount(target, to.withBalance(currencyId, targetBalance)
                 .withTransaction(new BankTransaction("transfer_in", currencyId, amount)));
         return true;
     }
 
     private static long transferFee(long amount) {
-        return Math.max(1L, (long) (amount * Config.TRANSFER_FEE_RATE.get()));
+        double calculated = amount * Config.TRANSFER_FEE_RATE.get();
+        if (!Double.isFinite(calculated) || calculated >= Long.MAX_VALUE) {
+            return -1L;
+        }
+        return Math.max(1L, (long) calculated);
     }
 
     private static long safeInterest(long principal, double rate) {
