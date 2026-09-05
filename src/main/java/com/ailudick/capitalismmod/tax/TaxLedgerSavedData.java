@@ -13,9 +13,10 @@ import java.util.UUID;
 /** The single persistent ledger for tax bills from all subsystems. */
 public final class TaxLedgerSavedData extends SavedData {
     private static final String ID = "capitalismmod_tax_ledger";
-    private static final int CURRENT_VERSION = 5;
+    private static final int CURRENT_VERSION = 6;
     private final List<TaxBill> bills = new ArrayList<>();
     private final List<TaxPayment> payments = new ArrayList<>();
+    private final List<String> externalSettlementSources = new ArrayList<>();
 
     private TaxLedgerSavedData() {}
 
@@ -26,6 +27,16 @@ public final class TaxLedgerSavedData extends SavedData {
 
     public List<TaxBill> bills() { return List.copyOf(bills); }
     public List<TaxPayment> payments() { return List.copyOf(payments); }
+
+    public boolean hasExternalSettlement(String sourceId) {
+        return sourceId != null && externalSettlementSources.contains(sourceId);
+    }
+
+    public void recordExternalSettlement(String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || externalSettlementSources.contains(sourceId)) return;
+        externalSettlementSources.add(sourceId);
+        setDirty();
+    }
 
     public List<TaxPayment> paymentsFor(UUID taxpayerUuid) {
         return payments.stream().filter(payment -> payment.taxpayerUuid().equals(taxpayerUuid)).toList();
@@ -114,6 +125,13 @@ public final class TaxLedgerSavedData extends SavedData {
             paymentList.add(entry);
         }
         tag.put("payments", paymentList);
+        ListTag settlementList = new ListTag();
+        for (String source : externalSettlementSources) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("source", source);
+            settlementList.add(entry);
+        }
+        tag.put("externalSettlements", settlementList);
         return tag;
     }
 
@@ -153,6 +171,11 @@ public final class TaxLedgerSavedData extends SavedData {
             data.payments.add(new TaxPayment(entry.getString("id"), entry.getString("billId"),
                     entry.getUUID("taxpayer"), entry.getString("currency"), entry.getLong("amount"),
                     entry.getLong("paidAt")));
+        }
+        ListTag settlementList = tag.getList("externalSettlements", 10);
+        for (int i = 0; i < settlementList.size(); i++) {
+            String source = settlementList.getCompound(i).getString("source");
+            if (!source.isBlank()) data.externalSettlementSources.add(source);
         }
         return data;
     }

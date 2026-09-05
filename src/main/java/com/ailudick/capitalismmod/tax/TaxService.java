@@ -110,6 +110,36 @@ public final class TaxService {
         return true;
     }
 
+    /**
+     * Settles a liability from an external proceeds source, such as a land
+     * auction. No player wallet is charged; the caller has already withheld
+     * the proceeds and must provide an auditable source id.
+     */
+    public static long settleFromProceeds(MinecraftServer server, TaxSubject subject,
+                                          long amount, String sourceId, long now) {
+        if (amount <= 0L || subject == null || sourceId == null || sourceId.isBlank()) return 0L;
+        TaxLedgerSavedData ledger = TaxLedgerSavedData.get(server);
+        if (ledger.hasExternalSettlement(sourceId)) return 0L;
+
+        long remaining = amount;
+        long settled = 0L;
+        for (TaxBill bill : ledger.bills()) {
+            if (remaining <= 0L) break;
+            if (!bill.subject().equals(subject) || bill.paid()) continue;
+            long payment = Math.min(remaining, bill.outstanding());
+            if (payment <= 0L) continue;
+            TaxBill updated = bill.withPayment(payment);
+            ledger.replace(updated);
+            ledger.addPayment(new TaxPayment(UUID.randomUUID().toString(), bill.id(),
+                    subject.taxpayerUuid(), bill.currencyId(), payment, now));
+            remaining -= payment;
+            settled = addSaturated(settled, payment);
+            if (updated.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(server, updated));
+        }
+        if (settled > 0L) ledger.recordExternalSettlement(sourceId);
+        return settled;
+    }
+
     public static boolean declare(ServerPlayer player, String billId) {
         TaxLedgerSavedData ledger = TaxLedgerSavedData.get(player.getServer());
         TaxBill bill = ledger.get(billId);

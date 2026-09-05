@@ -106,8 +106,19 @@ public final class LandRentTickHandler {
                     notifyPlayer(server, auction.ownerUuid(), "土地拍卖流拍，土地仍归你所有；请缴清欠税解除冻结");
                     continue;
                 }
-                long taxPaid = Math.min(claim.taxOwed(), auction.highestBid());
-                long ownerPayout = auction.highestBid() - taxPaid;
+                TaxSubject landTaxSubject = new TaxSubject(TaxType.LAND, claim.id(), claim.ownerUuid());
+                long legacyTaxMinor = Money.toMinorSaturated(claim.taxOwed());
+                if (legacyTaxMinor > TaxService.outstanding(server, landTaxSubject)) {
+                    TaxService.ensureOutstanding(server, landTaxSubject, Config.defaultCurrencyId(), legacyTaxMinor,
+                            now, claim.taxDueAt(), claim.taxGraceUntil());
+                }
+                long availableProceedsMinor = Money.toMinorSaturated(auction.highestBid());
+                long taxTargetMinor = Math.min(availableProceedsMinor,
+                        TaxService.outstanding(server, landTaxSubject));
+                long taxPaidMinor = TaxService.settleFromProceeds(server, landTaxSubject, taxTargetMinor,
+                        "land-auction-tax:" + claim.id() + ":" + auction.endsAt(), now);
+                long taxPaid = Money.toMajorCeiling(taxPaidMinor);
+                long ownerPayout = Math.max(0L, auction.highestBid() - taxPaid);
                 LandClaim transferred = claim.withTaxSchedule(0L, 0L, 0L).withOwner(auction.highestBidder());
                 data.put(transferred);
                 LandOwnershipSavedData.get(server).record(claim.id(), auction.highestBidder(), now, "拍卖成交");

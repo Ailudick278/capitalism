@@ -23,6 +23,9 @@ public final class LandTaxEnforcementHandler {
         if (event.bill().subject().type() != TaxType.LAND) return;
         LandClaim claim = LandSavedData.get(event.server()).get(event.bill().subject().subjectId());
         if (claim == null) return;
+        // A land-tax bill belongs to the taxpayer who owned the land when it
+        // accrued. It must not freeze a new owner's claim after an auction.
+        if (!claim.ownerUuid().equals(event.bill().subject().taxpayerUuid())) return;
         long outstanding = TaxService.outstanding(event.server(), event.bill().subject());
         LandSavedData.get(event.server()).put(claim.withTaxSchedule(
                 Money.toMajorCeiling(outstanding), claim.taxDueAt(), claim.taxGraceUntil()));
@@ -35,6 +38,7 @@ public final class LandTaxEnforcementHandler {
         if (event.bill().subject().type() != TaxType.LAND) return;
         LandClaim claim = LandSavedData.get(event.server()).get(event.bill().subject().subjectId());
         if (claim == null) return;
+        if (!claim.ownerUuid().equals(event.bill().subject().taxpayerUuid())) return;
         if (TaxService.outstanding(event.server(), event.bill().subject()) <= 0L
                 && LandAuctionSavedData.get(event.server()).get(claim.id()) == null) {
             LandSavedData.get(event.server()).put(claim.withTaxSchedule(0L, 0L, 0L));
