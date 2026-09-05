@@ -1093,8 +1093,16 @@ public class CompanyCommand {
             OilFieldSavedData.Field field = OilFieldSavedData.get(server).get(
                     site.dimension(), site.chunkX(), site.chunkZ());
             String reserve = field == null ? "none" : Long.toString(field.remainingReserve());
+            long[] batchSummary = siteBatchSummary(server, company.companyId(), site);
             source.sendSuccess(() -> Component.literal("Site " + site.dimension() + " chunk "
-                    + site.chunkX() + "," + site.chunkZ() + " | oil remaining " + reserve), false);
+                    + site.chunkX() + "," + site.chunkZ() + " | oil remaining " + reserve
+                    + " | batches " + batchSummary[0] + " | conversion USD " + batchSummary[1]
+                    + " | avg quality " + (batchSummary[0] <= 0 ? 0 : batchSummary[2] / batchSummary[0])), false);
+        }
+        long[] legacySummary = legacyBatchSummary(server, company.companyId());
+        if (legacySummary[0] > 0) {
+            source.sendSuccess(() -> Component.literal("Legacy/unassigned batches " + legacySummary[0]
+                    + " | conversion USD " + legacySummary[1]), false);
         }
         for (var contract : labor.contracts(company.companyId())) {
             source.sendSuccess(() -> Component.literal("Contract " + contract.id() + " | " + contract.role()
@@ -1106,6 +1114,39 @@ public class CompanyCommand {
                     + " | condition " + entry.condition()), false);
         }
         return 1;
+    }
+
+    private static long[] siteBatchSummary(MinecraftServer server, String companyId,
+                                           CompanySiteSavedData.Site site) {
+        long count = 0L;
+        long conversion = 0L;
+        long quality = 0L;
+        for (CompanyProductionBatchSavedData.Batch batch
+                : CompanyProductionBatchSavedData.get(server).forCompany(companyId)) {
+            if (!site.dimension().equals(batch.siteDimension())
+                    || site.chunkX() != batch.siteChunkX() || site.chunkZ() != batch.siteChunkZ()) continue;
+            count++;
+            conversion = saturatedAdd(conversion, batch.conversionCost());
+            quality = saturatedAdd(quality, batch.qualityScore());
+        }
+        return new long[]{count, conversion, quality};
+    }
+
+    private static long[] legacyBatchSummary(MinecraftServer server, String companyId) {
+        long count = 0L;
+        long conversion = 0L;
+        for (CompanyProductionBatchSavedData.Batch batch
+                : CompanyProductionBatchSavedData.get(server).forCompany(companyId)) {
+            if (!batch.siteDimension().isBlank()) continue;
+            count++;
+            conversion = saturatedAdd(conversion, batch.conversionCost());
+        }
+        return new long[]{count, conversion};
+    }
+
+    private static long saturatedAdd(long left, long right) {
+        if (left < 0L || right < 0L || left > Long.MAX_VALUE - right) return Long.MAX_VALUE;
+        return left + right;
     }
 
     private static int recipes(CommandSourceStack source, String name) throws CommandSyntaxException {
