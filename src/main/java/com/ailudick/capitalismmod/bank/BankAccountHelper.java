@@ -331,8 +331,12 @@ public final class BankAccountHelper {
                 || targetBalance < 0L || from.getBalance(currencyId) < total) {
             return false;
         }
-        updateAccount(sender, from.withBalance(currencyId, from.getBalance(currencyId) - total)
-                .withTransaction(new BankTransaction("transfer_out", currencyId, -total)));
+        BankAccount senderUpdated = from.withBalance(currencyId, from.getBalance(currencyId) - total)
+                .withTransaction(new BankTransaction("transfer_out", currencyId, -amount));
+        if (fee > 0L) {
+            senderUpdated = senderUpdated.withTransaction(new BankTransaction("transfer_fee", currencyId, -fee));
+        }
+        updateAccount(sender, senderUpdated);
         updateAccount(target, to.withBalance(currencyId, targetBalance)
                 .withTransaction(new BankTransaction("transfer_in", currencyId, amount)));
         return true;
@@ -342,6 +346,9 @@ public final class BankAccountHelper {
         double calculated = amount * Config.TRANSFER_FEE_RATE.get();
         if (!Double.isFinite(calculated) || calculated >= Long.MAX_VALUE) {
             return -1L;
+        }
+        if (calculated <= 0.0) {
+            return 0L;
         }
         return Math.max(1L, (long) calculated);
     }

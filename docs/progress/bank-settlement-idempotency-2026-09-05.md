@@ -6,6 +6,8 @@
 - The player's persisted settlement-day attachment prevents duplicate interest or duplicate term-deposit ticks when the same day is requested more than once.
 - Offline catch-up still applies each missed day in order when the player logs in.
 - Players with no bank accounts still advance their settlement marker, avoiding repeated empty settlement work.
+- A zero transfer-fee rate now genuinely disables the fee instead of charging one minimum minor unit.
+- Transfer principal and transfer fee are recorded as separate sender-side statement entries.
 
 ## Real-world alignment
 

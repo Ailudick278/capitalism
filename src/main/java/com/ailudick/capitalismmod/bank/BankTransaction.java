@@ -6,7 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 /**
  * A single entry in a bank account's transaction history.
  *
- * @param type       one of "deposit", "withdraw", "loan", "repay", "interest"
+ * @param type       one of "deposit", "withdraw", "loan", "repay", "interest", "transfer_out", "transfer_fee", "transfer_in"
  * @param currencyId currency the transaction is denominated in
  * @param amount     signed amount (positive = into the account / earned, negative = out / owed)
  */
