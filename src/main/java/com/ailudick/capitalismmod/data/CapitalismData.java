@@ -121,6 +121,7 @@ public final class CapitalismData {
                 CapitalismMod.LOGGER.error("Unknown machine type '{}' on industry '{}'", 
                         industry.machineType(), industry.id());
             }
+            validateQuantities(industry.id(), "industry", industry.inputs(), industry.outputs());
             Set<String> recipeIds = new java.util.HashSet<>();
             for (ProductionRecipe recipe : industry.recipes()) {
                 if (recipe == null) continue;
@@ -132,6 +133,36 @@ public final class CapitalismData {
                     CapitalismMod.LOGGER.warn("Duplicate recipe id '{}' on industry '{}'",
                             recipe.id(), industry.id());
                 }
+                validateQuantities(industry.id(), "recipe " + recipe.id(), recipe.inputs(), recipe.outputs());
+                if (recipe.income() < 0L) {
+                    CapitalismMod.LOGGER.error("Negative income {} on recipe '{}' (industry '{}')",
+                            recipe.income(), recipe.id(), industry.id());
+                }
+                if (recipe.outputs().isEmpty() && recipe.income() <= 0L) {
+                    CapitalismMod.LOGGER.warn("Recipe '{}' on industry '{}' has no outputs and no positive service income",
+                            recipe.id(), industry.id());
+                }
+            }
+        }
+    }
+
+    private static void validateQuantities(String industryId, String source,
+                                           Map<String, Integer> inputs, Map<String, Integer> outputs) {
+        validateQuantityMap(industryId, source + " input", inputs);
+        validateQuantityMap(industryId, source + " output", outputs);
+    }
+
+    private static void validateQuantityMap(String industryId, String source, Map<String, Integer> values) {
+        if (values == null) return;
+        for (Map.Entry<String, Integer> entry : values.entrySet()) {
+            String itemId = entry.getKey();
+            Integer quantity = entry.getValue();
+            if (itemId == null || itemId.isBlank()) {
+                CapitalismMod.LOGGER.error("Blank item id on {} (industry '{}')", source, industryId);
+            }
+            if (quantity == null || quantity <= 0) {
+                CapitalismMod.LOGGER.error("Non-positive quantity {} for item '{}' on {} (industry '{}')",
+                        quantity, itemId, source, industryId);
             }
         }
     }
