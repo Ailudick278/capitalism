@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyEconomy;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
+import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.business.IndividualBusinessHelper;
 import com.ailudick.capitalismmod.business.IndividualBusiness;
 import com.ailudick.capitalismmod.currency.Currencies;
@@ -170,7 +171,7 @@ public final class SupplyMarket {
         return true;
     }
 
-    /** Expires stale paid backorders and returns the undelivered balance to the buyer's mailbox. */
+    /** Expires stale paid backorders and returns the undelivered balance to the original payer. */
     public static void expireOrders(MinecraftServer server, long now) {
         int expiryDays = Config.SUPPLY_ORDER_EXPIRY_DAYS.get();
         if (expiryDays <= 0) {
@@ -189,8 +190,19 @@ public final class SupplyMarket {
             if (refundMinor < 0L) {
                 continue;
             }
-            MarketMailboxSavedData.get(server).creditMoney(order.buyerUuid(), Currencies.USD.id(), refundMinor);
-            SupplyOrderAuditService.record(server, order, "EXPIRED_REFUND", order.remaining(), refund);
+            boolean refundedToCompany = false;
+            if (order.buyerCompanyId() != null && !order.buyerCompanyId().isBlank()) {
+                Company buyerCompany = CompanySavedData.get(server).get(order.buyerCompanyId());
+                refundedToCompany = buyerCompany != null
+                        && CompanyHelper.creditTreasuryNonOperating(server, buyerCompany.companyId(),
+                        Currencies.USD.id(), refund, "supply_refund", "Expired undelivered supply order refund");
+            }
+            if (!refundedToCompany) {
+                MarketMailboxSavedData.get(server).creditMoney(order.buyerUuid(), Currencies.USD.id(), refundMinor);
+            }
+            SupplyOrderAuditService.record(server, order,
+                    refundedToCompany ? "EXPIRED_REFUND_COMPANY" : "EXPIRED_REFUND",
+                    order.remaining(), refund);
             data.removeOrder(order.id());
         }
     }
