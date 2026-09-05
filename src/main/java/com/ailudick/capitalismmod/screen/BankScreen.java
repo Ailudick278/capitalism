@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.bank.BankAccount;
 import com.ailudick.capitalismmod.bank.BankCardNumber;
 import com.ailudick.capitalismmod.bank.BankTransaction;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.client.GuiStyles;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
@@ -95,7 +96,20 @@ public final class BankScreen extends AbstractContainerScreen<BankMenu> {
     @Override public void render(GuiGraphics g,int mx,int my,float p){super.render(g,mx,my,p);g.drawString(font,Component.literal("CAPITAL BANK"),leftPos+16,topPos+13,GuiStyles.ACCENT,false);g.drawString(font,Component.translatable("gui.capitalismmod.bank_home"),leftPos+190,topPos+13,GuiStyles.TEXT,false);g.drawString(font,Component.translatable(pageTitle()),leftPos+X,topPos+50,GuiStyles.ACCENT,false);g.drawString(font,Component.translatable("gui.capitalismmod.service_center"),leftPos+18,topPos+54,GuiStyles.ACCENT,false);if(page!=Page.HOME&&page!=Page.ACCOUNT&&page!=Page.CASH&&page!=Page.CREDIT&&page!=Page.WEALTH&&page!=Page.CROSS_BORDER&&page!=Page.MY&&page!=Page.OPEN_ACCOUNT){String id=selectedAccountId();String accountText=id==null?Component.translatable("gui.capitalismmod.no_account").getString():shown(id);g.drawString(font,Component.translatable("gui.capitalismmod.selected_account",accountText),leftPos+X,topPos+58,GuiStyles.TEXT_DIM,false);if(id!=null)g.drawString(font,Component.translatable("gui.capitalismmod.selected_account_balance",balanceSummary(id)),leftPos+X,topPos+78,GuiStyles.TEXT_DIM,false);}if(page==Page.DEPOSIT||page==Page.WITHDRAW)g.drawString(font,Component.literal("操作币种：人民币"),leftPos+X,topPos+92,GuiStyles.TEXT,false);if(page==Page.ACCOUNT&&ids.isEmpty())g.drawString(font,Component.translatable("gui.capitalismmod.no_account"),leftPos+X,topPos+82,GuiStyles.TEXT_DIM,false);if(page==Page.CROSS_BORDER)rates(g);if(page==Page.TRANSACTIONS||page==Page.EXCHANGE_HISTORY)transactions(g);renderTooltip(g,mx,my);}
     private String pageTitle(){return switch(page){case HOME->"gui.capitalismmod.bank_home";case CASH,DEPOSIT,WITHDRAW->"gui.capitalismmod.cash_services";case CREDIT,LOAN,REPAY->"gui.capitalismmod.credit_services";case WEALTH,TERM->"gui.capitalismmod.wealth_management";case CROSS_BORDER,BUY_FX,SETTLE_FX,EXCHANGE_HISTORY->"gui.capitalismmod.cross_border";case MY,OPEN_ACCOUNT,REPLACE,TRANSACTIONS->"gui.capitalismmod.my_services";case ACCOUNT->"gui.capitalismmod.choose_account";case TRANSFER->"gui.capitalismmod.transfer";};}
     private void rates(GuiGraphics g){Currency b=base();String status=ExchangeRateProvider.isLive()?"实时汇率":"内置汇率";g.drawString(font,Component.literal("汇率更新时间: "+ExchangeRateProvider.lastUpdated()+"（"+status+"）"),leftPos+X,topPos+144,GuiStyles.TEXT_DIM,false);g.drawString(font,Component.literal("基准货币: "+Component.translatable(b.nameKey()).getString()),leftPos+X,topPos+158,GuiStyles.TEXT_DIM,false);g.drawString(font,Component.literal("币种    参考    买入    卖出"),leftPos+X,topPos+176,GuiStyles.ACCENT,false);int y=192;for(Currency c:Currencies.ALL)if(!c.equals(b)){long q=ExchangeRates.convert(100,c,b);long buy=Math.max(1,Math.round(q*.98));long sell=Math.max(1,Math.round(q*1.02));g.drawString(font,Component.literal(Component.translatable(c.nameKey()).getString()+"   "+Money.format(q)+"   "+Money.format(buy)+"   "+Money.format(sell)),leftPos+X,topPos+y,GuiStyles.TEXT,false);y+=14;}}
-    private void transactions(GuiGraphics g){BankAccount a=selectedAccount();List<BankTransaction> l=a==null?List.of():a.transactions().stream().filter(t->page==Page.TRANSACTIONS||t.type().equals("exchange")).toList();if(l.isEmpty()){g.drawString(font,Component.translatable("gui.capitalismmod.no_transactions"),leftPos+X,topPos+88,GuiStyles.TEXT_DIM,false);return;}int y=84;for(int i=Math.max(0,l.size()-10);i<l.size();i++){BankTransaction t=l.get(i);g.drawString(font,Component.literal(t.type()+" "+(t.amount()>=0?"+":"")+Money.format(t.amount())+" "+t.currencyId()),leftPos+X,topPos+y,GuiStyles.TEXT,false);y+=13;}}
+    private void transactions(GuiGraphics g){
+        BankAccount a=selectedAccount();
+        List<BankTransaction> l=a==null?List.of():a.transactions().stream()
+                .filter(t->page==Page.TRANSACTIONS||t.type().equals("exchange")).toList();
+        if(l.isEmpty()){g.drawString(font,Component.translatable("gui.capitalismmod.no_transactions"),leftPos+X,topPos+88,GuiStyles.TEXT_DIM,false);return;}
+        int y=84;
+        for(int i=Math.max(0,l.size()-10);i<l.size();i++){
+            BankTransaction t=l.get(i);
+            String occurred=t.occurredAt()<0L?"legacy":PerpetualCalendar.formatMinecraftTicks(t.occurredAt());
+            g.drawString(font,Component.literal(occurred+" "+t.type()+" "+(t.amount()>=0?"+":"")
+                    +Money.format(t.amount())+" "+t.currencyId()),leftPos+X,topPos+y,GuiStyles.TEXT,false);
+            y+=13;
+        }
+    }
     private String balanceSummary(String id){BankAccount a=menu.getAccounts().get(id);if(a==null)return "-";StringBuilder s=new StringBuilder();for(Currency c:Currencies.ALL){long value=a.getBalance(c.id());if(value!=0){if(s.length()>0)s.append("，");s.append(Component.translatable(c.nameKey()).getString()).append(" ").append(Money.format(value));}}return s.length()==0?"人民币 0":s.toString();}
     private String availableExchangeAmount(){BankAccount a=selectedAccount();if(a==null||from.equals(to))return "0";return Money.format(ExchangeRates.convert(a.getBalance(from.id()),from,to));}
     private BankAccount selectedAccount(){String id=selectedAccountId();return id==null?null:menu.getAccounts().get(id);}
