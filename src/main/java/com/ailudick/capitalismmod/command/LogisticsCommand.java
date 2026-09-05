@@ -167,6 +167,14 @@ public final class LogisticsCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("=== Supply order " + orderId + " ==="), false);
+        var activeOrder = com.ailudick.capitalismmod.supply.SupplyMarketSavedData.get(source.getServer())
+                .orders().stream().filter(order -> order.id().equals(orderId)
+                        && order.buyerUuid().equals(player.getUUID())).findFirst().orElse(null);
+        if (activeOrder != null) {
+            String quality = activeOrder.qualityScore() <= 0 ? "unverified"
+                    : Integer.toString(activeOrder.qualityScore());
+            source.sendSuccess(() -> Component.literal("Quality specification: " + quality), false);
+        }
         String status = SupplyOrderAuditService.currentStatus(source.getServer(), orderId);
         source.sendSuccess(() -> Component.literal("Current status: " + status), false);
         for (var event : events) {

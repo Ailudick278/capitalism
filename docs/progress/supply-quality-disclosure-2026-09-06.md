@@ -5,6 +5,7 @@
 - 供应报价新增 `qualityScore` 字段，记录挂牌时供应商该商品的平均质量分。
 - 采购界面显示质量分；没有质量台账的旧库存显示 `quality:unverified`。
 - 下单后，采购订单保存当时的质量规格快照；分批交付期间该规格不会随供应商新批次变化。
+- `/logistics order` and `/marketorders` now expose the order quality specification for audit and troubleshooting.
 - 旧存档中的供应报价通过可选字段兼容，缺失值默认为 0。
 - 质量目前只作为采购信息披露，不改变价格、付款、物流、订单接受或结算规则。
 

@@ -66,6 +66,9 @@ public final class MarketOrdersCommand {
         }
         for (PurchaseOrder order : SupplyMarketSavedData.get(server).orders()) {
             if (all || order.buyerUuid().toString().equals(owner)) {
+                String quality = order.qualityScore() <= 0 ? "unverified"
+                        : Integer.toString(order.qualityScore());
+                source.sendSuccess(() -> Component.literal("quality=" + quality), false);
                 source.sendSuccess(() -> Component.literal("采购 " + order.id() + " " + order.itemId()
                         + " 剩余=" + order.remaining()), false);
                 count++;
