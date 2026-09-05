@@ -106,6 +106,24 @@ public final class CompanyLogisticsCostSavedData extends SavedData {
         return false;
     }
 
+    /** Rebinds the inventory owner and carrier references during a merger. */
+    public void transferCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.isBlank()
+                || targetId.isBlank() || sourceId.equals(targetId)) return;
+        boolean changed = false;
+        for (int i = 0; i < costs.size(); i++) {
+            CapitalizedCost cost = costs.get(i);
+            String owner = sourceId.equals(cost.companyId()) ? targetId : cost.companyId();
+            String carrier = sourceId.equals(cost.carrierCompanyId()) ? targetId : cost.carrierCompanyId();
+            if (!owner.equals(cost.companyId()) || !carrier.equals(cost.carrierCompanyId())) {
+                costs.set(i, new CapitalizedCost(cost.shipmentId(), owner, cost.itemId(), cost.quantity(),
+                        cost.estimatedCost(), cost.appliedAt(), cost.settled(), carrier, cost.settledAt()));
+                changed = true;
+            }
+        }
+        if (changed) setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(List.copyOf(costs))).result()

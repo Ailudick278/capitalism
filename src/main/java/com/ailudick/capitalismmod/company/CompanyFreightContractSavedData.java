@@ -184,6 +184,25 @@ public final class CompanyFreightContractSavedData extends SavedData {
         return changed;
     }
 
+    /** Rebinds both buyer and carrier roles when a company is absorbed. */
+    public void transferCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.isBlank()
+                || targetId.isBlank() || sourceId.equals(targetId)) return;
+        boolean changed = false;
+        for (int i = 0; i < contracts.size(); i++) {
+            Contract contract = contracts.get(i);
+            String buyer = sourceId.equals(contract.buyerCompanyId()) ? targetId : contract.buyerCompanyId();
+            String carrier = sourceId.equals(contract.carrierCompanyId()) ? targetId : contract.carrierCompanyId();
+            if (!buyer.equals(contract.buyerCompanyId()) || !carrier.equals(contract.carrierCompanyId())) {
+                contracts.set(i, new Contract(contract.id(), contract.shipmentId(), buyer, carrier,
+                        contract.quotedCost(), contract.createdAt(), contract.acceptedAt(),
+                        contract.expiresAt(), contract.status()));
+                changed = true;
+            }
+        }
+        if (changed) setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(List.copyOf(contracts))).result()
