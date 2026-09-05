@@ -15,7 +15,13 @@ import java.util.UUID;
  * @param entryPrice price at which the position was opened (or last marked), in USD
  * @param margin     margin frozen for this position, in USD
  */
-public record Position(String id, UUID playerId, String itemId, int quantity, long entryPrice, long margin, boolean longSide) {
+public record Position(String id, UUID playerId, String itemId, int quantity, long entryPrice, long margin,
+                       boolean longSide, long lastSettlementDay) {
+
+    public Position(String id, UUID playerId, String itemId, int quantity, long entryPrice,
+                    long margin, boolean longSide) {
+        this(id, playerId, itemId, quantity, entryPrice, margin, longSide, -1L);
+    }
 
     private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
 
@@ -26,7 +32,8 @@ public record Position(String id, UUID playerId, String itemId, int quantity, lo
             Codec.INT.fieldOf("quantity").forGetter(Position::quantity),
             Codec.LONG.fieldOf("entryPrice").forGetter(Position::entryPrice),
             Codec.LONG.fieldOf("margin").forGetter(Position::margin),
-            Codec.BOOL.fieldOf("longSide").forGetter(Position::longSide)
+            Codec.BOOL.fieldOf("longSide").forGetter(Position::longSide),
+            Codec.LONG.optionalFieldOf("lastSettlementDay", -1L).forGetter(Position::lastSettlementDay)
     ).apply(instance, Position::new));
 
     // Manual StreamCodec: StreamCodec.composite has no 7-field overload.
@@ -47,11 +54,15 @@ public record Position(String id, UUID playerId, String itemId, int quantity, lo
                     ByteBufCodecs.VAR_INT.decode(buf),
                     ByteBufCodecs.VAR_LONG.decode(buf),
                     ByteBufCodecs.VAR_LONG.decode(buf),
-                    ByteBufCodecs.BOOL.decode(buf)
+            ByteBufCodecs.BOOL.decode(buf)
             )
     );
 
     public Position withEntryPrice(long newEntryPrice) {
-        return new Position(id, playerId, itemId, quantity, newEntryPrice, margin, longSide);
+        return new Position(id, playerId, itemId, quantity, newEntryPrice, margin, longSide, lastSettlementDay);
+    }
+
+    public Position withLastSettlementDay(long day) {
+        return new Position(id, playerId, itemId, quantity, entryPrice, margin, longSide, day);
     }
 }

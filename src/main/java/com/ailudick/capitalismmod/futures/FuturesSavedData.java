@@ -28,6 +28,7 @@ public final class FuturesSavedData extends SavedData {
     private final Map<String, Long> netVolume = new HashMap<>();
     private final Map<String, Long> expiryDay = new HashMap<>();
     private long dayCounter = 0L;
+    private long lastSettlementDay = -1L;
     // player uuid string -> margin balance (USD major units)
     private final Map<String, Long> marginBalance = new HashMap<>();
     private final List<Position> positions = new ArrayList<>();
@@ -38,14 +39,16 @@ public final class FuturesSavedData extends SavedData {
             Map<String, Long> expiryDay,
             long dayCounter,
             Map<String, Long> marginBalance,
-            List<Position> positions) {
+            List<Position> positions,
+            long lastSettlementDay) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("futuresPrice").forGetter(State::futuresPrice),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("netVolume").forGetter(State::netVolume),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("expiryDay").forGetter(State::expiryDay),
                 Codec.LONG.fieldOf("dayCounter").forGetter(State::dayCounter),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("marginBalance").forGetter(State::marginBalance),
-                Position.CODEC.listOf().fieldOf("positions").forGetter(State::positions)
+                Position.CODEC.listOf().fieldOf("positions").forGetter(State::positions),
+                Codec.LONG.optionalFieldOf("lastSettlementDay", -1L).forGetter(State::lastSettlementDay)
         ).apply(instance, State::new));
     }
 
@@ -117,8 +120,27 @@ public final class FuturesSavedData extends SavedData {
         return dayCounter;
     }
 
+    public long lastSettlementDay() {
+        return lastSettlementDay;
+    }
+
+    public void advanceToSettlementDay(long settlementDay) {
+        long target = settlementDay >= Long.MAX_VALUE - 1L ? Long.MAX_VALUE : Math.max(0L, settlementDay + 1L);
+        if (target > dayCounter) {
+            dayCounter = target;
+            setDirty();
+        }
+    }
+
+    public void markSettlementDay(long settlementDay) {
+        if (settlementDay > lastSettlementDay) {
+            lastSettlementDay = settlementDay;
+            setDirty();
+        }
+    }
+
     public void incrementDay() {
-        dayCounter++;
+        if (dayCounter < Long.MAX_VALUE) dayCounter++;
         setDirty();
     }
 
@@ -190,7 +212,7 @@ public final class FuturesSavedData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(futuresPrice), new HashMap<>(netVolume), new HashMap<>(expiryDay),
-                dayCounter, new HashMap<>(marginBalance), new ArrayList<>(positions));
+                dayCounter, new HashMap<>(marginBalance), new ArrayList<>(positions), lastSettlementDay);
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -206,6 +228,7 @@ public final class FuturesSavedData extends SavedData {
                 data.dayCounter = state.dayCounter();
                 data.marginBalance.putAll(state.marginBalance());
                 data.positions.addAll(state.positions());
+                data.lastSettlementDay = state.lastSettlementDay();
             });
         }
         return data;

@@ -106,7 +106,7 @@ public final class EconomySettlementTickHandler {
         }
 
         BondMarket.settleMaturity(server, settlementDay);
-        FuturesMarket.settleDay(server);
+        FuturesMarket.settleDay(server, settlementDay);
         CommodityMarket.expireOrders(server, server.overworld().getGameTime());
         StockMarket.expireOrders(server, server.overworld().getGameTime());
         SupplyMarket.expireOrders(server, server.overworld().getGameTime());

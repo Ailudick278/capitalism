@@ -129,8 +129,14 @@ public final class FuturesMarket {
 
     /** Marks every position to market, settles expiry/rollover, and liquidates insolvent accounts. */
     public static void settleDay(MinecraftServer server) {
+        settleDay(server, server.overworld().getGameTime() / com.ailudick.capitalismmod.calendar.PerpetualCalendar.TICKS_PER_DAY);
+    }
+
+    /** Marks every position once for the supplied economic settlement day. */
+    public static void settleDay(MinecraftServer server, long settlementDay) {
         FuturesSavedData data = FuturesSavedData.get(server);
-        data.incrementDay();
+        if (data.lastSettlementDay() >= settlementDay) return;
+        data.advanceToSettlementDay(settlementDay);
 
         Set<String> ids = new LinkedHashSet<>();
         for (ItemStack stack : Commodities.ALL) {
@@ -145,13 +151,16 @@ public final class FuturesMarket {
                 if (!position.itemId().equals(id)) {
                     continue;
                 }
+                if (position.lastSettlementDay() >= settlementDay) {
+                    continue;
+                }
                 long pnl = pnl(position, price);
                 data.addMarginBalance(position.playerId(), pnl);
                 if (expired) {
                     data.addMarginBalance(position.playerId(), position.margin());
                     data.removePosition(position.id());
                 } else {
-                    data.replacePosition(position.withEntryPrice(price));
+                    data.replacePosition(position.withEntryPrice(price).withLastSettlementDay(settlementDay));
                 }
             }
 
@@ -166,6 +175,7 @@ public final class FuturesMarket {
                 data.removePosition(position.id());
             }
         }
+        data.markSettlementDay(settlementDay);
         data.setDirty();
     }
 
