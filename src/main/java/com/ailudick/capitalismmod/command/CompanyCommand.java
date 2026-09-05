@@ -39,6 +39,12 @@ public class CompanyCommand {
                                 .executes(ctx -> contribute(ctx.getSource(),
                                         StringArgumentType.getString(ctx, "name"),
                                         LongArgumentType.getLong(ctx, "amount"))))));
+        root.then(Commands.literal("dividend")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("amountPerShare", LongArgumentType.longArg(1))
+                                .executes(ctx -> dividend(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"),
+                                        LongArgumentType.getLong(ctx, "amountPerShare"))))));
         root.then(Commands.literal("withdraw")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .then(Commands.argument("currency", StringArgumentType.word())
@@ -186,6 +192,17 @@ public class CompanyCommand {
                 + ", equipment " + statement.equipment() + ")"), false);
         source.sendSuccess(() -> Component.literal("Liabilities: USD " + statement.liabilities()
                 + " (tax " + statement.taxLiabilities() + "), equity: USD " + statement.equity()), false);
+        return 1;
+    }
+
+    private static int dividend(CommandSourceStack source, String name, long amountPerShare)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CompanyHelper.declareDividend(player, name, amountPerShare)) {
+            source.sendFailure(Component.literal("Dividend failed: the company must be listed and have enough cash."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Dividend declared: USD " + amountPerShare + " per share."), false);
         return 1;
     }
 

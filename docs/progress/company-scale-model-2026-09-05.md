@@ -28,6 +28,9 @@ separate accounting and operating metrics.
   cycle length rather than assuming a fixed 40 cycles per day.
 - Replaced the obsolete level-based maintenance setting with fixed operating
   overhead per production batch.
+- Added `/company dividend <name> <amountPerShare>` for listed companies. The
+  distribution is paid from company cash, recorded in the company ledger, paid
+  to online or offline shareholders, and assessed under the dividend tax type.
 - Old serialized companies without `registeredCapital` load with the safe
   default of 1000 major currency units; new saves never write `level`.
 

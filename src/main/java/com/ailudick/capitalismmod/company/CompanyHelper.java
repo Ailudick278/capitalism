@@ -471,6 +471,64 @@ public final class CompanyHelper {
         return true;
     }
 
+    /**
+     * Distributes a declared dividend to the current shareholders of a listed
+     * company. The company pays from cash first; dividends are not operating
+     * expenses and each recipient receives a separate dividend-tax assessment.
+     */
+    public static boolean declareDividend(Player player, String name, long amountPerShare) {
+        if (amountPerShare <= 0L || player.getServer() == null) return false;
+        MinecraftServer server = player.getServer();
+        Company company = getCompany(player, name);
+        if (company == null) return false;
+        EconomySavedData economy = EconomySavedData.get(server);
+        String stockId = stockId(player, name);
+        if (!economy.isListed(stockId)) return false;
+        Map<String, Long> holders = economy.shareholders().get(stockId);
+        if (holders == null || holders.isEmpty()) return false;
+
+        Map<UUID, Long> payouts = new HashMap<>();
+        long total = 0L;
+        for (Map.Entry<String, Long> entry : holders.entrySet()) {
+            UUID holder;
+            try {
+                holder = UUID.fromString(entry.getKey());
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
+            long shares = entry.getValue() == null ? 0L : entry.getValue();
+            long payout = EconomyMath.multiply(amountPerShare, shares);
+            if (shares <= 0L || payout <= 0L) return false;
+            total = EconomyMath.add(total, payout);
+            if (total < 0L) return false;
+            payouts.put(holder, payout);
+        }
+        if (company.treasuryOf(Currencies.USD.id()) < total || Money.toMinor(total) <= 0L) return false;
+
+        Map<String, Long> treasury = new HashMap<>(company.treasury());
+        long remaining = company.treasuryOf(Currencies.USD.id()) - total;
+        treasury.put(Currencies.USD.id(), remaining);
+        CompanySavedData.get(server).put(company.withTreasury(treasury));
+        long now = server.overworld().getGameTime();
+        CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                company.companyId(), now, "dividend_distribution", Currencies.USD.id(),
+                -total, remaining, "Dividend declared at USD " + amountPerShare + " per share"));
+
+        String declaration = company.companyId() + ":dividend:" + UUID.randomUUID();
+        for (Map.Entry<UUID, Long> payout : payouts.entrySet()) {
+            long minor = Money.toMinor(payout.getValue());
+            ServerPlayer online = server.getPlayerList().getPlayer(payout.getKey());
+            if (online != null) {
+                EconomyHelper.giveMoney(online, Currencies.USD, minor);
+            } else {
+                MarketMailboxSavedData.get(server).creditMoney(payout.getKey(), Currencies.USD.id(), minor);
+            }
+            TaxTransactionService.assess(server, TaxType.DIVIDEND, payout.getKey(),
+                    Currencies.USD.id(), minor, declaration + ":" + payout.getKey(), now);
+        }
+        return true;
+    }
+
     /** Withdraws {@code amount} of {@code currencyId} from a company's treasury to the founder. */
     public static boolean withdraw(Player player, String name, String currencyId, long amount) {
         if (!Currencies.exists(currencyId) || amount <= 0) {
