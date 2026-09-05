@@ -112,15 +112,21 @@ public final class FuturesMarket {
     /** Closes the player's own position, realizing P&L into their margin balance. */
     public static boolean closePosition(ServerPlayer player, String positionId) {
         FuturesSavedData data = FuturesSavedData.get(player.getServer());
+        FuturesCloseSavedData closes = FuturesCloseSavedData.get(player.getServer());
         Position position = data.findPosition(positionId);
         if (position == null || !position.playerId().equals(player.getUUID())) {
             return false;
         }
+        if (closes.has(positionId)) {
+            data.removePosition(positionId);
+            return true;
+        }
         long price = data.price(position.itemId());
         long pnl = pnl(position, price);
-        data.removePosition(positionId);
         data.addMarginBalance(player.getUUID(), safeAdd(position.margin(), pnl));
         data.addNetVolume(position.itemId(), position.longSide() ? -position.quantity() : position.quantity());
+        closes.record(positionId);
+        data.removePosition(positionId);
         data.setDirty();
         return true;
     }
