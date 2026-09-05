@@ -34,8 +34,8 @@ public record CompanyCreditSnapshot(long lookbackDays, long operatingCashFlow,
         long cashLimit = Math.max(0L, cash.maximumSupportedDebt());
         long totalLimit = cash.hasOperatingHistory() ? Math.min(capitalLimit, cashLimit) : capitalLimit;
         long remaining = totalLimit > inputs.existingDebt() ? totalLimit - inputs.existingDebt() : 0L;
-        boolean overdue = CompanyLoanSavedData.get(server).forCompany(company.companyId()).stream()
-                .anyMatch(CompanyLoan::isOverdue);
+        boolean overdue = CompanyDebtServiceAssessment.hasOverdueLoan(
+                CompanyLoanSavedData.get(server).forCompany(company.companyId()));
         return new CompanyCreditSnapshot(days, cash.operatingCashFlow(), inputs.existingDebt(),
                 capitalLimit, cashLimit, remaining, debtService.annualDebtService(),
                 debtService.coverageRatio(), cash.hasOperatingHistory(), overdue);

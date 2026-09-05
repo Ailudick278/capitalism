@@ -9,6 +9,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CompanyDebtServiceAssessmentTest {
     @Test
+    void overdueExistingLoanBlocksAutomatedNewCredit() {
+        CompanyLoan overdue = new CompanyLoan("id", "company", "usd", 1_000L,
+                0.10, 30, -1, 0L);
+        CompanyLoan current = new CompanyLoan("id2", "company", "usd", 1_000L,
+                0.10, 30, 1, 0L);
+
+        assertTrue(CompanyDebtServiceAssessment.hasOverdueLoan(List.of(overdue, current)));
+        assertFalse(CompanyDebtServiceAssessment.hasOverdueLoan(List.of(current)));
+    }
+
+    @Test
     void shortTermLoanRequiresMoreCashFlowThanLongTermLoan() {
         CompanyDebtServiceAssessment shortTerm = CompanyDebtServiceAssessment.evaluate(
                 1_000L, List.of(), 2_000L, 30, 0.10, true);

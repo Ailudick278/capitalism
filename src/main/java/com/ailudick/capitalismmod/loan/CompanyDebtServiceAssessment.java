@@ -26,6 +26,11 @@ public record CompanyDebtServiceAssessment(double annualOperatingCashFlow,
         return new CompanyDebtServiceAssessment(annualCashFlow, debtService, ratio, approved);
     }
 
+    /** Automated underwriting does not extend new credit while an existing loan is overdue. */
+    public static boolean hasOverdueLoan(List<CompanyLoan> loans) {
+        return loans != null && loans.stream().anyMatch(loan -> loan != null && loan.isOverdue());
+    }
+
     private static double annualizedService(long principal, int days, double ratePerYear) {
         if (principal <= 0L || days <= 0 || !Double.isFinite(ratePerYear) || ratePerYear < 0.0) return 0.0;
         // Conservative balloon-loan approximation: principal due at maturity plus one year of interest.

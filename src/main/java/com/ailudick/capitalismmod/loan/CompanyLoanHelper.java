@@ -11,6 +11,7 @@ import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
 
+import java.util.List;
 import java.util.UUID;
 
 /** Company financing operations. Principal is a liability, never operating revenue. */
@@ -26,8 +27,10 @@ public final class CompanyLoanHelper {
                 || !Double.isFinite(ratePercent) || ratePercent < 0.0 || ratePercent > 100.0) return null;
         long maximumDebt = EconomyMath.multiply(company.registeredCapital(), MAX_DEBT_MULTIPLE_OF_CAPITAL);
         if (maximumDebt < 0L) return null;
+        List<CompanyLoan> existingLoans = CompanyLoanSavedData.get(server).forCompany(company.companyId());
+        if (CompanyDebtServiceAssessment.hasOverdueLoan(existingLoans)) return null;
         long existingDebt = 0L;
-        for (CompanyLoan loan : CompanyLoanSavedData.get(server).forCompany(company.companyId())) {
+        for (CompanyLoan loan : existingLoans) {
             existingDebt = EconomyMath.add(existingDebt, loan.principal());
             if (existingDebt < 0L) return null;
         }
@@ -39,7 +42,7 @@ public final class CompanyLoanHelper {
                 server.overworld().getGameTime(), lookback, existingDebt, amount);
         if (!cashFlow.approved()) return null;
         CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
-                cashFlow.operatingCashFlow(), CompanyLoanSavedData.get(server).forCompany(company.companyId()),
+                cashFlow.operatingCashFlow(), existingLoans,
                 amount, days, ratePercent / 100.0, cashFlow.hasOperatingHistory());
         if (!debtService.approved()) return null;
         if (!CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), amount,
