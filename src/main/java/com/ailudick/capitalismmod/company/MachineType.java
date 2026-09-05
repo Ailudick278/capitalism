@@ -29,6 +29,8 @@ public enum MachineType {
             "capitalismmod:steel_sheet", 4, "minecraft:quartz", 2, "minecraft:redstone", 2)),
     CRYSTAL_GROWTH_FURNACE("crystal_growth_furnace", 5000L, 14L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:steel_sheet", 4, "capitalismmod:electric_motor", 1, "minecraft:glass", 2)),
+    CHIP_PACKAGING_LINE("chip_packaging_line", 4300L, 11L, Map.of("capitalismmod:machine_frame", 2,
+            "capitalismmod:electric_motor", 1, "capitalismmod:copper_wire", 3, "minecraft:glass", 1)),
     SEMICONDUCTOR_FAB("semiconductor_fab", 5200L, 16L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:steel_sheet", 4, "minecraft:quartz", 2, "minecraft:redstone", 3)),
     ELECTRONICS_ASSEMBLY("electronics_assembly", 4200L, 10L, Map.of("capitalismmod:machine_frame", 2,

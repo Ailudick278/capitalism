@@ -113,6 +113,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.FAN_CONTROL.get());
                         output.accept(ModItems.POLYSILICON.get());
                         output.accept(ModItems.SILICON_WAFER.get());
+                        output.accept(ModItems.PACKAGED_CHIP.get());
                         output.accept(ModItems.CIRCUIT_BOARD.get());
                         output.accept(ModItems.DISPLAY_PANEL.get());
                         output.accept(ModItems.PHONE_CASING.get());

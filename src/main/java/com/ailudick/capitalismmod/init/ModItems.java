@@ -236,6 +236,8 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> SILICON_WAFER = ITEMS.register("silicon_wafer",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PACKAGED_CHIP = ITEMS.register("packaged_chip",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> CIRCUIT_BOARD = ITEMS.register("circuit_board",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> DISPLAY_PANEL = ITEMS.register("display_panel",
