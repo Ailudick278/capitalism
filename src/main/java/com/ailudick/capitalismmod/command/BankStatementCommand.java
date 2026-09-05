@@ -93,7 +93,8 @@ public final class BankStatementCommand {
                     : PerpetualCalendar.formatMinecraftTicks(transaction.occurredAt());
             source.sendSuccess(() -> Component.literal(occurred + " | " + transaction.type() + " | "
                     + transaction.currencyId().toUpperCase() + " "
-                    + Money.format(transaction.amount()) + " | ref " + transaction.reference()), false);
+                    + Money.format(transaction.amount()) + " | ref " + transaction.reference()
+                    + " | counterparty " + transaction.counterparty()), false);
         }
         return 1;
     }

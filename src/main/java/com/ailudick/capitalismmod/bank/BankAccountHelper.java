@@ -179,14 +179,16 @@ public final class BankAccountHelper {
                 return false;
             }
             account = account.withBalance(currency.id(), newBalance)
-                    .withTransaction(BankTransaction.now(player, "deposit", currency.id(), amount));
+                    .withTransaction(BankTransaction.now(player, "deposit", currency.id(), amount,
+                            "cash_deposit", "wallet"));
         } else {
             // account -> physical items
             if (accountBalance < amount) {
                 return false;
             }
             account = account.withBalance(currency.id(), accountBalance - amount)
-                    .withTransaction(BankTransaction.now(player, "withdraw", currency.id(), -amount));
+                    .withTransaction(BankTransaction.now(player, "withdraw", currency.id(), -amount,
+                            "cash_withdraw", "wallet"));
             EconomyHelper.giveMoney(player, currency, amount);
         }
 
@@ -332,13 +334,16 @@ public final class BankAccountHelper {
             return false;
         }
         BankAccount senderUpdated = from.withBalance(currencyId, from.getBalance(currencyId) - total)
-                .withTransaction(BankTransaction.now(sender, "transfer_out", currencyId, -amount));
+                .withTransaction(BankTransaction.now(sender, "transfer_out", currencyId, -amount,
+                        "bank_transfer", targetAccountId));
         if (fee > 0L) {
-            senderUpdated = senderUpdated.withTransaction(BankTransaction.now(sender, "transfer_fee", currencyId, -fee));
+            senderUpdated = senderUpdated.withTransaction(BankTransaction.now(sender, "transfer_fee", currencyId, -fee,
+                    "transfer_fee", "bank"));
         }
         updateAccount(sender, senderUpdated);
         updateAccount(target, to.withBalance(currencyId, targetBalance)
-                .withTransaction(BankTransaction.now(sender, "transfer_in", currencyId, amount)));
+                .withTransaction(BankTransaction.now(sender, "transfer_in", currencyId, amount,
+                        "bank_transfer", fromAccountId)));
         return true;
     }
 
