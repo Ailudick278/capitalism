@@ -78,7 +78,7 @@ public final class LandHelper {
 
     public static LandStatus statusAt(ServerPlayer player, LandClaim claim) {
         boolean auction = LandAuctionSavedData.get(player.getServer()).get(claim.id()) != null;
-        return LandStatus.resolve(claim.taxOwed(), claim.taxDueAt(), claim.taxGraceUntil(), auction,
+        return LandStatus.resolve(taxOwed(player, claim), claim.taxDueAt(), claim.taxGraceUntil(), auction,
                 player.level().getGameTime());
     }
 

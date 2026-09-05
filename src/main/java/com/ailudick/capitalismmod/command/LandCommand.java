@@ -469,7 +469,7 @@ public final class LandCommand {
         ServerPlayer player = source.getPlayerOrException();
         LandClaim claim = LandHelper.at(player, player.blockPosition());
         if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || claim.leaseeUuid() != null
-                || claim.taxOwed() > 0 || claim.leaseDebt() > 0 || LandHelper.isTaxFrozen(player, claim)
+                || LandHelper.taxOwed(player, claim) > 0 || claim.leaseDebt() > 0 || LandHelper.isTaxFrozen(player, claim)
                 || target.getUUID().equals(player.getUUID())) {
             source.sendFailure(Component.literal("土地不存在、存在租约/欠款，或你不是所有者")); return 0;
         }
@@ -489,7 +489,7 @@ public final class LandCommand {
         ServerPlayer player = source.getPlayerOrException();
         LandClaim claim = LandSavedData.get(player.getServer()).get(player.level().dimension().location() + ":" + chunkX + ":" + chunkZ);
         if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || claim.leaseeUuid() != null
-                || claim.taxOwed() > 0 || claim.leaseDebt() > 0 || LandHelper.isTaxFrozen(player, claim)
+                || LandHelper.taxOwed(player, claim) > 0 || claim.leaseDebt() > 0 || LandHelper.isTaxFrozen(player, claim)
                 || target.getUUID().equals(player.getUUID())) {
             source.sendFailure(Component.literal("所选土地不可转让")); return 0;
         }
@@ -508,7 +508,7 @@ public final class LandCommand {
         ServerPlayer player = source.getPlayerOrException();
         LandClaim claim = LandHelper.at(player, player.blockPosition());
         if (price < 0 || claim == null || !claim.ownerUuid().equals(player.getUUID())
-                || claim.leaseeUuid() != null || claim.taxOwed() > 0 || claim.leaseDebt() > 0
+                || claim.leaseeUuid() != null || LandHelper.taxOwed(player, claim) > 0 || claim.leaseDebt() > 0
                 || LandHelper.isTaxFrozen(player, claim)
                 || target.getUUID().equals(player.getUUID())) {
             source.sendFailure(Component.literal("当前土地不可出售"));
@@ -538,7 +538,7 @@ public final class LandCommand {
         String id = pending.dimension() + ":" + pending.chunkX() + ":" + pending.chunkZ();
         LandSavedData data = LandSavedData.get(player.getServer()); LandClaim claim = data.get(id);
         if (claim == null || !claim.ownerUuid().equals(pending.from()) || claim.leaseeUuid() != null
-                || claim.taxOwed() > 0 || claim.leaseDebt() > 0) {
+                || LandHelper.taxOwed(player, claim) > 0 || claim.leaseDebt() > 0) {
             transfers.remove(player.getUUID()); source.sendFailure(Component.literal("土地状态已变化，转让失败")); return 0;
         }
         long price = pending.price();
