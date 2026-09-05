@@ -47,9 +47,14 @@ public final class BondMarket {
     /** Redeems a bond early at face value plus accrued interest. */
     public static boolean redeemBond(ServerPlayer player, String holdingId) {
         BondSavedData data = BondSavedData.get(player.getServer());
+        BondSettlementSavedData settlements = BondSettlementSavedData.get(player.getServer());
         BondHolding holding = data.findHolding(holdingId);
         if (holding == null || !holding.holder().equals(player.getUUID())) {
             return false;
+        }
+        if (settlements.has(holdingId)) {
+            data.removeHolding(holdingId);
+            return true;
         }
         long payout;
         try {
@@ -62,6 +67,7 @@ public final class BondMarket {
             return false;
         }
         EconomyHelper.giveMoney(player, Currencies.USD, payoutMinor);
+        settlements.record(holdingId);
         data.removeHolding(holdingId);
         return true;
     }
