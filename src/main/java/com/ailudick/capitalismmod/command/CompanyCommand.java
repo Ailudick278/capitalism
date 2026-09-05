@@ -47,7 +47,10 @@ public class CompanyCommand {
                         .executes(ctx -> resume(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("liquidate")
                 .then(Commands.argument("name", StringArgumentType.word())
-                        .executes(ctx -> liquidate(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+                        .executes(ctx -> liquidate(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
+                        .then(Commands.literal("settle")
+                                .executes(ctx -> settleLiquidation(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"))))));
         root.then(Commands.literal("statement")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> statement(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -273,6 +276,21 @@ public class CompanyCommand {
         }
         SupplyMarket.removeOffersForCompany(player.getServer(), player.getUUID(), company.name());
         source.sendSuccess(() -> Component.literal("Liquidation opened; operations and new listings are paused."), false);
+        return 1;
+    }
+
+    private static int settleLiquidation(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        if (!CompanyLifecycleService.settleLiquidation(player, company)) {
+            source.sendFailure(Component.literal("Liquidation remains incomplete; unresolved tax or company-loan liabilities may remain."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Liquidation completed; remaining equity was returned and the company was dissolved."), false);
         return 1;
     }
 

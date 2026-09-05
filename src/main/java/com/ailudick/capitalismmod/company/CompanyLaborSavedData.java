@@ -62,6 +62,10 @@ public final class CompanyLaborSavedData extends SavedData {
         if (list != null && list.removeIf(contract -> contract.id().equals(contractId))) setDirty();
     }
 
+    public void clear(String companyId) {
+        if (companyId != null && contracts.remove(companyId) != null) setDirty();
+    }
+
     public int activeWorkers(String companyId) {
         long total = contracts(companyId).stream().filter(WorkerContract::active)
                 .mapToLong(WorkerContract::count).sum();
