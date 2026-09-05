@@ -11,6 +11,7 @@ import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
 import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
 import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
 import com.ailudick.capitalismmod.company.CompanyProductionBatchSavedData;
+import com.ailudick.capitalismmod.company.CompanyQualityControlSavedData;
 import com.ailudick.capitalismmod.company.CompanyServiceDeliverySavedData;
 import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
@@ -81,6 +82,18 @@ public class CompanyCommand {
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> batches(ctx.getSource(),
                                 StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("qualitycheck")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> qualityCheck(ctx.getSource(),
+                                StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("qualityreview")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("batchId", StringArgumentType.word())
+                                .then(Commands.argument("status", StringArgumentType.word())
+                                        .executes(ctx -> qualityReview(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "name"),
+                                                StringArgumentType.getString(ctx, "batchId"),
+                                                StringArgumentType.getString(ctx, "status")))))));
         root.then(Commands.literal("services")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> services(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -455,6 +468,48 @@ public class CompanyCommand {
                         + "/100 | conversion USD " + batch.conversionCost()
                         + " | tick " + batch.createdAt()), false));
         return Math.min(20, records.size());
+    }
+
+    private static int qualityCheck(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        var records = CompanyQualityControlSavedData.get(player.getServer()).forCompany(company.companyId());
+        source.sendSuccess(() -> Component.literal("Quality-control records for " + company.name()
+                + " (latest 20; screening only):"), false);
+        if (records.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No quality-control records recorded."), false);
+            return 1;
+        }
+        records.stream().limit(20).forEach(record -> source.sendSuccess(() -> Component.literal(
+                record.batchId().substring(0, Math.min(8, record.batchId().length()))
+                        + " | " + record.status() + " | score " + record.score() + "/100"
+                        + " | reason " + record.reason() + " | inspected tick " + record.inspectedAt()
+                        + (record.reviewedAt() > 0 ? " | reviewed tick " + record.reviewedAt() : "")), false));
+        return Math.min(20, records.size());
+    }
+
+    private static int qualityReview(CommandSourceStack source, String name, String batchId, String status)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        long now = player.getServer().overworld().getGameTime();
+        if (!CompanyQualityControlSavedData.get(player.getServer())
+                .review(company.companyId(), batchId, status, now)) {
+            source.sendFailure(Component.literal(
+                    "Quality review failed: batch not found or status must be released, rework, or rejected."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Quality disposition recorded: " + status
+                + " for batch " + batchId), false);
+        return 1;
     }
 
     private static int services(CommandSourceStack source, String name) throws CommandSyntaxException {

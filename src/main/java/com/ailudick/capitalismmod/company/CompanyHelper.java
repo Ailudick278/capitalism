@@ -719,9 +719,11 @@ public final class CompanyHelper {
                     com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId()),
                     company.ownerUuid(), itemId);
         }
-        CompanyProductionBatchSavedData.get(server).record(CompanyProductionBatchSavedData.newBatch(
+        CompanyProductionBatchSavedData.Batch batch = CompanyProductionBatchSavedData.newBatch(
                 company, recipe, conversionCost, qualityScore, recipe.workersPerCycle(),
-                server.overworld().getGameTime()));
+                server.overworld().getGameTime());
+        CompanyProductionBatchSavedData.get(server).record(batch);
+        CompanyQualityControlSavedData.get(server).screen(batch, batch.createdAt());
     }
 
     /** Game-scale process-quality proxy based on active skill and equipment condition. */
@@ -999,6 +1001,7 @@ public final class CompanyHelper {
             CompanyQualitySavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyProductionBatchSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
+            CompanyQualityControlSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyLoanSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanySiteSavedData.get(server).remove(source.companyId());
         }
