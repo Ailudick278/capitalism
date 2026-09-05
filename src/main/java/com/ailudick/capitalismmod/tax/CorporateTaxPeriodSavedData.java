@@ -59,6 +59,10 @@ public final class CorporateTaxPeriodSavedData extends SavedData {
         return entries.values().stream().filter(entry -> entry.periodEnd() <= now).toList();
     }
 
+    public boolean hasPendingForCompany(String companyId) {
+        return entries.values().stream().anyMatch(entry -> entry.companyId().equals(companyId));
+    }
+
     public void remove(Entry entry) {
         entries.remove(entry.companyId() + ":" + entry.periodEnd());
         setDirty();

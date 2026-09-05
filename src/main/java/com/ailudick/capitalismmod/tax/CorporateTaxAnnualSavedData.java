@@ -69,6 +69,10 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
                 && !settlements.containsKey(entry.companyId() + ":" + entry.yearEnd())).toList());
     }
 
+    public boolean hasPendingForCompany(String companyId) {
+        return entries.values().stream().anyMatch(entry -> entry.companyId().equals(companyId));
+    }
+
     public void settle(Entry entry, Settlement settlement) {
         entries.remove(entry.companyId() + ":" + entry.yearEnd());
         settlements.put(entry.companyId() + ":" + entry.yearEnd(), settlement);

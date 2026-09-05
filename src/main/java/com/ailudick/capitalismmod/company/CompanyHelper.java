@@ -663,8 +663,20 @@ public final class CompanyHelper {
         if (source.taxOwed() > 0L || target.taxOwed() > 0L) {
             return false;
         }
-        long capital = EconomyMath.add(source.registeredCapital(), target.registeredCapital());
         MinecraftServer server = player.getServer();
+        if (server != null) {
+            TaxSubject sourceTax = new TaxSubject(TaxType.CORPORATE_INCOME, source.companyId(), source.ownerUuid());
+            TaxSubject targetTax = new TaxSubject(TaxType.CORPORATE_INCOME, target.companyId(), target.ownerUuid());
+            if (TaxService.outstanding(server, sourceTax) > 0L || TaxService.outstanding(server, targetTax) > 0L
+                    || CorporateTaxPeriodSavedData.get(server).hasPendingForCompany(source.companyId())
+                    || CorporateTaxPeriodSavedData.get(server).hasPendingForCompany(target.companyId())
+                    || CorporateTaxAnnualSavedData.get(server).hasPendingForCompany(source.companyId())
+                    || CorporateTaxAnnualSavedData.get(server).hasPendingForCompany(target.companyId())) {
+                return false;
+            }
+        }
+        long capital = EconomyMath.add(source.registeredCapital(), target.registeredCapital());
+        if (capital < 0L) return false;
         if (server != null) {
             WarehouseSavedData.get(server).transferAll(
                     com.ailudick.capitalismmod.market.InventoryOwner.company(source.companyId()),
