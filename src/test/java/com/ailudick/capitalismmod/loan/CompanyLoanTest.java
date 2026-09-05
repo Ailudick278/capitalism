@@ -10,7 +10,7 @@ class CompanyLoanTest {
         CompanyLoan loan = new CompanyLoan("id", "company", "usd", 3650,
                 0.10, 365, 0, 0);
         assertEquals(365, loan.interestDue());
-        assertEquals(732, loan.withDaysRemaining(-1).interestDue());
+        assertEquals(367, loan.withDaysRemaining(-1).interestDue());
     }
 
     @Test
@@ -43,6 +43,6 @@ class CompanyLoanTest {
         CompanyLoan loan = new CompanyLoan("id", "company", "usd", 3650,
                 0.10, 365, -1, 0);
 
-        assertEquals(4382, loan.scheduledPayment());
+        assertEquals(4017, loan.scheduledPayment());
     }
 }

@@ -54,14 +54,16 @@ public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId,
                 daysRemaining, Math.max(0L, amount));
     }
 
-    /** Interest currently due (major units), doubled when overdue. */
+    /** Interest currently due (major units); only overdue days carry penalty interest. */
     public long interestDue() {
         if (principal <= 0 || totalDays <= 0 || !Double.isFinite(ratePerYear) || ratePerYear < 0) {
             return 0;
         }
-        int elapsed = Math.max(0, totalDays - daysRemaining);
-        double multiplier = daysRemaining < 0 ? 2.0 : 1.0;
-        double interest = principal * ratePerYear / 365.0 * elapsed * multiplier;
+        long elapsed = Math.max(0L, (long) totalDays - daysRemaining);
+        long regularDays = Math.min(elapsed, (long) totalDays);
+        long overdueDays = Math.max(0L, elapsed - totalDays);
+        double dailyInterest = principal * ratePerYear / 365.0;
+        double interest = dailyInterest * regularDays + dailyInterest * overdueDays * 2.0;
         if (!Double.isFinite(interest) || interest >= Long.MAX_VALUE) {
             return Long.MAX_VALUE;
         }

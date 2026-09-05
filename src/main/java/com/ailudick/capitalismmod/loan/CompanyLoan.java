@@ -44,9 +44,11 @@ public record CompanyLoan(String id, String companyId, String currencyId, long p
 
     public long interestDue() {
         if (principal <= 0L || totalDays <= 0 || !Double.isFinite(ratePerYear) || ratePerYear < 0.0) return 0L;
-        int elapsed = Math.max(0, totalDays - daysRemaining);
-        double multiplier = daysRemaining < 0 ? 2.0 : 1.0;
-        double interest = principal * ratePerYear / 365.0 * elapsed * multiplier;
+        long elapsed = Math.max(0L, (long) totalDays - daysRemaining);
+        long regularDays = Math.min(elapsed, (long) totalDays);
+        long overdueDays = Math.max(0L, elapsed - totalDays);
+        double dailyInterest = principal * ratePerYear / 365.0;
+        double interest = dailyInterest * regularDays + dailyInterest * overdueDays * 2.0;
         if (!Double.isFinite(interest) || interest >= Long.MAX_VALUE) return Long.MAX_VALUE;
         long accrued = Math.max(0L, (long) interest);
         return accrued > interestPaid ? accrued - interestPaid : 0L;
