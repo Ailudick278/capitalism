@@ -65,18 +65,21 @@ public final class CompanyLoanHelper {
         if (total < 0L) return false;
         long payment = requestedAmount == null ? total : requestedAmount;
         if (payment <= 0L || payment > total) return false;
+        long interestPayment = Math.min(payment, interest);
+        long principalPayment = payment - interestPayment;
+        if (principalPayment < 0L || principalPayment > loan.principal()) return false;
         if (!CompanyHelper.debitTreasuryNonOperating(server, company.companyId(), loan.currencyId(), payment,
                 "loan_repayment", "Company loan repayment")) return false;
         if (payment == total) {
             data.remove(loan.id());
         } else {
-            long interestPayment = Math.min(payment, interest);
-            long principalPayment = payment - interestPayment;
-            if (principalPayment > loan.principal()) return false;
             CompanyLoan updated = loan.withInterestPaid(EconomyMath.add(loan.interestPaid(), interestPayment))
                     .withPrincipal(loan.principal() - principalPayment);
             data.replace(updated);
         }
+        CompanyLoanPaymentSavedData.get(server).append(new CompanyLoanPaymentSavedData.Payment(
+                loan.id(), loan.companyId(), server.overworld().getGameTime(), payment,
+                interestPayment, principalPayment, Math.max(0L, loan.principal() - principalPayment)));
         return true;
     }
 

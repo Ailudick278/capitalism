@@ -20,6 +20,7 @@ import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
 import com.ailudick.capitalismmod.loan.CompanyLoanHelper;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
+import com.ailudick.capitalismmod.loan.CompanyLoanPaymentSavedData;
 import com.ailudick.capitalismmod.loan.CompanyCreditSnapshot;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
@@ -117,6 +118,12 @@ public class CompanyCommand {
         root.then(Commands.literal("companyloans")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> companyLoans(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("loanpayments")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("loanId", StringArgumentType.word())
+                                .executes(ctx -> loanPayments(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"),
+                                        StringArgumentType.getString(ctx, "loanId"))))));
         root.then(Commands.literal("withdraw")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .then(Commands.argument("currency", StringArgumentType.word())
@@ -517,6 +524,32 @@ public class CompanyCommand {
         }
         source.sendSuccess(() -> Component.literal("Scheduled company-loan payment completed."), false);
         return 1;
+    }
+
+    private static int loanPayments(CommandSourceStack source, String name, String loanId)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        CompanyLoan loan = CompanyLoanSavedData.get(player.getServer()).find(loanId);
+        if (loan == null || !loan.companyId().equals(company.companyId())) {
+            source.sendFailure(Component.literal("Loan not found for this company."));
+            return 0;
+        }
+        var payments = CompanyLoanPaymentSavedData.get(player.getServer()).forLoan(loanId);
+        if (payments.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No payment records for loan " + loanId), false);
+            return 1;
+        }
+        payments.forEach(payment -> source.sendSuccess(() -> Component.literal(
+                payment.timestamp() + " | paid USD " + payment.total()
+                        + " | interest USD " + payment.interest()
+                        + " | principal USD " + payment.principal()
+                        + " | remaining principal USD " + payment.remainingPrincipal()), false));
+        return payments.size();
     }
 
     private static int dividend(CommandSourceStack source, String name, long amountPerShare)
