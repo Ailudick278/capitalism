@@ -114,6 +114,9 @@ public class ModCreativeTabs {
                         output.accept(ModItems.SYNTHETIC_RUBBER.get());
                         output.accept(ModItems.ETHYLENE_GLYCOL.get());
                         output.accept(ModItems.EPOXY_RESIN.get());
+                        output.accept(ModItems.BENZENE.get());
+                        output.accept(ModItems.STYRENE_MONOMER.get());
+                        output.accept(ModItems.ABS_RESIN.get());
                         output.accept(ModItems.FAN_BLADES.get());
                         output.accept(ModItems.FAN_CONTROL.get());
                         output.accept(ModItems.POLYSILICON.get());
@@ -128,6 +131,9 @@ public class ModCreativeTabs {
                         output.accept(ModItems.COPPER_FOIL.get());
                         output.accept(ModItems.SOLDER.get());
                         output.accept(ModItems.SMD_COMPONENTS.get());
+                        output.accept(ModItems.PASSIVE_COMPONENTS.get());
+                        output.accept(ModItems.POWER_MANAGEMENT_IC.get());
+                        output.accept(ModItems.DISPLAY_DRIVER.get());
                         output.accept(ModItems.DISPLAY_PANEL.get());
                         output.accept(ModItems.PHONE_CASING.get());
                         output.accept(ModItems.CAMERA_MODULE.get());

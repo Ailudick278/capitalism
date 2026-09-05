@@ -365,4 +365,10 @@
   ,"item.capitalismmod.speaker_module": "扬声器模组"
   ,"item.capitalismmod.microphone_module": "麦克风模组"
   ,"item.capitalismmod.charging_port": "充电接口模组"
+  ,"item.capitalismmod.benzene": "苯"
+  ,"item.capitalismmod.styrene_monomer": "苯乙烯单体"
+  ,"item.capitalismmod.abs_resin": "ABS树脂"
+  ,"item.capitalismmod.passive_components": "被动元件"
+  ,"item.capitalismmod.power_management_ic": "电源管理芯片"
+  ,"item.capitalismmod.display_driver": "显示驱动芯片"
 }
