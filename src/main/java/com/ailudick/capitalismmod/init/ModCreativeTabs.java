@@ -105,6 +105,15 @@ public class ModCreativeTabs {
                         output.accept(ModItems.DRIED_LUMBER.get());
                         output.accept(ModItems.WOODEN_CRATE.get());
                         output.accept(ModItems.FURNITURE.get());
+                        output.accept(ModItems.CRUDE_OIL.get());
+                        output.accept(ModItems.NAPHTHA.get());
+                        output.accept(ModItems.PLASTIC_PELLETS.get());
+                        output.accept(ModItems.FAN_BLADES.get());
+                        output.accept(ModItems.FAN_CONTROL.get());
+                        output.accept(ModItems.SILICON_WAFER.get());
+                        output.accept(ModItems.CIRCUIT_BOARD.get());
+                        output.accept(ModItems.BATTERY.get());
+                        output.accept(ModItems.SMARTPHONE.get());
                         output.accept(ModItems.ELECTRIC_FAN.get());
                     })
                     .build());

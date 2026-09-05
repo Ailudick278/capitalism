@@ -220,6 +220,24 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FURNITURE = ITEMS.register("furniture",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CRUDE_OIL = ITEMS.register("crude_oil",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> NAPHTHA = ITEMS.register("naphtha",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PLASTIC_PELLETS = ITEMS.register("plastic_pellets",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FAN_BLADES = ITEMS.register("fan_blades",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FAN_CONTROL = ITEMS.register("fan_control",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SILICON_WAFER = ITEMS.register("silicon_wafer",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CIRCUIT_BOARD = ITEMS.register("circuit_board",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BATTERY = ITEMS.register("battery",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SMARTPHONE = ITEMS.register("smartphone",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> ELECTRIC_FAN = ITEMS.register("electric_fan",
             () -> new Item(new Item.Properties().stacksTo(64)));
 }
