@@ -169,6 +169,10 @@ public class Config {
             .comment("Commodity price limit band as a fraction of the previous close (0.10 = ±10%).")
             .defineInRange("commodityPriceLimit", 0.10, 0.0, 1.0);
 
+    public static final ModConfigSpec.IntValue COMMODITY_ORDER_EXPIRY_DAYS = BUILDER
+            .comment("Number of Minecraft days before a new commodity limit order expires; 0 disables expiry.")
+            .defineInRange("commodityOrderExpiryDays", 30, 0, 3650);
+
     // Daily stock price limit band as a fraction of the previous close (0.10 = 10%).
     public static final ModConfigSpec.DoubleValue STOCK_PRICE_LIMIT = BUILDER
             .comment("Stock price limit band as a fraction of the previous close (0.10 = 10%).")

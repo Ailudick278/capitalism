@@ -216,6 +216,42 @@ public final class CommodityMarket {
         data.setDirty();
     }
 
+    /**
+     * Releases escrow for newly-created orders that have reached their configured
+     * lifetime. Legacy orders with no creation timestamp are retained so loading
+     * older worlds cannot unexpectedly destroy an order.
+     */
+    public static void expireOrders(MinecraftServer server, long now) {
+        int expiryDays = Config.COMMODITY_ORDER_EXPIRY_DAYS.get();
+        if (expiryDays <= 0) return;
+        long lifetime = com.ailudick.capitalismmod.calendar.PerpetualCalendar.ticksForDays(expiryDays);
+        CommoditySavedData data = CommoditySavedData.get(server);
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        for (MarketOrder order : new ArrayList<>(data.orders())) {
+            if (order.createdAt() <= 0L || now < order.createdAt()
+                    || now - order.createdAt() < lifetime) {
+                continue;
+            }
+            UUID owner;
+            try {
+                owner = UUID.fromString(order.ownerId());
+            } catch (IllegalArgumentException | NullPointerException exception) {
+                // Leave malformed records for the explicit admin repair command.
+                continue;
+            }
+            data.removeOrder(order.id());
+            if (order.sell()) {
+                warehouse.credit(owner, order.commodity().getItem(), order.quantity());
+            } else {
+                long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
+                if (total > 0L) {
+                    MarketMailboxSavedData.get(server).creditMoney(owner, Currencies.USD.id(),
+                            Money.toMinor(total));
+                }
+            }
+        }
+    }
+
     // ---- matching internals ----
 
     /** Buy orders for {@code itemId} with bid ≥ {@code limit}, best (highest) bid first. */

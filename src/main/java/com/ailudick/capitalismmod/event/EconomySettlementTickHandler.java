@@ -62,6 +62,7 @@ public final class EconomySettlementTickHandler {
 
         BondMarket.settleMaturity(server);
         FuturesMarket.settleDay(server);
+        CommodityMarket.expireOrders(server, server.overworld().getGameTime());
         CommodityMarket.closeDay(server);
         StockMarket.closeDay(server);
     }
