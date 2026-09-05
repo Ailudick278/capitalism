@@ -115,6 +115,46 @@ public final class WarehouseSavedData extends SavedData {
         return true;
     }
 
+    /**
+     * Removes a complete material batch atomically. Every requirement is checked
+     * before any item is removed, so a failed batch cannot consume only a prefix
+     * of its bill of materials.
+     */
+    public boolean consumeBatch(InventoryOwner owner, Map<String, Integer> requirements) {
+        if (owner == null || requirements == null) {
+            return false;
+        }
+        if (requirements.isEmpty()) {
+            return true;
+        }
+        Map<String, Integer> inventory = storage.get(owner.storageKey());
+        if (inventory == null) {
+            return false;
+        }
+        for (Map.Entry<String, Integer> requirement : requirements.entrySet()) {
+            String itemId = requirement.getKey();
+            int count = requirement.getValue() == null ? 0 : requirement.getValue();
+            if (itemId == null || count <= 0 || itemById(itemId) == null
+                    || inventory.getOrDefault(itemId, 0) < count) {
+                return false;
+            }
+        }
+        for (Map.Entry<String, Integer> requirement : requirements.entrySet()) {
+            String itemId = requirement.getKey();
+            int remaining = inventory.get(itemId) - requirement.getValue();
+            if (remaining == 0) {
+                inventory.remove(itemId);
+            } else {
+                inventory.put(itemId, remaining);
+            }
+        }
+        if (inventory.isEmpty()) {
+            storage.remove(owner.storageKey());
+        }
+        setDirty();
+        return true;
+    }
+
     public boolean consume(UUID playerId, Item item, int count) { return consume(InventoryOwner.player(playerId), item, count); }
 
     /** Moves items between two persistent owner inventories, recording no player interaction. */

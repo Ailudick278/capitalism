@@ -285,7 +285,7 @@ public final class CompanyHelper {
         } catch (ArithmeticException e) {
             return false;
         }
-        if (!consumeInputsPreview(server, company) || !debitTreasury(server, company.companyId(),
+        if (!debitTreasury(server, company.companyId(),
                 Currencies.USD.id(), cost, "production_expense", "生产周期劳动力、能源与设备维护成本")) {
             return false;
         }
@@ -313,16 +313,6 @@ public final class CompanyHelper {
         if (recipe.workersPerCycle() <= 0) return Math.min(10000, machineCapacity);
         int workers = CompanyLaborSavedData.get(server).activeWorkers(company.companyId());
         return Math.min(10000, Math.min(machineCapacity, workers / recipe.workersPerCycle()));
-    }
-
-    private static boolean consumeInputsPreview(MinecraftServer server, Company company) {
-        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
-        var owner = com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
-        for (Map.Entry<String, Integer> input : CompanyEconomy.inputs(company).entrySet()) {
-            if (input.getValue() <= 0 || parseItem(input.getKey()) == null
-                    || warehouse.count(owner, input.getKey()) < input.getValue()) return false;
-        }
-        return true;
     }
 
     public static boolean hire(Player player, String name, String role, int count, long dailyWage, int skill) {
@@ -398,17 +388,9 @@ public final class CompanyHelper {
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
         com.ailudick.capitalismmod.market.InventoryOwner owner =
                 com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
-        for (Map.Entry<String, Integer> input : inputs.entrySet()) {
-            Item item = parseItem(input.getKey());
-            if (item == null || input.getValue() <= 0
-                    || warehouse.count(owner, input.getKey()) < input.getValue()) {
-                return false;
-            }
-        }
+        if (!warehouse.consumeBatch(owner, inputs)) return false;
         CommoditySavedData commodityData = CommoditySavedData.get(server);
         for (Map.Entry<String, Integer> input : inputs.entrySet()) {
-            Item item = parseItem(input.getKey());
-            warehouse.consume(owner, item, input.getValue());
             commodityData.addSupply(input.getKey(), -input.getValue());
         }
         return true;
