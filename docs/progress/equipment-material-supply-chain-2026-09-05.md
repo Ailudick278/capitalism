@@ -9,6 +9,7 @@
 - Existing installed equipment remains valid because the new requirement applies only to future purchases.
 - If the material reservation fails after the cash debit, the cash purchase is rolled back as a non-operating ledger entry.
 - The equipment BOMs were checked for dependency cycles and use upstream vanilla raw materials, so a machine never requires a downstream product that can only be made by that same machine class.
+- Machine maintenance now consumes a proportional replacement-parts/material batch in addition to its cash service cost; a full repair consumes the full equipment BOM and a minor repair consumes at least one unit of each required material.
 
 ## Real-world alignment
 

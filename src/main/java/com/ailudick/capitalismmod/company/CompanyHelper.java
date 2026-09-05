@@ -393,9 +393,38 @@ public final class CompanyHelper {
         } catch (ArithmeticException e) {
             return false;
         }
+        Map<String, Integer> materials = machineMaintenanceMaterials(type, (int) missing);
+        com.ailudick.capitalismmod.market.InventoryOwner owner =
+                com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        if (materials == null || !warehouse.canConsumeBatch(owner, materials)) return false;
         if (!debitTreasury(server, company.companyId(), Currencies.USD.id(), cost,
                 "equipment_maintenance", "维护设备 " + type.id())) return false;
+        if (!warehouse.consumeBatch(owner, materials)) {
+            creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), cost,
+                    "equipment_maintenance_rollback", "Equipment maintenance material reservation failed");
+            return false;
+        }
+        CommoditySavedData commodityData = CommoditySavedData.get(server);
+        for (Map.Entry<String, Integer> material : materials.entrySet()) {
+            commodityData.addSupply(material.getKey(), -material.getValue());
+        }
         return CompanyEquipmentSavedData.get(server).restore(company.companyId(), type, 100);
+    }
+
+    private static Map<String, Integer> machineMaintenanceMaterials(MachineType type, int conditionMissing) {
+        Map<String, Integer> materials = new HashMap<>();
+        for (Map.Entry<String, Integer> material : type.materials().entrySet()) {
+            int perMachine = material.getValue() == null ? 0 : material.getValue();
+            if (perMachine <= 0) return null;
+            try {
+                int product = Math.multiplyExact(perMachine, conditionMissing);
+                materials.put(material.getKey(), product / 100 + (product % 100 == 0 ? 0 : 1));
+            } catch (ArithmeticException e) {
+                return null;
+            }
+        }
+        return materials;
     }
 
     public static boolean selectRecipe(Player player, String name, String recipeId) {
