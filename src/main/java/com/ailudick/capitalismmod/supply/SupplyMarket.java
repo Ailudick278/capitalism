@@ -114,7 +114,7 @@ public final class SupplyMarket {
         String orderSource = "supply_order:" + supplyOrderId;
         long inputCreditMinor = 0L;
         if (buyerCompany != null) {
-            if (!CompanyHelper.debitTreasury(buyer.getServer(), buyerCompany.companyId(), Currencies.USD.id(),
+            if (!CompanyHelper.debitTreasuryNonOperating(buyer.getServer(), buyerCompany.companyId(), Currencies.USD.id(),
                     total, "supply_purchase", "采购原料并取得存货")) {
                 return false;
             }

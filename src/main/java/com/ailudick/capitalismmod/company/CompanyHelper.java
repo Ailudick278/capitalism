@@ -474,7 +474,29 @@ public final class CompanyHelper {
         for (Map.Entry<String, Integer> input : inputs.entrySet()) {
             commodityData.addSupply(input.getKey(), -input.getValue());
         }
+        long inventoryCost = inventoryConsumptionCost(server, inputs);
+        if (inventoryCost > 0L) {
+            long occurredAt = server.overworld().getGameTime();
+            recordTaxableExpense(server, company,
+                    "inventory_consumption:" + company.companyId() + ":" + occurredAt + ":" + UUID.randomUUID(),
+                    inventoryCost, Currencies.USD.id(), occurredAt);
+        }
         return true;
+    }
+
+    /** Estimates the cost of consumed inventory without changing warehouse state. */
+    private static long inventoryConsumptionCost(MinecraftServer server, Map<String, Integer> inputs) {
+        if (server == null || inputs == null || inputs.isEmpty()) return 0L;
+        CommoditySavedData market = CommoditySavedData.get(server);
+        long total = 0L;
+        for (Map.Entry<String, Integer> input : inputs.entrySet()) {
+            if (input.getKey() == null || input.getValue() == null || input.getValue() <= 0) continue;
+            long unitPrice = Math.max(0L, market.price(input.getKey()));
+            long line = EconomyMath.multiply(unitPrice, input.getValue());
+            total = EconomyMath.add(total, line);
+            if (total < 0L) return Long.MAX_VALUE;
+        }
+        return Math.max(0L, total);
     }
 
     private static boolean canConsumeInputs(MinecraftServer server, Company company) {
