@@ -560,6 +560,41 @@ public final class CompanyHelper {
         return CompanyEquipmentSavedData.get(server).restore(company.companyId(), type, 100);
     }
 
+    /** Sells installed equipment and records the disposal gain or loss against book value. */
+    public static boolean sellMachine(Player player, String name, String machineId, int count, long salePrice) {
+        MinecraftServer server = player.getServer();
+        Company company = getCompany(player, name);
+        MachineType type = MachineType.parse(machineId);
+        if (server == null || company == null || type == null || type == MachineType.NONE
+                || count <= 0 || salePrice < 0L) return false;
+        CompanyEquipmentSavedData equipment = CompanyEquipmentSavedData.get(server);
+        long bookValue = equipment.bookValue(company.companyId(), type, count);
+        if (bookValue <= 0L || salePrice > Long.MAX_VALUE - company.treasuryOf(Currencies.USD.id()))
+                return false;
+        if (!equipment.remove(company.companyId(), type, count)) return false;
+        if (salePrice > 0L && !creditTreasuryNonOperating(server, company.companyId(),
+                Currencies.USD.id(), salePrice, "equipment_disposal",
+                "Equipment disposal proceeds " + type.id() + " x" + count)) {
+            // This should only be reachable on an arithmetic/storage failure; restore the
+            // equipment rather than silently destroying an asset.
+            equipment.install(company.companyId(), type, count);
+            return false;
+        }
+        long occurredAt = server.overworld().getGameTime();
+        CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                company.companyId(), occurredAt, "equipment_disposal_book_value", Currencies.USD.id(),
+                -bookValue, company.treasuryOf(Currencies.USD.id()),
+                "Remove carrying value for " + type.id() + " x" + count));
+        if (salePrice > bookValue) {
+            recordTaxableIncome(server, company, "equipment_disposal_gain:" + occurredAt,
+                    salePrice - bookValue, Currencies.USD.id(), occurredAt);
+        } else if (bookValue > salePrice) {
+            recordTaxableExpense(server, company, "equipment_disposal_loss:" + occurredAt,
+                    bookValue - salePrice, Currencies.USD.id(), occurredAt);
+        }
+        return true;
+    }
+
     private static Map<String, Integer> machineMaintenanceMaterials(MachineType type, int conditionMissing) {
         Map<String, Integer> materials = new HashMap<>();
         for (Map.Entry<String, Integer> material : type.materials().entrySet()) {

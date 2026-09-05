@@ -245,7 +245,18 @@ public class CompanyCommand {
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .executes(ctx -> maintainMachine(ctx.getSource(),
                                                 StringArgumentType.getString(ctx, "name"),
-                                                StringArgumentType.getString(ctx, "type")))))));
+                                        StringArgumentType.getString(ctx, "type")))))));
+        root.then(Commands.literal("machine")
+                .then(Commands.literal("sell")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .then(Commands.argument("type", StringArgumentType.word())
+                                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 10000))
+                                                .then(Commands.argument("price", LongArgumentType.longArg(0))
+                                                        .executes(ctx -> sellMachine(ctx.getSource(),
+                                                                StringArgumentType.getString(ctx, "name"),
+                                                                StringArgumentType.getString(ctx, "type"),
+                                                                IntegerArgumentType.getInteger(ctx, "count"),
+                                                                LongArgumentType.getLong(ctx, "price")))))))));
         root.then(Commands.literal("operations")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> operations(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -1015,6 +1026,18 @@ public class CompanyCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("Machine maintenance completed: " + type), false);
+        return 1;
+    }
+
+    private static int sellMachine(CommandSourceStack source, String name, String type, int count, long price)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CompanyHelper.sellMachine(player, name, type, count, price)) {
+            source.sendFailure(Component.literal("Equipment sale failed: check ownership, quantity, book value, and price."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Sold " + count + " " + type + " for USD " + price
+                + "; disposal gain/loss was recorded."), false);
         return 1;
     }
 

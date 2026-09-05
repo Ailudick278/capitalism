@@ -48,6 +48,15 @@ public final class CompanyEquipmentSavedData extends SavedData {
         return value == null || value.condition() <= 0 ? 0 : value.count();
     }
 
+    /** Returns the carrying value of a selected number of machines at current condition. */
+    public long bookValue(String companyId, MachineType type, int count) {
+        if (type == null || type == MachineType.NONE || count <= 0) return 0L;
+        Equipment current = get(companyId, type);
+        if (current == null || current.count() < count || current.condition() <= 0) return 0L;
+        long gross = EconomyMath.multiply(Math.max(0L, type.purchasePrice()), count);
+        return gross < 0L ? Long.MAX_VALUE : carryingValue(gross, current.condition());
+    }
+
     public void install(String companyId, MachineType type, int count) {
         if (type == null || type == MachineType.NONE || count <= 0) return;
         Map<String, Equipment> company = new HashMap<>(equipment.getOrDefault(companyId, Map.of()));
