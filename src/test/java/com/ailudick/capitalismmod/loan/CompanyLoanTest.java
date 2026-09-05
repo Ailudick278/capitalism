@@ -19,4 +19,14 @@ class CompanyLoanTest {
                 0.10, 365, 0, 100);
         assertEquals(265, loan.interestDue());
     }
+
+    @Test
+    void supportsReducingOutstandingPrincipal() {
+        CompanyLoan loan = new CompanyLoan("id", "company", "usd", 3650,
+                0.10, 365, 0, 0);
+        CompanyLoan reduced = loan.withPrincipal(2000);
+
+        assertEquals(2000, reduced.principal());
+        assertEquals(200, reduced.interestDue());
+    }
 }

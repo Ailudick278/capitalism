@@ -61,13 +61,18 @@ public final class CompanyLoanHelper {
         long total = EconomyMath.add(loan.principal(), interest);
         if (total < 0L) return false;
         long payment = requestedAmount == null ? total : requestedAmount;
-        if (payment <= 0L || payment > total || (requestedAmount != null && payment < total && payment > interest)) return false;
+        if (payment <= 0L || payment > total) return false;
         if (!CompanyHelper.debitTreasuryNonOperating(server, company.companyId(), loan.currencyId(), payment,
                 "loan_repayment", "Company loan repayment")) return false;
         if (payment == total) {
             data.remove(loan.id());
         } else {
-            data.replace(loan.withInterestPaid(EconomyMath.add(loan.interestPaid(), payment)));
+            long interestPayment = Math.min(payment, interest);
+            long principalPayment = payment - interestPayment;
+            if (principalPayment > loan.principal()) return false;
+            CompanyLoan updated = loan.withInterestPaid(EconomyMath.add(loan.interestPaid(), interestPayment))
+                    .withPrincipal(loan.principal() - principalPayment);
+            data.replace(updated);
         }
         return true;
     }

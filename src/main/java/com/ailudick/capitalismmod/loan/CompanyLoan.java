@@ -37,6 +37,11 @@ public record CompanyLoan(String id, String companyId, String currencyId, long p
                 totalDays, daysRemaining, Math.max(0L, value));
     }
 
+    public CompanyLoan withPrincipal(long value) {
+        return new CompanyLoan(id, companyId, currencyId, Math.max(0L, value), ratePerYear,
+                totalDays, daysRemaining, interestPaid);
+    }
+
     public long interestDue() {
         if (principal <= 0L || totalDays <= 0 || !Double.isFinite(ratePerYear) || ratePerYear < 0.0) return 0L;
         int elapsed = Math.max(0, totalDays - daysRemaining);
