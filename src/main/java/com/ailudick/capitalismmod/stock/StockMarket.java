@@ -79,11 +79,15 @@ public final class StockMarket {
     /** Cancels the player's own order, returning the escrowed shares or money. */
     public static boolean cancelOrder(ServerPlayer player, String orderId) {
         EconomySavedData data = EconomySavedData.get(player.getServer());
+        StockSettlementSavedData settlements = StockSettlementSavedData.get(player.getServer());
         StockOrder order = data.findOrder(orderId);
         if (order == null || !order.ownerId().equals(player.getStringUUID())) {
             return false;
         }
-        data.removeOrder(orderId);
+        if (settlements.has(orderId)) {
+            data.removeOrder(orderId);
+            return true;
+        }
         if (order.sell()) {
             data.addShares(order.stockId(), player.getUUID(), order.quantity());
         } else {
@@ -92,6 +96,8 @@ public final class StockMarket {
                 EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(total));
             }
         }
+        settlements.record(orderId);
+        data.removeOrder(orderId);
         data.setDirty();
         return true;
     }
@@ -157,6 +163,7 @@ public final class StockMarket {
         if (expiryDays <= 0) return;
         long lifetime = PerpetualCalendar.ticksForDays(expiryDays);
         EconomySavedData data = EconomySavedData.get(server);
+        StockSettlementSavedData settlements = StockSettlementSavedData.get(server);
         for (StockOrder order : new ArrayList<>(data.orders())) {
             if (order.createdAt() <= 0L || now < order.createdAt()
                     || now - order.createdAt() < lifetime) {
@@ -168,7 +175,10 @@ public final class StockMarket {
             } catch (IllegalArgumentException | NullPointerException exception) {
                 continue;
             }
-            data.removeOrder(order.id());
+            if (settlements.has(order.id())) {
+                data.removeOrder(order.id());
+                continue;
+            }
             if (order.sell()) {
                 data.addShares(order.stockId(), owner, order.quantity());
             } else {
@@ -178,6 +188,8 @@ public final class StockMarket {
                     MarketMailboxSavedData.get(server).creditMoney(owner, Currencies.USD.id(), minor);
                 }
             }
+            settlements.record(order.id());
+            data.removeOrder(order.id());
         }
     }
 
