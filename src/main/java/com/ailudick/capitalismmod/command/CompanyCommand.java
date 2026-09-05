@@ -333,7 +333,8 @@ public class CompanyCommand {
         CompanyOperatingSnapshot metrics = CompanyOperatingSnapshot.from(player.getServer(), company, days);
         source.sendSuccess(() -> Component.literal("Operating metrics (last " + metrics.lookbackDays()
                 + " days): revenue USD " + metrics.revenue() + ", expenses USD "
-                + metrics.operatingExpenses() + ", operating cash flow USD "
+                + metrics.operatingExpenses() + ", cost of sales USD " + metrics.costOfSales()
+                + ", gross profit USD " + metrics.grossProfit() + ", operating cash flow USD "
                 + metrics.operatingCashFlow()), false);
         source.sendSuccess(() -> Component.literal("Statistical size profile: " + metrics.sizeProfile().label()
                 + " (annualized turnover proxy USD " + metrics.annualizedRevenue() + "; report only, no upgrade effect)"), false);

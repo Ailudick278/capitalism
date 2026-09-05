@@ -206,8 +206,17 @@ public final class CompanyHelper {
         long cost = EconomyMath.add(tracked.cost(), fallback);
         if (cost <= 0L) return 0L;
 
-        recordTaxableExpense(server, company, "inventory_cogs:" + sourceId,
-                cost, Currencies.USD.id(), server.overworld().getGameTime());
+        long occurredAt = server.overworld().getGameTime();
+        String accountingSource = "inventory_cogs:" + sourceId;
+        recordTaxableExpense(server, company, accountingSource,
+                cost, Currencies.USD.id(), occurredAt);
+        // Cost of goods sold is non-cash: the inventory asset is exchanged for
+        // revenue, so keep the cash-flow ledger balance unchanged while still
+        // exposing the expense to profit reporting.
+        CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                company.companyId(), occurredAt, "cost_of_goods_sold", Currencies.USD.id(),
+                -cost, company.treasuryOf(Currencies.USD.id()),
+                "Inventory cost of goods sold: " + itemId + " x" + quantity));
         return cost;
     }
 

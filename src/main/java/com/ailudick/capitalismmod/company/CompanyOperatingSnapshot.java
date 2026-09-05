@@ -11,7 +11,8 @@ import net.minecraft.server.MinecraftServer;
  * company ledger and therefore also works for offline companies.
  */
 public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long operatingExpenses,
-                                       long operatingCashFlow, int activeWorkers, long grossDailyWages,
+                                       long costOfSales, long grossProfit, long operatingCashFlow,
+                                       int activeWorkers, long grossDailyWages,
                                        long employerDailyContributions, long dailyLaborCost,
                                        int machineUnits, int parallelCapacity, long successfulBatches,
                                        long failedCycles, long assets, long equity) {
@@ -32,7 +33,7 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
     public static CompanyOperatingSnapshot from(MinecraftServer server, Company company, long lookbackDays) {
         long days = Math.max(1L, Math.min(360L, lookbackDays));
         if (server == null || company == null) {
-            return new CompanyOperatingSnapshot(days, 0L, 0L, 0L, 0, 0L, 0L, 0L, 0, 0,
+            return new CompanyOperatingSnapshot(days, 0L, 0L, 0L, 0L, 0L, 0, 0L, 0L, 0L, 0, 0,
                     0L, 0L, 0L, 0L);
         }
 
@@ -41,15 +42,17 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
         long start = now > Long.MIN_VALUE + window ? now - window : Long.MIN_VALUE;
         long revenue = 0L;
         long expenses = 0L;
+        long costOfSales = 0L;
         long cashFlow = 0L;
         for (CompanyLedgerEntry entry : CompanyLedgerSavedData.get(server).entries(company.companyId())) {
             if (entry == null || !Currencies.USD.id().equals(entry.currencyId())
                     || entry.timestamp() < start || entry.timestamp() > now || !isOperating(entry)) continue;
-            cashFlow = addSignedSaturated(cashFlow, entry.amount());
+            if (isCashFlow(entry)) cashFlow = addSignedSaturated(cashFlow, entry.amount());
             if (entry.amount() > 0L) revenue = addSaturated(revenue, entry.amount());
             if (entry.amount() < 0L) {
                 long expense = entry.amount() == Long.MIN_VALUE ? Long.MAX_VALUE : -entry.amount();
                 expenses = addSaturated(expenses, expense);
+                if (isCostOfSales(entry)) costOfSales = addSaturated(costOfSales, expense);
             }
         }
 
@@ -71,7 +74,8 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
         long successful = production == null ? 0L : Math.max(0L, production.successfulCycles());
         long failed = production == null ? 0L : Math.max(0L, production.failedCycles());
         CompanyFinancialSnapshot financial = CompanyFinancialSnapshot.from(server, company);
-        return new CompanyOperatingSnapshot(days, revenue, expenses, cashFlow, workers, grossWages,
+        long grossProfit = subtractFloorZero(revenue, costOfSales);
+        return new CompanyOperatingSnapshot(days, revenue, expenses, costOfSales, grossProfit, cashFlow, workers, grossWages,
                 employerContributions, dailyLaborCost, machineUnits, capacity, successful, failed,
                 financial.assets(), financial.equity());
     }
@@ -85,6 +89,20 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
                 && !type.equals("owner_withdrawal")
                 && !type.equals("equipment_purchase")
                 && !type.startsWith("liquidation_");
+    }
+
+    private static boolean isCostOfSales(CompanyLedgerEntry entry) {
+        return "cost_of_goods_sold".equals(entry.type());
+    }
+
+    private static boolean isCashFlow(CompanyLedgerEntry entry) {
+        return !isCostOfSales(entry) && !"inventory_loss".equals(entry.type());
+    }
+
+    private static long subtractFloorZero(long left, long right) {
+        if (left <= 0L) return 0L;
+        if (right <= 0L) return left;
+        return left >= right ? left - right : 0L;
     }
 
     private static long addSaturated(long left, long right) {
