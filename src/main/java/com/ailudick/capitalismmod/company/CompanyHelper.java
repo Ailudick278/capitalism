@@ -369,10 +369,9 @@ public final class CompanyHelper {
                         Currencies.USD.id(), occurredAt);
             }
         }
-        produceOutputs(server, company);
         long conversionCost = EconomyMath.add(inputConsumption.cost(), cost);
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
-        addProducedInventoryCosts(server, company.companyId(), recipe.outputs(), conversionCost);
+        produceOutputs(server, company, conversionCost);
         CompanyEquipmentSavedData.get(server).use(company.companyId(), machine);
         return true;
     }
@@ -622,8 +621,8 @@ public final class CompanyHelper {
         return WarehouseSavedData.get(server).canConsumeBatch(owner, inputs);
     }
 
-    /** Deposits the company's outputs into the warehouse, recording supply. */
-    private static void produceOutputs(MinecraftServer server, Company company) {
+    /** Deposits outputs, records their conversion cost, then fulfills backorders. */
+    private static void produceOutputs(MinecraftServer server, Company company, long conversionCost) {
         if (server == null) {
             return;
         }
@@ -640,10 +639,15 @@ public final class CompanyHelper {
             commodityData.ensureCommodity(output.getKey(),
                     Math.max(1L, CapitalismData.getCommodityPrices().getOrDefault(output.getKey(), 1L)));
             commodityData.addSupply(output.getKey(), output.getValue());
-            // automatically fulfill any backorders for this commodity
+        }
+        // Cost layers must exist before fulfillment consumes any newly produced
+        // stock; otherwise COGS falls back to the market price and the full
+        // conversion cost remains incorrectly capitalized in inventory.
+        addProducedInventoryCosts(server, company.companyId(), CompanyEconomy.outputs(company), conversionCost);
+        for (String itemId : CompanyEconomy.outputs(company).keySet()) {
             SupplyMarket.fulfill(server,
                     com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId()),
-                    company.ownerUuid(), output.getKey());
+                    company.ownerUuid(), itemId);
         }
     }
 
