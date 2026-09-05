@@ -224,7 +224,6 @@
   "gui.capitalismmod.loan_overdue": "已逾期",
   "gui.capitalismmod.pay_tax": "缴税",
   "gui.capitalismmod.tax_owed": "欠税",
-  "gui.capitalismmod.upgrade": "升级",
   "gui.capitalismmod.days": "%s 天",
   "gui.capitalismmod.company_type": "公司类型",
   "gui.capitalismmod.company_name": "公司名称",
@@ -272,9 +271,8 @@
   "command.capitalismmod.company_exists": "已有同名公司！",
   "command.capitalismmod.no_companies": "你还没有公司！",
   "command.capitalismmod.company_not_found": "未找到公司：%s",
-  "command.capitalismmod.company_upgraded": "公司 %s 已升到 Lv.%s",
   "command.capitalismmod.company_withdrawn": "已从公司 %s 取出 %s %s",
-  "command.capitalismmod.company_line": "Lv.%s %s（%s）：%s %s",
+  "command.capitalismmod.company_line": "资本 $%s %s（%s）：%s %s",
   "command.capitalismmod.company_ipo": "公司 %s 已上市，发行 %s 股",
   "command.capitalismmod.company_already_listed": "公司 %s 已经上市了！",
 
