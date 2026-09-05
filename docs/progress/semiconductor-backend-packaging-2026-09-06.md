@@ -8,6 +8,7 @@
 - 铜箔与钢片经 `stamping_press` 制成引线框架。
 - 环氧树脂与塑料颗粒经 `molding_compound_unit` 制成封装树脂。
 - 测试裸片、引线框架、铜线和封装树脂经 `chip_packaging_line` 制成封装芯片。
+- 为上述配方补齐 `chemical_reactor`、`lamination_press`、`alloy_furnace`、`pcb_assembly_line`、`wafer_dicing_saw`、`chip_testing_station`、`stamping_press` 和 `molding_compound_unit` 设备枚举，并设置购置材料、购置价和周期维护费；这些配方不会再因设备类型未注册而失败。
 - 保留原有晶圆直接封装配方，兼容旧存档和旧自定义配方。
 
 ## 现实依据
