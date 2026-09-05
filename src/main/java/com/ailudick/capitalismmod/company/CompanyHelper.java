@@ -224,7 +224,8 @@ public final class CompanyHelper {
             return false;
         }
         if (machine != MachineType.NONE
-                && CompanyEquipmentSavedData.get(server).count(company.companyId(), machine) <= 0) {
+                && CompanyEquipmentSavedData.get(server).count(company.companyId(), machine)
+                < machine.requiredUnits(company.level())) {
             return false;
         }
         long wages = labor.dailyWages(company.companyId()) == Long.MAX_VALUE
