@@ -140,10 +140,13 @@ public final class LogisticsCommand {
                 continue;
             }
             long remaining = Math.max(0L, shipment.deliveryTick() - now);
+            long distance = TradeRegion.distance(shipment.originRegion(), shipment.destinationRegion());
+            int fuelUnits = shipment.transport().estimatedFuelUnits(shipment.quantity(), distance);
             source.sendSuccess(() -> Component.literal("Cargo " + shipment.itemId()
                     + " x" + shipment.quantity() + " | " + shipment.transport().id()
                     + " | " + shipment.originRegion() + " -> " + shipment.destinationRegion()
-                    + " | ETA " + remaining + " ticks"), false);
+                    + " | ETA " + remaining + " ticks"
+                    + " | planning fuel " + fuelUnits + "x " + shipment.transport().fuelItemId()), false);
             count++;
         }
         if (count == 0) {
