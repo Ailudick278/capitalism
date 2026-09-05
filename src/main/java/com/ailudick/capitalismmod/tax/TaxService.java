@@ -10,6 +10,9 @@ import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.List;
 import java.util.UUID;
+import com.ailudick.capitalismmod.company.Company;
+import com.ailudick.capitalismmod.company.CompanyLifecycleService;
+import com.ailudick.capitalismmod.company.CompanySavedData;
 
 /** Entry point for creating, querying and settling tax liabilities. */
 public final class TaxService {
@@ -165,6 +168,12 @@ public final class TaxService {
     /** Records delinquency and sends periodic collection notices. Land disposal remains external. */
     public static void processEnforcement(MinecraftServer server, TaxBill bill, long now) {
         if (bill.status(now) != TaxBill.Status.DELINQUENT) return;
+        if (bill.subject().type() == TaxType.CORPORATE_INCOME) {
+            Company company = CompanySavedData.get(server).get(bill.subject().subjectId());
+            if (company != null && company.ownerUuid().equals(bill.subject().taxpayerUuid())) {
+                CompanyLifecycleService.forceSuspend(server, company.companyId(), "corporate tax delinquency");
+            }
+        }
         TaxEnforcementSavedData enforcement = TaxEnforcementSavedData.get(server);
         if (!enforcement.shouldNotify(bill.id(), now)) return;
         enforcement.recordNotice(bill.id(), now);

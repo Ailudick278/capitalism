@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.loan.CompanyLoan;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
@@ -90,6 +91,7 @@ public final class EconomySettlementTickHandler {
                     PeerLoanNotificationService.notify(server, company.ownerUuid(), "company-due:" + loan.id(),
                             "Company loan " + shortId + " is due. Repay principal and interest.");
                 } else if (loan.becomesOverdueAfter(nextDays)) {
+                    CompanyLifecycleService.forceSuspend(server, company.companyId(), "company loan overdue");
                     PeerLoanNotificationService.notify(server, company.ownerUuid(), "company-overdue:" + loan.id(),
                             "Company loan " + shortId + " is overdue. Penalty interest is now applied.");
                 }

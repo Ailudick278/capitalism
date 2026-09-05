@@ -2,6 +2,10 @@ package com.ailudick.capitalismmod.company;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
+import com.ailudick.capitalismmod.tax.TaxService;
+import com.ailudick.capitalismmod.tax.TaxSubject;
+import com.ailudick.capitalismmod.tax.TaxType;
 
 /** Applies the small legal-status state machine currently supported by companies. */
 public final class CompanyLifecycleService {
@@ -29,8 +33,21 @@ public final class CompanyLifecycleService {
         if (player == null || company == null || !company.ownerUuid().equals(player.getUUID())) return false;
         CompanyStatusSavedData data = CompanyStatusSavedData.get(player.getServer());
         if (!"SUSPENDED".equals(data.statusOf(company.companyId()))) return false;
+        if (TaxService.outstanding(player.getServer(), new TaxSubject(TaxType.CORPORATE_INCOME,
+                company.companyId(), company.ownerUuid())) > 0L) return false;
+        if (CompanyLoanSavedData.get(player.getServer()).forCompany(company.companyId()).stream()
+                .anyMatch(loan -> loan.daysRemaining() < 0)) return false;
         data.set(new CompanyStatusSavedData.Status(company.companyId(), "ACTIVE",
                 player.getServer().overworld().getGameTime(), "resumed by owner"));
+        return true;
+    }
+
+    public static boolean forceSuspend(MinecraftServer server, String companyId, String reason) {
+        if (server == null || companyId == null || companyId.isBlank()) return false;
+        CompanyStatusSavedData data = CompanyStatusSavedData.get(server);
+        if (!"ACTIVE".equals(data.statusOf(companyId))) return false;
+        data.set(new CompanyStatusSavedData.Status(companyId, "SUSPENDED",
+                server.overworld().getGameTime(), reason == null ? "regulatory suspension" : reason));
         return true;
     }
 }
