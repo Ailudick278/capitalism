@@ -111,6 +111,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.PLASTIC_PELLETS.get());
                         output.accept(ModItems.FAN_BLADES.get());
                         output.accept(ModItems.FAN_CONTROL.get());
+                        output.accept(ModItems.POLYSILICON.get());
                         output.accept(ModItems.SILICON_WAFER.get());
                         output.accept(ModItems.CIRCUIT_BOARD.get());
                         output.accept(ModItems.DISPLAY_PANEL.get());
