@@ -44,7 +44,11 @@ public class LoanCommand {
         dispatcher.register(Commands.literal("repay")
                 .then(Commands.argument("loanId", StringArgumentType.word())
                         .executes(ctx -> repay(ctx.getSource().getPlayerOrException(),
-                                StringArgumentType.getString(ctx, "loanId")))));
+                                StringArgumentType.getString(ctx, "loanId"), null))
+                        .then(Commands.argument("amount", LongArgumentType.longArg(1))
+                                .executes(ctx -> repay(ctx.getSource().getPlayerOrException(),
+                                        StringArgumentType.getString(ctx, "loanId"),
+                                        LongArgumentType.getLong(ctx, "amount"))))));
 
         dispatcher.register(Commands.literal("loans").executes(ctx -> list(ctx.getSource().getPlayerOrException())));
     }
@@ -71,7 +75,7 @@ public class LoanCommand {
         return 1;
     }
 
-    private static int repay(ServerPlayer borrower, String loanId) {
+    private static int repay(ServerPlayer borrower, String loanId, Long requestedAmount) {
         PeerLoanSavedData data = PeerLoanSavedData.get(borrower.getServer());
         PeerLoan loan = data.findLoan(loanId);
         if (loan == null || !loan.borrower().equals(borrower.getUUID())) {
@@ -91,7 +95,13 @@ public class LoanCommand {
             borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
             return 0;
         }
-        long totalMinor = Money.toMinor(total);
+        long payment = requestedAmount == null ? total : requestedAmount;
+        if (payment <= 0L || payment > total
+                || (requestedAmount != null && payment < total && payment > interest)) {
+            borrower.sendSystemMessage(Component.literal("部分还款必须先支付未结利息；本次不支持部分偿还本金。"));
+            return 0;
+        }
+        long totalMinor = Money.toMinor(payment);
         if (totalMinor <= 0 || !EconomyHelper.tryPay(borrower, currency, totalMinor)) {
             borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
             return 0;
@@ -102,9 +112,15 @@ public class LoanCommand {
         } else {
             MarketMailboxSavedData.get(borrower.getServer()).creditMoney(loan.lender(), currency.id(), totalMinor);
         }
-        data.removeLoan(loanId);
+        if (payment == total) {
+            data.removeLoan(loanId);
+        } else {
+            long paidInterest = loan.interestPaid() > Long.MAX_VALUE - payment
+                    ? Long.MAX_VALUE : loan.interestPaid() + payment;
+            data.replaceLoan(loan.withInterestPaid(paidInterest));
+        }
         borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",
-                total, Component.translatable(currency.nameKey())));
+                payment, Component.translatable(currency.nameKey())));
         return 1;
     }
 

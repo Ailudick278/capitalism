@@ -21,4 +21,11 @@ class PeerLoanTest {
                 -1, Double.NaN, 365, 1);
         assertEquals(0, loan.interestDue());
     }
+
+    @Test
+    void subtractsInterestAlreadyPaid() {
+        PeerLoan loan = new PeerLoan("id", UUID.randomUUID(), UUID.randomUUID(), "usd",
+                3650, 0.10, 365, 0).withInterestPaid(100);
+        assertEquals(265, loan.interestDue());
+    }
 }

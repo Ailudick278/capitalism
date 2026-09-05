@@ -13,7 +13,13 @@ import java.util.UUID;
  * @param totalDays     original term in Minecraft days
  * @param daysRemaining days until maturity (negative = overdue)
  */
-public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId, long principal, double ratePerYear, int totalDays, int daysRemaining) {
+public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId, long principal, double ratePerYear, int totalDays, int daysRemaining,
+                       long interestPaid) {
+
+    public PeerLoan(String id, UUID lender, UUID borrower, String currencyId, long principal,
+                    double ratePerYear, int totalDays, int daysRemaining) {
+        this(id, lender, borrower, currencyId, principal, ratePerYear, totalDays, daysRemaining, 0L);
+    }
 
     /**
      * Codec construction is lazy so pure loan calculations do not require the
@@ -34,12 +40,18 @@ public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId,
                 Codec.LONG.fieldOf("principal").forGetter(PeerLoan::principal),
                 Codec.DOUBLE.fieldOf("ratePerYear").forGetter(PeerLoan::ratePerYear),
                 Codec.INT.fieldOf("totalDays").forGetter(PeerLoan::totalDays),
-                Codec.INT.fieldOf("daysRemaining").forGetter(PeerLoan::daysRemaining)
+                Codec.INT.fieldOf("daysRemaining").forGetter(PeerLoan::daysRemaining),
+                Codec.LONG.optionalFieldOf("interestPaid", 0L).forGetter(PeerLoan::interestPaid)
         ).apply(instance, PeerLoan::new));
     }
 
     public PeerLoan withDaysRemaining(int newDays) {
-        return new PeerLoan(id, lender, borrower, currencyId, principal, ratePerYear, totalDays, newDays);
+        return new PeerLoan(id, lender, borrower, currencyId, principal, ratePerYear, totalDays, newDays, interestPaid);
+    }
+
+    public PeerLoan withInterestPaid(long amount) {
+        return new PeerLoan(id, lender, borrower, currencyId, principal, ratePerYear, totalDays,
+                daysRemaining, Math.max(0L, amount));
     }
 
     /** Interest currently due (major units), doubled when overdue. */
@@ -53,6 +65,7 @@ public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId,
         if (!Double.isFinite(interest) || interest >= Long.MAX_VALUE) {
             return Long.MAX_VALUE;
         }
-        return Math.max(0, (long) interest);
+        long accrued = Math.max(0, (long) interest);
+        return accrued > interestPaid ? accrued - interestPaid : 0L;
     }
 }
