@@ -14,6 +14,7 @@ public final class SupplyOrderAuditService {
                 SupplyOrderAuditSavedData.get(server).forOrder(orderId);
         if (events.isEmpty()) return "UNKNOWN";
         if (events.stream().anyMatch(event -> "LOST".equals(event.type()))) return "LOST";
+        if (events.stream().anyMatch(event -> "CANCELLED_REFUND".equals(event.type()))) return "CANCELLED";
         if (events.stream().anyMatch(event -> event.type().startsWith("EXPIRED_REFUND"))) return "REFUNDED";
 
         long ordered = events.stream().filter(event -> "CREATED".equals(event.type()))
