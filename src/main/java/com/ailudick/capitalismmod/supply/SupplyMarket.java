@@ -399,7 +399,7 @@ public final class SupplyMarket {
             LogisticsCostSavedData.get(server).record(new LogisticsCostSavedData.FuelPlan(
                     shipmentId, buyer, itemId, batch, origin, destination, transport,
                     transport.fuelItemId(), fuelUnits, fuelUnitPrice, estimatedFuelCost,
-                    server.overworld().getGameTime()));
+                    server.overworld().getGameTime(), buyerCompanyId));
             remaining -= batch;
         }
     }

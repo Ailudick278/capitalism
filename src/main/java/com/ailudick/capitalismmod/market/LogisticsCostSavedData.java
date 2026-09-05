@@ -21,7 +21,19 @@ public final class LogisticsCostSavedData extends SavedData {
     public record FuelPlan(String shipmentId, UUID buyer, String itemId, int quantity,
                            String originRegion, String destinationRegion, TransportMode transport,
                            String fuelItemId, int fuelUnits, long fuelUnitPrice,
-                           long estimatedCost, long createdAt) {
+                           long estimatedCost, long createdAt, String buyerCompanyId) {
+        public FuelPlan(String shipmentId, UUID buyer, String itemId, int quantity,
+                        String originRegion, String destinationRegion, TransportMode transport,
+                        String fuelItemId, int fuelUnits, long fuelUnitPrice,
+                        long estimatedCost, long createdAt) {
+            this(shipmentId, buyer, itemId, quantity, originRegion, destinationRegion, transport,
+                    fuelItemId, fuelUnits, fuelUnitPrice, estimatedCost, createdAt, "");
+        }
+
+        public FuelPlan {
+            buyerCompanyId = buyerCompanyId == null ? "" : buyerCompanyId;
+        }
+
         private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
         private static final Codec<FuelPlan> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("shipmentId").forGetter(FuelPlan::shipmentId),
@@ -35,11 +47,12 @@ public final class LogisticsCostSavedData extends SavedData {
                 Codec.INT.fieldOf("fuelUnits").forGetter(FuelPlan::fuelUnits),
                 Codec.LONG.fieldOf("fuelUnitPrice").forGetter(FuelPlan::fuelUnitPrice),
                 Codec.LONG.fieldOf("estimatedCost").forGetter(FuelPlan::estimatedCost),
-                Codec.LONG.fieldOf("createdAt").forGetter(FuelPlan::createdAt)
+                Codec.LONG.fieldOf("createdAt").forGetter(FuelPlan::createdAt),
+                Codec.STRING.optionalFieldOf("buyerCompanyId", "").forGetter(FuelPlan::buyerCompanyId)
         ).apply(instance, (shipmentId, buyer, itemId, quantity, origin, destination, transport,
-                           fuelItem, units, unitPrice, cost, createdAt) -> new FuelPlan(
+                           fuelItem, units, unitPrice, cost, createdAt, buyerCompanyId) -> new FuelPlan(
                 shipmentId, buyer, itemId, quantity, origin, destination,
-                TransportMode.parse(transport), fuelItem, units, unitPrice, cost, createdAt)));
+                TransportMode.parse(transport), fuelItem, units, unitPrice, cost, createdAt, buyerCompanyId)));
     }
 
     private record State(List<FuelPlan> plans) {
@@ -64,6 +77,11 @@ public final class LogisticsCostSavedData extends SavedData {
     public List<FuelPlan> forBuyer(UUID buyer) {
         if (buyer == null) return List.of();
         return plans.stream().filter(plan -> buyer.equals(plan.buyer())).toList();
+    }
+
+    public List<FuelPlan> forCompany(String companyId) {
+        if (companyId == null || companyId.isBlank()) return List.of();
+        return plans.stream().filter(plan -> companyId.equals(plan.buyerCompanyId())).toList();
     }
 
     @Override

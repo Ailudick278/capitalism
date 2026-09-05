@@ -12,6 +12,7 @@ import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
 import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
 import com.ailudick.capitalismmod.company.CompanyProductionBatchSavedData;
 import com.ailudick.capitalismmod.company.CompanyQualityControlSavedData;
+import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyServiceDeliverySavedData;
 import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
@@ -85,6 +86,10 @@ public class CompanyCommand {
         root.then(Commands.literal("qualitycheck")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> qualityCheck(ctx.getSource(),
+                                StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("logistics")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> logistics(ctx.getSource(),
                                 StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("qualityreview")
                 .then(Commands.argument("name", StringArgumentType.word())
@@ -490,6 +495,32 @@ public class CompanyCommand {
                         + " | reason " + record.reason() + " | inspected tick " + record.inspectedAt()
                         + (record.reviewedAt() > 0 ? " | reviewed tick " + record.reviewedAt() : "")), false));
         return Math.min(20, records.size());
+    }
+
+    private static int logistics(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        var records = LogisticsCostSavedData.get(player.getServer()).forCompany(company.companyId());
+        source.sendSuccess(() -> Component.literal("Company logistics fuel plans for " + company.name()
+                + " (latest 20; estimate only):"), false);
+        if (records.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No company fuel plans recorded."), false);
+            return 1;
+        }
+        int start = Math.max(0, records.size() - 20);
+        for (int i = start; i < records.size(); i++) {
+            var plan = records.get(i);
+            source.sendSuccess(() -> Component.literal(plan.shipmentId().substring(0,
+                            Math.min(8, plan.shipmentId().length())) + " | " + plan.itemId()
+                    + " x" + plan.quantity() + " | " + plan.transport().id()
+                    + " | fuel " + plan.fuelUnits() + "x " + plan.fuelItemId()
+                    + " | estimated USD " + plan.estimatedCost()), false);
+        }
+        return records.size();
     }
 
     private static int qualityReview(CommandSourceStack source, String name, String batchId, String status)
