@@ -393,12 +393,14 @@ public final class CompanyHelper {
         }
         MachineType machine = MachineType.parse(recipe.machineType());
         if (machine == null) return ProductionCycleResult.failure("invalid_machine");
+        CompanySiteAllocationSavedData allocations = CompanySiteAllocationSavedData.get(server);
         CompanySiteSavedData.Site operatingSite = null;
         OilFieldSavedData.Field oilField = null;
         if (machine == MachineType.OIL_WELL) {
             operatingSite = CompanySiteSavedData.get(server).sites(company.companyId()).stream()
                     .filter(candidate -> com.ailudick.capitalismmod.land.LandHelper.hasCommercialRight(server,
                             candidate.dimension(), candidate.chunkX(), candidate.chunkZ(), company.ownerUuid()))
+                    .filter(candidate -> siteCanRun(allocations, company, candidate, machine))
                     .map(candidate -> new Object[]{candidate, OilFieldSavedData.get(server).get(candidate.dimension(),
                             candidate.chunkX(), candidate.chunkZ())})
                     .filter(pair -> pair[1] instanceof OilFieldSavedData.Field field
@@ -415,15 +417,23 @@ public final class CompanyHelper {
             operatingSite = CompanySiteSavedData.get(server).sites(company.companyId()).stream()
                     .filter(candidate -> com.ailudick.capitalismmod.land.LandHelper.hasCommercialRight(server,
                             candidate.dimension(), candidate.chunkX(), candidate.chunkZ(), company.ownerUuid()))
+                    .filter(candidate -> siteCanRun(allocations, company, candidate, machine))
                     .findFirst().orElse(null);
         }
         CompanyLaborSavedData labor = CompanyLaborSavedData.get(server);
-        if (recipe.workersPerCycle() > 0 && labor.activeWorkers(company.companyId()) < recipe.workersPerCycle()) {
+        int availableWorkers = labor.activeWorkers(company.companyId());
+        int assignedWorkers = allocations.workerCount(company.companyId(), operatingSite);
+        if (assignedWorkers >= 0) availableWorkers = assignedWorkers;
+        if (recipe.workersPerCycle() > 0 && availableWorkers < recipe.workersPerCycle()) {
             return ProductionCycleResult.failure("insufficient_workers");
         }
-        if (machine != MachineType.NONE
-                && CompanyEquipmentSavedData.get(server).count(company.companyId(), machine)
-                <= 0) {
+        int availableMachines = machine == MachineType.NONE ? 1
+                : CompanyEquipmentSavedData.get(server).count(company.companyId(), machine);
+        if (machine != MachineType.NONE) {
+            int assignedMachines = allocations.machineCount(company.companyId(), operatingSite, machine.id());
+            if (assignedMachines >= 0) availableMachines = Math.min(availableMachines, assignedMachines);
+        }
+        if (availableMachines <= 0) {
             return ProductionCycleResult.failure("missing_equipment");
         }
         long machineCost = machine == MachineType.NONE ? 0L : machine.maintenancePerCycle();
@@ -506,9 +516,17 @@ public final class CompanyHelper {
         if (machine == null) return 0;
         int machineCapacity = machine == MachineType.NONE ? 1
                 : CompanyEquipmentSavedData.get(server).count(company.companyId(), machine);
+        CompanySiteAllocationSavedData allocations = CompanySiteAllocationSavedData.get(server);
+        if (machine != MachineType.NONE && allocations.hasMachineAllocation(company.companyId(), machine.id())) {
+            machineCapacity = Math.min(machineCapacity,
+                    allocations.maxMachineCount(company.companyId(), machine.id()));
+        }
         if (machineCapacity <= 0) return 0;
         if (recipe.workersPerCycle() <= 0) return Math.min(10000, machineCapacity);
         int workers = CompanyLaborSavedData.get(server).activeWorkers(company.companyId());
+        if (allocations.hasWorkerAllocation(company.companyId())) {
+            workers = Math.min(workers, allocations.maxWorkerCount(company.companyId()));
+        }
         return Math.min(10000, Math.min(machineCapacity, workers / recipe.workersPerCycle()));
     }
 
@@ -851,6 +869,16 @@ public final class CompanyHelper {
         return true;
     }
 
+    private static boolean siteCanRun(CompanySiteAllocationSavedData allocations, Company company,
+                                      CompanySiteSavedData.Site site, MachineType machine) {
+        if (site == null) return !allocations.hasMachineAllocation(company.companyId(), machine.id())
+                && !allocations.hasWorkerAllocation(company.companyId());
+        if (machine != MachineType.NONE && allocations.machineCount(company.companyId(), site, machine.id()) == 0) {
+            return false;
+        }
+        return allocations.workerCount(company.companyId(), site) != 0;
+    }
+
     private static long safeRate(long amount, double rate) {
         double value = amount * rate;
         if (!Double.isFinite(value) || value >= Long.MAX_VALUE) {
@@ -1104,6 +1132,7 @@ public final class CompanyHelper {
             CompanyLedgerSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyServiceDeliverySavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanySiteSavedData.get(server).transferCompany(source.companyId(), target.companyId());
+            CompanySiteAllocationSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyInventoryCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyQualitySavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
@@ -1221,6 +1250,8 @@ public final class CompanyHelper {
         String removed = companies.remove(name);
         player.setData(ModAttachments.CONGLOMERATE, new Conglomerate(conglomerate.name(), companies));
         if (player.getServer() != null && removed != null) {
+            CompanySiteSavedData.get(player.getServer()).remove(removed);
+            CompanySiteAllocationSavedData.get(player.getServer()).remove(removed);
             CompanySavedData.get(player.getServer()).remove(removed);
         }
     }

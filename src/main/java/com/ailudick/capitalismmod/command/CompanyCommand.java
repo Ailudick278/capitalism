@@ -21,6 +21,7 @@ import com.ailudick.capitalismmod.company.CompanyServiceDeliverySavedData;
 import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanySiteSavedData;
+import com.ailudick.capitalismmod.company.CompanySiteAllocationSavedData;
 import com.ailudick.capitalismmod.company.OilFieldSavedData;
 import com.ailudick.capitalismmod.land.LandHelper;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
@@ -38,6 +39,7 @@ import com.ailudick.capitalismmod.tax.TaxType;
 import com.ailudick.capitalismmod.data.CapitalismData;
 import com.ailudick.capitalismmod.company.IndustrySpec;
 import com.ailudick.capitalismmod.company.ProductionRecipe;
+import com.ailudick.capitalismmod.company.MachineType;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -59,13 +61,27 @@ public class CompanyCommand {
         var root = Commands.literal("company");
         root.then(Commands.literal("list").executes(ctx -> list(ctx.getSource())));
         root.then(Commands.literal("recipes").executes(ctx -> recipes(ctx.getSource())));
-        root.then(Commands.literal("site")
-                .then(Commands.literal("remove")
-                        .then(Commands.argument("name", StringArgumentType.word())
-                                .executes(ctx -> removeSite(ctx.getSource(),
-                                        StringArgumentType.getString(ctx, "name")))))
+        var site = Commands.literal("site");
+        site.then(Commands.literal("remove")
                 .then(Commands.argument("name", StringArgumentType.word())
-                        .executes(ctx -> registerSite(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+                        .executes(ctx -> removeSite(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+        site.then(Commands.literal("assignmachine")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("type", StringArgumentType.word())
+                                .then(Commands.argument("count", IntegerArgumentType.integer(0, 10000))
+                                        .executes(ctx -> assignMachine(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "name"),
+                                                StringArgumentType.getString(ctx, "type"),
+                                                IntegerArgumentType.getInteger(ctx, "count")))))));
+        site.then(Commands.literal("assignworkers")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("count", IntegerArgumentType.integer(0, 10000))
+                                .executes(ctx -> assignWorkers(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"),
+                                        IntegerArgumentType.getInteger(ctx, "count"))))));
+        site.then(Commands.argument("name", StringArgumentType.word())
+                .executes(ctx -> registerSite(ctx.getSource(), StringArgumentType.getString(ctx, "name"))));
+        root.then(site);
         root.then(Commands.literal("status")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> status(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -385,9 +401,67 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("No operating site is registered for this company at the current chunk."));
             return 0;
         }
+        CompanySiteAllocationSavedData.get(player.getServer()).removeAt(company.companyId(), dimension,
+                chunk.x, chunk.z);
         source.sendSuccess(() -> Component.literal("Operating site deregistered at " + dimension
                 + " chunk " + chunk.x + ", " + chunk.z + "."), false);
         return 1;
+    }
+
+    private static int assignMachine(CommandSourceStack source, String name, String typeId, int count)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        MachineType type = MachineType.parse(typeId);
+        if (company == null || type == null || type == MachineType.NONE) {
+            source.sendFailure(Component.literal("Company or machine type not found."));
+            return 0;
+        }
+        CompanySiteSavedData.Site site = currentSite(player, company);
+        if (site == null) {
+            source.sendFailure(Component.literal("Register the current chunk as an operating site first."));
+            return 0;
+        }
+        int installed = CompanyEquipmentSavedData.get(player.getServer()).count(company.companyId(), type);
+        if (!CompanySiteAllocationSavedData.get(player.getServer()).setMachineCount(
+                company.companyId(), site, type.id(), count, installed)) {
+            source.sendFailure(Component.literal("Machine allocation exceeds the company's functioning machines or conflicts with other sites."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Assigned " + count + " " + type.id()
+                + " to this operating site."), false);
+        return 1;
+    }
+
+    private static int assignWorkers(CommandSourceStack source, String name, int count)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        CompanySiteSavedData.Site site = currentSite(player, company);
+        if (site == null) {
+            source.sendFailure(Component.literal("Register the current chunk as an operating site first."));
+            return 0;
+        }
+        int activeWorkers = CompanyLaborSavedData.get(player.getServer()).activeWorkers(company.companyId());
+        if (!CompanySiteAllocationSavedData.get(player.getServer()).setWorkerCount(
+                company.companyId(), site, count, activeWorkers)) {
+            source.sendFailure(Component.literal("Worker allocation exceeds the company's active workforce or conflicts with other sites."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Assigned " + count + " workers to this operating site."), false);
+        return 1;
+    }
+
+    private static CompanySiteSavedData.Site currentSite(ServerPlayer player, Company company) {
+        ChunkPos chunk = new ChunkPos(player.blockPosition());
+        String dimension = player.level().dimension().location().toString();
+        return CompanySiteSavedData.get(player.getServer()).sites(company.companyId()).stream()
+                .filter(site -> dimension.equals(site.dimension()) && site.chunkX() == chunk.x
+                        && site.chunkZ() == chunk.z).findFirst().orElse(null);
     }
 
     private static int contribute(CommandSourceStack source, String name, long amount) throws CommandSyntaxException {
@@ -1097,7 +1171,9 @@ public class CompanyCommand {
             source.sendSuccess(() -> Component.literal("Site " + site.dimension() + " chunk "
                     + site.chunkX() + "," + site.chunkZ() + " | oil remaining " + reserve
                     + " | batches " + batchSummary[0] + " | conversion USD " + batchSummary[1]
-                    + " | avg quality " + (batchSummary[0] <= 0 ? 0 : batchSummary[2] / batchSummary[0])), false);
+                    + " | avg quality " + (batchSummary[0] <= 0 ? 0 : batchSummary[2] / batchSummary[0])
+                    + " | assigned workers " + siteWorkers(server, company.companyId(), site)
+                    + " | machines " + siteMachines(server, company.companyId(), site)), false);
         }
         long[] legacySummary = legacyBatchSummary(server, company.companyId());
         if (legacySummary[0] > 0) {
@@ -1142,6 +1218,19 @@ public class CompanyCommand {
             conversion = saturatedAdd(conversion, batch.conversionCost());
         }
         return new long[]{count, conversion};
+    }
+
+    private static int siteWorkers(MinecraftServer server, String companyId, CompanySiteSavedData.Site site) {
+        CompanySiteAllocationSavedData.Allocation allocation = CompanySiteAllocationSavedData.get(server)
+                .get(companyId, site);
+        return allocation == null ? 0 : allocation.workers();
+    }
+
+    private static Map<String, Integer> siteMachines(MinecraftServer server, String companyId,
+                                                     CompanySiteSavedData.Site site) {
+        CompanySiteAllocationSavedData.Allocation allocation = CompanySiteAllocationSavedData.get(server)
+                .get(companyId, site);
+        return allocation == null ? Map.of() : allocation.machines();
     }
 
     private static long saturatedAdd(long left, long right) {
