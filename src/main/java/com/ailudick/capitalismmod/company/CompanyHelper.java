@@ -395,12 +395,18 @@ public final class CompanyHelper {
         if (machine == null) return ProductionCycleResult.failure("invalid_machine");
         OilFieldSavedData.Field oilField = null;
         if (machine == MachineType.OIL_WELL) {
-            CompanySiteSavedData.Site site = CompanySiteSavedData.get(server).get(company.companyId());
+            CompanySiteSavedData.Site site = CompanySiteSavedData.get(server).sites(company.companyId()).stream()
+                    .filter(candidate -> com.ailudick.capitalismmod.land.LandHelper.hasCommercialRight(server,
+                            candidate.dimension(), candidate.chunkX(), candidate.chunkZ(), company.ownerUuid()))
+                    .map(candidate -> new Object[]{candidate, OilFieldSavedData.get(server).get(candidate.dimension(),
+                            candidate.chunkX(), candidate.chunkZ())})
+                    .filter(pair -> pair[1] instanceof OilFieldSavedData.Field field
+                            && OilFieldSavedData.get(server).canExtract(field, 3L))
+                    .map(pair -> (CompanySiteSavedData.Site) pair[0])
+                    .findFirst().orElse(null);
             if (site == null) return ProductionCycleResult.failure("missing_oil_site");
-            if (!com.ailudick.capitalismmod.land.LandHelper.hasCommercialRight(server, site.dimension(),
-                    site.chunkX(), site.chunkZ(), company.ownerUuid())) return ProductionCycleResult.failure("no_land_right");
             oilField = OilFieldSavedData.get(server).get(site.dimension(), site.chunkX(), site.chunkZ());
-            if (!OilFieldSavedData.get(server).canExtract(oilField, 3L)) return ProductionCycleResult.failure("oil_depleted");
+            if (oilField == null) return ProductionCycleResult.failure("missing_oil_site");
         }
         CompanyLaborSavedData labor = CompanyLaborSavedData.get(server);
         if (recipe.workersPerCycle() > 0 && labor.activeWorkers(company.companyId()) < recipe.workersPerCycle()) {
@@ -1087,6 +1093,7 @@ public final class CompanyHelper {
             CompanyLogisticsCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyLedgerSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyServiceDeliverySavedData.get(server).transferCompany(source.companyId(), target.companyId());
+            CompanySiteSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyInventoryCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyQualitySavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
@@ -1094,7 +1101,6 @@ public final class CompanyHelper {
             CompanyQualityControlSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyQualityHoldSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyLoanSavedData.get(server).transferCompany(source.companyId(), target.companyId());
-            CompanySiteSavedData.get(server).remove(source.companyId());
         }
         Map<String, Long> treasury = new HashMap<>(target.treasury());
         for (Map.Entry<String, Long> entry : source.treasury().entrySet()) {

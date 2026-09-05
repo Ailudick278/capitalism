@@ -7,13 +7,14 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
 
 /** Persistent registered operating locations for companies. */
 public final class CompanySiteSavedData extends SavedData {
     private static final String ID = "capitalismmod_company_sites";
-    private final Map<String, Site> sites = new HashMap<>();
+    private final Map<String, List<Site>> sites = new HashMap<>();
 
     public record Site(String companyId, String dimension, int chunkX, int chunkZ) {}
 
@@ -25,18 +26,29 @@ public final class CompanySiteSavedData extends SavedData {
     }
 
     public Site get(String companyId) {
-        return companyId == null ? null : sites.get(companyId);
+        List<Site> companySites = sites(companyId);
+        return companySites.isEmpty() ? null : companySites.get(0);
+    }
+
+    public List<Site> sites(String companyId) {
+        if (companyId == null || companyId.isBlank()) return List.of();
+        return List.copyOf(sites.getOrDefault(companyId, List.of()));
     }
 
     public List<Site> sitesInDimension(String dimension) {
         if (dimension == null || dimension.isBlank()) return List.of();
-        return sites.values().stream().filter(site -> dimension.equals(site.dimension())).toList();
+        return sites.values().stream().flatMap(List::stream)
+                .filter(site -> dimension.equals(site.dimension())).toList();
     }
 
     public void set(Site site) {
         if (site == null || site.companyId() == null || site.companyId().isBlank()
                 || site.dimension() == null || site.dimension().isBlank()) return;
-        sites.put(site.companyId(), site);
+        List<Site> companySites = new ArrayList<>(sites.getOrDefault(site.companyId(), List.of()));
+        companySites.removeIf(existing -> existing.dimension().equals(site.dimension())
+                && existing.chunkX() == site.chunkX() && existing.chunkZ() == site.chunkZ());
+        companySites.add(site);
+        sites.put(site.companyId(), companySites);
         setDirty();
     }
 
@@ -44,16 +56,35 @@ public final class CompanySiteSavedData extends SavedData {
         if (companyId != null && sites.remove(companyId) != null) setDirty();
     }
 
+    /** Transfers every registered operating site during a company merger. */
+    public void transferCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.isBlank()
+                || targetId.isBlank() || sourceId.equals(targetId)) return;
+        List<Site> source = sites.remove(sourceId);
+        if (source == null || source.isEmpty()) return;
+        List<Site> target = new ArrayList<>(sites.getOrDefault(targetId, List.of()));
+        for (Site site : source) {
+            Site rebound = new Site(targetId, site.dimension(), site.chunkX(), site.chunkZ());
+            boolean duplicate = target.stream().anyMatch(existing -> existing.dimension().equals(rebound.dimension())
+                    && existing.chunkX() == rebound.chunkX() && existing.chunkZ() == rebound.chunkZ());
+            if (!duplicate) target.add(rebound);
+        }
+        sites.put(targetId, target);
+        setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         ListTag list = new ListTag();
-        for (Site site : sites.values()) {
-            CompoundTag entry = new CompoundTag();
-            entry.putString("company", site.companyId());
-            entry.putString("dimension", site.dimension());
-            entry.putInt("x", site.chunkX());
-            entry.putInt("z", site.chunkZ());
-            list.add(entry);
+        for (List<Site> companySites : sites.values()) {
+            for (Site site : companySites) {
+                CompoundTag entry = new CompoundTag();
+                entry.putString("company", site.companyId());
+                entry.putString("dimension", site.dimension());
+                entry.putInt("x", site.chunkX());
+                entry.putInt("z", site.chunkZ());
+                list.add(entry);
+            }
         }
         tag.put("sites", list);
         return tag;
@@ -67,7 +98,8 @@ public final class CompanySiteSavedData extends SavedData {
             String company = entry.getString("company");
             String dimension = entry.getString("dimension");
             if (!company.isBlank() && !dimension.isBlank()) {
-                data.sites.put(company, new Site(company, dimension, entry.getInt("x"), entry.getInt("z")));
+                data.sites.computeIfAbsent(company, ignored -> new ArrayList<>())
+                        .add(new Site(company, dimension, entry.getInt("x"), entry.getInt("z")));
             }
         }
         return data;
