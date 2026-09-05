@@ -69,7 +69,7 @@ public final class LogisticsTickHandler {
                             shipment.quantity(), now + Config.LOGISTICS_DISRUPTION_TICKS.get(), shipment.originRegion(),
                             shipment.destinationRegion(), shipment.transport(), false,
                             shipment.disruptionCount() + 1, shipment.supplyOrderId(), shipment.buyerCompanyId(),
-                            shipment.unitPrice()));
+                            shipment.unitPrice(), shipment.supplierUuid()));
                 }
                 continue;
             }

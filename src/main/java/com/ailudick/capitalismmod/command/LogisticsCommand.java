@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.command;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
 import com.ailudick.capitalismmod.market.LogisticsClaimSavedData;
+import com.ailudick.capitalismmod.supply.SupplyOrderAuditSavedData;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
@@ -28,6 +29,10 @@ public final class LogisticsCommand {
                 .executes(ctx -> list(ctx.getSource()))
                 .then(Commands.literal("losses").executes(ctx -> losses(ctx.getSource())))
                 .then(Commands.literal("claims").executes(ctx -> claims(ctx.getSource())))
+                .then(Commands.literal("order")
+                        .then(Commands.argument("id", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                .executes(ctx -> order(ctx.getSource(),
+                                        com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "id")))))
                 .then(Commands.literal("insure")
                         .then(Commands.argument("shipment", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(ctx -> insure(ctx.getSource(),
@@ -111,6 +116,28 @@ public final class LogisticsCommand {
             source.sendSuccess(() -> Component.literal("No cargo is currently in transit."), false);
         }
         return count;
+    }
+
+    private static int order(CommandSourceStack source, String orderId) {
+        ServerPlayer player;
+        try {
+            player = source.getPlayerOrException();
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            source.sendFailure(Component.literal("This command can only be used by a player."));
+            return 0;
+        }
+        var events = SupplyOrderAuditSavedData.get(source.getServer()).forOrder(orderId).stream()
+                .filter(event -> event.buyerUuid().equals(player.getUUID())).toList();
+        if (events.isEmpty()) {
+            source.sendFailure(Component.literal("Order not found."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("=== Supply order " + orderId + " ==="), false);
+        for (var event : events) {
+            source.sendSuccess(() -> Component.literal(event.type() + " | quantity " + event.quantity()
+                    + " | amount " + event.amount() + " | tick " + event.occurredAt()), false);
+        }
+        return events.size();
     }
 
     private static int insure(CommandSourceStack source, String id) {

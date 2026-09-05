@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.market;
 
 import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.supply.SupplyOrderAuditService;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,6 +25,16 @@ public final class LogisticsLossService {
                 loss = Long.MAX_VALUE;
             }
             CompanyHelper.recordInventoryLoss(server, shipment.buyerCompanyId(), loss, shipment.id());
+        }
+        if (!shipment.supplyOrderId().isBlank() && shipment.supplierUuid() != null) {
+            long amount;
+            try {
+                amount = Math.multiplyExact((long) shipment.quantity(), shipment.unitPrice());
+            } catch (ArithmeticException e) {
+                amount = Long.MAX_VALUE;
+            }
+            SupplyOrderAuditService.record(server, shipment.supplyOrderId(), "LOST", shipment.buyer(),
+                    shipment.supplierUuid(), shipment.itemId(), shipment.quantity(), amount);
         }
         ServerPlayer player = server.getPlayerList().getPlayer(shipment.buyer());
         if (player != null) {

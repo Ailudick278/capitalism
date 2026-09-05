@@ -18,14 +18,15 @@ public final class LogisticsSavedData extends SavedData {
 
     public record Shipment(String id, UUID buyer, String itemId, int quantity, long deliveryTick,
                            String originRegion, String destinationRegion, TransportMode transport, boolean insured,
-                           int disruptionCount, String supplyOrderId, String buyerCompanyId, long unitPrice) {
+                           int disruptionCount, String supplyOrderId, String buyerCompanyId, long unitPrice,
+                           UUID supplierUuid) {
         public Shipment(String id, UUID buyer, String itemId, int quantity, long deliveryTick) {
-            this(id, buyer, itemId, quantity, deliveryTick, "unknown", "unknown", TransportMode.ROAD, false, 0, "", "", 0L);
+            this(id, buyer, itemId, quantity, deliveryTick, "unknown", "unknown", TransportMode.ROAD, false, 0, "", "", 0L, null);
         }
 
         public Shipment(String id, UUID buyer, String itemId, int quantity, long deliveryTick,
                         String originRegion, String destinationRegion, TransportMode transport, boolean insured) {
-            this(id, buyer, itemId, quantity, deliveryTick, originRegion, destinationRegion, transport, insured, 0, "", "", 0L);
+            this(id, buyer, itemId, quantity, deliveryTick, originRegion, destinationRegion, transport, insured, 0, "", "", 0L, null);
         }
 
         public Shipment(String id, UUID buyer, String itemId, int quantity, long deliveryTick,
@@ -33,6 +34,13 @@ public final class LogisticsSavedData extends SavedData {
                         int disruptionCount) {
             this(id, buyer, itemId, quantity, deliveryTick, originRegion, destinationRegion, transport, insured,
                     disruptionCount, "", "", 0L);
+        }
+
+        public Shipment(String id, UUID buyer, String itemId, int quantity, long deliveryTick,
+                        String originRegion, String destinationRegion, TransportMode transport, boolean insured,
+                        int disruptionCount, String supplyOrderId, String buyerCompanyId, long unitPrice) {
+            this(id, buyer, itemId, quantity, deliveryTick, originRegion, destinationRegion, transport, insured,
+                    disruptionCount, supplyOrderId, buyerCompanyId, unitPrice, null);
         }
 
         public Shipment {
@@ -75,7 +83,7 @@ public final class LogisticsSavedData extends SavedData {
                 shipments.set(i, new Shipment(shipment.id(), shipment.buyer(), shipment.itemId(), shipment.quantity(),
                         shipment.deliveryTick(), shipment.originRegion(), shipment.destinationRegion(),
                         shipment.transport(), true, shipment.disruptionCount(), shipment.supplyOrderId(),
-                        shipment.buyerCompanyId(), shipment.unitPrice()));
+                        shipment.buyerCompanyId(), shipment.unitPrice(), shipment.supplierUuid()));
                 setDirty();
                 return true;
             }
@@ -111,6 +119,7 @@ public final class LogisticsSavedData extends SavedData {
             nbt.putString("supplyOrderId", shipment.supplyOrderId());
             nbt.putString("buyerCompanyId", shipment.buyerCompanyId());
             nbt.putLong("unitPrice", shipment.unitPrice());
+            if (shipment.supplierUuid() != null) nbt.putUUID("supplier", shipment.supplierUuid());
             list.add(nbt);
         }
         tag.put("shipments", list);
@@ -128,7 +137,8 @@ public final class LogisticsSavedData extends SavedData {
                         nbt.getString("originRegion"), nbt.getString("destinationRegion"),
                         TransportMode.parse(nbt.getString("transport")), nbt.getBoolean("insured"),
                         Math.max(0, nbt.getInt("disruptions")), nbt.getString("supplyOrderId"),
-                        nbt.getString("buyerCompanyId"), Math.max(0L, nbt.getLong("unitPrice"))));
+                        nbt.getString("buyerCompanyId"), Math.max(0L, nbt.getLong("unitPrice")),
+                        nbt.hasUUID("supplier") ? nbt.getUUID("supplier") : null));
             }
         }
         return data;

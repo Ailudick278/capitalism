@@ -108,6 +108,8 @@ public final class SupplyMarket {
         }
         String supplyOrderId = UUID.randomUUID().toString();
         String buyerCompanyId = buyerCompany == null ? "" : buyerCompany.companyId();
+        SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "CREATED", buyer.getUUID(),
+                offer.ownerUuid(), offer.itemId(), quantity, total);
         String orderSource = "supply_order:" + UUID.randomUUID();
         if (buyerCompany != null) {
             CompanyHelper.recordTaxableExpense(buyer.getServer(), buyerCompany, orderSource,
@@ -136,7 +138,9 @@ public final class SupplyMarket {
         if (filled > 0) {
             warehouse.consume(supplierOwner, item, filled);
             deliverOrShip(buyer.getServer(), buyer.getUUID(), item, filled, offer.region(),
-                    TradeRegion.of(buyer.blockPosition()), supplyOrderId, buyerCompanyId, offer.price());
+                    TradeRegion.of(buyer.blockPosition()), supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid());
+            SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "DELIVERED", buyer.getUUID(),
+                    offer.ownerUuid(), offer.itemId(), filled, EconomyMath.multiply(offer.price(), filled));
         }
         paySupplier(buyer.getServer(), offer, total, orderSource);
 
@@ -146,6 +150,11 @@ public final class SupplyMarket {
                     offer.ownerUuid(), offer.companyName(), offer.itemId(), remaining, offer.region(),
                     TradeRegion.of(buyer.blockPosition()), offer.price(),
                     buyer.getServer().overworld().getGameTime(), buyerCompanyId));
+            SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "BACKORDERED", buyer.getUUID(),
+                    offer.ownerUuid(), offer.itemId(), remaining, EconomyMath.multiply(offer.price(), remaining));
+        } else {
+            SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "FULFILLED", buyer.getUUID(),
+                    offer.ownerUuid(), offer.itemId(), quantity, total);
         }
         return true;
     }
@@ -170,6 +179,7 @@ public final class SupplyMarket {
                 continue;
             }
             MarketMailboxSavedData.get(server).creditMoney(order.buyerUuid(), Currencies.USD.id(), refundMinor);
+            SupplyOrderAuditService.record(server, order, "EXPIRED_REFUND", order.remaining(), refund);
             data.removeOrder(order.id());
         }
     }
@@ -200,12 +210,18 @@ public final class SupplyMarket {
             }
             warehouse.consume(resolvedOwner, item, deliver);
             deliverOrShip(server, order.buyerUuid(), item, deliver, order.originRegion(), order.destinationRegion(),
-                    order.id(), order.buyerCompanyId(), order.unitPrice());
+                    order.id(), order.buyerCompanyId(), order.unitPrice(), order.supplierUuid());
+            SupplyOrderAuditService.record(server, order, "DELIVERED", deliver,
+                    EconomyMath.multiply(order.unitPrice(), deliver));
             int newRemaining = order.remaining() - deliver;
             if (newRemaining <= 0) {
+                SupplyOrderAuditService.record(server, order, "FULFILLED", deliver,
+                        EconomyMath.multiply(order.unitPrice(), deliver));
                 data.removeOrder(order.id());
             } else {
                 data.replaceOrder(order.withRemaining(newRemaining));
+                SupplyOrderAuditService.record(server, order.withRemaining(newRemaining), "PARTIAL", newRemaining,
+                        EconomyMath.multiply(order.unitPrice(), newRemaining));
             }
         }
     }
@@ -231,7 +247,7 @@ public final class SupplyMarket {
 
     private static void deliverOrShip(MinecraftServer server, UUID buyer, Item item, int quantity,
                                       String origin, String destination, String supplyOrderId,
-                                      String buyerCompanyId, long unitPrice) {
+                                      String buyerCompanyId, long unitPrice, UUID supplierUuid) {
         if (quantity <= 0) {
             return;
         }
@@ -257,7 +273,8 @@ public final class SupplyMarket {
         while (remaining > 0) {
             int batch = Math.min(remaining, capacity);
             data.add(new LogisticsSavedData.Shipment(UUID.randomUUID().toString(), buyer, itemId, batch, delay,
-                    origin, destination, transport, false, 0, supplyOrderId, buyerCompanyId, unitPrice));
+                    origin, destination, transport, false, 0, supplyOrderId, buyerCompanyId, unitPrice,
+                    supplierUuid));
             remaining -= batch;
         }
     }
