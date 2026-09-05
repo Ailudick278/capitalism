@@ -11,13 +11,14 @@ import net.minecraft.server.MinecraftServer;
  * company ledger and therefore also works for offline companies.
  */
 public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long operatingExpenses,
-                                       long operatingCashFlow, int activeWorkers, long dailyPayroll,
+                                       long operatingCashFlow, int activeWorkers, long grossDailyWages,
+                                       long employerDailyContributions, long dailyLaborCost,
                                        int machineUnits, int parallelCapacity, long successfulBatches,
                                        long failedCycles, long assets, long equity) {
     public static CompanyOperatingSnapshot from(MinecraftServer server, Company company, long lookbackDays) {
         long days = Math.max(1L, Math.min(360L, lookbackDays));
         if (server == null || company == null) {
-            return new CompanyOperatingSnapshot(days, 0L, 0L, 0L, 0, 0L, 0, 0,
+            return new CompanyOperatingSnapshot(days, 0L, 0L, 0L, 0, 0L, 0L, 0L, 0, 0,
                     0L, 0L, 0L, 0L);
         }
 
@@ -40,7 +41,9 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
 
         CompanyLaborSavedData labor = CompanyLaborSavedData.get(server);
         int workers = labor.activeWorkers(company.companyId());
-        long dailyPayroll = Math.max(0L, labor.dailyWages(company.companyId()));
+        long grossWages = Math.max(0L, labor.dailyWages(company.companyId()));
+        long employerContributions = CompanyPayrollService.employerContribution(grossWages);
+        long dailyLaborCost = addSaturated(grossWages, employerContributions);
         long machineTotal = 0L;
         for (CompanyEquipmentSavedData.Equipment equipment
                 : CompanyEquipmentSavedData.get(server).all(company.companyId()).values()) {
@@ -54,8 +57,9 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
         long successful = production == null ? 0L : Math.max(0L, production.successfulCycles());
         long failed = production == null ? 0L : Math.max(0L, production.failedCycles());
         CompanyFinancialSnapshot financial = CompanyFinancialSnapshot.from(server, company);
-        return new CompanyOperatingSnapshot(days, revenue, expenses, cashFlow, workers, dailyPayroll,
-                machineUnits, capacity, successful, failed, financial.assets(), financial.equity());
+        return new CompanyOperatingSnapshot(days, revenue, expenses, cashFlow, workers, grossWages,
+                employerContributions, dailyLaborCost, machineUnits, capacity, successful, failed,
+                financial.assets(), financial.equity());
     }
 
     private static boolean isOperating(CompanyLedgerEntry entry) {

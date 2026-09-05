@@ -142,6 +142,10 @@ public class Config {
             .comment("Fixed company overhead in USD per production batch; 0 disables it.")
             .defineInRange("companyFixedOverheadPerCycle", 1L, 0L, Long.MAX_VALUE);
 
+    public static final ModConfigSpec.DoubleValue COMPANY_EMPLOYER_PAYROLL_RATE = BUILDER
+            .comment("Employer labor-cost contribution applied to gross daily wages; 0.10 = 10%, set 0 to disable.")
+            .defineInRange("companyEmployerPayrollRate", 0.10, 0.0, 1.0);
+
     public static final ModConfigSpec.DoubleValue COMPANY_LIQUIDATION_RECOVERY_RATE = BUILDER
             .comment("Fraction of inventory and equipment market value recovered during company liquidation.")
             .defineInRange("companyLiquidationRecoveryRate", 0.70, 0.0, 1.0);

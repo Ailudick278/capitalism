@@ -332,7 +332,9 @@ public class CompanyCommand {
                 + metrics.operatingExpenses() + ", operating cash flow USD "
                 + metrics.operatingCashFlow()), false);
         source.sendSuccess(() -> Component.literal("Workforce " + metrics.activeWorkers()
-                + ", daily payroll USD " + metrics.dailyPayroll() + ", machines "
+                + ", gross daily wages USD " + metrics.grossDailyWages()
+                + ", employer contributions USD " + metrics.employerDailyContributions()
+                + ", total labor cost USD " + metrics.dailyLaborCost() + ", machines "
                 + metrics.machineUnits() + ", parallel capacity " + metrics.parallelCapacity()), false);
         source.sendSuccess(() -> Component.literal("Production: successful " + metrics.successfulBatches()
                 + ", failed cycles " + metrics.failedCycles() + ", assets USD " + metrics.assets()

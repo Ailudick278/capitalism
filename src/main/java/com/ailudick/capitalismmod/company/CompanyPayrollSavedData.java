@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Persistent payroll liabilities and payment audit for abstract worker contracts. */
+/** Persistent employee wages and employer labor-cost liabilities and payment audit. */
 public final class CompanyPayrollSavedData extends SavedData {
     private static final String ID = "capitalismmod_company_payroll";
     private static final int MAX_PAYMENTS = 4096;
