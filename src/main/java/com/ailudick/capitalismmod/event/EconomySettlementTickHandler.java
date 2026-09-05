@@ -9,6 +9,8 @@ import com.ailudick.capitalismmod.futures.FuturesMarket;
 import com.ailudick.capitalismmod.loan.PeerLoan;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanNotificationService;
+import com.ailudick.capitalismmod.loan.CompanyLoan;
+import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
@@ -74,6 +76,11 @@ public final class EconomySettlementTickHandler {
             loans.replaceLoan(updated);
         }
         loans.setDirty();
+
+        CompanyLoanSavedData companyLoans = CompanyLoanSavedData.get(server);
+        for (CompanyLoan loan : new ArrayList<>(companyLoans.loans())) {
+            companyLoans.replace(loan.withDaysRemaining(loan.daysRemaining() - 1));
+        }
 
         BondMarket.settleMaturity(server);
         FuturesMarket.settleDay(server);

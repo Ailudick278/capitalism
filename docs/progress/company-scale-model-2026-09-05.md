@@ -31,6 +31,10 @@ separate accounting and operating metrics.
 - Added `/company dividend <name> <amountPerShare>` for listed companies. The
   distribution is paid from company cash, recorded in the company ledger, paid
   to online or offline shareholders, and assessed under the dividend tax type.
+- Company borrowing is now represented by separate persisted loan contracts;
+  `/company borrow`, `/company repayloan` and `/company companyloans` expose
+  principal, interest, maturity and cash-flow effects without treating debt as
+  revenue or principal repayment as an operating expense.
 - Old serialized companies without `registeredCapital` load with the safe
   default of 1000 major currency units; new saves never write `level`.
 

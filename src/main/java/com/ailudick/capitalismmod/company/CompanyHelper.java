@@ -90,9 +90,39 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Credits a non-operating financing inflow without labeling it revenue. */
+    public static boolean creditTreasuryNonOperating(MinecraftServer server, String companyId,
+                                                       String currencyId, long amount,
+                                                       String type, String description) {
+        if (server == null || companyId == null || currencyId == null || amount <= 0L) return false;
+        CompanySavedData data = CompanySavedData.get(server);
+        Company company = data.get(companyId);
+        if (company == null) return false;
+        Company updated = company.addTreasury(currencyId, amount);
+        if (updated == company) return false;
+        data.put(updated);
+        CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                company.companyId(), server.overworld().getGameTime(), type, currencyId,
+                amount, updated.treasuryOf(currencyId), description));
+        return true;
+    }
+
     /** Debits a company's treasury and records the expense before production continues. */
     public static boolean debitTreasury(MinecraftServer server, String companyId, String currencyId,
                                         long amount, String type, String description) {
+        return debitTreasuryInternal(server, companyId, currencyId, amount, type, description, true);
+    }
+
+    /** Debits cash for financing or other balance-sheet transactions, not a tax-deductible expense. */
+    public static boolean debitTreasuryNonOperating(MinecraftServer server, String companyId,
+                                                     String currencyId, long amount,
+                                                     String type, String description) {
+        return debitTreasuryInternal(server, companyId, currencyId, amount, type, description, false);
+    }
+
+    private static boolean debitTreasuryInternal(MinecraftServer server, String companyId, String currencyId,
+                                                 long amount, String type, String description,
+                                                 boolean taxableExpense) {
         if (server == null || companyId == null || currencyId == null || amount < 0L) return false;
         CompanySavedData data = CompanySavedData.get(server);
         Company company = data.get(companyId);
@@ -106,8 +136,10 @@ public final class CompanyHelper {
             CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
                     company.companyId(), server.overworld().getGameTime(), type, currencyId,
                     -amount, balance, description));
-            recordTaxableExpense(server, company, type + ":" + server.overworld().getGameTime(),
-                    amount, currencyId, server.overworld().getGameTime());
+            if (taxableExpense) {
+                recordTaxableExpense(server, company, type + ":" + server.overworld().getGameTime(),
+                        amount, currencyId, server.overworld().getGameTime());
+            }
         }
         return true;
     }

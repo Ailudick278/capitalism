@@ -3,6 +3,8 @@ package com.ailudick.capitalismmod.company;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
+import com.ailudick.capitalismmod.loan.CompanyLoan;
+import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 
@@ -14,11 +16,12 @@ import java.util.Map;
  * the statement cannot drift away from the cash, warehouse or equipment data.
  */
 public record CompanyFinancialSnapshot(long cash, long inventory, long equipment,
-                                       long assets, long taxLiabilities, long liabilities,
+                                       long assets, long taxLiabilities, long loanLiabilities,
+                                       long liabilities,
                                        long equity) {
     public static CompanyFinancialSnapshot from(MinecraftServer server, Company company) {
         if (server == null || company == null) {
-            return new CompanyFinancialSnapshot(0L, 0L, 0L, 0L, 0L, 0L, 0L);
+            return new CompanyFinancialSnapshot(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
         }
         long cash = Math.max(0L, company.treasuryOf("usd"));
         CommoditySavedData market = CommoditySavedData.get(server);
@@ -41,9 +44,14 @@ public record CompanyFinancialSnapshot(long cash, long inventory, long equipment
 
         long assets = add(add(cash, inventory), equipment);
         long taxLiabilities = Math.max(0L, company.taxOwed());
-        long liabilities = taxLiabilities;
+        long loanLiabilities = 0L;
+        for (CompanyLoan loan : CompanyLoanSavedData.get(server).forCompany(company.companyId())) {
+            loanLiabilities = add(loanLiabilities, loan.principal());
+            loanLiabilities = add(loanLiabilities, loan.interestDue());
+        }
+        long liabilities = add(taxLiabilities, loanLiabilities);
         return new CompanyFinancialSnapshot(cash, inventory, equipment, assets,
-                taxLiabilities, liabilities, assets - liabilities);
+                taxLiabilities, loanLiabilities, liabilities, assets - liabilities);
     }
 
     private static long add(long left, long right) {

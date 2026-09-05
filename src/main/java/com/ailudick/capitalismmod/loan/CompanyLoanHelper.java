@@ -1,0 +1,64 @@
+package com.ailudick.capitalismmod.loan;
+
+import com.ailudick.capitalismmod.company.Company;
+import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.CompanyLedgerEntry;
+import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
+import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.currency.Currencies;
+import com.ailudick.capitalismmod.util.EconomyMath;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.entity.player.Player;
+
+import java.util.UUID;
+
+/** Company financing operations. Principal is a liability, never operating revenue. */
+public final class CompanyLoanHelper {
+    private static final long MAX_DEBT_MULTIPLE_OF_CAPITAL = 5L;
+
+    private CompanyLoanHelper() {}
+
+    public static String borrow(Player player, String companyName, long amount, int days, double ratePercent) {
+        MinecraftServer server = player.getServer();
+        Company company = CompanyHelper.getCompany(player, companyName);
+        if (server == null || company == null || amount <= 0L || days <= 0 || days > 3650
+                || !Double.isFinite(ratePercent) || ratePercent < 0.0 || ratePercent > 100.0) return null;
+        long maximumDebt = EconomyMath.multiply(company.registeredCapital(), MAX_DEBT_MULTIPLE_OF_CAPITAL);
+        if (maximumDebt < 0L) return null;
+        long existingDebt = 0L;
+        for (CompanyLoan loan : CompanyLoanSavedData.get(server).forCompany(company.companyId())) {
+            existingDebt = EconomyMath.add(existingDebt, loan.principal());
+            if (existingDebt < 0L) return null;
+        }
+        long newDebt = EconomyMath.add(existingDebt, amount);
+        if (newDebt < 0L || newDebt > maximumDebt) return null;
+        if (!CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), amount,
+                "loan_proceeds", "Company loan principal received")) return null;
+        String id = UUID.randomUUID().toString();
+        CompanyLoanSavedData.get(server).add(new CompanyLoan(id, company.companyId(),
+                Currencies.USD.id(), amount, ratePercent / 100.0, days, days, 0L));
+        return id;
+    }
+
+    public static boolean repay(Player player, String companyName, String loanId, Long requestedAmount) {
+        MinecraftServer server = player.getServer();
+        Company company = CompanyHelper.getCompany(player, companyName);
+        if (server == null || company == null) return false;
+        CompanyLoanSavedData data = CompanyLoanSavedData.get(server);
+        CompanyLoan loan = data.find(loanId);
+        if (loan == null || !loan.companyId().equals(company.companyId()) || !Currencies.exists(loan.currencyId())) return false;
+        long interest = loan.interestDue();
+        long total = EconomyMath.add(loan.principal(), interest);
+        if (total < 0L) return false;
+        long payment = requestedAmount == null ? total : requestedAmount;
+        if (payment <= 0L || payment > total || (requestedAmount != null && payment < total && payment > interest)) return false;
+        if (!CompanyHelper.debitTreasuryNonOperating(server, company.companyId(), loan.currencyId(), payment,
+                "loan_repayment", "Company loan repayment")) return false;
+        if (payment == total) {
+            data.remove(loan.id());
+        } else {
+            data.replace(loan.withInterestPaid(EconomyMath.add(loan.interestPaid(), payment)));
+        }
+        return true;
+    }
+}

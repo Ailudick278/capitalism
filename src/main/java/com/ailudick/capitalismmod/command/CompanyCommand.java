@@ -9,6 +9,9 @@ import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
 import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
 import com.ailudick.capitalismmod.company.Industries;
+import com.ailudick.capitalismmod.loan.CompanyLoan;
+import com.ailudick.capitalismmod.loan.CompanyLoanHelper;
+import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
@@ -16,6 +19,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.server.MinecraftServer;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -45,6 +49,30 @@ public class CompanyCommand {
                                 .executes(ctx -> dividend(ctx.getSource(),
                                         StringArgumentType.getString(ctx, "name"),
                                         LongArgumentType.getLong(ctx, "amountPerShare"))))));
+        root.then(Commands.literal("borrow")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("amount", LongArgumentType.longArg(1))
+                                .then(Commands.argument("days", IntegerArgumentType.integer(1, 3650))
+                                        .then(Commands.argument("rate", DoubleArgumentType.doubleArg(0.0, 100.0))
+                                                .executes(ctx -> borrow(ctx.getSource(),
+                                                        StringArgumentType.getString(ctx, "name"),
+                                                        LongArgumentType.getLong(ctx, "amount"),
+                                                        IntegerArgumentType.getInteger(ctx, "days"),
+                                                        DoubleArgumentType.getDouble(ctx, "rate"))))))));
+        root.then(Commands.literal("repayloan")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("loanId", StringArgumentType.word())
+                                .executes(ctx -> repayLoan(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"),
+                                        StringArgumentType.getString(ctx, "loanId"), null))
+                                .then(Commands.argument("amount", LongArgumentType.longArg(1))
+                                        .executes(ctx -> repayLoan(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "name"),
+                                                StringArgumentType.getString(ctx, "loanId"),
+                                                LongArgumentType.getLong(ctx, "amount")))))));
+        root.then(Commands.literal("companyloans")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> companyLoans(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("withdraw")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .then(Commands.argument("currency", StringArgumentType.word())
@@ -191,8 +219,51 @@ public class CompanyCommand {
                 + " (cash " + statement.cash() + ", inventory " + statement.inventory()
                 + ", equipment " + statement.equipment() + ")"), false);
         source.sendSuccess(() -> Component.literal("Liabilities: USD " + statement.liabilities()
-                + " (tax " + statement.taxLiabilities() + "), equity: USD " + statement.equity()), false);
+                + " (tax " + statement.taxLiabilities() + ", loans " + statement.loanLiabilities()
+                + "), equity: USD " + statement.equity()), false);
         return 1;
+    }
+
+    private static int borrow(CommandSourceStack source, String name, long amount, int days, double rate)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        String id = CompanyLoanHelper.borrow(player, name, amount, days, rate);
+        if (id == null) {
+            source.sendFailure(Component.literal("Company loan denied: capital limit, company funds, or terms are invalid."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Company loan approved: " + id.substring(0, 8)
+                + " for USD " + amount + " at " + rate + "% annual interest."), false);
+        return 1;
+    }
+
+    private static int repayLoan(CommandSourceStack source, String name, String loanId, Long amount)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CompanyLoanHelper.repay(player, name, loanId, amount)) {
+            source.sendFailure(Component.literal("Company loan repayment failed: insufficient company cash or invalid payment."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Company loan repayment completed."), false);
+        return 1;
+    }
+
+    private static int companyLoans(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        int count = 0;
+        for (CompanyLoan loan : CompanyLoanSavedData.get(player.getServer()).forCompany(company.companyId())) {
+            source.sendSuccess(() -> Component.literal(loan.id().substring(0, Math.min(8, loan.id().length()))
+                    + " principal USD " + loan.principal() + " interest due USD " + loan.interestDue()
+                    + " days " + loan.daysRemaining()), false);
+            count++;
+        }
+        if (count == 0) source.sendSuccess(() -> Component.literal("No company loans."), false);
+        return count;
     }
 
     private static int dividend(CommandSourceStack source, String name, long amountPerShare)
