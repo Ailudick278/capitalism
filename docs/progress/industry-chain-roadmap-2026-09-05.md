@@ -14,6 +14,7 @@
 - 生产系统支持同一行业的多条可选配方；企业可以通过 `/company recipes <名称>` 查看，并用 `/company recipe <名称> <配方ID>` 切换。
 - 增加首条消费品示范链：铁矿/铜矿 → 金属锭；金属锭 → 钢板、铜线；砂 → 玻璃 → 玻璃透镜；钢板 + 铜线 + 玻璃透镜 → 电灯。
 - 新增产业链物品：钢板、铜线、玻璃透镜、电灯；新增工艺设备类型：玻璃熔炉、拉丝机、食品加工机。
+- 增加第二条消费品链：小麦 → 面粉 → 面包，以及铁锭 → 金属罐；小麦 + 金属罐 → 罐装食品。
 
 ## 现实逻辑约束
 
@@ -40,3 +41,5 @@
 - [U.S. Department of Energy：钢铁制造流程图](https://www.energy.gov/sites/default/files/2022-11/DTG-final.pdf)
 - [U.S. EPA：玻璃制造 AP-42 工艺说明](https://www3.epa.gov/ttn/chief/ap42/ch11/final/c11s15.pdf)
 - [OSHA：Machine Guarding](https://www.osha.gov/etools/machine-guarding/introduction)
+- [FAO：小麦制粉流程](https://www.fao.org/4/al376e/al376e.pdf)
+- [USDA FSIS：Shelf-Stable Food Safety](https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/shelf-stable-food)

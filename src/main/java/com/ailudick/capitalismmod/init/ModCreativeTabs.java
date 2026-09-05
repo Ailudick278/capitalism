@@ -98,6 +98,9 @@ public class ModCreativeTabs {
                         output.accept(ModItems.COPPER_WIRE.get());
                         output.accept(ModItems.GLASS_LENS.get());
                         output.accept(ModItems.ELECTRIC_LAMP.get());
+                        output.accept(ModItems.FLOUR.get());
+                        output.accept(ModItems.METAL_CAN.get());
+                        output.accept(ModItems.CANNED_FOOD.get());
                     })
                     .build());
 }

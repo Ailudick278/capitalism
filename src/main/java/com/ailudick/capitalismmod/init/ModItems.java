@@ -202,4 +202,10 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> ELECTRIC_LAMP = ITEMS.register("electric_lamp",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FLOUR = ITEMS.register("flour",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> METAL_CAN = ITEMS.register("metal_can",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CANNED_FOOD = ITEMS.register("canned_food",
+            () -> new Item(new Item.Properties().stacksTo(64)));
 }
