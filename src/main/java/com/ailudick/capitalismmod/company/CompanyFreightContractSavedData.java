@@ -7,6 +7,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +21,7 @@ public final class CompanyFreightContractSavedData extends SavedData {
 
     public record Contract(String id, String shipmentId, String buyerCompanyId,
                            String carrierCompanyId, long quotedCost, long createdAt,
-                           long acceptedAt, String status) {
+                           long acceptedAt, long expiresAt, String status) {
         private static final Codec<Contract> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("id").forGetter(Contract::id),
                 Codec.STRING.fieldOf("shipmentId").forGetter(Contract::shipmentId),
@@ -29,6 +30,7 @@ public final class CompanyFreightContractSavedData extends SavedData {
                 Codec.LONG.fieldOf("quotedCost").forGetter(Contract::quotedCost),
                 Codec.LONG.fieldOf("createdAt").forGetter(Contract::createdAt),
                 Codec.LONG.optionalFieldOf("acceptedAt", 0L).forGetter(Contract::acceptedAt),
+                Codec.LONG.optionalFieldOf("expiresAt", 0L).forGetter(Contract::expiresAt),
                 Codec.STRING.optionalFieldOf("status", "offered").forGetter(Contract::status)
         ).apply(instance, Contract::new));
 
@@ -40,6 +42,7 @@ public final class CompanyFreightContractSavedData extends SavedData {
             quotedCost = Math.max(0L, quotedCost);
             createdAt = Math.max(0L, createdAt);
             acceptedAt = Math.max(0L, acceptedAt);
+            expiresAt = Math.max(0L, expiresAt);
             status = status == null || status.isBlank() ? "offered" : status;
         }
     }
@@ -81,12 +84,19 @@ public final class CompanyFreightContractSavedData extends SavedData {
     }
 
     public Contract offer(String shipmentId, String buyerCompanyId, String carrierCompanyId,
-                          long quotedCost, long createdAt) {
+                          long quotedCost, long createdAt, long termDays) {
         if (shipmentId == null || shipmentId.isBlank() || buyerCompanyId == null || buyerCompanyId.isBlank()
                 || carrierCompanyId == null || carrierCompanyId.isBlank() || quotedCost <= 0L
                 || activeForShipment(shipmentId) != null) return null;
+        long duration = PerpetualCalendar.ticksForDays(Math.max(1L, Math.min(365L, termDays)));
+        long expiresAt;
+        try {
+            expiresAt = Math.addExact(Math.max(0L, createdAt), duration);
+        } catch (ArithmeticException e) {
+            expiresAt = Long.MAX_VALUE;
+        }
         Contract contract = new Contract(UUID.randomUUID().toString().substring(0, 12), shipmentId,
-                buyerCompanyId, carrierCompanyId, quotedCost, createdAt, 0L, "offered");
+                buyerCompanyId, carrierCompanyId, quotedCost, createdAt, 0L, expiresAt, "offered");
         contracts.add(contract);
         while (contracts.size() > MAX_CONTRACTS) contracts.remove(0);
         setDirty();
@@ -99,7 +109,7 @@ public final class CompanyFreightContractSavedData extends SavedData {
             if (id != null && id.equals(contract.id()) && "offered".equals(contract.status())) {
                 contracts.set(i, new Contract(contract.id(), contract.shipmentId(), contract.buyerCompanyId(),
                         contract.carrierCompanyId(), contract.quotedCost(), contract.createdAt(),
-                        Math.max(0L, acceptedAt), "accepted"));
+                        Math.max(0L, acceptedAt), contract.expiresAt(), "accepted"));
                 setDirty();
                 return true;
             }
@@ -113,12 +123,29 @@ public final class CompanyFreightContractSavedData extends SavedData {
             if (id != null && id.equals(contract.id()) && "accepted".equals(contract.status())) {
                 contracts.set(i, new Contract(contract.id(), contract.shipmentId(), contract.buyerCompanyId(),
                         contract.carrierCompanyId(), contract.quotedCost(), contract.createdAt(),
-                        contract.acceptedAt(), "settled"));
+                        contract.acceptedAt(), contract.expiresAt(), "settled"));
                 setDirty();
                 return true;
             }
         }
         return false;
+    }
+
+    /** Marks open offers and accepted contracts past their term as expired. */
+    public int expire(long now) {
+        int changed = 0;
+        for (int i = 0; i < contracts.size(); i++) {
+            Contract contract = contracts.get(i);
+            if (("offered".equals(contract.status()) || "accepted".equals(contract.status()))
+                    && contract.expiresAt() > 0L && now >= contract.expiresAt()) {
+                contracts.set(i, new Contract(contract.id(), contract.shipmentId(), contract.buyerCompanyId(),
+                        contract.carrierCompanyId(), contract.quotedCost(), contract.createdAt(),
+                        contract.acceptedAt(), contract.expiresAt(), "expired"));
+                changed++;
+            }
+        }
+        if (changed > 0) setDirty();
+        return changed;
     }
 
     @Override

@@ -107,7 +107,14 @@ public class CompanyCommand {
                                                                 StringArgumentType.getString(ctx, "buyer"),
                                                                 StringArgumentType.getString(ctx, "shipmentId"),
                                                                 StringArgumentType.getString(ctx, "carrierCompanyId"),
-                                                                LongArgumentType.getLong(ctx, "quotedCost"))))))))
+                                                                LongArgumentType.getLong(ctx, "quotedCost"), 30))
+                                                        .then(Commands.argument("days", IntegerArgumentType.integer(1, 365))
+                                                                .executes(ctx -> offerFreight(ctx.getSource(),
+                                                                        StringArgumentType.getString(ctx, "buyer"),
+                                                                        StringArgumentType.getString(ctx, "shipmentId"),
+                                                                        StringArgumentType.getString(ctx, "carrierCompanyId"),
+                                                                        LongArgumentType.getLong(ctx, "quotedCost"),
+                                                                        IntegerArgumentType.getInteger(ctx, "days")))))))))
                 .then(Commands.literal("accept")
                         .then(Commands.argument("contractId", StringArgumentType.word())
                                 .executes(ctx -> acceptFreight(ctx.getSource(),
@@ -613,6 +620,8 @@ public class CompanyCommand {
         }
         CompanyLogisticsCostSavedData data = CompanyLogisticsCostSavedData.get(source.getServer());
         CompanyFreightContractSavedData contracts = CompanyFreightContractSavedData.get(source.getServer());
+        long now = source.getServer().overworld().getGameTime();
+        contracts.expire(now);
         CompanyFreightContractSavedData.Contract contract = contracts.activeForShipment(shipmentId);
         if (contract != null && (!"accepted".equals(contract.status())
                 || !buyer.companyId().equals(contract.buyerCompanyId())
@@ -635,7 +644,6 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Buyer company has insufficient USD cash."));
             return 0;
         }
-        long now = source.getServer().overworld().getGameTime();
         if (!CompanyHelper.creditTreasury(source.getServer(), carrier.companyId(), Currencies.USD.id(), amount)) {
             source.sendFailure(Component.literal("Carrier treasury could not be credited."));
             return 0;
@@ -661,7 +669,7 @@ public class CompanyCommand {
     }
 
     private static int offerFreight(CommandSourceStack source, String buyerName, String shipmentId,
-                                    String carrierCompanyId, long quotedCost) throws CommandSyntaxException {
+                                    String carrierCompanyId, long quotedCost, int termDays) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         Company buyer = CompanyHelper.getCompany(player, buyerName);
         Company carrier = CompanySavedData.get(source.getServer()).get(carrierCompanyId);
@@ -681,9 +689,11 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Quoted cost must match the outstanding estimated freight payable."));
             return 0;
         }
-        CompanyFreightContractSavedData.Contract contract = CompanyFreightContractSavedData.get(source.getServer())
-                .offer(shipmentId, buyer.companyId(), carrier.companyId(), quotedCost,
-                        source.getServer().overworld().getGameTime());
+        CompanyFreightContractSavedData data = CompanyFreightContractSavedData.get(source.getServer());
+        long now = source.getServer().overworld().getGameTime();
+        data.expire(now);
+        CompanyFreightContractSavedData.Contract contract = data.offer(shipmentId, buyer.companyId(),
+                carrier.companyId(), quotedCost, now, termDays);
         if (contract == null) {
             source.sendFailure(Component.literal("A non-cancelled freight contract already exists for this shipment."));
             return 0;
@@ -700,6 +710,7 @@ public class CompanyCommand {
     private static int acceptFreight(CommandSourceStack source, String contractId) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         CompanyFreightContractSavedData data = CompanyFreightContractSavedData.get(source.getServer());
+        data.expire(source.getServer().overworld().getGameTime());
         CompanyFreightContractSavedData.Contract contract = data.find(contractId);
         Company carrier = contract == null ? null : CompanySavedData.get(source.getServer()).get(contract.carrierCompanyId());
         if (contract == null || carrier == null || !carrier.ownerUuid().equals(player.getUUID())
@@ -722,12 +733,14 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Company not found."));
             return 0;
         }
-        var contracts = CompanyFreightContractSavedData.get(source.getServer()).forCompany(company.companyId());
+        CompanyFreightContractSavedData data = CompanyFreightContractSavedData.get(source.getServer());
+        data.expire(source.getServer().overworld().getGameTime());
+        var contracts = data.forCompany(company.companyId());
         source.sendSuccess(() -> Component.literal("Freight contracts for " + company.name() + ":"), false);
         contracts.forEach(contract -> source.sendSuccess(() -> Component.literal(
                 contract.id() + " | shipment " + contract.shipmentId().substring(0, Math.min(8, contract.shipmentId().length()))
                         + " | carrier " + contract.carrierCompanyId() + " | USD " + contract.quotedCost()
-                        + " | " + contract.status()), false));
+                        + " | expires " + contract.expiresAt() + " | " + contract.status()), false));
         return contracts.size();
     }
 
