@@ -134,6 +134,7 @@ public final class CompanyLifecycleService {
         for (var entry : new java.util.HashMap<>(warehouse.storage(InventoryOwner.company(company.companyId()))).entrySet()) {
             Item item = parseItem(entry.getKey());
             if (item == null || !warehouse.consume(InventoryOwner.company(company.companyId()), item, entry.getValue())) continue;
+            CompanyInventoryCostSavedData.get(server).consume(company.companyId(), entry.getKey(), entry.getValue());
             long value = EconomyMath.multiply(Math.max(0L, market.price(entry.getKey())), entry.getValue());
             recovered = addRecovered(recovered, value);
         }

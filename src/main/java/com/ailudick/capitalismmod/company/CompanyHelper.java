@@ -380,6 +380,7 @@ public final class CompanyHelper {
                     "equipment_purchase_rollback", "Equipment material reservation failed");
             return false;
         }
+        consumeInventoryCostLayers(server, company.companyId(), materials);
         CommoditySavedData commodityData = CommoditySavedData.get(server);
         for (Map.Entry<String, Integer> material : materials.entrySet()) {
             commodityData.addSupply(material.getKey(), -material.getValue());
@@ -429,6 +430,7 @@ public final class CompanyHelper {
                     "equipment_maintenance_rollback", "Equipment maintenance material reservation failed");
             return false;
         }
+        consumeInventoryCostLayers(server, company.companyId(), materials);
         CommoditySavedData commodityData = CommoditySavedData.get(server);
         for (Map.Entry<String, Integer> material : materials.entrySet()) {
             commodityData.addSupply(material.getKey(), -material.getValue());
@@ -474,7 +476,7 @@ public final class CompanyHelper {
         for (Map.Entry<String, Integer> input : inputs.entrySet()) {
             commodityData.addSupply(input.getKey(), -input.getValue());
         }
-        long inventoryCost = inventoryConsumptionCost(server, inputs);
+        long inventoryCost = inventoryConsumptionCost(server, company, inputs);
         if (inventoryCost > 0L) {
             long occurredAt = server.overworld().getGameTime();
             recordTaxableExpense(server, company,
@@ -485,18 +487,36 @@ public final class CompanyHelper {
     }
 
     /** Estimates the cost of consumed inventory without changing warehouse state. */
-    private static long inventoryConsumptionCost(MinecraftServer server, Map<String, Integer> inputs) {
+    private static long inventoryConsumptionCost(MinecraftServer server, Company company,
+                                                  Map<String, Integer> inputs) {
         if (server == null || inputs == null || inputs.isEmpty()) return 0L;
         CommoditySavedData market = CommoditySavedData.get(server);
         long total = 0L;
         for (Map.Entry<String, Integer> input : inputs.entrySet()) {
             if (input.getKey() == null || input.getValue() == null || input.getValue() <= 0) continue;
-            long unitPrice = Math.max(0L, market.price(input.getKey()));
-            long line = EconomyMath.multiply(unitPrice, input.getValue());
+            CompanyInventoryCostSavedData.Consumption tracked =
+                    CompanyInventoryCostSavedData.get(server).consume(company.companyId(), input.getKey(), input.getValue());
+            int untracked = input.getValue() - tracked.quantity();
+            long line = tracked.cost();
+            if (untracked > 0) {
+                long unitPrice = Math.max(0L, market.price(input.getKey()));
+                line = EconomyMath.add(line, EconomyMath.multiply(unitPrice, untracked));
+            }
             total = EconomyMath.add(total, line);
             if (total < 0L) return Long.MAX_VALUE;
         }
         return Math.max(0L, total);
+    }
+
+    private static void consumeInventoryCostLayers(MinecraftServer server, String companyId,
+                                                    Map<String, Integer> materials) {
+        if (server == null || companyId == null || materials == null) return;
+        CompanyInventoryCostSavedData costs = CompanyInventoryCostSavedData.get(server);
+        for (Map.Entry<String, Integer> material : materials.entrySet()) {
+            if (material.getKey() != null && material.getValue() != null && material.getValue() > 0) {
+                costs.consume(companyId, material.getKey(), material.getValue());
+            }
+        }
     }
 
     private static boolean canConsumeInputs(MinecraftServer server, Company company) {
@@ -790,6 +810,7 @@ public final class CompanyHelper {
                     com.ailudick.capitalismmod.market.InventoryOwner.company(target.companyId()));
             CompanyEquipmentSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyLaborSavedData.get(server).transferCompany(source.companyId(), target.companyId());
+            CompanyInventoryCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyLoanSavedData.get(server).transferCompany(source.companyId(), target.companyId());
         }

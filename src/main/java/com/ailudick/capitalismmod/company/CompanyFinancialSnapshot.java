@@ -30,10 +30,17 @@ public record CompanyFinancialSnapshot(long cash, long inventory, long equipment
         long cash = Math.max(0L, company.treasuryOf("usd"));
         CommoditySavedData market = CommoditySavedData.get(server);
         long inventory = 0L;
+        CompanyInventoryCostSavedData inventoryCosts = CompanyInventoryCostSavedData.get(server);
         for (Map.Entry<String, Integer> entry : WarehouseSavedData.get(server)
                 .storage(InventoryOwner.company(company.companyId())).entrySet()) {
+            int quantity = Math.max(0, entry.getValue());
             long unitPrice = Math.max(0L, market.price(entry.getKey()));
-            inventory = add(inventory, multiply(unitPrice, Math.max(0L, entry.getValue())));
+            CompanyInventoryCostSavedData.CostLayer layer = inventoryCosts.layer(company.companyId(), entry.getKey());
+            int tracked = layer == null ? 0 : Math.min(quantity, Math.max(0, layer.quantity()));
+            long trackedCost = layer == null ? 0L : proportionalCost(layer.totalCost(), tracked, layer.quantity());
+            long trackedMarketValue = multiply(unitPrice, tracked);
+            inventory = add(inventory, Math.min(trackedCost, trackedMarketValue));
+            inventory = add(inventory, multiply(unitPrice, quantity - tracked));
         }
 
         long equipment = 0L;
@@ -71,6 +78,16 @@ public record CompanyFinancialSnapshot(long cash, long inventory, long equipment
     private static long multiply(long left, long right) {
         if (left <= 0L || right <= 0L) return 0L;
         long result = EconomyMath.multiply(left, right);
+        return result < 0L ? Long.MAX_VALUE : result;
+    }
+
+    private static long proportionalCost(long total, int quantity, int denominator) {
+        if (total <= 0L || quantity <= 0 || denominator <= 0) return 0L;
+        if (total == Long.MAX_VALUE) return Long.MAX_VALUE;
+        long whole = total / denominator;
+        long remainder = total % denominator;
+        long result = EconomyMath.multiply(whole, quantity);
+        result = EconomyMath.add(result, EconomyMath.multiply(remainder, quantity) / denominator);
         return result < 0L ? Long.MAX_VALUE : result;
     }
 }

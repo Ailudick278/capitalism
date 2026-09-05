@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.supply.SupplyOrderAuditService;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -65,6 +66,8 @@ public final class LogisticsTickHandler {
                             ? null : CompanySavedData.get(server).get(shipment.buyerCompanyId());
                     boolean companyShipment = company != null && company.ownerUuid().equals(shipment.buyer());
                     if (companyShipment) {
+                        CompanyInventoryCostSavedData.get(server).consume(company.companyId(),
+                                shipment.itemId(), shipment.quantity());
                         CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), "usd", payout,
                                 "cargo_insurance_claim", "Cargo insurance indemnity");
                     } else {

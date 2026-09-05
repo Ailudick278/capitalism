@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.market;
 
 import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.supply.SupplyOrderAuditService;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -23,6 +24,17 @@ public final class LogisticsLossService {
                 loss = Math.multiplyExact((long) shipment.quantity(), shipment.unitPrice());
             } catch (ArithmeticException e) {
                 loss = Long.MAX_VALUE;
+            }
+            CompanyInventoryCostSavedData.Consumption tracked = CompanyInventoryCostSavedData.get(server)
+                    .consume(shipment.buyerCompanyId(), shipment.itemId(), shipment.quantity());
+            if (tracked.quantity() > 0) {
+                long fallback;
+                try {
+                    fallback = Math.multiplyExact((long) shipment.quantity() - tracked.quantity(), shipment.unitPrice());
+                } catch (ArithmeticException e) {
+                    fallback = Long.MAX_VALUE;
+                }
+                loss = tracked.cost() >= Long.MAX_VALUE - fallback ? Long.MAX_VALUE : tracked.cost() + fallback;
             }
             CompanyHelper.recordInventoryLoss(server, shipment.buyerCompanyId(), loss, shipment.id());
         }

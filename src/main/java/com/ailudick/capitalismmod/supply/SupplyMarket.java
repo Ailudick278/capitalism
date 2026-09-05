@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyEconomy;
 import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.business.IndividualBusinessHelper;
@@ -150,6 +151,10 @@ public final class SupplyMarket {
             String destination = TradeRegion.of(buyer.blockPosition());
             deliverOrShip(buyer.getServer(), buyer.getUUID(), item, filled, offer.region(),
                     destination, supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid());
+            if (!buyerCompanyId.isBlank()) {
+                CompanyInventoryCostSavedData.get(buyer.getServer()).add(buyerCompanyId, offer.itemId(), filled,
+                        EconomyMath.multiply(offer.price(), filled));
+            }
             SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId,
                     TradeRegion.distance(offer.region(), destination) == 0 ? "DELIVERED" : "DISPATCHED",
                     buyer.getUUID(),
@@ -259,6 +264,10 @@ public final class SupplyMarket {
                     ? "DELIVERED" : "DISPATCHED";
             deliverOrShip(server, order.buyerUuid(), item, deliver, order.originRegion(), order.destinationRegion(),
                     order.id(), order.buyerCompanyId(), order.unitPrice(), order.supplierUuid());
+            if (!order.buyerCompanyId().isBlank()) {
+                CompanyInventoryCostSavedData.get(server).add(order.buyerCompanyId(), order.itemId(), deliver,
+                        EconomyMath.multiply(order.unitPrice(), deliver));
+            }
             int newRemaining = order.remaining() - deliver;
             // Buyer funds for a backorder are held until this portion is
             // dispatched. The undelivered remainder remains refundable.
