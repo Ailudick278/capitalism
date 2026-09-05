@@ -16,12 +16,12 @@ import java.util.Map;
  * the statement cannot drift away from the cash, warehouse or equipment data.
  */
 public record CompanyFinancialSnapshot(long cash, long inventory, long equipment,
-                                       long assets, long taxLiabilities, long loanLiabilities,
+                                       long assets, long taxLiabilities, long loanLiabilities, long payrollLiabilities,
                                        long liabilities,
                                        long equity) {
     public static CompanyFinancialSnapshot from(MinecraftServer server, Company company) {
         if (server == null || company == null) {
-            return new CompanyFinancialSnapshot(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+            return new CompanyFinancialSnapshot(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
         }
         long cash = Math.max(0L, company.treasuryOf("usd"));
         CommoditySavedData market = CommoditySavedData.get(server);
@@ -49,9 +49,10 @@ public record CompanyFinancialSnapshot(long cash, long inventory, long equipment
             loanLiabilities = add(loanLiabilities, loan.principal());
             loanLiabilities = add(loanLiabilities, loan.interestDue());
         }
-        long liabilities = add(taxLiabilities, loanLiabilities);
+        long payrollLiabilities = CompanyPayrollSavedData.get(server).unpaid(company.companyId());
+        long liabilities = add(add(taxLiabilities, loanLiabilities), payrollLiabilities);
         return new CompanyFinancialSnapshot(cash, inventory, equipment, assets,
-                taxLiabilities, loanLiabilities, liabilities, assets - liabilities);
+                taxLiabilities, loanLiabilities, payrollLiabilities, liabilities, assets - liabilities);
     }
 
     private static long add(long left, long right) {

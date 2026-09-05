@@ -307,6 +307,7 @@ public class CompanyCommand {
                 + ", equipment " + statement.equipment() + ")"), false);
         source.sendSuccess(() -> Component.literal("Liabilities: USD " + statement.liabilities()
                 + " (tax " + statement.taxLiabilities() + ", loans " + statement.loanLiabilities()
+                + ", payroll " + statement.payrollLiabilities()
                 + "), equity: USD " + statement.equity()), false);
         return 1;
     }
