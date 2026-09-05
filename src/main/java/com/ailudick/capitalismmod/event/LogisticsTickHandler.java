@@ -10,6 +10,9 @@ import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.supply.SupplyOrderAuditService;
+import com.ailudick.capitalismmod.company.Company;
+import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.CompanySavedData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -57,7 +60,15 @@ public final class LogisticsTickHandler {
                     }
                     long actualLoss = actualLoss(shipment, insuredValue);
                     long payout = Math.min(insuredValue, actualLoss);
-                    MarketMailboxSavedData.get(server).creditMoney(shipment.buyer(), "usd", Money.toMinor(payout));
+                    Company company = shipment.buyerCompanyId().isBlank()
+                            ? null : CompanySavedData.get(server).get(shipment.buyerCompanyId());
+                    boolean companyShipment = company != null && company.ownerUuid().equals(shipment.buyer());
+                    if (companyShipment) {
+                        CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), "usd", payout,
+                                "cargo_insurance_claim", "Cargo insurance indemnity");
+                    } else {
+                        MarketMailboxSavedData.get(server).creditMoney(shipment.buyer(), "usd", Money.toMinor(payout));
+                    }
                     LogisticsClaimSavedData.get(server).settle(new LogisticsClaimSavedData.Claim(
                             java.util.UUID.randomUUID().toString(), shipment.id(), shipment.buyer(), insuredValue,
                             actualLoss, payout, now, "settled"));

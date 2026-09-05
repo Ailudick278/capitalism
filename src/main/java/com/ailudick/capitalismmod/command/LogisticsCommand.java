@@ -15,6 +15,9 @@ import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.company.Company;
+import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.CompanySavedData;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -175,9 +178,30 @@ public final class LogisticsCommand {
             return 0;
         }
         long premiumMinor = Money.toMinor(premium);
-        if (premiumMinor < 0 || !EconomyHelper.tryPay(player, Currencies.USD, premiumMinor)
-                || !data.insure(id, player.getUUID())) {
+        if (premiumMinor < 0) {
             source.sendFailure(Component.literal("Insufficient USD for insurance."));
+            return 0;
+        }
+        Company company = shipment.buyerCompanyId().isBlank()
+                ? null : CompanySavedData.get(source.getServer()).get(shipment.buyerCompanyId());
+        boolean companyShipment = company != null && company.ownerUuid().equals(player.getUUID());
+        boolean paid = companyShipment
+                ? CompanyHelper.debitTreasury(source.getServer(), company.companyId(), Currencies.USD.id(),
+                        premium, "cargo_insurance", "Cargo insurance premium")
+                : EconomyHelper.tryPay(player, Currencies.USD, premiumMinor);
+        if (!paid) {
+            source.sendFailure(Component.literal(companyShipment
+                    ? "Insufficient company USD for insurance." : "Insufficient USD for insurance."));
+            return 0;
+        }
+        if (!data.insure(id, player.getUUID())) {
+            if (companyShipment) {
+                CompanyHelper.creditTreasuryNonOperating(source.getServer(), company.companyId(),
+                        Currencies.USD.id(), premium, "cargo_insurance_refund", "Failed insurance enrollment refund");
+            } else {
+                EconomyHelper.giveMoney(player, Currencies.USD, premiumMinor);
+            }
+            source.sendFailure(Component.literal("Shipment could not be insured; payment was refunded."));
             return 0;
         }
         source.sendSuccess(() -> Component.literal("Shipment insured for USD " + declared
