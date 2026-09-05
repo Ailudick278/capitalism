@@ -221,9 +221,15 @@ public final class TaxService {
     public static TaxBill updateLateFee(MinecraftServer server, TaxBill bill, long now) {
         if (!bill.declared() || bill.dueAt() <= 0L || now <= bill.dueAt() || bill.paid()) return bill;
         long daysLate = Math.max(1L, (now - bill.dueAt()) / PerpetualCalendar.TICKS_PER_DAY);
-        long fee = TaxLateFeeCalculator.calculate(bill.amount(), daysLate,
+        // Payments are applied to the tax principal before the late fee. Once
+        // the principal is paid, the existing fee remains collectible but no
+        // longer grows because there is no unpaid tax base left.
+        long paidPrincipal = Math.min(Math.max(0L, bill.amount()), Math.max(0L, bill.paidAmount()));
+        long unpaidPrincipal = Math.max(0L, bill.amount() - paidPrincipal);
+        long calculatedFee = TaxLateFeeCalculator.calculate(unpaidPrincipal, daysLate,
                 Config.TAX_LATE_FEE_RATE_PER_DAY.get());
-        if (fee <= bill.lateFeeAmount() && bill.lateFeeUpdatedAt() == now) return bill;
+        long fee = Math.max(bill.lateFeeAmount(), calculatedFee);
+        if (fee <= bill.lateFeeAmount()) return bill;
         TaxBill updated = bill.withLateFee(fee, now);
         TaxLedgerSavedData.get(server).replace(updated);
         return updated;
