@@ -70,6 +70,30 @@ public final class CompanyEquipmentSavedData extends SavedData {
         return true;
     }
 
+    /** Applies one production-cycle wear to the installed machine group. */
+    public boolean use(String companyId, MachineType type) {
+        if (type == null || type == MachineType.NONE) return true;
+        Map<String, Equipment> company = new HashMap<>(equipment.getOrDefault(companyId, Map.of()));
+        Equipment current = company.get(type.id());
+        if (current == null || current.count() <= 0 || current.condition() <= 0) return false;
+        company.put(type.id(), new Equipment(type.id(), current.count(), Math.max(0, current.condition() - 1)));
+        equipment.put(companyId, company);
+        setDirty();
+        return true;
+    }
+
+    public boolean restore(String companyId, MachineType type, int targetCondition) {
+        if (type == null || type == MachineType.NONE) return false;
+        Map<String, Equipment> company = new HashMap<>(equipment.getOrDefault(companyId, Map.of()));
+        Equipment current = company.get(type.id());
+        if (current == null || current.count() <= 0) return false;
+        int restored = Math.max(0, Math.min(100, targetCondition));
+        company.put(type.id(), new Equipment(type.id(), current.count(), restored));
+        equipment.put(companyId, company);
+        setDirty();
+        return true;
+    }
+
     public Map<String, Equipment> all(String companyId) {
         return Map.copyOf(equipment.getOrDefault(companyId, Map.of()));
     }

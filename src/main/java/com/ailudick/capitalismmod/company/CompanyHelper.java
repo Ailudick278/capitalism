@@ -244,6 +244,7 @@ public final class CompanyHelper {
             return false;
         }
         produceOutputs(server, company);
+        CompanyEquipmentSavedData.get(server).use(company.companyId(), machine);
         return true;
     }
 
@@ -290,6 +291,26 @@ public final class CompanyHelper {
                 "equipment_purchase", "购买生产设备 " + type.id() + " x" + count)) return false;
         CompanyEquipmentSavedData.get(server).install(company.companyId(), type, count);
         return true;
+    }
+
+    public static boolean maintainMachine(Player player, String name, String machineId) {
+        MinecraftServer server = player.getServer();
+        Company company = getCompany(player, name);
+        MachineType type = MachineType.parse(machineId);
+        if (server == null || company == null || type == null || type == MachineType.NONE) return false;
+        CompanyEquipmentSavedData.Equipment equipment = CompanyEquipmentSavedData.get(server)
+                .get(company.companyId(), type);
+        if (equipment == null || equipment.count() <= 0 || equipment.condition() >= 100) return false;
+        long missing = 100L - equipment.condition();
+        long cost;
+        try {
+            cost = Math.max(1L, Math.multiplyExact(type.purchasePrice(), missing) / 100L);
+        } catch (ArithmeticException e) {
+            return false;
+        }
+        if (!debitTreasury(server, company.companyId(), Currencies.USD.id(), cost,
+                "equipment_maintenance", "维护设备 " + type.id())) return false;
+        return CompanyEquipmentSavedData.get(server).restore(company.companyId(), type, 100);
     }
 
     public static boolean selectRecipe(Player player, String name, String recipeId) {

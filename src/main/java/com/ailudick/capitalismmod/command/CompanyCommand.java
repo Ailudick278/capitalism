@@ -72,6 +72,13 @@ public class CompanyCommand {
                                                         StringArgumentType.getString(ctx, "name"),
                                                         StringArgumentType.getString(ctx, "type"),
                                                         IntegerArgumentType.getInteger(ctx, "count"))))))));
+        root.then(Commands.literal("machine")
+                .then(Commands.literal("maintain")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .then(Commands.argument("type", StringArgumentType.word())
+                                        .executes(ctx -> maintainMachine(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "name"),
+                                                StringArgumentType.getString(ctx, "type")))))));
         root.then(Commands.literal("operations")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> operations(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -229,6 +236,17 @@ public class CompanyCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("Installed " + count + " " + type + "."), false);
+        return 1;
+    }
+
+    private static int maintainMachine(CommandSourceStack source, String name, String type)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CompanyHelper.maintainMachine(player, name, type)) {
+            source.sendFailure(Component.literal("Maintenance failed: machine is missing, already healthy, or funds are insufficient."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Machine maintenance completed: " + type), false);
         return 1;
     }
 
