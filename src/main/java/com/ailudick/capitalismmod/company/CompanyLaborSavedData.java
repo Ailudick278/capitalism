@@ -94,6 +94,19 @@ public final class CompanyLaborSavedData extends SavedData {
         return workers <= 0L ? 0 : (int) Math.min(100L, weighted / workers);
     }
 
+    /** Moves employment contracts during a company merger. */
+    public void transferCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
+        List<WorkerContract> source = contracts.remove(sourceId);
+        if (source == null || source.isEmpty()) return;
+        List<WorkerContract> target = contracts.computeIfAbsent(targetId, ignored -> new ArrayList<>());
+        for (WorkerContract contract : source) {
+            target.add(new WorkerContract(contract.id(), targetId, contract.role(), contract.count(),
+                    contract.dailyWage(), contract.skill(), contract.active()));
+        }
+        setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(contracts)).result()

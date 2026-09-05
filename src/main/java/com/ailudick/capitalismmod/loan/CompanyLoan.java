@@ -27,6 +27,11 @@ public record CompanyLoan(String id, String companyId, String currencyId, long p
                 totalDays, value, interestPaid);
     }
 
+    public CompanyLoan withCompanyId(String newCompanyId) {
+        return new CompanyLoan(id, newCompanyId, currencyId, principal, ratePerYear,
+                totalDays, daysRemaining, interestPaid);
+    }
+
     public CompanyLoan withInterestPaid(long value) {
         return new CompanyLoan(id, companyId, currencyId, principal, ratePerYear,
                 totalDays, daysRemaining, Math.max(0L, value));

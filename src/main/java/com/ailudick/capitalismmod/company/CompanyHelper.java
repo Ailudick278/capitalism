@@ -19,6 +19,7 @@ import com.ailudick.capitalismmod.tax.CorporateTaxPeriodSavedData;
 import com.ailudick.capitalismmod.tax.CorporateTaxAnnualSavedData;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxExpenseService;
+import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.data.CapitalismData;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -659,12 +660,19 @@ public final class CompanyHelper {
         if (isListed(player, sourceName) || isListed(player, targetName)) {
             return false;
         }
+        if (source.taxOwed() > 0L || target.taxOwed() > 0L) {
+            return false;
+        }
         long capital = EconomyMath.add(source.registeredCapital(), target.registeredCapital());
         MinecraftServer server = player.getServer();
         if (server != null) {
             WarehouseSavedData.get(server).transferAll(
                     com.ailudick.capitalismmod.market.InventoryOwner.company(source.companyId()),
                     com.ailudick.capitalismmod.market.InventoryOwner.company(target.companyId()));
+            CompanyEquipmentSavedData.get(server).transferCompany(source.companyId(), target.companyId());
+            CompanyLaborSavedData.get(server).transferCompany(source.companyId(), target.companyId());
+            CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
+            CompanyLoanSavedData.get(server).transferCompany(source.companyId(), target.companyId());
         }
         Map<String, Long> treasury = new HashMap<>(target.treasury());
         for (Map.Entry<String, Long> entry : source.treasury().entrySet()) {

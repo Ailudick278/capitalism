@@ -35,6 +35,10 @@ separate accounting and operating metrics.
   `/company borrow`, `/company repayloan` and `/company companyloans` expose
   principal, interest, maturity and cash-flow effects without treating debt as
   revenue or principal repayment as an operating expense.
+- Company mergers now transfer equipment, labor contracts, production history
+  and loan liabilities to the surviving company. Mergers are rejected while
+  either company has a legacy tax mirror balance, preventing unresolved tax
+  liabilities from disappearing with the absorbed company ID.
 - Old serialized companies without `registeredCapital` load with the safe
   default of 1000 major currency units; new saves never write `level`.
 

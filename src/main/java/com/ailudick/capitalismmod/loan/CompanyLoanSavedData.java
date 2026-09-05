@@ -60,6 +60,17 @@ public final class CompanyLoanSavedData extends SavedData {
         if (loans.removeIf(loan -> loan.id().equals(id))) setDirty();
     }
 
+    /** Transfers liabilities to the surviving company during a merger. */
+    public void transferCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
+        for (int i = 0; i < loans.size(); i++) {
+            if (loans.get(i).companyId().equals(sourceId)) {
+                loans.set(i, loans.get(i).withCompanyId(targetId));
+            }
+        }
+        setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(new ArrayList<>(loans))).result()

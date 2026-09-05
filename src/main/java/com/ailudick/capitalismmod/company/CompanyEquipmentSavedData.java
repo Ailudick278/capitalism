@@ -98,6 +98,25 @@ public final class CompanyEquipmentSavedData extends SavedData {
         return Map.copyOf(equipment.getOrDefault(companyId, Map.of()));
     }
 
+    /** Transfers installed equipment during a legal company merger. */
+    public void transferCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
+        Map<String, Equipment> source = equipment.getOrDefault(sourceId, Map.of());
+        Map<String, Equipment> target = new HashMap<>(equipment.getOrDefault(targetId, Map.of()));
+        for (Equipment incoming : source.values()) {
+            Equipment existing = target.get(incoming.machineType());
+            long combined = (long) (existing == null ? 0 : existing.count()) + Math.max(0, incoming.count());
+            int count = (int) Math.min(Integer.MAX_VALUE, combined);
+            int condition = existing == null ? incoming.condition()
+                    : Math.min(existing.condition(), incoming.condition());
+            target.put(incoming.machineType(), new Equipment(incoming.machineType(), count, condition));
+        }
+        equipment.remove(sourceId);
+        if (target.isEmpty()) equipment.remove(targetId);
+        else equipment.put(targetId, target);
+        setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(equipment)).result()

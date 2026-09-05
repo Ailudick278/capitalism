@@ -54,6 +54,32 @@ public final class CompanyProductionSavedData extends SavedData {
         if (states.remove(companyId) != null) setDirty();
     }
 
+    /** Combines production history when one company is absorbed by another. */
+    public void mergeCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
+        ProductionState source = states.remove(sourceId);
+        ProductionState target = states.get(targetId);
+        if (source == null) {
+            if (target != null) setDirty();
+            return;
+        }
+        if (target == null) {
+            states.put(targetId, new ProductionState(targetId, source.lastProcessedTick(),
+                    source.successfulCycles(), source.failedCycles()));
+        } else {
+            states.put(targetId, new ProductionState(targetId,
+                    Math.min(source.lastProcessedTick(), target.lastProcessedTick()),
+                    add(source.successfulCycles(), target.successfulCycles()),
+                    add(source.failedCycles(), target.failedCycles())));
+        }
+        setDirty();
+    }
+
+    private static long add(long left, long right) {
+        try { return Math.addExact(Math.max(0L, left), Math.max(0L, right)); }
+        catch (ArithmeticException e) { return Long.MAX_VALUE; }
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(states)).result()
