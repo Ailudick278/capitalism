@@ -100,6 +100,43 @@ public class Config {
             .comment("Sole-proprietor income tax rate applied to completed sales.")
             .defineInRange("individualIncomeTaxRate", 0.20, 0.0, 1.0);
 
+    // Default rates for transaction-linked taxes. Servers can override these with /taxrule.
+    public static final ModConfigSpec.DoubleValue VAT_RATE = BUILDER
+            .comment("Default VAT rate for taxable sales; 0.13 = 13%.")
+            .defineInRange("vatRate", 0.13, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue TRANSACTION_TAX_RATE = BUILDER
+            .comment("Default general transaction-tax rate; 0.001 = 0.1%.")
+            .defineInRange("transactionTaxRate", 0.001, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue LAND_TRANSFER_TAX_RATE = BUILDER
+            .comment("Default land-transfer tax rate; 0.03 = 3%.")
+            .defineInRange("landTransferTaxRate", 0.03, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue STAMP_DUTY_RATE = BUILDER
+            .comment("Default securities stamp-duty rate; 0.001 = 0.1%.")
+            .defineInRange("stampDutyRate", 0.001, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue CAPITAL_GAINS_TAX_RATE = BUILDER
+            .comment("Default capital-gains tax rate; 0.20 = 20%.")
+            .defineInRange("capitalGainsTaxRate", 0.20, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue DIVIDEND_TAX_RATE = BUILDER
+            .comment("Default dividend tax rate; 0.20 = 20%.")
+            .defineInRange("dividendTaxRate", 0.20, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue RESOURCE_TAX_RATE = BUILDER
+            .comment("Default resource-extraction tax rate; 0.05 = 5%.")
+            .defineInRange("resourceTaxRate", 0.05, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue CUSTOMS_TAX_RATE = BUILDER
+            .comment("Default customs duty rate; 0.05 = 5%.")
+            .defineInRange("customsTaxRate", 0.05, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue INHERITANCE_TAX_RATE = BUILDER
+            .comment("Default inheritance and gift tax rate; 0 disables it.")
+            .defineInRange("inheritanceTaxRate", 0.0, 0.0, 1.0);
+
     // Fixed operating overhead in USD per production batch.
     public static final ModConfigSpec.LongValue COMPANY_FIXED_OVERHEAD_PER_CYCLE = BUILDER
             .comment("Fixed company overhead in USD per production batch; 0 disables it.")

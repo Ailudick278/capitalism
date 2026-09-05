@@ -30,6 +30,15 @@ public final class TaxRuleService {
             case LAND -> Config.LAND_TAX_RATE_PER_YEAR.get();
             case CORPORATE_INCOME -> Config.INCOME_TAX_RATE.get();
             case INDIVIDUAL_BUSINESS_INCOME -> Config.INDIVIDUAL_INCOME_TAX_RATE.get();
+            case VAT -> Config.VAT_RATE.get();
+            case TRANSACTION -> Config.TRANSACTION_TAX_RATE.get();
+            case LAND_TRANSFER -> Config.LAND_TRANSFER_TAX_RATE.get();
+            case STAMP_DUTY -> Config.STAMP_DUTY_RATE.get();
+            case CAPITAL_GAINS -> Config.CAPITAL_GAINS_TAX_RATE.get();
+            case DIVIDEND -> Config.DIVIDEND_TAX_RATE.get();
+            case RESOURCE -> Config.RESOURCE_TAX_RATE.get();
+            case CUSTOMS -> Config.CUSTOMS_TAX_RATE.get();
+            case INHERITANCE -> Config.INHERITANCE_TAX_RATE.get();
             default -> 0.0;
         };
         return new TaxRule(type, (int) Math.min(Integer.MAX_VALUE, Math.round(rate * 10_000.0)),
