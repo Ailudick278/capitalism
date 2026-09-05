@@ -18,7 +18,13 @@ public final class CompanyLoanPaymentSavedData extends SavedData {
     private final List<Payment> payments = new ArrayList<>();
 
     public record Payment(String loanId, String companyId, long timestamp, long total,
-                          long interest, long principal, long remainingPrincipal) {
+                          long interest, long principal, long remainingPrincipal,
+                          int daysRemaining, boolean overdue) {
+        public Payment(String loanId, String companyId, long timestamp, long total,
+                       long interest, long principal, long remainingPrincipal) {
+            this(loanId, companyId, timestamp, total, interest, principal, remainingPrincipal, 0, false);
+        }
+
         private static final Codec<Payment> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("loanId").forGetter(Payment::loanId),
                 Codec.STRING.fieldOf("companyId").forGetter(Payment::companyId),
@@ -26,7 +32,9 @@ public final class CompanyLoanPaymentSavedData extends SavedData {
                 Codec.LONG.fieldOf("total").forGetter(Payment::total),
                 Codec.LONG.fieldOf("interest").forGetter(Payment::interest),
                 Codec.LONG.fieldOf("principal").forGetter(Payment::principal),
-                Codec.LONG.fieldOf("remainingPrincipal").forGetter(Payment::remainingPrincipal)
+                Codec.LONG.fieldOf("remainingPrincipal").forGetter(Payment::remainingPrincipal),
+                Codec.INT.optionalFieldOf("daysRemaining", 0).forGetter(Payment::daysRemaining),
+                Codec.BOOL.optionalFieldOf("overdue", false).forGetter(Payment::overdue)
         ).apply(instance, Payment::new));
     }
 
@@ -52,6 +60,11 @@ public final class CompanyLoanPaymentSavedData extends SavedData {
     public List<Payment> forLoan(String loanId) {
         if (loanId == null || loanId.isBlank()) return List.of();
         return payments.stream().filter(payment -> loanId.equals(payment.loanId())).toList();
+    }
+
+    public List<Payment> forCompany(String companyId) {
+        if (companyId == null || companyId.isBlank()) return List.of();
+        return payments.stream().filter(payment -> companyId.equals(payment.companyId())).toList();
     }
 
     @Override

@@ -470,6 +470,9 @@ public class CompanyCommand {
                 + Math.round(credit.annualDebtService()) + ", coverage ratio " + coverage
                 + ", operating history " + credit.hasOperatingHistory()
                 + ", overdue loan " + credit.hasOverdueLoan()), false);
+        source.sendSuccess(() -> Component.literal("Repayment behavior: payments " + credit.paymentCount()
+                + ", on-time " + credit.onTimePayments() + ", overdue " + credit.overduePayments()
+                + ", behavior score " + credit.paymentBehaviorScore() + "/100"), false);
         return 1;
     }
 

@@ -79,7 +79,8 @@ public final class CompanyLoanHelper {
         }
         CompanyLoanPaymentSavedData.get(server).append(new CompanyLoanPaymentSavedData.Payment(
                 loan.id(), loan.companyId(), server.overworld().getGameTime(), payment,
-                interestPayment, principalPayment, Math.max(0L, loan.principal() - principalPayment)));
+                interestPayment, principalPayment, Math.max(0L, loan.principal() - principalPayment),
+                loan.daysRemaining(), loan.isOverdue()));
         return true;
     }
 

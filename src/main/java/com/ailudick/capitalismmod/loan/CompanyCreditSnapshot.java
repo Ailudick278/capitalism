@@ -13,14 +13,16 @@ public record CompanyCreditSnapshot(long lookbackDays, long operatingCashFlow,
                                     long existingDebt, long capitalDebtLimit,
                                     long cashFlowDebtLimit, long remainingDebtCapacity,
                                     double annualDebtService, double coverageRatio,
-                                    boolean hasOperatingHistory, boolean hasOverdueLoan) {
+                                    boolean hasOperatingHistory, boolean hasOverdueLoan,
+                                    int paymentCount, int onTimePayments, int overduePayments,
+                                    int paymentBehaviorScore) {
     private static final long CAPITAL_DEBT_MULTIPLE = 5L;
 
     public static CompanyCreditSnapshot from(MinecraftServer server, Company company, long lookbackDays) {
         long days = Math.max(1L, Math.min(360L, lookbackDays));
         if (server == null || company == null) {
             return new CompanyCreditSnapshot(days, 0L, 0L, 0L, 0L, 0L,
-                    0.0, Double.POSITIVE_INFINITY, false, false);
+                    0.0, Double.POSITIVE_INFINITY, false, false, 0, 0, 0, 0);
         }
         long now = server.overworld().getGameTime();
         CompanyCreditAssessmentInputs inputs = CompanyCreditAssessmentInputs.from(server, company);
@@ -36,9 +38,11 @@ public record CompanyCreditSnapshot(long lookbackDays, long operatingCashFlow,
         long remaining = totalLimit > inputs.existingDebt() ? totalLimit - inputs.existingDebt() : 0L;
         boolean overdue = CompanyDebtServiceAssessment.hasOverdueLoan(
                 CompanyLoanSavedData.get(server).forCompany(company.companyId()));
+        CompanyCreditBehavior behavior = CompanyCreditBehavior.from(server, company.companyId());
         return new CompanyCreditSnapshot(days, cash.operatingCashFlow(), inputs.existingDebt(),
                 capitalLimit, cashLimit, remaining, debtService.annualDebtService(),
-                debtService.coverageRatio(), cash.hasOperatingHistory(), overdue);
+                debtService.coverageRatio(), cash.hasOperatingHistory(), overdue,
+                behavior.payments(), behavior.onTimePayments(), behavior.overduePayments(), behavior.score());
     }
 
     private static long multiplySaturated(long value, long factor) {
