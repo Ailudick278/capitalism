@@ -178,7 +178,7 @@ public final class SupplyMarket {
             PurchaseOrder backorder = new PurchaseOrder(supplyOrderId, buyer.getUUID(),
                     offer.ownerUuid(), offer.companyName(), offer.itemId(), remaining, offer.region(),
                     TradeRegion.of(buyer.blockPosition()), offer.price(),
-                    buyer.getServer().overworld().getGameTime(), buyerCompanyId)
+                    buyer.getServer().overworld().getGameTime(), buyerCompanyId, offer.qualityScore())
                     .withOriginalQuantity(quantity)
                     .withInputCreditMinor(inputCreditMinor);
             data.addOrder(backorder);

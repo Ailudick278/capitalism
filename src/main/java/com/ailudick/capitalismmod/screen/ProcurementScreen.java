@@ -131,8 +131,10 @@ public class ProcurementScreen extends AbstractContainerScreen<ProcurementMenu> 
                 leftPos + 8, topPos + 164, GuiStyles.TEXT, false);
         for (int i = 0; i < Math.min(3, menu.getOrders().size()); i++) {
             PurchaseOrder order = menu.getOrders().get(i);
+            String quality = order.qualityScore() <= 0 ? "quality:unverified"
+                    : "quality:" + order.qualityScore();
             graphics.drawString(font, Component.literal(order.companyName() + " " + order.remaining() + "x"
-                            + " [" + order.destinationRegion() + "]"),
+                            + " [" + order.destinationRegion() + "] " + quality),
                     leftPos + 8, topPos + 176 + i * 18, GuiStyles.TEXT, false);
         }
     }
