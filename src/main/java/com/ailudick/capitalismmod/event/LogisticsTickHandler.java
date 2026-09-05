@@ -54,10 +54,13 @@ public final class LogisticsTickHandler {
                     }
                     MarketMailboxSavedData.get(server).creditMoney(shipment.buyer(), "usd", Money.toMinor(payout));
                     data.remove(shipment.id());
+                } else if (shipment.disruptionCount() + 1 >= Config.LOGISTICS_MAX_DISRUPTIONS.get()) {
+                    data.remove(shipment.id());
                 } else {
                     data.replace(new LogisticsSavedData.Shipment(shipment.id(), shipment.buyer(), shipment.itemId(),
                             shipment.quantity(), now + Config.LOGISTICS_DISRUPTION_TICKS.get(), shipment.originRegion(),
-                            shipment.destinationRegion(), shipment.transport(), false));
+                            shipment.destinationRegion(), shipment.transport(), false,
+                            shipment.disruptionCount() + 1));
                 }
                 continue;
             }

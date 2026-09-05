@@ -193,6 +193,10 @@ public class Config {
             .comment("Extra delay caused by a logistics disruption.")
             .defineInRange("logisticsDisruptionTicks", 2400L, 20L, 240000L);
 
+    public static final ModConfigSpec.IntValue LOGISTICS_MAX_DISRUPTIONS = BUILDER
+            .comment("Maximum disruptions before an uninsured shipment is treated as lost.")
+            .defineInRange("logisticsMaxDisruptions", 3, 1, 20);
+
     public static final ModConfigSpec.DoubleValue LOGISTICS_INSURANCE_RATE = BUILDER
             .comment("Insurance premium as a fraction of the declared cargo value.")
             .defineInRange("logisticsInsuranceRate", 0.05, 0.0, 1.0);
