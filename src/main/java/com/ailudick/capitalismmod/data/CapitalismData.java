@@ -295,7 +295,8 @@ public final class CapitalismData {
                 new CommodityJson("capitalismmod:green_lumber", 12),
                 new CommodityJson("capitalismmod:dried_lumber", 28),
                 new CommodityJson("capitalismmod:wooden_crate", 65),
-                new CommodityJson("capitalismmod:furniture", 180)
+                new CommodityJson("capitalismmod:furniture", 180),
+                new CommodityJson("capitalismmod:electric_fan", 240)
         );
     }
 
@@ -386,7 +387,8 @@ public final class CapitalismData {
                         new RecipeJson("green_lumber", Map.of("minecraft:oak_log", 1), Map.of("capitalismmod:green_lumber", 4), 55, "sawmill", 2, 2, 4),
                         new RecipeJson("dried_lumber", Map.of("capitalismmod:green_lumber", 2, "minecraft:coal", 1), Map.of("capitalismmod:dried_lumber", 1), 85, "dry_kiln", 2, 4, 6),
                         new RecipeJson("wooden_crate", Map.of("capitalismmod:dried_lumber", 3, "minecraft:iron_ingot", 1), Map.of("capitalismmod:wooden_crate", 1), 120, "assembly_line", 2, 2, 8),
-                        new RecipeJson("furniture", Map.of("capitalismmod:dried_lumber", 4, "minecraft:iron_ingot", 2, "minecraft:glass", 1), Map.of("capitalismmod:furniture", 1), 260, "assembly_line", 3, 3, 10)),
+                        new RecipeJson("furniture", Map.of("capitalismmod:dried_lumber", 4, "minecraft:iron_ingot", 2, "minecraft:glass", 1), Map.of("capitalismmod:furniture", 1), 260, "assembly_line", 3, 3, 10),
+                        new RecipeJson("electric_fan", Map.of("capitalismmod:electric_motor", 1, "capitalismmod:steel_sheet", 2, "capitalismmod:copper_wire", 1, "capitalismmod:machine_frame", 1), Map.of("capitalismmod:electric_fan", 1), 240, "assembly_line", 3, 3, 9)),
                 new IndustryJson("utilities", Map.of("minecraft:coal", 1), Map.of(), 60),
                 new IndustryJson("construction", Map.of("minecraft:rail", 1), Map.of(), 50),
                 new IndustryJson("transport", Map.of("minecraft:coal", 1), Map.of(), 45),

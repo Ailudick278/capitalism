@@ -220,4 +220,6 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FURNITURE = ITEMS.register("furniture",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ELECTRIC_FAN = ITEMS.register("electric_fan",
+            () -> new Item(new Item.Properties().stacksTo(64)));
 }

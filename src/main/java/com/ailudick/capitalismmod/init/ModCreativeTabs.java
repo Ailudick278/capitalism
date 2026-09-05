@@ -105,6 +105,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.DRIED_LUMBER.get());
                         output.accept(ModItems.WOODEN_CRATE.get());
                         output.accept(ModItems.FURNITURE.get());
+                        output.accept(ModItems.ELECTRIC_FAN.get());
                     })
                     .build());
 }
