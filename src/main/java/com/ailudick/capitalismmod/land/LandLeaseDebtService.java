@@ -13,12 +13,35 @@ public final class LandLeaseDebtService {
     private LandLeaseDebtService() {}
 
     public static LandClaim endLease(MinecraftServer server, LandClaim claim) {
-        if (claim.leaseDebt() > 0L && claim.leaseeUuid() != null) {
+        long debt = claim.leaseDebt();
+        LandLeaseDepositSavedData.Deposit deposit = LandLeaseDepositSavedData.get(server).take(claim.id());
+        if (deposit != null && deposit.amount() > 0L) {
+            long applied = Math.min(debt, deposit.amount());
+            if (applied > 0L) {
+                payOwner(server, claim.ownerUuid(), applied);
+                debt -= applied;
+            }
+            long refund = deposit.amount() - applied;
+            if (refund > 0L) payTenant(server, deposit.tenantUuid(), refund);
+        }
+        if (debt > 0L && claim.leaseeUuid() != null) {
             LandLeaseDebtSavedData.get(server).add(new LandLeaseDebtSavedData.Debt(
                     UUID.randomUUID().toString(), claim.id(), claim.leaseeUuid(), claim.ownerUuid(),
-                    claim.leaseDebt(), server.overworld().getGameTime()));
+                    debt, server.overworld().getGameTime()));
         }
         return claim.clearLease();
+    }
+
+    private static void payOwner(MinecraftServer server, UUID ownerUuid, long amount) {
+        ServerPlayer owner = server.getPlayerList().getPlayer(ownerUuid);
+        if (owner != null) EconomyHelper.giveMoney(owner, Config.defaultCurrency(), amount);
+        else MarketMailboxSavedData.get(server).creditMoney(ownerUuid, Config.defaultCurrencyId(), amount);
+    }
+
+    private static void payTenant(MinecraftServer server, UUID tenantUuid, long amount) {
+        ServerPlayer tenant = server.getPlayerList().getPlayer(tenantUuid);
+        if (tenant != null) EconomyHelper.giveMoney(tenant, Config.defaultCurrency(), amount);
+        else MarketMailboxSavedData.get(server).creditMoney(tenantUuid, Config.defaultCurrencyId(), amount);
     }
 
     public static void settleFor(ServerPlayer tenant) {

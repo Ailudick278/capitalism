@@ -43,6 +43,10 @@ public class Config {
             .comment("Fraction of the claim price refunded when releasing land.")
             .defineInRange("landReleaseRefundRate", 0.8, 0.0, 1.0);
 
+    public static final ModConfigSpec.DoubleValue LAND_LEASE_DEPOSIT_RATE = BUILDER
+            .comment("Lease security deposit as a fraction of one period's rent; 1.0 means one period of rent.")
+            .defineInRange("landLeaseDepositRate", 1.0, 0.0, 10.0);
+
     public static final ModConfigSpec.LongValue LAND_TRANSFER_PRICE = BUILDER
             .comment("CNY minor units charged to the recipient when accepting a land transfer.")
             .defineInRange("landTransferPrice", 2000L, 0L, Long.MAX_VALUE);

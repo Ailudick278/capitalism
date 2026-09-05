@@ -14,6 +14,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.ChunkPos;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 
@@ -199,8 +201,21 @@ public final class LandHelper {
         LandClaim claim = LandSavedData.get(player.getServer()).get(id);
         if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || isTaxFrozen(player, claim)
                 || claim.leaseeUuid() != null || claim.leaseDebt() > 0L) return false;
+        ServerPlayer tenant = player.getServer().getPlayerList().getPlayer(targetUuid);
+        if (tenant == null) return false;
+        long deposit;
+        try {
+            deposit = BigDecimal.valueOf(rent)
+                    .multiply(BigDecimal.valueOf(Config.LAND_LEASE_DEPOSIT_RATE.get()))
+                    .setScale(0, RoundingMode.CEILING).longValueExact();
+        } catch (ArithmeticException e) {
+            return false;
+        }
+        if (deposit > 0L && !EconomyHelper.tryPay(tenant, Config.defaultCurrency(), deposit)) return false;
         long until = player.level().getGameTime() + PerpetualCalendar.ticksForDays(days);
         LandSavedData.get(player.getServer()).put(claim.withLease(targetUuid, until, rent));
+        LandLeaseDepositSavedData.get(player.getServer()).put(
+                new LandLeaseDepositSavedData.Deposit(claim.id(), targetUuid, claim.ownerUuid(), deposit));
         LandOperationLogSavedData.get(player.getServer()).record(player.level().getGameTime(), player.getUUID(),
                 "创建租约", claim.dimension(), chunkX, chunkZ);
         return true;
