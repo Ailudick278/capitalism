@@ -5,6 +5,10 @@ import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
+import com.ailudick.capitalismmod.currency.Money;
+import com.ailudick.capitalismmod.tax.TaxService;
+import com.ailudick.capitalismmod.tax.TaxSubject;
+import com.ailudick.capitalismmod.tax.TaxType;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 
@@ -43,7 +47,11 @@ public record CompanyFinancialSnapshot(long cash, long inventory, long equipment
         }
 
         long assets = add(add(cash, inventory), equipment);
-        long taxLiabilities = Math.max(0L, company.taxOwed());
+        long ledgerTax = Money.toMajorCeiling(TaxService.outstanding(server,
+                new TaxSubject(TaxType.CORPORATE_INCOME, company.companyId(), company.ownerUuid())));
+        // Keep the legacy mirror as a compatibility floor for old saves while
+        // using the unified tax ledger as the authoritative current balance.
+        long taxLiabilities = Math.max(Math.max(0L, company.taxOwed()), ledgerTax);
         long loanLiabilities = 0L;
         for (CompanyLoan loan : CompanyLoanSavedData.get(server).forCompany(company.companyId())) {
             loanLiabilities = add(loanLiabilities, loan.principal());
