@@ -400,9 +400,15 @@ public final class CompanyHelper {
             }
             Company current = CompanySavedData.get(server).get(company.companyId());
             if (current != null) {
+                String serviceSource = "service_cycle:" + company.companyId() + ":" + occurredAt + ":" + UUID.randomUUID();
                 recordTaxableIncome(server, current,
-                        "service_cycle:" + UUID.randomUUID(), recipe.income(),
+                        serviceSource, recipe.income(),
                         Currencies.USD.id(), occurredAt);
+                // Services are taxable supplies too. The company owner is the
+                // current tax subject until a separate legal-entity taxpayer
+                // model exists; the source key keeps the VAT invoice idempotent.
+                TaxTransactionService.assess(server, current.ownerUuid(), Currencies.USD.id(),
+                        Money.toMinorSaturated(recipe.income()), "vat:" + serviceSource, occurredAt);
             }
             // Service production has no warehouse output, so preserve the
             // delivery economics separately for later contracts/invoicing.
