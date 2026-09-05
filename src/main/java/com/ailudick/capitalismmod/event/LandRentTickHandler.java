@@ -10,6 +10,7 @@ import com.ailudick.capitalismmod.land.LandOperationLogSavedData;
 import com.ailudick.capitalismmod.land.LandPermissionSavedData;
 import com.ailudick.capitalismmod.land.LandTransferSavedData;
 import com.ailudick.capitalismmod.land.LandAuctionSavedData;
+import com.ailudick.capitalismmod.land.LandAuctionSettlementSavedData;
 import com.ailudick.capitalismmod.land.LandMarketSavedData;
 import com.ailudick.capitalismmod.land.LandStatus;
 import com.ailudick.capitalismmod.land.LandStatusSavedData;
@@ -95,21 +96,29 @@ public final class LandRentTickHandler {
         }
         if (now % 1200L == 0L) {
             var auctions = LandAuctionSavedData.get(server);
+            var auctionJournal = LandAuctionSettlementSavedData.get(server);
             for (var auction : auctions.all()) {
                 if (auction.endsAt() > now) continue;
+                String settlementKey = auction.claimId() + ":" + auction.endsAt() + ":settled";
+                if (auctionJournal.has(settlementKey)) {
+                    auctions.remove(auction.claimId());
+                    continue;
+                }
                 LandClaim claim = data.get(auction.claimId());
                 if (claim == null) {
-                    refundBid(server, auction.highestBidder(), auction.highestBid());
+                    refundAuctionBid(server, auction, auctionJournal, "expired-missing-claim");
+                    auctionJournal.record(settlementKey);
                     auctions.remove(auction.claimId());
                     continue;
                 }
                 if (auction.highestBidder() == null || auction.highestBid() <= 0L) {
+                    auctionJournal.record(settlementKey);
                     auctions.remove(auction.claimId());
                     notifyPlayer(server, auction.ownerUuid(), "土地拍卖流拍，土地仍归你所有；请缴清欠税解除冻结");
                     continue;
                 }
-                TaxSubject landTaxSubject = new TaxSubject(TaxType.LAND, claim.id(), claim.ownerUuid());
-                long legacyTaxMinor = Money.toMinorSaturated(claim.taxOwed());
+                TaxSubject landTaxSubject = new TaxSubject(TaxType.LAND, claim.id(), auction.ownerUuid());
+                long legacyTaxMinor = Money.toMinorSaturated(Math.max(claim.taxOwed(), auction.taxOwed()));
                 if (legacyTaxMinor > TaxService.outstanding(server, landTaxSubject)) {
                     TaxService.ensureOutstanding(server, landTaxSubject, Config.defaultCurrencyId(), legacyTaxMinor,
                             now, claim.taxDueAt(), claim.taxGraceUntil());
@@ -121,21 +130,38 @@ public final class LandRentTickHandler {
                         "land-auction-tax:" + claim.id() + ":" + auction.endsAt(), now);
                 long taxPaid = Money.toMajorCeiling(taxPaidMinor);
                 long ownerPayout = Math.max(0L, auction.highestBid() - taxPaid);
-                LandClaim transferred = claim.withTaxSchedule(0L, 0L, 0L).withOwner(auction.highestBidder());
-                data.put(transferred);
-                LandOwnershipSavedData.get(server).record(claim.id(), auction.highestBidder(), now, "拍卖成交");
-                LandPermissionSavedData.get(server).remove(claim.id());
-                if (ownerPayout > 0L) {
-                    payOwner(server, server.getPlayerList().getPlayer(auction.ownerUuid()), auction.ownerUuid(), ownerPayout);
+                String transferKey = auction.claimId() + ":" + auction.endsAt() + ":transfer";
+                if (!auctionJournal.has(transferKey)) {
+                    if (!claim.ownerUuid().equals(auction.highestBidder())) {
+                        LandClaim transferred = claim.withTaxSchedule(0L, 0L, 0L).withOwner(auction.highestBidder());
+                        data.put(transferred);
+                        LandOwnershipSavedData.get(server).record(claim.id(), auction.highestBidder(), now, "拍卖成交");
+                        LandPermissionSavedData.get(server).remove(claim.id());
+                    }
+                    auctionJournal.record(transferKey);
                 }
-                TaxTransactionService.assess(server, TaxType.LAND_TRANSFER, claim.ownerUuid(), Currencies.CNY.id(),
+                String payoutKey = auction.claimId() + ":" + auction.endsAt() + ":owner-payout";
+                if (ownerPayout > 0L && !auctionJournal.has(payoutKey)) {
+                    payOwner(server, server.getPlayerList().getPlayer(auction.ownerUuid()), auction.ownerUuid(), ownerPayout);
+                    auctionJournal.record(payoutKey);
+                }
+                TaxTransactionService.assess(server, TaxType.LAND_TRANSFER, auction.ownerUuid(), Currencies.CNY.id(),
                         Money.toMinorSaturated(auction.highestBid()),
                         "land-auction:" + claim.id() + ":" + auction.endsAt(), now);
-                LandMarketSavedData.get(server).record(new LandMarketSavedData.Transaction(
-                        now, claim.dimension(), claim.chunkX(), claim.chunkZ(), claim.purpose(), auction.highestBid()));
-                logLand(server, claim, "拍卖结算：" + auction.highestBidder() + " / " + auction.highestBid());
-                notifyPlayer(server, auction.highestBidder(), "土地拍卖成功，你已获得土地；成交价：" + auction.highestBid());
-                notifyPlayer(server, auction.ownerUuid(), "土地拍卖已结算，已偿还欠税，剩余款项已发放");
+                String marketKey = auction.claimId() + ":" + auction.endsAt() + ":market";
+                if (!auctionJournal.has(marketKey)) {
+                    LandMarketSavedData.get(server).record(new LandMarketSavedData.Transaction(
+                            now, claim.dimension(), claim.chunkX(), claim.chunkZ(), claim.purpose(), auction.highestBid()));
+                    auctionJournal.record(marketKey);
+                }
+                String noticeKey = auction.claimId() + ":" + auction.endsAt() + ":notice";
+                if (!auctionJournal.has(noticeKey)) {
+                    logLand(server, claim, "拍卖结算：" + auction.highestBidder() + " / " + auction.highestBid());
+                    notifyPlayer(server, auction.highestBidder(), "土地拍卖成功，你已获得土地；成交价：" + auction.highestBid());
+                    notifyPlayer(server, auction.ownerUuid(), "土地拍卖已结算，已偿还欠税，剩余款项已发放");
+                    auctionJournal.record(noticeKey);
+                }
+                auctionJournal.record(settlementKey);
                 auctions.remove(auction.claimId());
             }
             for (LandClaim claim : data.claims().values()) {
@@ -244,11 +270,16 @@ public final class LandRentTickHandler {
         }
     }
 
-    private static void refundBid(MinecraftServer server, java.util.UUID bidderUuid, long amount) {
-        if (bidderUuid == null || amount <= 0L) return;
-        ServerPlayer bidder = server.getPlayerList().getPlayer(bidderUuid);
-        if (bidder != null) EconomyHelper.giveMoney(bidder, Config.defaultCurrency(), amount);
-        else MarketMailboxSavedData.get(server).creditMoney(bidderUuid, Config.defaultCurrencyId(), amount);
+    private static void refundAuctionBid(MinecraftServer server, LandAuctionSavedData.Auction auction,
+                                         LandAuctionSettlementSavedData journal, String reason) {
+        if (auction == null || auction.highestBidder() == null || auction.highestBid() <= 0L) return;
+        String key = auction.claimId() + ":" + auction.endsAt() + ":refund:" + reason + ":"
+                + auction.highestBidder() + ":" + auction.highestBid();
+        if (journal.has(key)) return;
+        ServerPlayer bidder = server.getPlayerList().getPlayer(auction.highestBidder());
+        if (bidder != null) EconomyHelper.giveMoney(bidder, Config.defaultCurrency(), auction.highestBid());
+        else MarketMailboxSavedData.get(server).creditMoney(auction.highestBidder(), Config.defaultCurrencyId(), auction.highestBid());
+        journal.record(key);
     }
 
     private static long addSaturated(long left, long right) {

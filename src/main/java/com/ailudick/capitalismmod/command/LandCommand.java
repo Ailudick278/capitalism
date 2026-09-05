@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.land.LandMarketSavedData;
 import com.ailudick.capitalismmod.land.LandTransferSavedData;
 import com.ailudick.capitalismmod.land.LandOperationLogSavedData;
 import com.ailudick.capitalismmod.land.LandAuctionSavedData;
+import com.ailudick.capitalismmod.land.LandAuctionSettlementSavedData;
 import com.ailudick.capitalismmod.land.LandValuationHelper;
 import com.ailudick.capitalismmod.land.LandStatus;
 import com.ailudick.capitalismmod.land.LandOwnershipSavedData;
@@ -254,15 +255,7 @@ public final class LandCommand {
             source.sendFailure(Component.literal("赎回失败：请准备足额余额缴清欠税"));
             return 0;
         }
-        if (auction.highestBidder() != null && auction.highestBid() > 0L) {
-            ServerPlayer bidder = player.getServer().getPlayerList().getPlayer(auction.highestBidder());
-            if (bidder != null) {
-                EconomyHelper.giveMoney(bidder, Currencies.CNY, auction.highestBid());
-            } else {
-                MarketMailboxSavedData.get(player.getServer()).creditMoney(
-                        auction.highestBidder(), Currencies.CNY.id(), auction.highestBid());
-            }
-        }
+        refundAuctionBid(player.getServer(), auction, "redeem");
         auctions.remove(claim.id());
         source.sendSuccess(() -> Component.literal("土地已赎回，处置状态已解除"), false);
         return 1;
@@ -292,7 +285,7 @@ public final class LandCommand {
             return 0;
         }
         if (auction.highestBidder() != null && auction.highestBidder().equals(player.getUUID())) {
-            EconomyHelper.giveMoney(player, Currencies.CNY, auction.highestBid());
+            refundAuctionBid(player.getServer(), auction, "outbid");
         }
         if (!EconomyHelper.tryPay(player, Currencies.CNY, price)) {
             if (auction.highestBidder() != null && auction.highestBidder().equals(player.getUUID())) {
@@ -302,9 +295,7 @@ public final class LandCommand {
             return 0;
         }
         if (auction.highestBidder() != null && !auction.highestBidder().equals(player.getUUID())) {
-            ServerPlayer previous = player.getServer().getPlayerList().getPlayer(auction.highestBidder());
-            if (previous != null) EconomyHelper.giveMoney(previous, Currencies.CNY, auction.highestBid());
-            else MarketMailboxSavedData.get(player.getServer()).creditMoney(auction.highestBidder(), Currencies.CNY.id(), auction.highestBid());
+            refundAuctionBid(player.getServer(), auction, "outbid");
         }
         auctions.put(auction.withBid(player.getUUID(), price));
         source.sendSuccess(() -> Component.literal("出价成功：" + price + "，拍卖剩余 "
@@ -326,9 +317,7 @@ public final class LandCommand {
             source.sendFailure(Component.literal("该区块没有土地拍卖"));
             return 0;
         }
-        if (auction.highestBidder() != null && auction.highestBid() > 0L) {
-            MarketMailboxSavedData.get(player.getServer()).creditMoney(auction.highestBidder(), Currencies.CNY.id(), auction.highestBid());
-        }
+        refundAuctionBid(player.getServer(), auction, "cancel");
         auctions.remove(id);
         source.sendSuccess(() -> Component.literal("土地拍卖已取消，托管资金已退回"), false);
         return 1;
@@ -345,12 +334,7 @@ public final class LandCommand {
         int repaired = 0;
         for (var auction : auctions.all()) {
             if (claims.containsKey(auction.claimId())) continue;
-            if (auction.highestBidder() != null && auction.highestBid() > 0L) {
-                ServerPlayer bidder = player.getServer().getPlayerList().getPlayer(auction.highestBidder());
-                if (bidder != null) EconomyHelper.giveMoney(bidder, Currencies.CNY, auction.highestBid());
-                else MarketMailboxSavedData.get(player.getServer()).creditMoney(
-                        auction.highestBidder(), Currencies.CNY.id(), auction.highestBid());
-            }
+            refundAuctionBid(player.getServer(), auction, "audit");
             auctions.remove(auction.claimId());
             repaired++;
         }
@@ -575,6 +559,19 @@ public final class LandCommand {
         boolean removed = LandTransferSavedData.get(player.getServer()).removeForLand(player.getUUID(),
                 claim.dimension(), claim.chunkX(), claim.chunkZ());
         return simple(source, removed, "出售请求已取消", "当前土地没有出售请求");
+    }
+
+    private static void refundAuctionBid(net.minecraft.server.MinecraftServer server,
+                                         LandAuctionSavedData.Auction auction, String reason) {
+        if (auction == null || auction.highestBidder() == null || auction.highestBid() <= 0L) return;
+        String key = auction.claimId() + ":" + auction.endsAt() + ":refund:" + reason + ":"
+                + auction.highestBidder() + ":" + auction.highestBid();
+        LandAuctionSettlementSavedData journal = LandAuctionSettlementSavedData.get(server);
+        if (journal.has(key)) return;
+        ServerPlayer bidder = server.getPlayerList().getPlayer(auction.highestBidder());
+        if (bidder != null) EconomyHelper.giveMoney(bidder, Currencies.CNY, auction.highestBid());
+        else MarketMailboxSavedData.get(server).creditMoney(auction.highestBidder(), Currencies.CNY.id(), auction.highestBid());
+        journal.record(key);
     }
 
     private static int rejectTransfer(CommandSourceStack source) throws CommandSyntaxException {
