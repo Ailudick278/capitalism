@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.data;
 import com.ailudick.capitalismmod.CapitalismMod;
 import com.ailudick.capitalismmod.company.IndustrySpec;
 import com.ailudick.capitalismmod.company.ProductionRecipe;
+import com.ailudick.capitalismmod.company.MachineType;
 import com.ailudick.capitalismmod.shop.ShopOffer;
 import com.ailudick.capitalismmod.stock.Stock;
 import com.google.gson.Gson;
@@ -110,6 +111,29 @@ public final class CapitalismData {
             result.add(new ShopOffer(new ItemStack(item, j.quantity), j.price, j.currency));
         }
         return result;
+    }
+
+    /** Validates recipe equipment at config-load time instead of first production attempt. */
+    private static void validateIndustryMachines(List<IndustrySpec> industries) {
+        for (IndustrySpec industry : industries) {
+            if (industry == null) continue;
+            if (MachineType.parse(industry.machineType()) == null) {
+                CapitalismMod.LOGGER.error("Unknown machine type '{}' on industry '{}'", 
+                        industry.machineType(), industry.id());
+            }
+            Set<String> recipeIds = new java.util.HashSet<>();
+            for (ProductionRecipe recipe : industry.recipes()) {
+                if (recipe == null) continue;
+                if (MachineType.parse(recipe.machineType()) == null) {
+                    CapitalismMod.LOGGER.error("Unknown machine type '{}' on recipe '{}' (industry '{}')",
+                            recipe.machineType(), recipe.id(), industry.id());
+                }
+                if (!recipeIds.add(recipe.id())) {
+                    CapitalismMod.LOGGER.warn("Duplicate recipe id '{}' on industry '{}'",
+                            recipe.id(), industry.id());
+                }
+            }
+        }
     }
 
     private static List<ItemStack> loadCommodities(Path dir) {
@@ -225,6 +249,7 @@ public final class CapitalismData {
                     : new IndustrySpec(j.id, j.inputs, j.outputs, j.income, j.machine_type,
                     j.workers_per_cycle, j.energy_cost, j.maintenance_cost, recipes));
         }
+        validateIndustryMachines(result);
         return result;
     }
 
