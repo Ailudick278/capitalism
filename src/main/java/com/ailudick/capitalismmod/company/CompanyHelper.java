@@ -213,6 +213,7 @@ public final class CompanyHelper {
 
         CompanyInventoryCostSavedData.Consumption tracked =
                 CompanyInventoryCostSavedData.get(server).consume(companyId, itemId, quantity);
+        CompanyQualitySavedData.get(server).consume(companyId, itemId, quantity);
         int untracked = quantity - tracked.quantity();
         long fallback = untracked <= 0 ? 0L
                 : EconomyMath.multiply(Math.max(0L, CommoditySavedData.get(server).price(itemId)), untracked);
@@ -411,7 +412,7 @@ public final class CompanyHelper {
         conversionCost = EconomyMath.add(Math.max(0L, conversionCost), equipmentDepreciation);
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
         if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return ProductionCycleResult.failure("oil_reservation");
-        produceOutputs(server, company, conversionCost);
+        produceOutputs(server, company, conversionCost, productionQuality(server, company, machine));
         if (equipmentDepreciation > 0L) {
             Company current = CompanySavedData.get(server).get(company.companyId());
             if (current != null) {
@@ -670,7 +671,7 @@ public final class CompanyHelper {
     }
 
     /** Deposits outputs, records their conversion cost, then fulfills backorders. */
-    private static void produceOutputs(MinecraftServer server, Company company, long conversionCost) {
+    private static void produceOutputs(MinecraftServer server, Company company, long conversionCost, int qualityScore) {
         if (server == null) {
             return;
         }
@@ -684,6 +685,8 @@ public final class CompanyHelper {
                 continue;
             }
             warehouse.credit(owner, item, output.getValue());
+            CompanyQualitySavedData.get(server).record(company.companyId(), output.getKey(),
+                    output.getValue(), qualityScore);
             commodityData.ensureCommodity(output.getKey(),
                     Math.max(1L, CapitalismData.getCommodityPrices().getOrDefault(output.getKey(), 1L)));
             commodityData.addSupply(output.getKey(), output.getValue());
@@ -697,6 +700,18 @@ public final class CompanyHelper {
                     com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId()),
                     company.ownerUuid(), itemId);
         }
+    }
+
+    /** Game-scale process-quality proxy based on active skill and equipment condition. */
+    private static int productionQuality(MinecraftServer server, Company company, MachineType machine) {
+        int skill = CompanyLaborSavedData.get(server).averageSkill(company.companyId());
+        int condition = 100;
+        if (machine != null && machine != MachineType.NONE) {
+            CompanyEquipmentSavedData.Equipment equipment = CompanyEquipmentSavedData.get(server)
+                    .get(company.companyId(), machine);
+            condition = equipment == null ? 0 : Math.max(0, Math.min(100, equipment.condition()));
+        }
+        return Math.max(0, Math.min(100, 40 + skill * 40 / 100 + condition * 20 / 100));
     }
 
     private static boolean canProduceOutputs(MinecraftServer server, Company company) {
@@ -959,6 +974,7 @@ public final class CompanyHelper {
             CompanyEquipmentSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyLaborSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyInventoryCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
+            CompanyQualitySavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyLoanSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanySiteSavedData.get(server).remove(source.companyId());

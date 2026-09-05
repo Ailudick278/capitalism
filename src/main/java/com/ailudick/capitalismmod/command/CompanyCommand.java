@@ -384,6 +384,8 @@ public class CompanyCommand {
                 + metrics.productionSuccessPercent() + "% (not product quality), assets USD " + metrics.assets()
                 + ", equity USD " + metrics.equity()), false);
         source.sendSuccess(() -> Component.literal("Failure reasons: " + metrics.failureReasons()), false);
+        source.sendSuccess(() -> Component.literal("Average recorded product quality: "
+                + metrics.averageProductQuality() + "/100 (new production only)"), false);
         return 1;
     }
 

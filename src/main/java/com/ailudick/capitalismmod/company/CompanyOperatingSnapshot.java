@@ -19,6 +19,7 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
                                        long employerDailyContributions, long dailyLaborCost,
                                        int machineUnits, int parallelCapacity, long successfulBatches,
                                        long failedCycles, Map<String, Long> failureReasons,
+                                       int averageProductQuality,
                                        long assets, long equity) {
     public CompanyOperatingSnapshot {
         failureReasons = failureReasons == null ? Map.of() : Map.copyOf(failureReasons);
@@ -59,7 +60,7 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
         long days = Math.max(1L, Math.min(360L, lookbackDays));
         if (server == null || company == null) {
             return new CompanyOperatingSnapshot(days, 0L, 0L, 0L, 0L, 0L, 0L,
-                    0, 0L, 0L, 0L, 0, 0, 0L, 0L, Map.of(), 0L, 0L);
+                    0, 0L, 0L, 0L, 0, 0, 0L, 0L, Map.of(), 0, 0L, 0L);
         }
 
         long now = server.overworld().getGameTime();
@@ -99,13 +100,14 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
         long successful = production == null ? 0L : Math.max(0L, production.successfulCycles());
         long failed = production == null ? 0L : Math.max(0L, production.failedCycles());
         Map<String, Long> failureReasons = production == null ? Map.of() : production.failureReasons();
+        int averageProductQuality = CompanyQualitySavedData.get(server).averageScore(company.companyId());
         CompanyFinancialSnapshot financial = CompanyFinancialSnapshot.from(server, company);
         long grossProfit = subtractFloorZero(revenue, costOfSales);
         long otherOperatingExpenses = subtractFloorZero(expenses, costOfSales);
         long operatingProfit = subtractFloorZero(grossProfit, otherOperatingExpenses);
         return new CompanyOperatingSnapshot(days, revenue, expenses, costOfSales, grossProfit, operatingProfit, cashFlow, workers, grossWages,
                 employerContributions, dailyLaborCost, machineUnits, capacity, successful, failed, failureReasons,
-                financial.assets(), financial.equity());
+                averageProductQuality, financial.assets(), financial.equity());
     }
 
     private static boolean isOperating(CompanyLedgerEntry entry) {
