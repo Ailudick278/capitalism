@@ -240,6 +240,8 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PHONE_CASING = ITEMS.register("phone_casing",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CAMERA_MODULE = ITEMS.register("camera_module",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY_CELL = ITEMS.register("battery_cell",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY = ITEMS.register("battery",
