@@ -120,8 +120,10 @@ public class ProcurementScreen extends AbstractContainerScreen<ProcurementMenu> 
         List<SupplyOffer> offers = offersForSelected();
         for (int i = 0; i < Math.min(4, offers.size()); i++) {
             SupplyOffer offer = offers.get(i);
+            String quality = offer.qualityScore() <= 0 ? "quality:unverified"
+                    : "quality:" + offer.qualityScore();
             graphics.drawString(font, Component.literal(offer.companyName() + " $" + offer.price()
-                            + " [" + offer.region() + "]"),
+                            + " [" + offer.region() + "] " + quality),
                     leftPos + 8, topPos + 86 + i * 18, GuiStyles.TEXT, false);
         }
 

@@ -7,6 +7,7 @@ import com.ailudick.capitalismmod.company.CompanyEconomy;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
+import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.business.IndividualBusinessHelper;
 import com.ailudick.capitalismmod.business.IndividualBusiness;
@@ -64,8 +65,11 @@ public final class SupplyMarket {
                 data.removeOffer(offer.id());
             }
         }
+        CompanyQualitySavedData.ProductQuality quality = CompanyQualitySavedData.get(player.getServer())
+                .get(company.companyId(), itemId);
+        int qualityScore = quality == null ? 0 : quality.averageScore();
         data.addOffer(new SupplyOffer(UUID.randomUUID().toString(), player.getUUID(), companyName, itemId, price,
-                TradeRegion.of(player.blockPosition())));
+                TradeRegion.of(player.blockPosition()), qualityScore));
         return true;
     }
 
