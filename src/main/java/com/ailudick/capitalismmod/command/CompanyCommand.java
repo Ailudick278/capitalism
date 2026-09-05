@@ -15,6 +15,7 @@ import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
 import com.ailudick.capitalismmod.loan.CompanyLoanHelper;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
+import com.ailudick.capitalismmod.loan.CompanyCreditSnapshot;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
@@ -60,7 +61,10 @@ public class CompanyCommand {
                         .executes(ctx -> metrics(ctx.getSource(), StringArgumentType.getString(ctx, "name"), 90L))
                         .then(Commands.argument("days", IntegerArgumentType.integer(1, 360))
                                 .executes(ctx -> metrics(ctx.getSource(), StringArgumentType.getString(ctx, "name"),
-                                        IntegerArgumentType.getInteger(ctx, "days"))))));
+                                IntegerArgumentType.getInteger(ctx, "days"))))));
+        root.then(Commands.literal("credit")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> credit(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("contribute")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .then(Commands.argument("amount", LongArgumentType.longArg(1))
@@ -341,6 +345,28 @@ public class CompanyCommand {
         source.sendSuccess(() -> Component.literal("Production: successful " + metrics.successfulBatches()
                 + ", failed cycles " + metrics.failedCycles() + ", assets USD " + metrics.assets()
                 + ", equity USD " + metrics.equity()), false);
+        return 1;
+    }
+
+    private static int credit(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        CompanyCreditSnapshot credit = CompanyCreditSnapshot.from(player.getServer(), company, 90L);
+        source.sendSuccess(() -> Component.literal("Credit report (last " + credit.lookbackDays()
+                + " days): operating cash flow USD " + credit.operatingCashFlow()
+                + ", existing debt USD " + credit.existingDebt()), false);
+        source.sendSuccess(() -> Component.literal("Debt limits: capital USD " + credit.capitalDebtLimit()
+                + ", cash-flow USD " + credit.cashFlowDebtLimit()
+                + ", remaining capacity USD " + credit.remainingDebtCapacity()), false);
+        String coverage = Double.isInfinite(credit.coverageRatio()) ? "unlimited" : String.format("%.2f", credit.coverageRatio());
+        source.sendSuccess(() -> Component.literal("Annual debt service USD "
+                + Math.round(credit.annualDebtService()) + ", coverage ratio " + coverage
+                + ", operating history " + credit.hasOperatingHistory()
+                + ", overdue loan " + credit.hasOverdueLoan()), false);
         return 1;
     }
 
