@@ -107,6 +107,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.FURNITURE.get());
                         output.accept(ModItems.CRUDE_OIL.get());
                         output.accept(ModItems.NAPHTHA.get());
+                        output.accept(ModItems.FUEL_OIL.get());
                         output.accept(ModItems.PLASTIC_PELLETS.get());
                         output.accept(ModItems.FAN_BLADES.get());
                         output.accept(ModItems.FAN_CONTROL.get());
