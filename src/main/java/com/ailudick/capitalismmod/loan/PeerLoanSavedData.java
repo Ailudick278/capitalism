@@ -60,6 +60,7 @@ public final class PeerLoanSavedData extends SavedData {
         for (int i = 0; i < loans.size(); i++) {
             if (loans.get(i).id().equals(loan.id())) {
                 loans.set(i, loan);
+                setDirty();
                 return;
             }
         }
