@@ -69,15 +69,22 @@ public final class BankAccountHelper {
     }
 
     /**
-     * Applies one Minecraft day of interest to every account: deposit interest on balances,
+     * Applies the settlement for one Minecraft day exactly once: deposit interest on balances,
      * loan interest on debts, and a tick on each term deposit (maturing it when due).
-     * Rates are annual ({@link Config}), compounded daily.
+     * Rates are annual ({@link Config}), compounded daily. The day marker makes this operation
+     * idempotent if a login event, tick event, or a future subsystem requests the same settlement
+     * more than once.
      */
-    public static void applyDailyInterest(Player player) {
+    public static void applyDailyInterest(Player player, long settlementDay) {
+        long lastSettlementDay = player.getData(ModAttachments.LAST_BANK_SETTLEMENT_DAY);
+        if (lastSettlementDay >= settlementDay) {
+            return;
+        }
         double depositRate = Config.DEPOSIT_RATE_PER_YEAR.get() / 365.0;
         double loanRate = Config.LOAN_RATE_PER_YEAR.get() / 365.0;
         Map<String, BankAccount> accounts = getAccounts(player);
         if (accounts.isEmpty()) {
+            player.setData(ModAttachments.LAST_BANK_SETTLEMENT_DAY, settlementDay);
             return;
         }
 
@@ -148,6 +155,7 @@ public final class BankAccountHelper {
         if (changed) {
             setAccounts(player, updated);
         }
+        player.setData(ModAttachments.LAST_BANK_SETTLEMENT_DAY, settlementDay);
     }
 
     /** Transfers {@code amount} of {@code currency} between physical items and the account. deposit=true moves items -> account. */

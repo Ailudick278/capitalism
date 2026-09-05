@@ -117,7 +117,7 @@ public final class EconomySettlementTickHandler {
             lastDay = targetDay;
         }
         while (lastDay < targetDay) {
-            BankAccountHelper.applyDailyInterest(player);
+            BankAccountHelper.applyDailyInterest(player, lastDay + 1);
             lastDay++;
         }
         player.setData(com.ailudick.capitalismmod.init.ModAttachments.LAST_BANK_SETTLEMENT_DAY, lastDay);
