@@ -101,6 +101,10 @@ public final class BankAccountHelper {
                     depositRemainders.remove(entry.getKey());
                     continue;
                 }
+                // Persist fractional interest even when it has not yet
+                // reached one minor currency unit. Otherwise small balances
+                // would permanently lose sub-unit accrual on quiet days.
+                changed = true;
                 InterestAccrual accrual = accrueInterest(entry.getValue(), depositRate,
                         depositRemainders.getOrDefault(entry.getKey(), 0L));
                 depositRemainders.put(entry.getKey(), accrual.remainder());
