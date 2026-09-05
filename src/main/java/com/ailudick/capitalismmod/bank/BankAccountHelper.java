@@ -228,7 +228,8 @@ public final class BankAccountHelper {
             return false;
         }
         long combined = EconomyMath.add(existingDebtInBase, newDebtInBase);
-        if (combined < 0 || combined > Config.CREDIT_LIMIT.get()) {
+        CreditAssessment assessment = CreditAssessment.evaluate(account, existingDebtInBase, Config.CREDIT_LIMIT.get());
+        if (assessment.overdue() || combined < 0 || combined > assessment.approvedLimit()) {
             return false;
         }
 
