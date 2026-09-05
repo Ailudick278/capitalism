@@ -1061,6 +1061,13 @@ public class CompanyCommand {
                 + ", daily wages: USD " + labor.dailyWages(company.companyId())
                 + ", average skill: " + labor.averageSkill(company.companyId())
                 + ", parallel batches: " + CompanyHelper.parallelCapacity(server, company)), false);
+        for (CompanySiteSavedData.Site site : CompanySiteSavedData.get(server).sites(company.companyId())) {
+            OilFieldSavedData.Field field = OilFieldSavedData.get(server).get(
+                    site.dimension(), site.chunkX(), site.chunkZ());
+            String reserve = field == null ? "none" : Long.toString(field.remainingReserve());
+            source.sendSuccess(() -> Component.literal("Site " + site.dimension() + " chunk "
+                    + site.chunkX() + "," + site.chunkZ() + " | oil remaining " + reserve), false);
+        }
         for (var contract : labor.contracts(company.companyId())) {
             source.sendSuccess(() -> Component.literal("Contract " + contract.id() + " | " + contract.role()
                     + " x" + contract.count() + " | wage " + contract.dailyWage()
