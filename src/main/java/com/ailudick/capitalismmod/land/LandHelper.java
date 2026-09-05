@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
+import java.util.Comparator;
 
 public final class LandHelper {
     private LandHelper() {}
@@ -269,7 +270,12 @@ public final class LandHelper {
         long paymentMinor = Money.toMinorSaturated(amount);
         if (outstandingMinor <= 0L || paymentMinor <= 0L || paymentMinor > outstandingMinor) return false;
         var bill = com.ailudick.capitalismmod.tax.TaxLedgerSavedData.get(player.getServer()).bills().stream()
-                .filter(entry -> entry.subject().equals(subject) && !entry.paid()).findFirst().orElse(null);
+                .filter(entry -> entry.subject().equals(subject) && !entry.paid())
+                .min(Comparator.comparingLong((com.ailudick.capitalismmod.tax.TaxBill entry) ->
+                                entry.dueAt() > 0L ? entry.dueAt() : entry.createdAt())
+                        .thenComparingLong(com.ailudick.capitalismmod.tax.TaxBill::createdAt)
+                        .thenComparing(com.ailudick.capitalismmod.tax.TaxBill::id))
+                .orElse(null);
         if (bill == null) return false;
         if (!bill.declared()) TaxService.declare(player, bill.id());
         if (!TaxService.pay(player, subject, paymentMinor)) return false;
