@@ -47,6 +47,28 @@ public final class LogisticsNodeSavedData extends SavedData {
     }
 
     /**
+     * Returns nodes in a loaded dimension and removes entries whose loaded
+     * block position no longer contains the registered facility. Unloaded
+     * chunks are deliberately left untouched because their block state is not
+     * authoritative until the chunk is loaded.
+     */
+    public List<Node> activeInDimension(ServerLevel level) {
+        if (level == null) return List.of();
+        String dimension = level.dimension().location().toString();
+        boolean changed = false;
+        for (Node node : List.copyOf(nodes.values())) {
+            if (!dimension.equals(node.dimension()) || !level.hasChunk(node.chunkX(), node.chunkZ())) continue;
+            BlockPos pos = new BlockPos(node.x(), node.y(), node.z());
+            if (!facilityMatches(level.getBlockState(pos), node.facility())) {
+                nodes.remove(node.key());
+                changed = true;
+            }
+        }
+        if (changed) setDirty();
+        return inDimension(dimension);
+    }
+
+    /**
      * Backfills facilities placed before node tracking existed. This is
      * intentionally an explicit, bounded operation rather than a chunk-load
      * hook, so old worlds do not pay a full-height scan on every chunk load.
@@ -88,6 +110,10 @@ public final class LogisticsNodeSavedData extends SavedData {
         if (state.is(ModBlocks.TRANSFER_STATION_BLOCK.get())) return "transfer_station";
         if (state.is(ModBlocks.PORT_BLOCK.get())) return "port";
         return null;
+    }
+
+    private static boolean facilityMatches(net.minecraft.world.level.block.state.BlockState state, String facility) {
+        return facility != null && facility.equals(facilityId(state));
     }
 
     private static String key(String dimension, int x, int y, int z) {

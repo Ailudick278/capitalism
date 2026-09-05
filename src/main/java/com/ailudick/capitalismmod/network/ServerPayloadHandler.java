@@ -1208,7 +1208,8 @@ public class ServerPayloadHandler {
         String dimension = player.serverLevel().dimension().location().toString();
         WorldMapTileSavedData tiles = WorldMapTileSavedData.get(player.getServer());
         List<SyncLogisticsNodeOverlayPayload.Node> nodes = new ArrayList<>();
-        for (LogisticsNodeSavedData.Node node : LogisticsNodeSavedData.get(player.getServer()).inDimension(dimension)) {
+        for (LogisticsNodeSavedData.Node node : LogisticsNodeSavedData.get(player.getServer())
+                .activeInDimension(player.serverLevel())) {
             if (tiles.get(dimension + ":" + node.chunkX() + ":" + node.chunkZ()) != null) {
                 nodes.add(new SyncLogisticsNodeOverlayPayload.Node(node.chunkX(), node.chunkZ(), node.facility()));
             }
