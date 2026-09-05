@@ -30,15 +30,15 @@ public final class EconomySavedData extends SavedData {
     private static final String ID = "capitalismmod_economy";
     private static final int MAX_CANDLES = 30;
 
-    /** Fundamental value = level * FUNDAMENTAL_PER_LEVEL for listed companies. */
-    public static final long FUNDAMENTAL_PER_LEVEL = 100L;
+    /** Fundamental value is derived from registered capital, not a game level. */
+    public static final long FUNDAMENTAL_PER_CAPITAL = 1L;
 
     private final Map<String, Long> prices = new HashMap<>();
     private final Map<String, Long> netVolume = new HashMap<>();
     private final Map<String, List<Candle>> history = new HashMap<>();
     // stockId -> (playerUuid string -> shares)
     private final Map<String, Map<String, Long>> shareholders = new HashMap<>();
-    // company stockId -> listing snapshot (name, level, total shares)
+    // company stockId -> listing snapshot (name, registered capital, total shares)
     private final Map<String, Listing> listings = new HashMap<>();
     // stock exchange limit orders
     private final List<StockOrder> orders = new ArrayList<>();
@@ -46,10 +46,10 @@ public final class EconomySavedData extends SavedData {
     private final Map<String, Long> prevClose = new HashMap<>();
 
     /** Snapshot of a listed company, kept so its stock stays visible while the founder is offline. */
-    public record Listing(String name, int level, long totalShares) {
+    public record Listing(String name, long registeredCapital, long totalShares) {
         public static final Codec<Listing> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("name").forGetter(Listing::name),
-                Codec.INT.fieldOf("level").forGetter(Listing::level),
+                Codec.LONG.optionalFieldOf("registeredCapital", 1000L).forGetter(Listing::registeredCapital),
                 Codec.LONG.fieldOf("totalShares").forGetter(Listing::totalShares)
         ).apply(instance, Listing::new));
     }
@@ -119,7 +119,7 @@ public final class EconomySavedData extends SavedData {
     public long fundamental(String stockId) {
         Listing listing = listings.get(stockId);
         if (listing != null) {
-            return EconomyMath.multiply(FUNDAMENTAL_PER_LEVEL, listing.level());
+            return Math.max(100L, EconomyMath.multiply(FUNDAMENTAL_PER_CAPITAL, listing.registeredCapital()));
         }
         Stock stock = Stocks.byId(stockId);
         return stock != null ? stock.initialPrice() : 0L;
@@ -179,16 +179,16 @@ public final class EconomySavedData extends SavedData {
         return result;
     }
 
-    public void list(String stockId, String name, int level, long totalShares) {
-        listings.put(stockId, new Listing(name, level, totalShares));
-        ensureStock(stockId, EconomyMath.multiply(FUNDAMENTAL_PER_LEVEL, level));
+    public void list(String stockId, String name, long registeredCapital, long totalShares) {
+        listings.put(stockId, new Listing(name, Math.max(0L, registeredCapital), totalShares));
+        ensureStock(stockId, Math.max(100L, EconomyMath.multiply(FUNDAMENTAL_PER_CAPITAL, registeredCapital)));
         setDirty();
     }
 
-    public void updateListingLevel(String stockId, int level) {
+    public void updateListingCapital(String stockId, long registeredCapital) {
         Listing listing = listings.get(stockId);
-        if (listing != null && listing.level() != level) {
-            listings.put(stockId, new Listing(listing.name(), level, listing.totalShares()));
+        if (listing != null && listing.registeredCapital() != registeredCapital) {
+            listings.put(stockId, new Listing(listing.name(), Math.max(0L, registeredCapital), listing.totalShares()));
             setDirty();
         }
     }

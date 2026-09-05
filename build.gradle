@@ -153,7 +153,7 @@ def modTestModsDir = providers.gradleProperty('modTestModsDir')
         .orElse('C:/Users/常翔/AppData/Roaming/.minecraft/versions/mod test/mods')
         .get()
 modTestModsDir = providers.gradleProperty('modTestModsDir')
-        .orElse(new File(System.getProperty('user.home'), 'AppData/Roaming/.minecraft/versions/mod test/mods').absolutePath)
+        .orElse('C:/Users/常翔/AppData/Roaming/.minecraft/versions/mod test/mods')
         .get()
 tasks.register('copyModJar', Copy) {
     // The destination is an external local Minecraft instance and may contain

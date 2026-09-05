@@ -274,7 +274,7 @@
   "command.capitalismmod.company_not_found": "Company not found: %s",
   "command.capitalismmod.company_upgraded": "Company %s upgraded to Lv.%s",
   "command.capitalismmod.company_withdrawn": "Withdrew %s %s from company %s",
-  "command.capitalismmod.company_line": "Lv.%s %s (%s): %s %s",
+  "command.capitalismmod.company_line": "Capital $%s %s (%s): %s %s",
   "command.capitalismmod.company_ipo": "Company %s listed with %s shares",
   "command.capitalismmod.company_already_listed": "Company %s is already listed!",
 

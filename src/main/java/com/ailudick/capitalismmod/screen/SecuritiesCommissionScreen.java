@@ -73,7 +73,7 @@ public class SecuritiesCommissionScreen extends AbstractContainerScreen<Securiti
             String name = entry.getKey();
             Company company = entry.getValue();
             int y = topPos + 34 + i * 24;
-            graphics.drawString(font, name + " (Lv." + company.level() + ")", leftPos + 8, y, GuiStyles.TEXT, false);
+            graphics.drawString(font, name + " (Capital $" + company.registeredCapital() + ")", leftPos + 8, y, GuiStyles.TEXT, false);
             if (menu.isListed(name)) {
                 graphics.drawString(font, Component.translatable("gui.capitalismmod.listed"), leftPos + 128, y, GuiStyles.TEXT_DIM, false);
             }

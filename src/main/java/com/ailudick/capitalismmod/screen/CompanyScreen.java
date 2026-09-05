@@ -2,9 +2,7 @@ package com.ailudick.capitalismmod.screen;
 
 import com.ailudick.capitalismmod.client.GuiStyles;
 import com.ailudick.capitalismmod.company.Company;
-import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.menu.CompanyMenu;
-import com.ailudick.capitalismmod.network.payload.UpgradeCompanyPayload;
 import com.ailudick.capitalismmod.network.payload.WithdrawCompanyPayload;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -15,6 +13,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.Map;
 
+/** Company overview. Scale is shown as capital; operations determine actual capacity. */
 public class CompanyScreen extends AbstractContainerScreen<CompanyMenu> {
     private long lastSignature = -1;
 
@@ -35,8 +34,6 @@ public class CompanyScreen extends AbstractContainerScreen<CompanyMenu> {
         for (Map.Entry<String, Company> entry : menu.getCompanies().entrySet()) {
             String name = entry.getKey();
             int y = topPos + 24 + i * 26;
-            addRenderableWidget(Button.builder(Component.translatable("gui.capitalismmod.upgrade"), btn -> upgrade(name))
-                    .bounds(leftPos + 102, y, 34, 16).build());
             addRenderableWidget(Button.builder(Component.translatable("gui.capitalismmod.withdraw"), btn -> withdraw(name))
                     .bounds(leftPos + 138, y, 34, 16).build());
             i++;
@@ -47,13 +44,9 @@ public class CompanyScreen extends AbstractContainerScreen<CompanyMenu> {
     private long signature() {
         long s = 0;
         for (Company company : menu.getCompanies().values()) {
-            s += company.level() + company.treasuryOf("usd") + company.taxOwed();
+            s += company.registeredCapital() + company.treasuryOf("usd") + company.taxOwed();
         }
         return s;
-    }
-
-    private void upgrade(String name) {
-        PacketDistributor.sendToServer(new UpgradeCompanyPayload(name));
     }
 
     private void withdraw(String name) {
@@ -71,29 +64,20 @@ public class CompanyScreen extends AbstractContainerScreen<CompanyMenu> {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        if (signature() != lastSignature) {
-            refreshWidgets();
-        }
+        if (signature() != lastSignature) refreshWidgets();
         super.render(graphics, mouseX, mouseY, partialTick);
         renderTooltip(graphics, mouseX, mouseY);
-
         graphics.drawString(font, title, leftPos + 8, topPos + 6, GuiStyles.ACCENT, false);
-
         int i = 0;
         for (Map.Entry<String, Company> entry : menu.getCompanies().entrySet()) {
-            String name = entry.getKey();
             Company company = entry.getValue();
             int y = topPos + 28 + i * 26;
-            graphics.drawString(font, name + " Lv." + company.level() + " " + company.type(), leftPos + 8, y, GuiStyles.TEXT, false);
-            graphics.drawString(font, "$" + company.treasuryOf("usd") + " 税$" + company.taxOwed(),
+            graphics.drawString(font, entry.getKey() + " Capital $" + company.registeredCapital() + " " + company.type(),
+                    leftPos + 8, y, GuiStyles.TEXT, false);
+            graphics.drawString(font, "$" + company.treasuryOf("usd") + " tax " + company.taxOwed(),
                     leftPos + 8, y + 11, GuiStyles.TEXT_DIM, false);
-            long maintenance;
-            try {
-                maintenance = Math.multiplyExact(Config.COMPANY_MAINTENANCE_PER_LEVEL.get(), Math.max(0, company.level()));
-            } catch (ArithmeticException e) {
-                maintenance = Long.MAX_VALUE;
-            }
-            graphics.drawString(font, "维护费 $" + maintenance, leftPos + 8, y + 20, GuiStyles.TEXT_DIM, false);
+            graphics.drawString(font, "Capacity: workers + equipment + production batches",
+                    leftPos + 8, y + 20, GuiStyles.TEXT_DIM, false);
             i++;
         }
     }

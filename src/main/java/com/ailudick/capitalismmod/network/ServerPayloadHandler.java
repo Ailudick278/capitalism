@@ -499,12 +499,7 @@ public class ServerPayloadHandler {
             if (!(context.player() instanceof ServerPlayer player)) {
                 return;
             }
-            if (!CompanyHelper.upgrade(player, payload.companyName())) {
-                player.displayClientMessage(Component.translatable("command.capitalismmod.insufficient"), true);
-                return;
-            }
-            Conglomerate conglomerate = CompanyHelper.getConglomerate(player);
-            PacketDistributor.sendToPlayer(player, new SyncConglomeratePayload(conglomerate.name(), CompanyHelper.getCompanies(player)));
+            player.displayClientMessage(Component.literal("Company levels have been removed; use /company contribute <name> <amount> to add paid-in capital."), true);
         });
     }
 
@@ -1321,7 +1316,8 @@ public class ServerPayloadHandler {
                 player.displayClientMessage(Component.translatable("command.capitalismmod.company_already_listed", name), true);
                 return;
             }
-            player.displayClientMessage(Component.translatable("command.capitalismmod.company_ipo", name, 1000L * company.level()), true);
+            player.displayClientMessage(Component.translatable("command.capitalismmod.company_ipo", name,
+                    Math.max(1000L, com.ailudick.capitalismmod.util.EconomyMath.multiply(company.registeredCapital(), 100L))), true);
             syncSecurities(player);
         });
     }

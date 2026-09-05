@@ -16,24 +16,15 @@ public enum MachineType {
     private final String id;
     private final long purchasePrice;
     private final long maintenancePerCycle;
-    private final int levelCapacity;
-
-    MachineType(String id, long purchasePrice, long maintenancePerCycle, int levelCapacity) {
+    MachineType(String id, long purchasePrice, long maintenancePerCycle, int unusedCapacity) {
         this.id = id;
         this.purchasePrice = purchasePrice;
         this.maintenancePerCycle = maintenancePerCycle;
-        this.levelCapacity = Math.max(1, levelCapacity);
     }
 
     public String id() { return id; }
     public long purchasePrice() { return purchasePrice; }
     public long maintenancePerCycle() { return maintenancePerCycle; }
-    public int requiredUnits(int companyLevel) {
-        if (companyLevel <= 0) return 1;
-        long required = ((long) companyLevel + levelCapacity - 1L) / levelCapacity;
-        return (int) Math.min(Integer.MAX_VALUE, required);
-    }
-
     public static MachineType parse(String id) {
         for (MachineType type : values()) {
             if (type.id.equalsIgnoreCase(id)) return type;

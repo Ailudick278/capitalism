@@ -30,9 +30,12 @@ public class CompanyCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         var root = Commands.literal("company");
         root.then(Commands.literal("list").executes(ctx -> list(ctx.getSource())));
-        root.then(Commands.literal("upgrade")
+        root.then(Commands.literal("contribute")
                 .then(Commands.argument("name", StringArgumentType.word())
-                        .executes(ctx -> upgrade(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+                        .then(Commands.argument("amount", LongArgumentType.longArg(1))
+                                .executes(ctx -> contribute(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"),
+                                        LongArgumentType.getLong(ctx, "amount"))))));
         root.then(Commands.literal("withdraw")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .then(Commands.argument("currency", StringArgumentType.word())
@@ -150,25 +153,20 @@ public class CompanyCommand {
         }
         for (Company company : companies.values()) {
             player.sendSystemMessage(Component.translatable("command.capitalismmod.company_line",
-                    company.level(), company.name(),
+                    company.registeredCapital(), company.name(),
                     Component.translatable(CompanyTypes.nameKey(company.type())),
                     company.treasuryOf("usd"), Component.translatable(Currencies.USD.nameKey())));
         }
         return companies.size();
     }
 
-    private static int upgrade(CommandSourceStack source, String name) throws CommandSyntaxException {
+    private static int contribute(CommandSourceStack source, String name, long amount) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (CompanyHelper.getCompany(player, name) == null) {
-            source.sendFailure(Component.translatable("command.capitalismmod.company_not_found", name));
+        if (!CompanyHelper.contributeCapital(player, name, amount)) {
+            source.sendFailure(Component.literal("Capital contribution failed: company not found or funds are insufficient."));
             return 0;
         }
-        if (!CompanyHelper.upgrade(player, name)) {
-            source.sendFailure(Component.translatable("command.capitalismmod.insufficient"));
-            return 0;
-        }
-        player.sendSystemMessage(Component.translatable("command.capitalismmod.company_upgraded",
-                name, CompanyHelper.getCompany(player, name).level()));
+        source.sendSuccess(() -> Component.literal("Contributed USD " + amount + " as paid-in capital."), false);
         return 1;
     }
 

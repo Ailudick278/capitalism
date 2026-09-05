@@ -17,7 +17,7 @@ import java.util.UUID;
  * @param treasury currency id -> amount of undistributed profit (major units)
  * @param taxOwed  legacy compatibility mirror of unpaid corporate income tax (USD, major units)
  */
-public record Company(String companyId, UUID ownerUuid, String name, String type, int level,
+public record Company(String companyId, UUID ownerUuid, String name, String type, long registeredCapital,
                       Map<String, Long> treasury, long taxOwed, String productionRecipe) {
 
     public static final UUID UNASSIGNED_OWNER = new UUID(0L, 0L);
@@ -28,34 +28,34 @@ public record Company(String companyId, UUID ownerUuid, String name, String type
             UUID_CODEC.optionalFieldOf("ownerUuid", UNASSIGNED_OWNER).forGetter(Company::ownerUuid),
             Codec.STRING.fieldOf("name").forGetter(Company::name),
             Codec.STRING.fieldOf("type").forGetter(Company::type),
-            Codec.INT.fieldOf("level").forGetter(Company::level),
+            Codec.LONG.optionalFieldOf("registeredCapital", 1000L).forGetter(Company::registeredCapital),
             Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("treasury").forGetter(Company::treasury),
             Codec.LONG.fieldOf("taxOwed").forGetter(Company::taxOwed),
             Codec.STRING.optionalFieldOf("productionRecipe", "default").forGetter(Company::productionRecipe)
     ).apply(instance, Company::new));
 
     public static Company create(String name, String type, UUID ownerUuid) {
-        return new Company(CompanyId.generate(), ownerUuid, name, type, 1, new HashMap<>(), 0L, "default");
+        return new Company(CompanyId.generate(), ownerUuid, name, type, 1000L, new HashMap<>(), 0L, "default");
     }
 
     public Company withIdentity(String newCompanyId, UUID newOwnerUuid) {
-        return new Company(newCompanyId, newOwnerUuid, name, type, level, treasury, taxOwed, productionRecipe);
+        return new Company(newCompanyId, newOwnerUuid, name, type, registeredCapital, treasury, taxOwed, productionRecipe);
     }
 
     public long treasuryOf(String currencyId) {
         return treasury.getOrDefault(currencyId, 0L);
     }
 
-    public Company withLevel(int newLevel) {
-        return new Company(companyId, ownerUuid, name, type, newLevel, treasury, taxOwed, productionRecipe);
+    public Company withRegisteredCapital(long newCapital) {
+        return new Company(companyId, ownerUuid, name, type, Math.max(0L, newCapital), treasury, taxOwed, productionRecipe);
     }
 
     public Company withTreasury(Map<String, Long> newTreasury) {
-        return new Company(companyId, ownerUuid, name, type, level, newTreasury, taxOwed, productionRecipe);
+        return new Company(companyId, ownerUuid, name, type, registeredCapital, newTreasury, taxOwed, productionRecipe);
     }
 
     public Company withTaxOwed(long newTaxOwed) {
-        return new Company(companyId, ownerUuid, name, type, level, treasury, newTaxOwed, productionRecipe);
+        return new Company(companyId, ownerUuid, name, type, registeredCapital, treasury, newTaxOwed, productionRecipe);
     }
 
     public Company addTaxOwed(long amount) {
@@ -65,7 +65,7 @@ public record Company(String companyId, UUID ownerUuid, String name, String type
         } catch (ArithmeticException e) {
             updated = Long.MAX_VALUE;
         }
-        return new Company(companyId, ownerUuid, name, type, level, treasury, updated, productionRecipe);
+        return new Company(companyId, ownerUuid, name, type, registeredCapital, treasury, updated, productionRecipe);
     }
 
     /** Adds {@code amount} to the given currency's treasury balance. Returns {@code this} unchanged on overflow. */
@@ -80,7 +80,7 @@ public record Company(String companyId, UUID ownerUuid, String name, String type
     }
 
     public Company withProductionRecipe(String recipeId) {
-        return new Company(companyId, ownerUuid, name, type, level, treasury, taxOwed,
+        return new Company(companyId, ownerUuid, name, type, registeredCapital, treasury, taxOwed,
                 recipeId == null || recipeId.isBlank() ? "default" : recipeId);
     }
 }

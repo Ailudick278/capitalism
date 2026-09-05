@@ -211,7 +211,7 @@ public final class CompanyHelper {
 
     /** Runs one atomic recipe cycle: all inputs are checked before any are consumed. */
     public static boolean runProductionCycle(MinecraftServer server, Company company) {
-        if (server == null || company == null || company.level() <= 0
+        if (server == null || company == null || company.registeredCapital() <= 0
                 || CompanyEconomy.outputs(company).isEmpty() || !canProduceOutputs(server, company)) {
             return false;
         }
@@ -225,7 +225,7 @@ public final class CompanyHelper {
         }
         if (machine != MachineType.NONE
                 && CompanyEquipmentSavedData.get(server).count(company.companyId(), machine)
-                < machine.requiredUnits(company.level())) {
+                <= 0) {
             return false;
         }
         long wages = labor.dailyWages(company.companyId()) == Long.MAX_VALUE
@@ -418,31 +418,30 @@ public final class CompanyHelper {
         if (data.isListed(stockId)) {
             return false;
         }
-        long totalShares = EconomyMath.multiply(1000L, company.level());
+        long totalShares = Math.max(1000L, EconomyMath.multiply(company.registeredCapital(), 100L));
         if (totalShares < 0) {
             return false;
         }
-        data.list(stockId, company.name(), company.level(), totalShares);
+        data.list(stockId, company.name(), company.registeredCapital(), totalShares);
         data.addShares(stockId, player.getUUID(), totalShares);
         return true;
     }
 
-    /** Upgrades a company: pays the upgrade cost from the founder, then raises its level. */
-    public static boolean upgrade(Player player, String name) {
+    /** Contributes founder money as paid-in capital and makes it available to the company. */
+    public static boolean contributeCapital(Player player, String name, long amount) {
+        if (amount <= 0) return false;
         Company company = getCompany(player, name);
-        if (company == null) {
-            return false;
-        }
-        long cost = CompanyEconomy.upgradeCost(company.level());
-        if (cost < 0 || !EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(cost))) {
-            return false;
-        }
-        setCompany(player, name, company.withLevel(company.level() + 1));
+        if (company == null || !EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(amount))) return false;
+        long capital = EconomyMath.add(company.registeredCapital(), amount);
+        Company funded = company.withRegisteredCapital(capital).addTreasury(Currencies.USD.id(), amount);
+        if (funded == company) return false;
+        setCompany(player, name, funded);
         MinecraftServer server = player.getServer();
         if (server != null) {
-            recordTaxableExpense(server, company, "upgrade:" + company.level(), cost, Currencies.USD.id(),
-                    player.level().getGameTime());
-            EconomySavedData.get(server).updateListingLevel(stockId(player, name), company.level() + 1);
+            CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                    company.companyId(), server.overworld().getGameTime(), "capital_contribution",
+                    Currencies.USD.id(), amount, funded.treasuryOf(Currencies.USD.id()), "paid-in capital"));
+            EconomySavedData.get(server).updateListingCapital(stockId(player, name), capital);
         }
         return true;
     }
@@ -545,7 +544,7 @@ public final class CompanyHelper {
         if (isListed(player, sourceName) || isListed(player, targetName)) {
             return false;
         }
-        int level = Math.min(Integer.MAX_VALUE, Math.max(1, source.level()) + Math.max(1, target.level()));
+        long capital = EconomyMath.add(source.registeredCapital(), target.registeredCapital());
         MinecraftServer server = player.getServer();
         if (server != null) {
             WarehouseSavedData.get(server).transferAll(
@@ -556,7 +555,7 @@ public final class CompanyHelper {
         for (Map.Entry<String, Long> entry : source.treasury().entrySet()) {
             treasury.merge(entry.getKey(), entry.getValue(), (a, b) -> EconomyMath.add(a, b));
         }
-        Company merged = new Company(target.companyId(), player.getUUID(), target.name(), target.type(), level, treasury,
+        Company merged = new Company(target.companyId(), player.getUUID(), target.name(), target.type(), capital, treasury,
                 EconomyMath.add(target.taxOwed(), source.taxOwed()), target.productionRecipe());
         removeCompany(player, sourceName);
         putCompany(player, targetName, merged);
