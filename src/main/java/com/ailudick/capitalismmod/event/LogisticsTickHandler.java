@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossService;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
+import com.ailudick.capitalismmod.market.LogisticsClaimSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
@@ -47,13 +48,18 @@ public final class LogisticsTickHandler {
                     shipment.originRegion(), shipment.destinationRegion(), shipment.transport()));
             if (risk > 0.0 && Math.random() < risk) {
                 if (shipment.insured()) {
-                    long payout;
+                    long insuredValue;
                     try {
-                        payout = Math.multiplyExact((long) shipment.quantity(), Config.LOGISTICS_DECLARED_VALUE.get());
+                        insuredValue = Math.multiplyExact((long) shipment.quantity(), Config.LOGISTICS_DECLARED_VALUE.get());
                     } catch (ArithmeticException e) {
-                        payout = Long.MAX_VALUE;
+                        insuredValue = Long.MAX_VALUE;
                     }
+                    long actualLoss = actualLoss(shipment, insuredValue);
+                    long payout = Math.min(insuredValue, actualLoss);
                     MarketMailboxSavedData.get(server).creditMoney(shipment.buyer(), "usd", Money.toMinor(payout));
+                    LogisticsClaimSavedData.get(server).settle(new LogisticsClaimSavedData.Claim(
+                            java.util.UUID.randomUUID().toString(), shipment.id(), shipment.buyer(), insuredValue,
+                            actualLoss, payout, now, "settled"));
                     data.remove(shipment.id());
                 } else if (shipment.disruptionCount() + 1 >= Config.LOGISTICS_MAX_DISRUPTIONS.get()) {
                     LogisticsLossService.record(server, shipment);
@@ -72,6 +78,17 @@ public final class LogisticsTickHandler {
                 warehouse.credit(shipment.buyer(), item, shipment.quantity());
             }
             data.remove(shipment.id());
+        }
+    }
+
+    private static long actualLoss(LogisticsSavedData.Shipment shipment, long fallback) {
+        if (shipment.unitPrice() <= 0L) {
+            return fallback;
+        }
+        try {
+            return Math.multiplyExact((long) shipment.quantity(), shipment.unitPrice());
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
         }
     }
 
