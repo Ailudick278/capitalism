@@ -18,6 +18,7 @@ import com.ailudick.capitalismmod.land.LandTransferSettlementSavedData;
 import com.ailudick.capitalismmod.land.LandValuationHelper;
 import com.ailudick.capitalismmod.land.LandStatus;
 import com.ailudick.capitalismmod.land.LandOwnershipSavedData;
+import com.ailudick.capitalismmod.land.LandLeaseDepositSavedData;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxType;
 import com.mojang.brigadier.CommandDispatcher;
@@ -173,6 +174,13 @@ public final class LandCommand {
         if (auction != null) {
             source.sendSuccess(() -> Component.literal("拍卖：起拍价 " + auction.startPrice()
                     + " | 当前最高价 " + auction.highestBid() + " | 结束时间 " + formatGameTime(auction.endsAt())), false);
+        }
+        var deposit = LandLeaseDepositSavedData.get(player.getServer()).find(claim.id());
+        if (deposit != null && (claim.ownerUuid().equals(player.getUUID())
+                || claim.leaseeUuid() != null && claim.leaseeUuid().equals(player.getUUID())
+                || player.hasPermissions(2))) {
+            source.sendSuccess(() -> Component.literal("绉熺害淇濊瘉閲戯細" + deposit.amount()
+                    + " | 租户 " + deposit.tenantUuid().toString().substring(0, 8)), false);
         }
         return 1;
     }
