@@ -18,14 +18,27 @@ public final class LogisticsSavedData extends SavedData {
 
     public record Shipment(String id, UUID buyer, String itemId, int quantity, long deliveryTick,
                            String originRegion, String destinationRegion, TransportMode transport, boolean insured,
-                           int disruptionCount) {
+                           int disruptionCount, String supplyOrderId, String buyerCompanyId, long unitPrice) {
         public Shipment(String id, UUID buyer, String itemId, int quantity, long deliveryTick) {
-            this(id, buyer, itemId, quantity, deliveryTick, "unknown", "unknown", TransportMode.ROAD, false, 0);
+            this(id, buyer, itemId, quantity, deliveryTick, "unknown", "unknown", TransportMode.ROAD, false, 0, "", "", 0L);
         }
 
         public Shipment(String id, UUID buyer, String itemId, int quantity, long deliveryTick,
                         String originRegion, String destinationRegion, TransportMode transport, boolean insured) {
-            this(id, buyer, itemId, quantity, deliveryTick, originRegion, destinationRegion, transport, insured, 0);
+            this(id, buyer, itemId, quantity, deliveryTick, originRegion, destinationRegion, transport, insured, 0, "", "", 0L);
+        }
+
+        public Shipment(String id, UUID buyer, String itemId, int quantity, long deliveryTick,
+                        String originRegion, String destinationRegion, TransportMode transport, boolean insured,
+                        int disruptionCount) {
+            this(id, buyer, itemId, quantity, deliveryTick, originRegion, destinationRegion, transport, insured,
+                    disruptionCount, "", "", 0L);
+        }
+
+        public Shipment {
+            supplyOrderId = supplyOrderId == null ? "" : supplyOrderId;
+            buyerCompanyId = buyerCompanyId == null ? "" : buyerCompanyId;
+            unitPrice = Math.max(0L, unitPrice);
         }
     }
 
@@ -61,7 +74,8 @@ public final class LogisticsSavedData extends SavedData {
             if (shipment.id().equals(id) && shipment.buyer().equals(buyer) && !shipment.insured()) {
                 shipments.set(i, new Shipment(shipment.id(), shipment.buyer(), shipment.itemId(), shipment.quantity(),
                         shipment.deliveryTick(), shipment.originRegion(), shipment.destinationRegion(),
-                        shipment.transport(), true, shipment.disruptionCount()));
+                        shipment.transport(), true, shipment.disruptionCount(), shipment.supplyOrderId(),
+                        shipment.buyerCompanyId(), shipment.unitPrice()));
                 setDirty();
                 return true;
             }
@@ -94,6 +108,9 @@ public final class LogisticsSavedData extends SavedData {
             nbt.putString("transport", shipment.transport().id());
             nbt.putBoolean("insured", shipment.insured());
             nbt.putInt("disruptions", shipment.disruptionCount());
+            nbt.putString("supplyOrderId", shipment.supplyOrderId());
+            nbt.putString("buyerCompanyId", shipment.buyerCompanyId());
+            nbt.putLong("unitPrice", shipment.unitPrice());
             list.add(nbt);
         }
         tag.put("shipments", list);
@@ -110,7 +127,8 @@ public final class LogisticsSavedData extends SavedData {
                         nbt.getString("item"), nbt.getInt("quantity"), nbt.getLong("delivery"),
                         nbt.getString("originRegion"), nbt.getString("destinationRegion"),
                         TransportMode.parse(nbt.getString("transport")), nbt.getBoolean("insured"),
-                        Math.max(0, nbt.getInt("disruptions"))));
+                        Math.max(0, nbt.getInt("disruptions")), nbt.getString("supplyOrderId"),
+                        nbt.getString("buyerCompanyId"), Math.max(0L, nbt.getLong("unitPrice"))));
             }
         }
         return data;

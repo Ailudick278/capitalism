@@ -19,10 +19,14 @@ public final class LogisticsLossSavedData extends SavedData {
 
     public record Loss(String shipmentId, UUID buyer, String itemId, int quantity,
                        String originRegion, String destinationRegion, TransportMode transport,
-                       int disruptionCount, long lostAt, boolean acknowledged) {
+                       int disruptionCount, long lostAt, boolean acknowledged, String supplyOrderId,
+                       String buyerCompanyId, long unitPrice) {
         public Loss {
             disruptionCount = Math.max(0, disruptionCount);
             lostAt = Math.max(0L, lostAt);
+            supplyOrderId = supplyOrderId == null ? "" : supplyOrderId;
+            buyerCompanyId = buyerCompanyId == null ? "" : buyerCompanyId;
+            unitPrice = Math.max(0L, unitPrice);
         }
     }
 
@@ -62,7 +66,7 @@ public final class LogisticsLossSavedData extends SavedData {
             if (loss.buyer().equals(buyer) && !loss.acknowledged()) {
                 losses.set(i, new Loss(loss.shipmentId(), loss.buyer(), loss.itemId(), loss.quantity(),
                         loss.originRegion(), loss.destinationRegion(), loss.transport(), loss.disruptionCount(),
-                        loss.lostAt(), true));
+                        loss.lostAt(), true, loss.supplyOrderId(), loss.buyerCompanyId(), loss.unitPrice()));
                 changed = true;
             }
         }
@@ -86,6 +90,9 @@ public final class LogisticsLossSavedData extends SavedData {
             entry.putInt("disruptions", loss.disruptionCount());
             entry.putLong("lostAt", loss.lostAt());
             entry.putBoolean("acknowledged", loss.acknowledged());
+            entry.putString("supplyOrderId", loss.supplyOrderId());
+            entry.putString("buyerCompanyId", loss.buyerCompanyId());
+            entry.putLong("unitPrice", loss.unitPrice());
             list.add(entry);
         }
         tag.put("losses", list);
@@ -102,7 +109,9 @@ public final class LogisticsLossSavedData extends SavedData {
                 data.losses.add(new Loss(entry.getString("shipmentId"), entry.getUUID("buyer"),
                         entry.getString("item"), entry.getInt("quantity"), entry.getString("originRegion"),
                         entry.getString("destinationRegion"), TransportMode.parse(entry.getString("transport")),
-                        entry.getInt("disruptions"), entry.getLong("lostAt"), entry.getBoolean("acknowledged")));
+                        entry.getInt("disruptions"), entry.getLong("lostAt"), entry.getBoolean("acknowledged"),
+                        entry.getString("supplyOrderId"), entry.getString("buyerCompanyId"),
+                        Math.max(0L, entry.getLong("unitPrice"))));
             }
         }
         while (data.losses.size() > MAX_RECORDS) {

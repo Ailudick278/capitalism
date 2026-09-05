@@ -48,7 +48,8 @@ public final class LogisticsCommand {
             var loss = records.get(i);
             source.sendSuccess(() -> Component.literal(loss.itemId() + " x" + loss.quantity()
                     + " | " + loss.originRegion() + " -> " + loss.destinationRegion()
-                    + " | disruptions " + loss.disruptionCount()), false);
+                    + " | disruptions " + loss.disruptionCount()
+                    + (loss.supplyOrderId().isBlank() ? "" : " | order " + loss.supplyOrderId())), false);
         }
         if (records.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No lost cargo records."), false);

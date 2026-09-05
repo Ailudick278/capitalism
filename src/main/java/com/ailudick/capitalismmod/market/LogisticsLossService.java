@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.market;
 
+import com.ailudick.capitalismmod.company.CompanyHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,7 +14,17 @@ public final class LogisticsLossService {
         LogisticsLossSavedData data = LogisticsLossSavedData.get(server);
         data.add(new LogisticsLossSavedData.Loss(shipment.id(), shipment.buyer(), shipment.itemId(),
                 shipment.quantity(), shipment.originRegion(), shipment.destinationRegion(), shipment.transport(),
-                shipment.disruptionCount() + 1, server.overworld().getGameTime(), false));
+                shipment.disruptionCount() + 1, server.overworld().getGameTime(), false, shipment.supplyOrderId(),
+                shipment.buyerCompanyId(), shipment.unitPrice()));
+        if (!shipment.buyerCompanyId().isBlank() && shipment.unitPrice() > 0L) {
+            long loss;
+            try {
+                loss = Math.multiplyExact((long) shipment.quantity(), shipment.unitPrice());
+            } catch (ArithmeticException e) {
+                loss = Long.MAX_VALUE;
+            }
+            CompanyHelper.recordInventoryLoss(server, shipment.buyerCompanyId(), loss, shipment.id());
+        }
         ServerPlayer player = server.getPlayerList().getPlayer(shipment.buyer());
         if (player != null) {
             player.displayClientMessage(Component.literal("物流通知：货物 " + shipment.itemId() + " x"

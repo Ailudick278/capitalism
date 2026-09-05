@@ -179,6 +179,18 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Records a non-cash inventory impairment without charging the treasury again. */
+    public static boolean recordInventoryLoss(MinecraftServer server, String companyId, long amount, String shipmentId) {
+        if (server == null || companyId == null || companyId.isBlank() || amount <= 0L
+                || shipmentId == null || shipmentId.isBlank()) return false;
+        Company company = CompanySavedData.get(server).get(companyId);
+        if (company == null) return false;
+        CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(company.companyId(),
+                server.overworld().getGameTime(), "inventory_loss", Currencies.USD.id(), -amount,
+                company.treasuryOf(Currencies.USD.id()), "运输损失：shipment " + shipmentId));
+        return true;
+    }
+
     public static boolean exists(Player player, String name) {
         return getCompanies(player).containsKey(name);
     }

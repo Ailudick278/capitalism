@@ -15,7 +15,13 @@ import java.util.UUID;
  * @param remaining quantity still to be delivered
  */
 public record PurchaseOrder(String id, UUID buyerUuid, UUID supplierUuid, String companyName, String itemId, int remaining,
-                            String originRegion, String destinationRegion, long unitPrice, long createdAt) {
+                            String originRegion, String destinationRegion, long unitPrice, long createdAt,
+                            String buyerCompanyId) {
+    public PurchaseOrder(String id, UUID buyerUuid, UUID supplierUuid, String companyName, String itemId, int remaining,
+                         String originRegion, String destinationRegion, long unitPrice, long createdAt) {
+        this(id, buyerUuid, supplierUuid, companyName, itemId, remaining, originRegion, destinationRegion,
+                unitPrice, createdAt, "");
+    }
 
     public PurchaseOrder(String id, UUID buyerUuid, UUID supplierUuid, String companyName, String itemId, int remaining) {
         this(id, buyerUuid, supplierUuid, companyName, itemId, remaining, "unknown", "unknown", 0L, 0L);
@@ -38,7 +44,8 @@ public record PurchaseOrder(String id, UUID buyerUuid, UUID supplierUuid, String
             Codec.STRING.optionalFieldOf("originRegion", "unknown").forGetter(PurchaseOrder::originRegion),
             Codec.STRING.optionalFieldOf("destinationRegion", "unknown").forGetter(PurchaseOrder::destinationRegion),
             Codec.LONG.optionalFieldOf("unitPrice", 0L).forGetter(PurchaseOrder::unitPrice),
-            Codec.LONG.optionalFieldOf("createdAt", 0L).forGetter(PurchaseOrder::createdAt)
+            Codec.LONG.optionalFieldOf("createdAt", 0L).forGetter(PurchaseOrder::createdAt),
+            Codec.STRING.optionalFieldOf("buyerCompanyId", "").forGetter(PurchaseOrder::buyerCompanyId)
     ).apply(instance, PurchaseOrder::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, PurchaseOrder> STREAM_CODEC = StreamCodec.of(
@@ -53,6 +60,7 @@ public record PurchaseOrder(String id, UUID buyerUuid, UUID supplierUuid, String
                 ByteBufCodecs.STRING_UTF8.encode(buffer, order.destinationRegion());
                 ByteBufCodecs.VAR_LONG.encode(buffer, order.unitPrice());
                 ByteBufCodecs.VAR_LONG.encode(buffer, order.createdAt());
+                ByteBufCodecs.STRING_UTF8.encode(buffer, order.buyerCompanyId());
             },
             buffer -> new PurchaseOrder(
                     ByteBufCodecs.STRING_UTF8.decode(buffer),
@@ -64,10 +72,11 @@ public record PurchaseOrder(String id, UUID buyerUuid, UUID supplierUuid, String
                     ByteBufCodecs.STRING_UTF8.decode(buffer),
                     ByteBufCodecs.STRING_UTF8.decode(buffer),
                     ByteBufCodecs.VAR_LONG.decode(buffer),
-                    ByteBufCodecs.VAR_LONG.decode(buffer)));
+                    ByteBufCodecs.VAR_LONG.decode(buffer),
+                    ByteBufCodecs.STRING_UTF8.decode(buffer)));
 
     public PurchaseOrder withRemaining(int newRemaining) {
         return new PurchaseOrder(id, buyerUuid, supplierUuid, companyName, itemId, newRemaining,
-                originRegion, destinationRegion, unitPrice, createdAt);
+                originRegion, destinationRegion, unitPrice, createdAt, buyerCompanyId);
     }
 }

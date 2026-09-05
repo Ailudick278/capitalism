@@ -62,7 +62,8 @@ public final class LogisticsTickHandler {
                     data.replace(new LogisticsSavedData.Shipment(shipment.id(), shipment.buyer(), shipment.itemId(),
                             shipment.quantity(), now + Config.LOGISTICS_DISRUPTION_TICKS.get(), shipment.originRegion(),
                             shipment.destinationRegion(), shipment.transport(), false,
-                            shipment.disruptionCount() + 1));
+                            shipment.disruptionCount() + 1, shipment.supplyOrderId(), shipment.buyerCompanyId(),
+                            shipment.unitPrice()));
                 }
                 continue;
             }
