@@ -301,7 +301,8 @@ public final class CompanyHelper {
                 Currencies.USD.id(), cost, "production_expense", "生产周期劳动力、能源与设备维护成本")) {
             return false;
         }
-        if (!consumeInputs(server, company)) {
+        InputConsumption inputConsumption = consumeInputs(server, company);
+        if (!inputConsumption.success()) {
             return false;
         }
         if (serviceCycle) {
@@ -317,6 +318,9 @@ public final class CompanyHelper {
             }
         }
         produceOutputs(server, company);
+        long conversionCost = EconomyMath.add(inputConsumption.cost(), cost);
+        if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
+        addProducedInventoryCosts(server, company.companyId(), recipe.outputs(), conversionCost);
         CompanyEquipmentSavedData.get(server).use(company.companyId(), machine);
         return true;
     }
@@ -462,16 +466,19 @@ public final class CompanyHelper {
         return true;
     }
 
-    /** Consumes the company's inputs from the warehouse, recording demand. Returns false if any input is short. */
-    private static boolean consumeInputs(MinecraftServer server, Company company) {
+    private record InputConsumption(boolean success, long cost) {
+    }
+
+    /** Consumes the company's inputs from the warehouse and returns their cost. */
+    private static InputConsumption consumeInputs(MinecraftServer server, Company company) {
         if (server == null) {
-            return true;
+            return new InputConsumption(true, 0L);
         }
         Map<String, Integer> inputs = CompanyEconomy.inputs(company);
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
         com.ailudick.capitalismmod.market.InventoryOwner owner =
                 com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
-        if (!warehouse.consumeBatch(owner, inputs)) return false;
+        if (!warehouse.consumeBatch(owner, inputs)) return new InputConsumption(false, 0L);
         CommoditySavedData commodityData = CommoditySavedData.get(server);
         for (Map.Entry<String, Integer> input : inputs.entrySet()) {
             commodityData.addSupply(input.getKey(), -input.getValue());
@@ -483,7 +490,34 @@ public final class CompanyHelper {
                     "inventory_consumption:" + company.companyId() + ":" + occurredAt + ":" + UUID.randomUUID(),
                     inventoryCost, Currencies.USD.id(), occurredAt);
         }
-        return true;
+        return new InputConsumption(true, inventoryCost);
+    }
+
+    private static void addProducedInventoryCosts(MinecraftServer server, String companyId,
+                                                   Map<String, Integer> outputs, long totalCost) {
+        if (server == null || companyId == null || outputs == null || outputs.isEmpty() || totalCost <= 0L) return;
+        long totalQuantity = 0L;
+        int validOutputs = 0;
+        for (Map.Entry<String, Integer> output : outputs.entrySet()) {
+            if (output.getKey() != null && output.getValue() != null && output.getValue() > 0
+                    && parseItem(output.getKey()) != null) {
+                totalQuantity = EconomyMath.add(totalQuantity, output.getValue());
+                validOutputs++;
+            }
+        }
+        if (totalQuantity <= 0L || validOutputs <= 0) return;
+        long allocated = 0L;
+        int index = 0;
+        CompanyInventoryCostSavedData costs = CompanyInventoryCostSavedData.get(server);
+        for (Map.Entry<String, Integer> output : outputs.entrySet()) {
+            if (output.getKey() == null || output.getValue() == null || output.getValue() <= 0
+                    || parseItem(output.getKey()) == null) continue;
+            index++;
+            long share = index == validOutputs ? Math.max(0L, totalCost - allocated)
+                    : proportionalCost(totalCost, output.getValue(), totalQuantity);
+            allocated = EconomyMath.add(allocated, share);
+            costs.add(companyId, output.getKey(), output.getValue(), share);
+        }
     }
 
     /** Estimates the cost of consumed inventory without changing warehouse state. */
@@ -506,6 +540,16 @@ public final class CompanyHelper {
             if (total < 0L) return Long.MAX_VALUE;
         }
         return Math.max(0L, total);
+    }
+
+    private static long proportionalCost(long total, long quantity, long denominator) {
+        if (total <= 0L || quantity <= 0L || denominator <= 0L) return 0L;
+        if (total == Long.MAX_VALUE) return Long.MAX_VALUE;
+        long whole = total / denominator;
+        long remainder = total % denominator;
+        long result = EconomyMath.multiply(whole, quantity);
+        result = EconomyMath.add(result, EconomyMath.multiply(remainder, quantity) / denominator);
+        return result < 0L ? Long.MAX_VALUE : result;
     }
 
     private static void consumeInventoryCostLayers(MinecraftServer server, String companyId,
