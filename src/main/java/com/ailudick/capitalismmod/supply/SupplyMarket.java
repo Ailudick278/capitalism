@@ -155,7 +155,10 @@ public final class SupplyMarket {
                     buyer.getUUID(),
                     offer.ownerUuid(), offer.itemId(), filled, EconomyMath.multiply(offer.price(), filled));
         }
-        paySupplier(buyer.getServer(), offer, total, orderSource);
+        if (filled > 0) {
+            paySupplier(buyer.getServer(), offer.ownerUuid(), offer.companyName(),
+                    EconomyMath.multiply(offer.price(), filled), orderSource);
+        }
 
         int remaining = quantity - filled;
         if (remaining > 0) {
@@ -256,9 +259,14 @@ public final class SupplyMarket {
                     ? "DELIVERED" : "DISPATCHED";
             deliverOrShip(server, order.buyerUuid(), item, deliver, order.originRegion(), order.destinationRegion(),
                     order.id(), order.buyerCompanyId(), order.unitPrice(), order.supplierUuid());
+            int newRemaining = order.remaining() - deliver;
+            // Buyer funds for a backorder are held until this portion is
+            // dispatched. The undelivered remainder remains refundable.
+            paySupplier(server, order.supplierUuid(), order.companyName(),
+                    EconomyMath.multiply(order.unitPrice(), deliver),
+                    order.id() + ":delivery:" + newRemaining);
             SupplyOrderAuditService.record(server, order, deliveryType, deliver,
                     EconomyMath.multiply(order.unitPrice(), deliver));
-            int newRemaining = order.remaining() - deliver;
             if (newRemaining <= 0) {
                 SupplyOrderAuditService.record(server, order, "FULFILLED", deliver,
                         EconomyMath.multiply(order.unitPrice(), deliver));
@@ -271,17 +279,18 @@ public final class SupplyMarket {
         }
     }
 
-    private static void paySupplier(MinecraftServer server, SupplyOffer offer, long amount, String sourceId) {
+    private static void paySupplier(MinecraftServer server, UUID supplierUuid, String companyName,
+                                    long amount, String sourceId) {
+        if (server == null || supplierUuid == null || amount <= 0L) return;
         long now = server.overworld().getGameTime();
-        TaxTransactionService.assess(server, TaxType.VAT, offer.ownerUuid(), Currencies.USD.id(),
+        TaxTransactionService.assess(server, TaxType.VAT, supplierUuid, Currencies.USD.id(),
                 Money.toMinorSaturated(amount), "supply-sale:" + sourceId, now);
-        Company company = CompanyHelper.findCompany(server, offer.ownerUuid(), offer.companyName());
+        Company company = CompanyHelper.findCompany(server, supplierUuid, companyName);
         if (company != null && CompanyHelper.creditTreasury(server, company.companyId(), Currencies.USD.id(), amount)) {
             CompanyHelper.recordTaxableIncome(server, company, "supply_sale:" + sourceId,
                     amount, Currencies.USD.id(), now);
             return;
         }
-        UUID supplierUuid = offer.ownerUuid();
         ServerPlayer supplier = server.getPlayerList().getPlayer(supplierUuid);
         if (supplier != null) {
             EconomyHelper.giveMoney(supplier, Currencies.USD, Money.toMinor(amount));

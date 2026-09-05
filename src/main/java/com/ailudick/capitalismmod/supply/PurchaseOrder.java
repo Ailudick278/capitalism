@@ -10,7 +10,8 @@ import java.util.UUID;
 
 /**
  * A backorder: the buyer paid up front, but the supplier did not have enough stock,
- * so the remaining quantity is delivered as the supplier produces more.
+ * so the remaining quantity is delivered as the supplier produces more. Supplier
+ * proceeds for the remaining quantity stay pending until that quantity is delivered.
  *
  * @param remaining quantity still to be delivered
  */
