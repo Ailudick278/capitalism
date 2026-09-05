@@ -303,6 +303,7 @@ public final class CapitalismData {
                 new CommodityJson("capitalismmod:fan_control", 50),
                 new CommodityJson("capitalismmod:silicon_wafer", 160),
                 new CommodityJson("capitalismmod:circuit_board", 260),
+                new CommodityJson("capitalismmod:display_panel", 330),
                 new CommodityJson("capitalismmod:battery", 95),
                 new CommodityJson("capitalismmod:smartphone", 650),
                 new CommodityJson("capitalismmod:electric_fan", 240)
@@ -404,8 +405,9 @@ public final class CapitalismData {
                         new RecipeJson("fan_control", Map.of("capitalismmod:copper_wire", 1, "minecraft:redstone", 1, "minecraft:iron_ingot", 1), Map.of("capitalismmod:fan_control", 1), 95, "assembly_line", 2, 2, 6),
                         new RecipeJson("silicon_wafer", Map.of("minecraft:quartz", 2, "minecraft:coal", 1), Map.of("capitalismmod:silicon_wafer", 1), 180, "semiconductor_fab", 3, 8, 16),
                         new RecipeJson("circuit_board", Map.of("capitalismmod:silicon_wafer", 1, "capitalismmod:copper_wire", 2, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:circuit_board", 1), 260, "electronics_assembly", 3, 5, 10),
+                        new RecipeJson("display_panel", Map.of("minecraft:glass", 1, "capitalismmod:silicon_wafer", 1, "capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:display_panel", 1), 330, "electronics_assembly", 4, 7, 13),
                         new RecipeJson("battery", Map.of("minecraft:iron_ingot", 1, "minecraft:copper_ingot", 1, "minecraft:redstone", 1), Map.of("capitalismmod:battery", 1), 95, "electronics_assembly", 2, 3, 7),
-                        new RecipeJson("smartphone", Map.of("capitalismmod:circuit_board", 1, "capitalismmod:battery", 1, "capitalismmod:glass_lens", 1, "capitalismmod:plastic_pellets", 2), Map.of("capitalismmod:smartphone", 1), 650, "electronics_assembly", 4, 6, 12),
+                        new RecipeJson("smartphone", Map.of("capitalismmod:circuit_board", 1, "capitalismmod:battery", 1, "capitalismmod:display_panel", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:smartphone", 1), 650, "electronics_assembly", 4, 6, 12),
                         new RecipeJson("electric_fan", Map.of("capitalismmod:electric_motor", 1, "capitalismmod:fan_blades", 1, "capitalismmod:fan_control", 1, "capitalismmod:machine_frame", 1), Map.of("capitalismmod:electric_fan", 1), 240, "assembly_line", 3, 3, 9)),
                 new IndustryJson("utilities", Map.of("minecraft:coal", 1), Map.of(), 60),
                 new IndustryJson("construction", Map.of("minecraft:rail", 1), Map.of(), 50),

@@ -234,6 +234,8 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> CIRCUIT_BOARD = ITEMS.register("circuit_board",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DISPLAY_PANEL = ITEMS.register("display_panel",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY = ITEMS.register("battery",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> SMARTPHONE = ITEMS.register("smartphone",
