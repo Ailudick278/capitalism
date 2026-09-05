@@ -20,4 +20,11 @@ class PerpetualCalendarTest {
         assertEquals("07:00:00", PerpetualCalendar.timeAtMinecraftTicks(1_000).format());
         assertEquals("00:00:00", PerpetualCalendar.timeAtMinecraftTicks(18_000).format());
     }
+
+    @Test
+    void convertsPeriodsWithoutOverflow() {
+        assertEquals(48_000L, PerpetualCalendar.ticksForDays(2));
+        assertEquals(Long.MAX_VALUE, PerpetualCalendar.ticksForDays(Long.MAX_VALUE));
+        assertEquals(Long.MIN_VALUE, PerpetualCalendar.ticksForDays(Long.MIN_VALUE));
+    }
 }

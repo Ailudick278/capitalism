@@ -5,6 +5,8 @@
 - Perpetual-calendar dates now derive from monotonic `gameTime`, matching the time source used by economic settlement systems.
 - `/time set` can still change the visual Minecraft clock (`dayTime`) without changing the economic calendar date.
 - Added regression tests for Gregorian day mapping and Minecraft tick-to-clock conversion.
+- Calendar command day counters now use the same `gameTime` source as the displayed date.
+- Added a shared overflow-safe `ticksForDays` conversion utility for future economic periods.
 
 ## Design boundary
 

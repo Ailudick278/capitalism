@@ -12,8 +12,7 @@ import java.time.LocalDate;
 
 /** In-game access to the shared perpetual calendar layer. */
 public final class CalendarCommand {
-    private CalendarCommand() {
-    }
+    private CalendarCommand() {}
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         var root = Commands.literal("calendar");
@@ -40,8 +39,9 @@ public final class CalendarCommand {
     private static int today(CommandSourceStack source) {
         ServerLevel level = source.getServer().overworld();
         LocalDate date = PerpetualCalendar.dateAt(level);
+        long gameDay = PerpetualCalendar.minecraftDayAtTicks(level.getGameTime());
         source.sendSuccess(() -> Component.literal("游戏日期：" + PerpetualCalendar.format(date, PerpetualCalendar.timeAt(level))
-                + " | Minecraft第 " + Math.floorDiv(level.getDayTime(), PerpetualCalendar.TICKS_PER_DAY) + " 天"), false);
+                + " | Minecraft第 " + gameDay + " 天"), false);
         return 1;
     }
 

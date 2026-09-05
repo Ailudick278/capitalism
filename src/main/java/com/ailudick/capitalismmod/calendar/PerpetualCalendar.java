@@ -41,10 +41,23 @@ public final class PerpetualCalendar {
         return MINECRAFT_EPOCH.plusDays(minecraftDay);
     }
 
+    public static long minecraftDayAtTicks(long ticks) {
+        return Math.floorDiv(ticks, TICKS_PER_DAY);
+    }
+
+    /** Converts an economic period in game days to ticks with overflow protection. */
+    public static long ticksForDays(long days) {
+        try {
+            return Math.multiplyExact(days, TICKS_PER_DAY);
+        } catch (ArithmeticException exception) {
+            return days < 0L ? Long.MIN_VALUE : Long.MAX_VALUE;
+        }
+    }
+
     public static LocalDate dateAt(ServerLevel level) {
         // Economic periods use gameTime, which is monotonic and is not changed
         // by /time set. dayTime remains the visual in-world clock below.
-        return dateAtMinecraftDay(Math.floorDiv(level.getGameTime(), TICKS_PER_DAY));
+        return dateAtMinecraftDay(minecraftDayAtTicks(level.getGameTime()));
     }
 
     public static TimeOfDay timeAtMinecraftTicks(long ticks) {
@@ -60,7 +73,7 @@ public final class PerpetualCalendar {
     /** Formats a persisted Minecraft game-time value with the shared calendar. */
     public static String formatMinecraftTicks(long ticks) {
         if (ticks < 0L) return "未知时间";
-        long minecraftDay = Math.floorDiv(ticks, TICKS_PER_DAY);
+        long minecraftDay = minecraftDayAtTicks(ticks);
         return format(dateAtMinecraftDay(minecraftDay), timeAtMinecraftTicks(ticks));
     }
 
