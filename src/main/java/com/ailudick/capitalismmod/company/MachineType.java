@@ -5,8 +5,11 @@ public enum MachineType {
     NONE("none", 0L, 0L),
     FARM_PLOT("farm_plot", 250L, 1L),
     ORE_PROCESSOR("ore_processor", 500L, 2L),
+    GLASS_FURNACE("glass_furnace", 900L, 3L),
+    WIRE_MILL("wire_mill", 1100L, 3L),
     LATHE("lathe", 1200L, 4L),
     MILLING_MACHINE("milling_machine", 1500L, 5L),
+    FOOD_PROCESSOR("food_processor", 1000L, 3L),
     ROLLING_MILL("rolling_mill", 2200L, 6L),
     ASSEMBLY_LINE("assembly_line", 3000L, 8L);
 

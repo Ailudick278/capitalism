@@ -30,7 +30,7 @@ public final class CompanyEconomy {
         if (spec == null) {
             return 0L;
         }
-        return EconomyMath.multiply(spec.income(), company.level());
+        return EconomyMath.multiply(recipe(company).income(), company.level());
     }
 
     /** Cost (USD) to upgrade from {@code level} to {@code level + 1}: 1000 * level^2. */
@@ -47,14 +47,17 @@ public final class CompanyEconomy {
 
     /** Commodities produced per tick (item id -> count), scaled by level. */
     public static Map<String, Integer> outputs(Company company) {
-        IndustrySpec spec = Industries.byId(company.type());
-        return spec == null ? Map.of() : scale(spec.outputs(), company.level());
+        return scale(recipe(company).outputs(), company.level());
     }
 
     /** Commodities consumed per tick (item id -> count), scaled by level. */
     public static Map<String, Integer> inputs(Company company) {
-        IndustrySpec spec = Industries.byId(company.type());
-        return spec == null ? Map.of() : scale(spec.inputs(), company.level());
+        return scale(recipe(company).inputs(), company.level());
+    }
+
+    public static ProductionRecipe recipe(Company company) {
+        IndustrySpec spec = company == null ? null : Industries.byId(company.type());
+        return spec == null ? new ProductionRecipe("default", Map.of(), Map.of(), 0L) : spec.recipe(company.productionRecipe());
     }
 
     private static Map<String, Integer> scale(Map<String, Integer> perLevel, int level) {

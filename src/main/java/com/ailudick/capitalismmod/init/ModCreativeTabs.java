@@ -94,6 +94,10 @@ public class ModCreativeTabs {
                         output.accept(ModItems.PORT.get());
                         output.accept(ModItems.MAILBOX.get());
                         output.accept(ModItems.INDIVIDUAL_BUSINESS.get());
+                        output.accept(ModItems.STEEL_SHEET.get());
+                        output.accept(ModItems.COPPER_WIRE.get());
+                        output.accept(ModItems.GLASS_LENS.get());
+                        output.accept(ModItems.ELECTRIC_LAMP.get());
                     })
                     .build());
 }

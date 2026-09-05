@@ -192,4 +192,14 @@ public class ModItems {
     // Invoice (发票), issued on shop purchases and reserved for future tax workflows.
     public static final DeferredItem<Invoice> INVOICE = ITEMS.register("invoice",
             () -> new Invoice(new Item.Properties().stacksTo(64)));
+
+    // Industrial chain materials and consumer goods.
+    public static final DeferredItem<Item> STEEL_SHEET = ITEMS.register("steel_sheet",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> COPPER_WIRE = ITEMS.register("copper_wire",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> GLASS_LENS = ITEMS.register("glass_lens",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ELECTRIC_LAMP = ITEMS.register("electric_lamp",
+            () -> new Item(new Item.Properties().stacksTo(64)));
 }

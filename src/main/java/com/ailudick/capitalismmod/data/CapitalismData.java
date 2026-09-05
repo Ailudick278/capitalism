@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.data;
 
 import com.ailudick.capitalismmod.CapitalismMod;
 import com.ailudick.capitalismmod.company.IndustrySpec;
+import com.ailudick.capitalismmod.company.ProductionRecipe;
 import com.ailudick.capitalismmod.shop.ShopOffer;
 import com.ailudick.capitalismmod.stock.Stock;
 import com.google.gson.Gson;
@@ -127,11 +128,31 @@ public final class CapitalismData {
     }
 
     private static List<IndustrySpec> loadIndustries(Path dir) {
-        List<IndustryJson> raw = read(dir.resolve("industries.json"), IndustryJson[].class, defaultIndustries());
+        List<IndustryJson> defaults = defaultIndustries();
+        List<IndustryJson> raw = read(dir.resolve("industries.json"), IndustryJson[].class, defaults);
+        Map<String, IndustryJson> defaultById = new HashMap<>();
+        for (IndustryJson industry : defaults) defaultById.put(industry.id, industry);
         List<IndustrySpec> result = new ArrayList<>();
         for (IndustryJson j : raw) {
-            result.add(new IndustrySpec(j.id, j.inputs, j.outputs, j.income, j.machine_type,
-                    j.workers_per_cycle, j.energy_cost, j.maintenance_cost));
+            // Older configs predate selectable recipes. Add the maintained default
+            // chain only when the author has not supplied a recipe list.
+            IndustryJson maintained = defaultById.get(j.id);
+            if ((j.recipes == null || j.recipes.isEmpty()) && maintained != null) {
+                j.recipes = maintained.recipes;
+            }
+            List<ProductionRecipe> recipes = new ArrayList<>();
+            if (j.recipes != null) {
+                for (RecipeJson recipe : j.recipes) {
+                    recipes.add(new ProductionRecipe(recipe.id, recipe.inputs, recipe.outputs, recipe.income,
+                            recipe.machine_type, recipe.workers_per_cycle, recipe.energy_cost,
+                            recipe.maintenance_cost));
+                }
+            }
+            result.add(recipes.isEmpty()
+                    ? new IndustrySpec(j.id, j.inputs, j.outputs, j.income, j.machine_type,
+                    j.workers_per_cycle, j.energy_cost, j.maintenance_cost)
+                    : new IndustrySpec(j.id, j.inputs, j.outputs, j.income, j.machine_type,
+                    j.workers_per_cycle, j.energy_cost, j.maintenance_cost, recipes));
         }
         return result;
     }
@@ -254,9 +275,18 @@ public final class CapitalismData {
 
     private static List<IndustryJson> defaultIndustries() {
         return List.of(
-                new IndustryJson("mining", Map.of("minecraft:iron_ore", 1), Map.of("minecraft:iron_ingot", 1), 55, "ore_processor", 2, 1, 2),
+                withRecipes(new IndustryJson("mining", Map.of("minecraft:iron_ore", 1), Map.of("minecraft:iron_ingot", 1), 55, "ore_processor", 2, 1, 2),
+                        new RecipeJson("iron_ingot", Map.of("minecraft:iron_ore", 1), Map.of("minecraft:iron_ingot", 1), 55, "ore_processor", 2, 1, 2),
+                        new RecipeJson("copper_ingot", Map.of("minecraft:copper_ore", 1), Map.of("minecraft:copper_ingot", 1), 50, "ore_processor", 2, 1, 2),
+                        new RecipeJson("gold_ingot", Map.of("minecraft:gold_ore", 1), Map.of("minecraft:gold_ingot", 1), 65, "ore_processor", 2, 1, 2)),
                 new IndustryJson("agriculture", Map.of("minecraft:wheat_seeds", 1), Map.of("minecraft:wheat", 1), 35, "farm_plot", 1, 1, 1),
-                new IndustryJson("manufacturing", Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1), Map.of("minecraft:rail", 1), 80, "rolling_mill", 2, 2, 4),
+                withRecipes(new IndustryJson("manufacturing", Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1), Map.of("minecraft:rail", 1), 80, "rolling_mill", 2, 2, 4),
+                        new RecipeJson("rail", Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1), Map.of("minecraft:rail", 1), 80, "rolling_mill", 2, 2, 4),
+                        new RecipeJson("steel_sheet", Map.of("minecraft:iron_ingot", 1, "minecraft:coal", 1), Map.of("capitalismmod:steel_sheet", 1), 70, "rolling_mill", 2, 2, 4),
+                        new RecipeJson("copper_wire", Map.of("minecraft:copper_ingot", 1), Map.of("capitalismmod:copper_wire", 2), 65, "wire_mill", 2, 1, 3),
+                        new RecipeJson("glass", Map.of("minecraft:sand", 1, "minecraft:coal", 1), Map.of("minecraft:glass", 1), 40, "glass_furnace", 1, 2, 3),
+                        new RecipeJson("glass_lens", Map.of("minecraft:glass", 1), Map.of("capitalismmod:glass_lens", 1), 45, "glass_furnace", 1, 1, 3),
+                        new RecipeJson("electric_lamp", Map.of("capitalismmod:steel_sheet", 1, "capitalismmod:copper_wire", 1, "capitalismmod:glass_lens", 1), Map.of("capitalismmod:electric_lamp", 1), 120, "assembly_line", 3, 2, 8)),
                 new IndustryJson("utilities", Map.of("minecraft:coal", 1), Map.of(), 60),
                 new IndustryJson("construction", Map.of("minecraft:rail", 1), Map.of(), 50),
                 new IndustryJson("transport", Map.of("minecraft:coal", 1), Map.of(), 45),
@@ -277,6 +307,11 @@ public final class CapitalismData {
         );
     }
 
+    private static IndustryJson withRecipes(IndustryJson industry, RecipeJson... recipes) {
+        industry.recipes = List.of(recipes);
+        return industry;
+    }
+
     public static class IndustryJson {
         public String id = "mining";
         public Map<String, Integer> inputs = new HashMap<>();
@@ -286,6 +321,7 @@ public final class CapitalismData {
         public int workers_per_cycle = 0;
         public long energy_cost = 0L;
         public long maintenance_cost = 0L;
+        public List<RecipeJson> recipes = new ArrayList<>();
 
         public IndustryJson() {
         }
@@ -301,6 +337,32 @@ public final class CapitalismData {
         public IndustryJson(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, long income,
                             String machineType, int workers, long energy, long maintenance) {
             this(id, inputs, outputs, income);
+            this.machine_type = machineType;
+            this.workers_per_cycle = workers;
+            this.energy_cost = energy;
+            this.maintenance_cost = maintenance;
+        }
+    }
+
+    public static class RecipeJson {
+        public String id = "default";
+        public Map<String, Integer> inputs = new HashMap<>();
+        public Map<String, Integer> outputs = new HashMap<>();
+        public long income = 0L;
+        public String machine_type = "none";
+        public int workers_per_cycle = 0;
+        public long energy_cost = 0L;
+        public long maintenance_cost = 0L;
+
+        public RecipeJson() {
+        }
+
+        public RecipeJson(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, long income,
+                          String machineType, int workers, long energy, long maintenance) {
+            this.id = id;
+            this.inputs = new HashMap<>(inputs);
+            this.outputs = new HashMap<>(outputs);
+            this.income = income;
             this.machine_type = machineType;
             this.workers_per_cycle = workers;
             this.energy_cost = energy;

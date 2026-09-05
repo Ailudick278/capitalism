@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.company.CompanyTypes;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
 import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
+import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
@@ -74,6 +75,15 @@ public class CompanyCommand {
         root.then(Commands.literal("operations")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> operations(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("recipes")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> recipes(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("recipe")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("recipe", StringArgumentType.word())
+                                .executes(ctx -> selectRecipe(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"),
+                                        StringArgumentType.getString(ctx, "recipe"))))));
         root.then(Commands.literal("acquire")
                 .then(Commands.argument("seller", EntityArgument.player())
                         .then(Commands.argument("company", StringArgumentType.word())
@@ -243,6 +253,32 @@ public class CompanyCommand {
             source.sendSuccess(() -> Component.literal("Machine " + entry.machineType() + " x" + entry.count()
                     + " | condition " + entry.condition()), false);
         }
+        return 1;
+    }
+
+    private static int recipes(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        var spec = company == null ? null : Industries.byId(company.type());
+        if (spec == null) {
+            source.sendFailure(Component.literal("Company or industry recipes not found."));
+            return 0;
+        }
+        for (var recipe : spec.recipes()) {
+            source.sendSuccess(() -> Component.literal(recipe.id() + " | inputs " + recipe.inputs()
+                    + " -> outputs " + recipe.outputs() + " | machine " + recipe.machineType()
+                    + (recipe.id().equals(company.productionRecipe()) ? " [active]" : "")), false);
+        }
+        return spec.recipes().size();
+    }
+
+    private static int selectRecipe(CommandSourceStack source, String name, String recipe) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CompanyHelper.selectRecipe(player, name, recipe)) {
+            source.sendFailure(Component.literal("Recipe not found for this company."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Active production recipe: " + recipe), false);
         return 1;
     }
 

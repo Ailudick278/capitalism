@@ -327,5 +327,9 @@
   "block.capitalismmod.port": "Port",
   "block.capitalismmod.individual_business": "Sole Proprietor Service Desk",
   "key.capitalismmod.open_world_map": "Open World Map",
-  "painting.capitalismmod.portrait_businessman": "Businessman Portrait"
+  "painting.capitalismmod.portrait_businessman": "Businessman Portrait",
+  "item.capitalismmod.steel_sheet": "Steel Sheet",
+  "item.capitalismmod.copper_wire": "Copper Wire",
+  "item.capitalismmod.glass_lens": "Glass Lens",
+  "item.capitalismmod.electric_lamp": "Electric Lamp"
 }

@@ -214,12 +214,12 @@ public final class CompanyHelper {
                 || CompanyEconomy.outputs(company).isEmpty() || !canProduceOutputs(server, company)) {
             return false;
         }
-        IndustrySpec spec = Industries.byId(company.type());
-        if (spec == null) return false;
-        MachineType machine = MachineType.parse(spec.machineType());
+        ProductionRecipe recipe = CompanyEconomy.recipe(company);
+        if (recipe == null) return false;
+        MachineType machine = MachineType.parse(recipe.machineType());
         if (machine == null) return false;
         CompanyLaborSavedData labor = CompanyLaborSavedData.get(server);
-        if (spec.workersPerCycle() > 0 && labor.activeWorkers(company.companyId()) < spec.workersPerCycle()) {
+        if (recipe.workersPerCycle() > 0 && labor.activeWorkers(company.companyId()) < recipe.workersPerCycle()) {
             return false;
         }
         if (machine != MachineType.NONE
@@ -231,8 +231,8 @@ public final class CompanyHelper {
         long machineCost = machine == MachineType.NONE ? 0L : machine.maintenancePerCycle();
         long cost;
         try {
-            cost = Math.addExact(Math.addExact(wages, Math.max(0L, spec.energyCost())),
-                    Math.addExact(Math.max(0L, spec.maintenanceCost()), machineCost));
+            cost = Math.addExact(Math.addExact(wages, Math.max(0L, recipe.energyCost())),
+                    Math.addExact(Math.max(0L, recipe.maintenanceCost()), machineCost));
         } catch (ArithmeticException e) {
             return false;
         }
@@ -289,6 +289,15 @@ public final class CompanyHelper {
         if (!debitTreasury(server, company.companyId(), Currencies.USD.id(), cost,
                 "equipment_purchase", "购买生产设备 " + type.id() + " x" + count)) return false;
         CompanyEquipmentSavedData.get(server).install(company.companyId(), type, count);
+        return true;
+    }
+
+    public static boolean selectRecipe(Player player, String name, String recipeId) {
+        Company company = getCompany(player, name);
+        IndustrySpec spec = company == null ? null : Industries.byId(company.type());
+        if (company == null || spec == null || recipeId == null
+                || spec.recipes().stream().noneMatch(recipe -> recipe.id().equals(recipeId))) return false;
+        setCompany(player, name, company.withProductionRecipe(recipeId));
         return true;
     }
 
@@ -523,7 +532,7 @@ public final class CompanyHelper {
             treasury.merge(entry.getKey(), entry.getValue(), (a, b) -> EconomyMath.add(a, b));
         }
         Company merged = new Company(target.companyId(), player.getUUID(), target.name(), target.type(), level, treasury,
-                EconomyMath.add(target.taxOwed(), source.taxOwed()));
+                EconomyMath.add(target.taxOwed(), source.taxOwed()), target.productionRecipe());
         removeCompany(player, sourceName);
         putCompany(player, targetName, merged);
         return true;
