@@ -18,14 +18,20 @@ public final class CompanyLogisticsCostSavedData extends SavedData {
     private final List<CapitalizedCost> costs = new ArrayList<>();
 
     public record CapitalizedCost(String shipmentId, String companyId, String itemId,
-                                  int quantity, long estimatedCost, long appliedAt) {
+                                  int quantity, long estimatedCost, long appliedAt, boolean settled) {
+        public CapitalizedCost(String shipmentId, String companyId, String itemId,
+                               int quantity, long estimatedCost, long appliedAt) {
+            this(shipmentId, companyId, itemId, quantity, estimatedCost, appliedAt, false);
+        }
+
         private static final Codec<CapitalizedCost> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("shipmentId").forGetter(CapitalizedCost::shipmentId),
                 Codec.STRING.fieldOf("companyId").forGetter(CapitalizedCost::companyId),
                 Codec.STRING.fieldOf("itemId").forGetter(CapitalizedCost::itemId),
                 Codec.INT.fieldOf("quantity").forGetter(CapitalizedCost::quantity),
                 Codec.LONG.fieldOf("estimatedCost").forGetter(CapitalizedCost::estimatedCost),
-                Codec.LONG.fieldOf("appliedAt").forGetter(CapitalizedCost::appliedAt)
+                Codec.LONG.fieldOf("appliedAt").forGetter(CapitalizedCost::appliedAt),
+                Codec.BOOL.optionalFieldOf("settled", false).forGetter(CapitalizedCost::settled)
         ).apply(instance, CapitalizedCost::new));
     }
 
@@ -57,6 +63,20 @@ public final class CompanyLogisticsCostSavedData extends SavedData {
     public List<CapitalizedCost> forCompany(String companyId) {
         if (companyId == null || companyId.isBlank()) return List.of();
         return costs.stream().filter(cost -> companyId.equals(cost.companyId())).toList();
+    }
+
+    public long outstandingCost(String companyId) {
+        long total = 0L;
+        for (CapitalizedCost cost : forCompany(companyId)) {
+            if (!cost.settled()) {
+                try {
+                    total = Math.addExact(total, cost.estimatedCost());
+                } catch (ArithmeticException e) {
+                    return Long.MAX_VALUE;
+                }
+            }
+        }
+        return total;
     }
 
     @Override

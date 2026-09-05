@@ -21,11 +21,11 @@ import java.util.Map;
  */
 public record CompanyFinancialSnapshot(long cash, long inventory, long equipment,
                                        long assets, long taxLiabilities, long loanLiabilities, long payrollLiabilities,
-                                       long liabilities,
+                                       long freightPayables, long liabilities,
                                        long equity) {
     public static CompanyFinancialSnapshot from(MinecraftServer server, Company company) {
         if (server == null || company == null) {
-            return new CompanyFinancialSnapshot(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+            return new CompanyFinancialSnapshot(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
         }
         long cash = Math.max(0L, company.treasuryOf("usd"));
         CommoditySavedData market = CommoditySavedData.get(server);
@@ -65,9 +65,11 @@ public record CompanyFinancialSnapshot(long cash, long inventory, long equipment
             loanLiabilities = add(loanLiabilities, loan.interestDue());
         }
         long payrollLiabilities = CompanyPayrollSavedData.get(server).unpaid(company.companyId());
-        long liabilities = add(add(taxLiabilities, loanLiabilities), payrollLiabilities);
+        long freightPayables = CompanyLogisticsCostSavedData.get(server).outstandingCost(company.companyId());
+        long liabilities = add(add(add(taxLiabilities, loanLiabilities), payrollLiabilities), freightPayables);
         return new CompanyFinancialSnapshot(cash, inventory, equipment, assets,
-                taxLiabilities, loanLiabilities, payrollLiabilities, liabilities, assets - liabilities);
+                taxLiabilities, loanLiabilities, payrollLiabilities, freightPayables,
+                liabilities, assets - liabilities);
     }
 
     private static long add(long left, long right) {

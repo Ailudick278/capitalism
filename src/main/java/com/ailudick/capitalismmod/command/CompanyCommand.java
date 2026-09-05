@@ -393,7 +393,7 @@ public class CompanyCommand {
                 + ", equipment " + statement.equipment() + ")"), false);
         source.sendSuccess(() -> Component.literal("Liabilities: USD " + statement.liabilities()
                 + " (tax " + statement.taxLiabilities() + ", loans " + statement.loanLiabilities()
-                + ", payroll " + statement.payrollLiabilities()
+                + ", payroll " + statement.payrollLiabilities() + ", freight payable " + statement.freightPayables()
                 + "), equity: USD " + statement.equity()), false);
         return 1;
     }
@@ -524,6 +524,8 @@ public class CompanyCommand {
         var capitalized = CompanyLogisticsCostSavedData.get(player.getServer()).forCompany(company.companyId());
         source.sendSuccess(() -> Component.literal("Capitalized inbound freight records: "
                 + capitalized.size()), false);
+        source.sendSuccess(() -> Component.literal("Outstanding freight payable USD "
+                + CompanyLogisticsCostSavedData.get(player.getServer()).outstandingCost(company.companyId())), false);
         int capitalizedStart = Math.max(0, capitalized.size() - 20);
         for (int i = capitalizedStart; i < capitalized.size(); i++) {
             var cost = capitalized.get(i);
