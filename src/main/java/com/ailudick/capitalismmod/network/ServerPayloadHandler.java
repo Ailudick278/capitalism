@@ -334,6 +334,10 @@ public class ServerPayloadHandler {
             TaxBill bill = ledger.get(payload.billId());
             boolean success = false;
             if (bill != null && bill.subject().taxpayerUuid().equals(player.getUUID())) {
+                if (bill.subject().type() == TaxType.LAND && !bill.declared()) {
+                    TaxService.declare(player, bill.id());
+                    bill = ledger.get(bill.id());
+                }
                 if (bill.subject().type() == TaxType.CORPORATE_INCOME) {
                     Company company = CompanySavedData.get(player.getServer()).get(bill.subject().subjectId());
                     success = company != null && TaxService.payFromCompany(player.getServer(), company,
