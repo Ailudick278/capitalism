@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.auction;
 
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
+import com.ailudick.capitalismmod.CapitalismMod;
 import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
@@ -33,7 +34,14 @@ public final class AuctionMarket {
         if (!WarehouseSavedData.get(player.getServer()).consume(player.getUUID(), item, quantity)) {
             return false;
         }
-        long endTick = player.getServer().getTickCount() + (long) durationSeconds * 20L;
+        long durationTicks;
+        long endTick;
+        try {
+            durationTicks = Math.multiplyExact((long) durationSeconds, 20L);
+            endTick = Math.addExact(player.getServer().overworld().getGameTime(), durationTicks);
+        } catch (ArithmeticException exception) {
+            return false;
+        }
         AuctionSavedData.get(player.getServer()).addAuction(new Auction(
                 UUID.randomUUID().toString(), player.getUUID(), itemId, quantity, startingPrice, 0L, "", endTick));
         return true;
@@ -43,23 +51,36 @@ public final class AuctionMarket {
     public static boolean bid(ServerPlayer player, String auctionId, long amount) {
         AuctionSavedData data = AuctionSavedData.get(player.getServer());
         Auction auction = data.findAuction(auctionId);
-        if (auction == null || auction.endTick() <= player.getServer().getTickCount()
+        if (auction == null || auction.endTick() <= player.getServer().overworld().getGameTime()
                 || auction.seller().equals(player.getUUID())) {
             return false;
         }
         if (amount < auction.startingPrice() || amount <= auction.currentBid()) {
             return false;
         }
-        if (!EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(amount))) {
+        long bidMinor = Money.toMinor(amount);
+        if (bidMinor <= 0L || !EconomyHelper.tryPay(player, Currencies.USD, bidMinor)) {
             return false;
         }
         if (!auction.currentBidder().isEmpty()) {
-            UUID prevBidder = UUID.fromString(auction.currentBidder());
+            UUID prevBidder;
+            try {
+                prevBidder = UUID.fromString(auction.currentBidder());
+            } catch (IllegalArgumentException exception) {
+                // Do not accept a new bid while an inconsistent escrow owner needs repair.
+                EconomyHelper.giveMoney(player, Currencies.USD, bidMinor);
+                return false;
+            }
+            long previousBidMinor = Money.toMinor(auction.currentBid());
+            if (previousBidMinor <= 0L) {
+                EconomyHelper.giveMoney(player, Currencies.USD, bidMinor);
+                return false;
+            }
             ServerPlayer prev = player.getServer().getPlayerList().getPlayer(prevBidder);
             if (prev != null) {
-                EconomyHelper.giveMoney(prev, Currencies.USD, Money.toMinor(auction.currentBid()));
+                EconomyHelper.giveMoney(prev, Currencies.USD, previousBidMinor);
             } else {
-                MarketMailboxSavedData.get(player.getServer()).creditMoney(prevBidder, "usd", Money.toMinor(auction.currentBid()));
+                MarketMailboxSavedData.get(player.getServer()).creditMoney(prevBidder, "usd", previousBidMinor);
             }
         }
         data.replaceAuction(auction.withBid(amount, player.getStringUUID()));
@@ -69,26 +90,41 @@ public final class AuctionMarket {
     /** Settles all auctions whose end time has passed. */
     public static void settleExpired(MinecraftServer server) {
         AuctionSavedData data = AuctionSavedData.get(server);
-        long now = server.getTickCount();
+        long now = server.overworld().getGameTime();
         for (Auction auction : new ArrayList<>(data.auctions())) {
             if (auction.endTick() > now) {
                 continue;
             }
             Item item = Commodities.byId(auction.itemId()) == null ? null : Commodities.byId(auction.itemId()).getItem();
             if (item == null) {
-                data.removeAuction(auction.id());
+                CapitalismMod.LOGGER.warn("Keeping auction {} active because item {} no longer resolves; use /marketrepair.",
+                        auction.id(), auction.itemId());
                 continue;
             }
             WarehouseSavedData warehouse = WarehouseSavedData.get(server);
             if (auction.currentBidder().isEmpty()) {
                 warehouse.credit(auction.seller(), item, auction.quantity());
             } else {
-                warehouse.credit(UUID.fromString(auction.currentBidder()), item, auction.quantity());
+                UUID winner;
+                try {
+                    winner = UUID.fromString(auction.currentBidder());
+                } catch (IllegalArgumentException exception) {
+                    CapitalismMod.LOGGER.warn("Keeping auction {} active because bidder {} is invalid; use /marketrepair.",
+                            auction.id(), auction.currentBidder());
+                    continue;
+                }
+                long bidMinor = Money.toMinor(auction.currentBid());
+                if (bidMinor <= 0L) {
+                    CapitalismMod.LOGGER.warn("Keeping auction {} active because bid {} is invalid; use /marketrepair.",
+                            auction.id(), auction.currentBid());
+                    continue;
+                }
+                warehouse.credit(winner, item, auction.quantity());
                 ServerPlayer seller = server.getPlayerList().getPlayer(auction.seller());
                 if (seller != null) {
-                    EconomyHelper.giveMoney(seller, Currencies.USD, Money.toMinor(auction.currentBid()));
+                    EconomyHelper.giveMoney(seller, Currencies.USD, bidMinor);
                 } else {
-                    MarketMailboxSavedData.get(server).creditMoney(auction.seller(), "usd", Money.toMinor(auction.currentBid()));
+                    MarketMailboxSavedData.get(server).creditMoney(auction.seller(), "usd", bidMinor);
                 }
                 TaxTransactionService.assess(server, TaxType.VAT, auction.seller(), Currencies.USD.id(),
                         Money.toMinorSaturated(auction.currentBid()), "auction-sale:" + auction.id(),
