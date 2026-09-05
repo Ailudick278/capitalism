@@ -90,11 +90,48 @@ public final class TaxService {
     }
 
     public static boolean pay(ServerPlayer player, TaxSubject subject, long amount) {
+        if (player == null || subject == null || amount <= 0L) return false;
         TaxLedgerSavedData ledger = TaxLedgerSavedData.get(player.getServer());
-        TaxBill bill = ledger.bills().stream()
+        TaxBill first = ledger.bills().stream()
                 .filter(entry -> entry.subject().equals(subject) && !entry.paid())
                 .findFirst().orElse(null);
-        return bill != null && pay(player, bill.id(), amount);
+        if (first == null || !first.declared() || !Currencies.exists(first.currencyId())) return false;
+
+        // A subject-level payment is denominated in the first outstanding
+        // bill's currency. This prevents an ambiguous cross-currency payment
+        // from silently consuming a different currency's liability.
+        String currencyId = first.currencyId();
+        List<TaxBill> payable = new java.util.ArrayList<>();
+        long remaining = amount;
+        for (TaxBill candidate : ledger.bills()) {
+            if (remaining <= 0L) break;
+            if (!candidate.subject().equals(subject) || candidate.paid()
+                    || !candidate.declared() || !currencyId.equals(candidate.currencyId())) continue;
+            TaxBill updated = updateLateFee(player.getServer(), candidate,
+                    player.getServer().overworld().getGameTime());
+            long payment = Math.min(remaining, updated.outstanding());
+            if (payment <= 0L) continue;
+            payable.add(updated);
+            remaining -= payment;
+        }
+        if (payable.isEmpty()) return false;
+        long requested = amount - remaining;
+        if (EconomyHelper.getBalance(player, Currencies.byId(currencyId)) < requested) return false;
+
+        long left = requested;
+        for (TaxBill bill : payable) {
+            long payment = Math.min(left, bill.outstanding());
+            if (payment <= 0L || !EconomyHelper.tryPay(player, Currencies.byId(currencyId), payment)) {
+                return false;
+            }
+            TaxBill paidBill = bill.withPayment(payment);
+            ledger.replace(paidBill);
+            ledger.addPayment(new TaxPayment(UUID.randomUUID().toString(), bill.id(), player.getUUID(),
+                    bill.currencyId(), payment, player.getServer().overworld().getGameTime()));
+            if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(player.getServer(), paidBill));
+            left -= payment;
+        }
+        return left == 0L;
     }
 
     public static boolean pay(ServerPlayer player, String billId, long amount) {
