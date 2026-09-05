@@ -181,6 +181,36 @@ public final class CompanyHelper {
         return true;
     }
 
+    /**
+     * Removes the cost basis of goods sold from the company's inventory ledger.
+     *
+     * <p>This is a non-cash accounting event: the goods have already left the
+     * warehouse, so the treasury must not be charged again. Tracked weighted
+     * average cost layers are consumed first; legacy stock without a layer uses
+     * the current commodity price as a conservative fallback.</n+     */
+    public static long recordInventorySale(MinecraftServer server, String companyId,
+                                           String itemId, int quantity, String sourceId) {
+        if (server == null || companyId == null || companyId.isBlank()
+                || itemId == null || itemId.isBlank() || quantity <= 0
+                || sourceId == null || sourceId.isBlank() || parseItem(itemId) == null) {
+            return 0L;
+        }
+        Company company = CompanySavedData.get(server).get(companyId);
+        if (company == null) return 0L;
+
+        CompanyInventoryCostSavedData.Consumption tracked =
+                CompanyInventoryCostSavedData.get(server).consume(companyId, itemId, quantity);
+        int untracked = quantity - tracked.quantity();
+        long fallback = untracked <= 0 ? 0L
+                : EconomyMath.multiply(Math.max(0L, CommoditySavedData.get(server).price(itemId)), untracked);
+        long cost = EconomyMath.add(tracked.cost(), fallback);
+        if (cost <= 0L) return 0L;
+
+        recordTaxableExpense(server, company, "inventory_cogs:" + sourceId,
+                cost, Currencies.USD.id(), server.overworld().getGameTime());
+        return cost;
+    }
+
     /** Records a non-cash inventory impairment without charging the treasury again. */
     public static boolean recordInventoryLoss(MinecraftServer server, String companyId, long amount, String shipmentId) {
         if (server == null || companyId == null || companyId.isBlank() || amount <= 0L

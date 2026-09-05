@@ -148,6 +148,10 @@ public final class SupplyMarket {
         int filled = Math.min(quantity, stock);
         if (filled > 0) {
             warehouse.consume(supplierOwner, item, filled);
+            if (supplierCompany != null) {
+                CompanyHelper.recordInventorySale(buyer.getServer(), supplierCompany.companyId(),
+                        offer.itemId(), filled, orderSource);
+            }
             String destination = TradeRegion.of(buyer.blockPosition());
             deliverOrShip(buyer.getServer(), buyer.getUUID(), item, filled, offer.region(),
                     destination, supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid());
@@ -260,6 +264,10 @@ public final class SupplyMarket {
                 continue;
             }
             warehouse.consume(resolvedOwner, item, deliver);
+            if (supplierCompany != null) {
+                CompanyHelper.recordInventorySale(server, supplierCompany.companyId(),
+                        order.itemId(), deliver, order.id() + ":delivery:" + order.remaining());
+            }
             String deliveryType = TradeRegion.distance(order.originRegion(), order.destinationRegion()) == 0
                     ? "DELIVERED" : "DISPATCHED";
             deliverOrShip(server, order.buyerUuid(), item, deliver, order.originRegion(), order.destinationRegion(),
