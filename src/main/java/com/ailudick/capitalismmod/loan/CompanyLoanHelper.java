@@ -76,4 +76,15 @@ public final class CompanyLoanHelper {
         }
         return true;
     }
+
+    /** Pays the current equal-payment estimate for a company loan. */
+    public static boolean repayScheduled(Player player, String companyName, String loanId) {
+        MinecraftServer server = player.getServer();
+        Company company = CompanyHelper.getCompany(player, companyName);
+        if (server == null || company == null) return false;
+        CompanyLoan loan = CompanyLoanSavedData.get(server).find(loanId);
+        if (loan == null || !loan.companyId().equals(company.companyId())) return false;
+        long scheduled = loan.scheduledPayment();
+        return scheduled > 0L && repay(player, companyName, loanId, scheduled);
+    }
 }

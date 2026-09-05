@@ -52,6 +52,18 @@ public record CompanyLoan(String id, String companyId, String currencyId, long p
         return accrued > interestPaid ? accrued - interestPaid : 0L;
     }
 
+    /** Equal-payment estimate for the remaining term; overdue loans are immediately due. */
+    public long scheduledPayment() {
+        long total;
+        try {
+            total = Math.addExact(Math.max(0L, principal), interestDue());
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
+        }
+        long periods = Math.max(1L, daysRemaining);
+        return total / periods + (total % periods == 0L ? 0L : 1L);
+    }
+
     public boolean isOverdue() {
         return daysRemaining < 0;
     }

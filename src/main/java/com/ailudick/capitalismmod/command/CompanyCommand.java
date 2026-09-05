@@ -81,6 +81,12 @@ public class CompanyCommand {
                                                 StringArgumentType.getString(ctx, "name"),
                                                 StringArgumentType.getString(ctx, "currency"),
                                         LongArgumentType.getLong(ctx, "amount")))))));
+        root.then(Commands.literal("repayinstallment")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("loanId", StringArgumentType.word())
+                                .executes(ctx -> repayInstallment(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"),
+                                        StringArgumentType.getString(ctx, "loanId"))))));
         root.then(Commands.literal("ledger")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> ledger(ctx.getSource(),
@@ -259,11 +265,22 @@ public class CompanyCommand {
         for (CompanyLoan loan : CompanyLoanSavedData.get(player.getServer()).forCompany(company.companyId())) {
             source.sendSuccess(() -> Component.literal(loan.id().substring(0, Math.min(8, loan.id().length()))
                     + " principal USD " + loan.principal() + " interest due USD " + loan.interestDue()
-                    + " days " + loan.daysRemaining()), false);
+                    + " installment USD " + loan.scheduledPayment() + " days " + loan.daysRemaining()), false);
             count++;
         }
         if (count == 0) source.sendSuccess(() -> Component.literal("No company loans."), false);
         return count;
+    }
+
+    private static int repayInstallment(CommandSourceStack source, String name, String loanId)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CompanyLoanHelper.repayScheduled(player, name, loanId)) {
+            source.sendFailure(Component.literal("Scheduled company-loan payment failed: insufficient cash or invalid loan."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Scheduled company-loan payment completed."), false);
+        return 1;
     }
 
     private static int dividend(CommandSourceStack source, String name, long amountPerShare)

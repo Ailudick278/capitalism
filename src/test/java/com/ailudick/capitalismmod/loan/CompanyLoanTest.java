@@ -29,4 +29,20 @@ class CompanyLoanTest {
         assertEquals(2000, reduced.principal());
         assertEquals(200, reduced.interestDue());
     }
+
+    @Test
+    void calculatesEqualPaymentForRemainingTerm() {
+        CompanyLoan loan = new CompanyLoan("id", "company", "usd", 3650,
+                0.10, 365, 365, 0);
+
+        assertEquals(10, loan.scheduledPayment());
+    }
+
+    @Test
+    void overdueLoanIsImmediatelyDue() {
+        CompanyLoan loan = new CompanyLoan("id", "company", "usd", 3650,
+                0.10, 365, -1, 0);
+
+        assertEquals(4382, loan.scheduledPayment());
+    }
 }
