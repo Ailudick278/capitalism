@@ -11,6 +11,8 @@ import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
 import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
 import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
+import com.ailudick.capitalismmod.company.CompanySiteSavedData;
+import com.ailudick.capitalismmod.company.OilFieldSavedData;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
 import com.ailudick.capitalismmod.loan.CompanyLoanHelper;
@@ -31,6 +33,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.ChunkPos;
 
 import java.util.Map;
 
@@ -38,6 +41,9 @@ public class CompanyCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         var root = Commands.literal("company");
         root.then(Commands.literal("list").executes(ctx -> list(ctx.getSource())));
+        root.then(Commands.literal("site")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> registerSite(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("status")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> status(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -229,6 +235,30 @@ public class CompanyCommand {
                     company.treasuryOf("usd"), Component.translatable(Currencies.USD.nameKey())));
         }
         return companies.size();
+    }
+
+    private static int registerSite(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null || player.getServer() == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        ChunkPos chunk = new ChunkPos(player.blockPosition());
+        String dimension = player.level().dimension().location().toString();
+        CompanySiteSavedData.get(player.getServer()).set(new CompanySiteSavedData.Site(
+                company.companyId(), dimension, chunk.x, chunk.z));
+        OilFieldSavedData.Field field = OilFieldSavedData.get(player.getServer()).prospect(
+                dimension, chunk.x, chunk.z);
+        if (field == null) {
+            source.sendSuccess(() -> Component.literal("Operating site registered at " + dimension
+                    + " chunk " + chunk.x + ", " + chunk.z + "; no oil field detected."), false);
+        } else {
+            source.sendSuccess(() -> Component.literal("Operating site registered at " + dimension
+                    + " chunk " + chunk.x + ", " + chunk.z + "; oil reserve remaining: "
+                    + field.remainingReserve()), false);
+        }
+        return 1;
     }
 
     private static int contribute(CommandSourceStack source, String name, long amount) throws CommandSyntaxException {

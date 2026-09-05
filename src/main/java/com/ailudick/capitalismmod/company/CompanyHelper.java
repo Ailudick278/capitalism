@@ -279,6 +279,11 @@ public final class CompanyHelper {
         player.setData(ModAttachments.CONGLOMERATE, new Conglomerate(conglomerate.name(), updated));
         if (player.getServer() != null) {
             CompanySavedData.get(player.getServer()).put(company);
+            net.minecraft.world.level.ChunkPos chunk = new net.minecraft.world.level.ChunkPos(player.blockPosition());
+            CompanySiteSavedData.get(player.getServer()).set(new CompanySiteSavedData.Site(company.companyId(),
+                    player.level().dimension().location().toString(), chunk.x, chunk.z));
+            OilFieldSavedData.get(player.getServer()).prospect(player.level().dimension().location().toString(),
+                    chunk.x, chunk.z);
         }
         return true;
     }
@@ -330,6 +335,13 @@ public final class CompanyHelper {
         }
         MachineType machine = MachineType.parse(recipe.machineType());
         if (machine == null) return false;
+        OilFieldSavedData.Field oilField = null;
+        if (machine == MachineType.OIL_WELL) {
+            CompanySiteSavedData.Site site = CompanySiteSavedData.get(server).get(company.companyId());
+            if (site == null) return false;
+            oilField = OilFieldSavedData.get(server).get(site.dimension(), site.chunkX(), site.chunkZ());
+            if (!OilFieldSavedData.get(server).canExtract(oilField, 3L)) return false;
+        }
         CompanyLaborSavedData labor = CompanyLaborSavedData.get(server);
         if (recipe.workersPerCycle() > 0 && labor.activeWorkers(company.companyId()) < recipe.workersPerCycle()) {
             return false;
@@ -375,6 +387,7 @@ public final class CompanyHelper {
         long conversionCost = EconomyMath.add(inputConsumption.cost(), cost);
         conversionCost = EconomyMath.add(Math.max(0L, conversionCost), equipmentDepreciation);
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
+        if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return false;
         produceOutputs(server, company, conversionCost);
         if (equipmentDepreciation > 0L) {
             Company current = CompanySavedData.get(server).get(company.companyId());
@@ -925,6 +938,7 @@ public final class CompanyHelper {
             CompanyInventoryCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyLoanSavedData.get(server).transferCompany(source.companyId(), target.companyId());
+            CompanySiteSavedData.get(server).remove(source.companyId());
         }
         Map<String, Long> treasury = new HashMap<>(target.treasury());
         for (Map.Entry<String, Long> entry : source.treasury().entrySet()) {
