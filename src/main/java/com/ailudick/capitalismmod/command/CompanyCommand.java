@@ -689,8 +689,16 @@ public class CompanyCommand {
                 CompanyLogisticsCostSavedData.get(source.getServer()).forCompany(buyer.companyId()).stream()
                         .filter(cost -> shipmentId.equals(cost.shipmentId()) && !cost.settled())
                         .findFirst().orElse(null);
-        if (payable == null || payable.estimatedCost() != quotedCost) {
-            source.sendFailure(Component.literal("Quoted cost must match the outstanding estimated freight payable."));
+        LogisticsCostSavedData.FuelPlan plan = LogisticsCostSavedData.get(source.getServer()).find(shipmentId);
+        if (plan != null && plan.buyerCompanyId() != null && !plan.buyerCompanyId().isBlank()
+                && !buyer.companyId().equals(plan.buyerCompanyId())) {
+            source.sendFailure(Component.literal("Shipment belongs to a different buyer company."));
+            return 0;
+        }
+        long expectedCost = payable != null ? payable.estimatedCost()
+                : plan == null ? -1L : plan.estimatedCost();
+        if (expectedCost <= 0L || expectedCost != quotedCost) {
+            source.sendFailure(Component.literal("Quoted cost must match the shipment's estimated freight cost."));
             return 0;
         }
         CompanyFreightContractSavedData data = CompanyFreightContractSavedData.get(source.getServer());
