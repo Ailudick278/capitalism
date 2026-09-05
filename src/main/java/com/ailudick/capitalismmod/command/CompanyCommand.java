@@ -380,7 +380,8 @@ public class CompanyCommand {
                 + ", total labor cost USD " + metrics.dailyLaborCost() + ", machines "
                 + metrics.machineUnits() + ", parallel capacity " + metrics.parallelCapacity()), false);
         source.sendSuccess(() -> Component.literal("Production: successful " + metrics.successfulBatches()
-                + ", failed cycles " + metrics.failedCycles() + ", assets USD " + metrics.assets()
+                + ", failed cycles " + metrics.failedCycles() + ", operational success "
+                + metrics.productionSuccessPercent() + "% (not product quality), assets USD " + metrics.assets()
                 + ", equity USD " + metrics.equity()), false);
         return 1;
     }

@@ -31,6 +31,23 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
         }
     }
 
+    /**
+     * Percentage of recorded production cycles that completed at least one
+     * batch. This is an operational availability ratio, not a product-quality
+     * yield: a failed cycle may mean missing labor, inputs, funds, or equipment.
+     */
+    public int productionSuccessPercent() {
+        long success = Math.max(0L, successfulBatches);
+        long failed = Math.max(0L, failedCycles);
+        if (success == 0L && failed == 0L) return 0;
+        if (success == Long.MAX_VALUE || failed == Long.MAX_VALUE) {
+            return success == Long.MAX_VALUE && failed != Long.MAX_VALUE ? 100 : 0;
+        }
+        long total = success + failed;
+        if (total <= 0L) return 0;
+        return (int) Math.min(100L, Math.round((double) success * 100.0D / (double) total));
+    }
+
     public static CompanyOperatingSnapshot from(MinecraftServer server, Company company, long lookbackDays) {
         long days = Math.max(1L, Math.min(360L, lookbackDays));
         if (server == null || company == null) {
