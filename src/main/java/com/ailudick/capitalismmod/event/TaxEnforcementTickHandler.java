@@ -7,6 +7,8 @@ import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Keeps the tax system authoritative on the server instead of relying on a
@@ -29,6 +31,13 @@ public final class TaxEnforcementTickHandler {
             if (bill.paid()) continue;
             var updated = TaxService.updateLateFee(server, bill, now);
             TaxService.processEnforcement(server, updated, now);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            com.ailudick.capitalismmod.tax.TaxNotificationService.deliver(player);
         }
     }
 }

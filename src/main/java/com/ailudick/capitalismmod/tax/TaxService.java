@@ -138,12 +138,10 @@ public final class TaxService {
         if (!enforcement.shouldNotify(bill.id(), now)) return;
         enforcement.recordNotice(bill.id(), now);
         NeoForge.EVENT_BUS.post(new TaxDelinquentEvent(server, bill, now));
-        ServerPlayer player = server.getPlayerList().getPlayer(bill.subject().taxpayerUuid());
-        if (player != null) {
-            player.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                    "Tax delinquent: " + bill.currencyId().toUpperCase() + " "
-                            + Money.format(bill.outstanding()) + ". Please pay immediately."), true);
-        }
+        TaxNotificationService.notify(server, bill.subject().taxpayerUuid(),
+                "delinquent:" + bill.id() + ":" + now,
+                "Tax delinquent: " + bill.currencyId().toUpperCase() + " "
+                        + Money.format(bill.outstanding()) + ". Please pay immediately.");
     }
 
     /** Assesses income tax in one place; revenue is expressed in major currency units. */
