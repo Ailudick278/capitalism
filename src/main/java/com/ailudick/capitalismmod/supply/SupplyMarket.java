@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.supply;
 
 import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyEconomy;
 import com.ailudick.capitalismmod.company.CompanyHelper;
@@ -133,9 +134,34 @@ public final class SupplyMarket {
         if (remaining > 0) {
             data.addOrder(new PurchaseOrder(UUID.randomUUID().toString(), buyer.getUUID(),
                     offer.ownerUuid(), offer.companyName(), offer.itemId(), remaining, offer.region(),
-                    TradeRegion.of(buyer.blockPosition())));
+                    TradeRegion.of(buyer.blockPosition()), offer.price(),
+                    buyer.getServer().overworld().getGameTime()));
         }
         return true;
+    }
+
+    /** Expires stale paid backorders and returns the undelivered balance to the buyer's mailbox. */
+    public static void expireOrders(MinecraftServer server, long now) {
+        int expiryDays = Config.SUPPLY_ORDER_EXPIRY_DAYS.get();
+        if (expiryDays <= 0) {
+            return;
+        }
+        long lifetime = PerpetualCalendar.ticksForDays(expiryDays);
+        SupplyMarketSavedData data = SupplyMarketSavedData.get(server);
+        for (PurchaseOrder order : new ArrayList<>(data.orders())) {
+            // Legacy orders have no reliable price or creation time and are retained for admin repair.
+            if (order.createdAt() <= 0L || order.unitPrice() <= 0L
+                    || now < order.createdAt() || now - order.createdAt() < lifetime) {
+                continue;
+            }
+            long refund = EconomyMath.multiply(order.unitPrice(), order.remaining());
+            long refundMinor = refund < 0L ? -1L : Money.toMinor(refund);
+            if (refundMinor < 0L) {
+                continue;
+            }
+            MarketMailboxSavedData.get(server).creditMoney(order.buyerUuid(), Currencies.USD.id(), refundMinor);
+            data.removeOrder(order.id());
+        }
     }
 
     /** Delivers backorders to buyers from the supplier's current stock. Called after production. */

@@ -10,6 +10,7 @@ import com.ailudick.capitalismmod.loan.PeerLoan;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanNotificationService;
 import com.ailudick.capitalismmod.market.CommodityMarket;
+import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -78,6 +79,7 @@ public final class EconomySettlementTickHandler {
         FuturesMarket.settleDay(server);
         CommodityMarket.expireOrders(server, server.overworld().getGameTime());
         StockMarket.expireOrders(server, server.overworld().getGameTime());
+        SupplyMarket.expireOrders(server, server.overworld().getGameTime());
         CommodityMarket.closeDay(server);
         StockMarket.closeDay(server);
     }
