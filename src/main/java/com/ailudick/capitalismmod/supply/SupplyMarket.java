@@ -220,7 +220,11 @@ public final class SupplyMarket {
     }
 
     private static Item parseItem(String itemId) {
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
-        return (item == null || item == Items.AIR) ? null : item;
+        try {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+            return (item == null || item == Items.AIR) ? null : item;
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return null;
+        }
     }
 }

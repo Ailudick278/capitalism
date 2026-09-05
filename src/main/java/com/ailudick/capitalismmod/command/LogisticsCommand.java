@@ -13,6 +13,9 @@ import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 /** Shows the player's current trade region and cargo still in transit. */
 public final class LogisticsCommand {
     private LogisticsCommand() {
@@ -80,8 +83,19 @@ public final class LogisticsCommand {
             source.sendFailure(Component.literal("Shipment value is too large."));
             return 0;
         }
-        long premium = Math.max(1L, (long) (declared * Config.LOGISTICS_INSURANCE_RATE.get()));
-        if (!EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(premium))
+        long premium;
+        try {
+            premium = BigDecimal.valueOf(declared)
+                    .multiply(BigDecimal.valueOf(Config.LOGISTICS_INSURANCE_RATE.get()))
+                    .setScale(0, RoundingMode.CEILING)
+                    .max(BigDecimal.ONE)
+                    .longValueExact();
+        } catch (ArithmeticException e) {
+            source.sendFailure(Component.literal("Insurance premium is too large."));
+            return 0;
+        }
+        long premiumMinor = Money.toMinor(premium);
+        if (premiumMinor < 0 || !EconomyHelper.tryPay(player, Currencies.USD, premiumMinor)
                 || !data.insure(id, player.getUUID())) {
             source.sendFailure(Component.literal("Insufficient USD for insurance."));
             return 0;
