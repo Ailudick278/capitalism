@@ -10,6 +10,7 @@ import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
 import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
 import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
 import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
+import com.ailudick.capitalismmod.company.CompanyServiceDeliverySavedData;
 import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanySiteSavedData;
@@ -74,6 +75,9 @@ public class CompanyCommand {
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> quality(ctx.getSource(),
                                 StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("services")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> services(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("credit")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> credit(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -414,6 +418,29 @@ public class CompanyCommand {
             source.sendSuccess(() -> Component.literal(entry.getKey() + " | units " + quality.units()
                     + " | average score " + quality.averageScore() + "/100"), false);
         });
+        return 1;
+    }
+
+    private static int services(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        var deliveries = CompanyServiceDeliverySavedData.get(player.getServer()).recent(company.companyId(), 10);
+        source.sendSuccess(() -> Component.literal("Recent service deliveries for " + company.name() + ":"), false);
+        if (deliveries.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No service deliveries recorded."), false);
+            return 1;
+        }
+        deliveries.forEach(delivery -> source.sendSuccess(() -> Component.literal(
+                delivery.timestamp() + " | " + delivery.recipeId() + " | revenue USD "
+                        + delivery.revenue() + " | inputs USD " + delivery.inputCost()
+                        + " | operating USD " + delivery.operatingCost()
+                        + " | depreciation USD " + delivery.depreciation()
+                        + " | workers " + delivery.workers()
+                        + " | contribution before payroll USD " + delivery.contributionBeforePayroll()), false));
         return 1;
     }
 

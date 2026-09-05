@@ -404,6 +404,10 @@ public final class CompanyHelper {
                         "service_cycle:" + UUID.randomUUID(), recipe.income(),
                         Currencies.USD.id(), occurredAt);
             }
+            // Service production has no warehouse output, so preserve the
+            // delivery economics separately for later contracts/invoicing.
+            // Payroll remains a separate daily accrual and is intentionally
+            // not duplicated in this cycle record.
         }
         long equipmentDepreciation = machine == MachineType.NONE ? 0L
                 : CompanyEquipmentSavedData.get(server).useAndMeasureBookValueLoss(company.companyId(), machine);
@@ -413,6 +417,13 @@ public final class CompanyHelper {
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
         if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return ProductionCycleResult.failure("oil_reservation");
         produceOutputs(server, company, conversionCost, productionQuality(server, company, machine));
+        if (serviceCycle) {
+            CompanyServiceDeliverySavedData.get(server).append(
+                    new CompanyServiceDeliverySavedData.ServiceDelivery(
+                            company.companyId(), server.overworld().getGameTime(), recipe.id(),
+                            recipe.income(), inputConsumption.cost(), cost,
+                            Math.max(0L, equipmentDepreciation), recipe.workersPerCycle()));
+        }
         if (equipmentDepreciation > 0L) {
             Company current = CompanySavedData.get(server).get(company.companyId());
             if (current != null) {
