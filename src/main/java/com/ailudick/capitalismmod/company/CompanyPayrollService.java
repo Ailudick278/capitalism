@@ -13,6 +13,12 @@ public final class CompanyPayrollService {
     public static void settleDaily(MinecraftServer server, long settlementDay) {
         CompanyPayrollSavedData payroll = CompanyPayrollSavedData.get(server);
         for (Company company : CompanySavedData.get(server).companies().values()) {
+            // The global economy settlement marker is persisted after all
+            // companies are processed. If the server stops in between, the
+            // company's own payroll account is the durable idempotency key.
+            if (payroll.account(company.companyId()).lastSettlementDay() >= settlementDay) {
+                continue;
+            }
             if (!CompanyLifecycleService.canOperate(server, company.companyId())
                     && !"SUSPENDED".equals(CompanyLifecycleService.status(server, company.companyId()))) continue;
             long wages = CompanyLaborSavedData.get(server).dailyWages(company.companyId());
