@@ -14,6 +14,7 @@ import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
 import com.ailudick.capitalismmod.company.CompanyProductionBatchSavedData;
 import com.ailudick.capitalismmod.company.CompanyQualityControlSavedData;
 import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
+import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyServiceDeliverySavedData;
 import com.ailudick.capitalismmod.company.Industries;
@@ -97,6 +98,24 @@ public class CompanyCommand {
                         .executes(ctx -> qualityCheck(ctx.getSource(),
                                 StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("logistics")
+                .then(Commands.literal("offer")
+                        .then(Commands.argument("buyer", StringArgumentType.word())
+                                .then(Commands.argument("shipmentId", StringArgumentType.word())
+                                        .then(Commands.argument("carrierCompanyId", StringArgumentType.word())
+                                                .then(Commands.argument("quotedCost", LongArgumentType.longArg(1))
+                                                        .executes(ctx -> offerFreight(ctx.getSource(),
+                                                                StringArgumentType.getString(ctx, "buyer"),
+                                                                StringArgumentType.getString(ctx, "shipmentId"),
+                                                                StringArgumentType.getString(ctx, "carrierCompanyId"),
+                                                                LongArgumentType.getLong(ctx, "quotedCost"))))))))
+                .then(Commands.literal("accept")
+                        .then(Commands.argument("contractId", StringArgumentType.word())
+                                .executes(ctx -> acceptFreight(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "contractId")))))
+                .then(Commands.literal("contracts")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .executes(ctx -> freightContracts(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name")))))
                 .then(Commands.literal("settle")
                         .then(Commands.argument("buyer", StringArgumentType.word())
                                 .then(Commands.argument("shipmentId", StringArgumentType.word())
@@ -593,6 +612,14 @@ public class CompanyCommand {
             return 0;
         }
         CompanyLogisticsCostSavedData data = CompanyLogisticsCostSavedData.get(source.getServer());
+        CompanyFreightContractSavedData contracts = CompanyFreightContractSavedData.get(source.getServer());
+        CompanyFreightContractSavedData.Contract contract = contracts.activeForShipment(shipmentId);
+        if (contract != null && (!"accepted".equals(contract.status())
+                || !buyer.companyId().equals(contract.buyerCompanyId())
+                || !carrier.companyId().equals(contract.carrierCompanyId()))) {
+            source.sendFailure(Component.literal("An active freight contract exists but is not accepted for this buyer and carrier."));
+            return 0;
+        }
         CompanyLogisticsCostSavedData.CapitalizedCost payable = data.forCompany(buyer.companyId()).stream()
                 .filter(cost -> shipmentId.equals(cost.shipmentId())).findFirst().orElse(null);
         if (payable == null || payable.settled()) {
@@ -621,6 +648,7 @@ public class CompanyCommand {
             return 0;
         }
         data.settle(shipmentId, carrier.companyId(), now);
+        if (contract != null) contracts.settle(contract.id(), now);
         CompanyHelper.recordTaxableIncome(source.getServer(), carrier, "freight:" + shipmentId,
                 amount, Currencies.USD.id(), now);
         TaxTransactionService.assess(source.getServer(), TaxType.VAT, carrier.ownerUuid(), Currencies.USD.id(),
@@ -630,6 +658,77 @@ public class CompanyCommand {
         source.sendSuccess(() -> Component.literal("Freight settled: USD " + amount
                 + " paid by " + buyer.name() + " to " + carrier.name() + "."), false);
         return 1;
+    }
+
+    private static int offerFreight(CommandSourceStack source, String buyerName, String shipmentId,
+                                    String carrierCompanyId, long quotedCost) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company buyer = CompanyHelper.getCompany(player, buyerName);
+        Company carrier = CompanySavedData.get(source.getServer()).get(carrierCompanyId);
+        if (buyer == null) {
+            source.sendFailure(Component.literal("Buyer company not found."));
+            return 0;
+        }
+        if (carrier == null || !"transport".equals(carrier.type())) {
+            source.sendFailure(Component.literal("Carrier must be an existing transport company ID."));
+            return 0;
+        }
+        CompanyLogisticsCostSavedData.CapitalizedCost payable =
+                CompanyLogisticsCostSavedData.get(source.getServer()).forCompany(buyer.companyId()).stream()
+                        .filter(cost -> shipmentId.equals(cost.shipmentId()) && !cost.settled())
+                        .findFirst().orElse(null);
+        if (payable == null || payable.estimatedCost() != quotedCost) {
+            source.sendFailure(Component.literal("Quoted cost must match the outstanding estimated freight payable."));
+            return 0;
+        }
+        CompanyFreightContractSavedData.Contract contract = CompanyFreightContractSavedData.get(source.getServer())
+                .offer(shipmentId, buyer.companyId(), carrier.companyId(), quotedCost,
+                        source.getServer().overworld().getGameTime());
+        if (contract == null) {
+            source.sendFailure(Component.literal("A non-cancelled freight contract already exists for this shipment."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Freight offer " + contract.id()
+                + " created for carrier " + carrier.name() + "."), false);
+        ServerPlayer carrierOwner = source.getServer().getPlayerList().getPlayer(carrier.ownerUuid());
+        if (carrierOwner != null) carrierOwner.sendSystemMessage(Component.literal(
+                "Freight offer " + contract.id() + " received for shipment " + shipmentId
+                        + ". Use /company logistics accept " + contract.id()));
+        return 1;
+    }
+
+    private static int acceptFreight(CommandSourceStack source, String contractId) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        CompanyFreightContractSavedData data = CompanyFreightContractSavedData.get(source.getServer());
+        CompanyFreightContractSavedData.Contract contract = data.find(contractId);
+        Company carrier = contract == null ? null : CompanySavedData.get(source.getServer()).get(contract.carrierCompanyId());
+        if (contract == null || carrier == null || !carrier.ownerUuid().equals(player.getUUID())
+                || !"offered".equals(contract.status()) || data.activeForShipment(contract.shipmentId()) == null) {
+            source.sendFailure(Component.literal("Freight offer not found, expired, or you do not own the carrier."));
+            return 0;
+        }
+        if (!data.accept(contract.id(), source.getServer().overworld().getGameTime())) {
+            source.sendFailure(Component.literal("Freight offer could not be accepted."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Freight contract " + contract.id() + " accepted."), false);
+        return 1;
+    }
+
+    private static int freightContracts(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        var contracts = CompanyFreightContractSavedData.get(source.getServer()).forCompany(company.companyId());
+        source.sendSuccess(() -> Component.literal("Freight contracts for " + company.name() + ":"), false);
+        contracts.forEach(contract -> source.sendSuccess(() -> Component.literal(
+                contract.id() + " | shipment " + contract.shipmentId().substring(0, Math.min(8, contract.shipmentId().length()))
+                        + " | carrier " + contract.carrierCompanyId() + " | USD " + contract.quotedCost()
+                        + " | " + contract.status()), false));
+        return contracts.size();
     }
 
     private static int qualityReview(CommandSourceStack source, String name, String batchId, String status)
