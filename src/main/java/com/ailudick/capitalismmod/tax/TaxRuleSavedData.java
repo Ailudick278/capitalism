@@ -32,7 +32,7 @@ public final class TaxRuleSavedData extends SavedData {
 
     public TaxRule effective(TaxType type, long at) {
         return rules.getOrDefault(type, List.of()).stream()
-                .filter(rule -> rule.enabled() && rule.effectiveFrom() <= at)
+                .filter(rule -> rule.effectiveFrom() <= at)
                 .max(Comparator.comparingLong(TaxRule::effectiveFrom).thenComparingLong(TaxRule::createdAt))
                 .orElse(null);
     }

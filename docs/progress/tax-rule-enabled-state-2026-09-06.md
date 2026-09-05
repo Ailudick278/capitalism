@@ -2,9 +2,9 @@
 
 ## Implemented
 
-- Tax calculation now ignores tax-rule versions whose `enabled` flag is false.
+- The latest effective rule remains authoritative even when its `enabled` flag is false; `TaxRule.taxableBase()` then produces zero taxable base.
+- Disabled rules therefore act as an explicit tax pause instead of silently falling back to an older enabled version.
 - Disabled rules remain in history and can still be inspected for audit purposes.
-- If no enabled rule is effective at the requested time, the existing configured default fallback remains in use.
 
 ## Real-world alignment
 
