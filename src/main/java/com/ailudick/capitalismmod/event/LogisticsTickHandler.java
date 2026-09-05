@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.market.LogisticsClaimSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.supply.SupplyOrderAuditService;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
@@ -87,7 +88,10 @@ public final class LogisticsTickHandler {
             }
             Item item = parseItem(shipment.itemId());
             if (item != null) {
-                warehouse.credit(shipment.buyer(), item, shipment.quantity());
+                InventoryOwner owner = shipment.buyerCompanyId().isBlank()
+                        ? InventoryOwner.player(shipment.buyer())
+                        : InventoryOwner.company(shipment.buyerCompanyId());
+                warehouse.credit(owner, item, shipment.quantity());
                 if (!shipment.supplyOrderId().isBlank() && shipment.supplierUuid() != null) {
                     SupplyOrderAuditService.record(server, shipment.supplyOrderId(), "DELIVERED",
                             shipment.buyer(), shipment.supplierUuid(), shipment.itemId(), shipment.quantity(),

@@ -306,7 +306,9 @@ public final class SupplyMarket {
             return;
         }
         if (TradeRegion.distance(origin, destination) == 0) {
-            WarehouseSavedData.get(server).credit(buyer, item, quantity);
+            InventoryOwner owner = buyerCompanyId == null || buyerCompanyId.isBlank()
+                    ? InventoryOwner.player(buyer) : InventoryOwner.company(buyerCompanyId);
+            WarehouseSavedData.get(server).credit(owner, item, quantity);
             return;
         }
         long distance = TradeRegion.distance(origin, destination);
