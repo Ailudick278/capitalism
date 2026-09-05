@@ -244,7 +244,8 @@ public final class LandCommand {
             return 0;
         }
         var auctions = LandAuctionSavedData.get(player.getServer());
-        if (auctions.get(claim.id()) == null) {
+        var auction = auctions.get(claim.id());
+        if (auction == null) {
             source.sendFailure(Component.literal("当前土地不在处置列表中"));
             return 0;
         }
@@ -252,6 +253,15 @@ public final class LandCommand {
         if (owed <= 0L || !LandHelper.payTax(player, owed)) {
             source.sendFailure(Component.literal("赎回失败：请准备足额余额缴清欠税"));
             return 0;
+        }
+        if (auction.highestBidder() != null && auction.highestBid() > 0L) {
+            ServerPlayer bidder = player.getServer().getPlayerList().getPlayer(auction.highestBidder());
+            if (bidder != null) {
+                EconomyHelper.giveMoney(bidder, Currencies.CNY, auction.highestBid());
+            } else {
+                MarketMailboxSavedData.get(player.getServer()).creditMoney(
+                        auction.highestBidder(), Currencies.CNY.id(), auction.highestBid());
+            }
         }
         auctions.remove(claim.id());
         source.sendSuccess(() -> Component.literal("土地已赎回，处置状态已解除"), false);
