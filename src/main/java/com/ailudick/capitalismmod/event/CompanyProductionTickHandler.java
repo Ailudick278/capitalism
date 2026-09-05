@@ -45,11 +45,17 @@ public final class CompanyProductionTickHandler {
             long successful = state.successfulCycles();
             long failed = state.failedCycles();
             for (int i = 0; i < cycles; i++) {
-                if (CompanyHelper.runProductionCycle(server, company)) {
-                    successful = increment(Math.max(0L, successful));
-                } else {
-                    failed = increment(failed);
+                int capacity = Math.max(1, CompanyHelper.parallelCapacity(server, company));
+                boolean anySuccess = false;
+                for (int batch = 0; batch < capacity; batch++) {
+                    if (CompanyHelper.runProductionCycle(server, company)) {
+                        successful = increment(Math.max(0L, successful));
+                        anySuccess = true;
+                    } else {
+                        break;
+                    }
                 }
+                if (!anySuccess) failed = increment(failed);
             }
             // Advance to now even when the catch-up cap is reached. A failed
             // attempt means the factory was idle, not that it stores infinite

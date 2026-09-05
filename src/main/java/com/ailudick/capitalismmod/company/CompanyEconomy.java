@@ -11,9 +11,6 @@ import java.util.Map;
  * {@link Industries} (config), except finance which earns interest on its treasury.
  */
 public final class CompanyEconomy {
-    /** One production cycle is 30 seconds, or 1/40 of a Minecraft day. */
-    private static final double PRODUCTION_CYCLES_PER_DAY = 40.0;
-
     private CompanyEconomy() {
     }
 
@@ -52,8 +49,8 @@ public final class CompanyEconomy {
         if (treasury <= 0) {
             return 0L;
         }
-        double income = treasury * Config.FINANCE_RATE_PER_YEAR.get() / 365.0
-                / PRODUCTION_CYCLES_PER_DAY;
+        double cyclesPerDay = Math.max(1.0, 24000.0 / Config.COMPANY_PRODUCTION_CYCLE_TICKS.get());
+        double income = treasury * Config.FINANCE_RATE_PER_YEAR.get() / 365.0 / cyclesPerDay;
         if (!Double.isFinite(income) || income >= Long.MAX_VALUE) {
             return Long.MAX_VALUE;
         }

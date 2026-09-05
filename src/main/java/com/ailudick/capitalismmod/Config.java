@@ -100,10 +100,10 @@ public class Config {
             .comment("Sole-proprietor income tax rate applied to completed sales.")
             .defineInRange("individualIncomeTaxRate", 0.20, 0.0, 1.0);
 
-    // Operating cost in USD per company level and production cycle.
-    public static final ModConfigSpec.LongValue COMPANY_MAINTENANCE_PER_LEVEL = BUILDER
-            .comment("Company maintenance cost in USD per level and production cycle; 0 disables it.")
-            .defineInRange("companyMaintenancePerLevel", 1L, 0L, Long.MAX_VALUE);
+    // Fixed operating overhead in USD per production batch.
+    public static final ModConfigSpec.LongValue COMPANY_FIXED_OVERHEAD_PER_CYCLE = BUILDER
+            .comment("Fixed company overhead in USD per production batch; 0 disables it.")
+            .defineInRange("companyFixedOverheadPerCycle", 1L, 0L, Long.MAX_VALUE);
 
     // Credit limit in base units (yuan fen). 100000 = 1000 yuan.
     public static final ModConfigSpec.LongValue CREDIT_LIMIT = BUILDER

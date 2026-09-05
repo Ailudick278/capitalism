@@ -209,7 +209,7 @@ public final class CompanyHelper {
         // Kept as an integration hook for the future order settlement service.
     }
 
-    /** Runs one atomic recipe cycle: all inputs are checked before any are consumed. */
+    /** Runs one atomic recipe batch: all inputs are checked before any are consumed. */
     public static boolean runProductionCycle(MinecraftServer server, Company company) {
         if (server == null || company == null || company.registeredCapital() <= 0
                 || CompanyEconomy.outputs(company).isEmpty() || !canProduceOutputs(server, company)) {
@@ -228,13 +228,19 @@ public final class CompanyHelper {
                 <= 0) {
             return false;
         }
-        long wages = labor.dailyWages(company.companyId()) == Long.MAX_VALUE
-                ? Long.MAX_VALUE : labor.dailyWages(company.companyId()) / 40L;
+        long dailyWages = labor.dailyWages(company.companyId());
+        long cyclesPerDay = Math.max(1L, (long) Math.ceil(24000.0
+                / Math.max(1L, Config.COMPANY_PRODUCTION_CYCLE_TICKS.get())));
+        int parallelBatches = Math.max(1, parallelCapacity(server, company));
+        long wages = dailyWages == Long.MAX_VALUE ? Long.MAX_VALUE
+                : dailyWages / cyclesPerDay / parallelBatches;
         long machineCost = machine == MachineType.NONE ? 0L : machine.maintenancePerCycle();
         long cost;
         try {
-            cost = Math.addExact(Math.addExact(wages, Math.max(0L, recipe.energyCost())),
-                    Math.addExact(Math.max(0L, recipe.maintenanceCost()), machineCost));
+            long operatingOverhead = Config.COMPANY_FIXED_OVERHEAD_PER_CYCLE.get();
+            cost = Math.addExact(Math.addExact(Math.addExact(wages, Math.max(0L, recipe.energyCost())),
+                            Math.max(0L, recipe.maintenanceCost())),
+                    Math.addExact(machineCost, operatingOverhead));
         } catch (ArithmeticException e) {
             return false;
         }
@@ -248,6 +254,24 @@ public final class CompanyHelper {
         produceOutputs(server, company);
         CompanyEquipmentSavedData.get(server).use(company.companyId(), machine);
         return true;
+    }
+
+    /**
+     * Number of batches that can be processed in parallel by the active
+     * workforce and functioning equipment for the selected recipe.
+     */
+    public static int parallelCapacity(MinecraftServer server, Company company) {
+        if (server == null || company == null) return 0;
+        ProductionRecipe recipe = CompanyEconomy.recipe(company);
+        if (recipe == null) return 0;
+        MachineType machine = MachineType.parse(recipe.machineType());
+        if (machine == null) return 0;
+        int machineCapacity = machine == MachineType.NONE ? 1
+                : CompanyEquipmentSavedData.get(server).count(company.companyId(), machine);
+        if (machineCapacity <= 0) return 0;
+        if (recipe.workersPerCycle() <= 0) return Math.min(10000, machineCapacity);
+        int workers = CompanyLaborSavedData.get(server).activeWorkers(company.companyId());
+        return Math.min(10000, Math.min(machineCapacity, workers / recipe.workersPerCycle()));
     }
 
     private static boolean consumeInputsPreview(MinecraftServer server, Company company) {

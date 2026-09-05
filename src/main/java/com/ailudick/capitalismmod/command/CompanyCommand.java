@@ -278,7 +278,8 @@ public class CompanyCommand {
         var labor = CompanyLaborSavedData.get(server);
         source.sendSuccess(() -> Component.literal("Workers: " + labor.activeWorkers(company.companyId())
                 + ", daily wages: USD " + labor.dailyWages(company.companyId())
-                + ", average skill: " + labor.averageSkill(company.companyId())), false);
+                + ", average skill: " + labor.averageSkill(company.companyId())
+                + ", parallel batches: " + CompanyHelper.parallelCapacity(server, company)), false);
         for (var contract : labor.contracts(company.companyId())) {
             source.sendSuccess(() -> Component.literal("Contract " + contract.id() + " | " + contract.role()
                     + " x" + contract.count() + " | wage " + contract.dailyWage()

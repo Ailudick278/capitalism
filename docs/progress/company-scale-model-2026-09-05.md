@@ -21,6 +21,13 @@ separate accounting and operating metrics.
 - Added `/company statement`, a read-only balance-sheet snapshot showing cash,
   inventory, equipment, liabilities and derived equity from the persisted
   company resources.
+- Production now uses parallel capacity: each functioning machine can support
+  one batch, while each recipe's worker requirement limits the number of
+  simultaneous batches. `/company operations` reports this capacity.
+- Wage allocation and finance-company returns use the configured production
+  cycle length rather than assuming a fixed 40 cycles per day.
+- Replaced the obsolete level-based maintenance setting with fixed operating
+  overhead per production batch.
 - Old serialized companies without `registeredCapital` load with the safe
   default of 1000 major currency units; new saves never write `level`.
 
