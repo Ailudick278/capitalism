@@ -11,12 +11,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Carry-forward tax credits, keyed by taxpayer, tax subject and currency. */
 public final class TaxCreditSavedData extends SavedData {
     private static final String ID = "capitalismmod_tax_credits";
     private final Map<String, Long> credits = new HashMap<>();
     private final List<CreditLot> lots = new ArrayList<>();
+    private final Set<String> appliedSources = new HashSet<>();
     public record CreditLot(UUID taxpayerUuid, String currencyId, String subjectType, String subjectId,
                             String sourceId, long periodStart, long periodEnd, long createdAt, long amount) {}
     private TaxCreditSavedData() {}
@@ -137,6 +140,16 @@ public final class TaxCreditSavedData extends SavedData {
         return used;
     }
 
+    public boolean hasAppliedSource(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && appliedSources.contains(sourceId);
+    }
+
+    public void markAppliedSource(String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || !appliedSources.add(sourceId)) return;
+        while (appliedSources.size() > 8192) appliedSources.remove(appliedSources.iterator().next());
+        setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag list = new ListTag();
@@ -152,6 +165,13 @@ public final class TaxCreditSavedData extends SavedData {
             lotList.add(entry);
         });
         tag.put("lots", lotList);
+        ListTag sourceList = new ListTag();
+        for (String source : appliedSources) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("source", source);
+            sourceList.add(entry);
+        }
+        tag.put("appliedSources", sourceList);
         return tag;
     }
 
@@ -168,6 +188,11 @@ public final class TaxCreditSavedData extends SavedData {
             if (entry.hasUUID("taxpayer") && entry.getLong("amount") > 0L) data.lots.add(new CreditLot(entry.getUUID("taxpayer"), entry.getString("currency"),
                     entry.getString("subjectType"), entry.getString("subjectId"), entry.getString("source"), entry.getLong("periodStart"),
                     entry.getLong("periodEnd"), entry.getLong("createdAt"), entry.getLong("amount")));
+        }
+        ListTag sourceList = tag.getList("appliedSources", 10);
+        for (int i = 0; i < sourceList.size(); i++) {
+            String source = sourceList.getCompound(i).getString("source");
+            if (!source.isBlank()) data.appliedSources.add(source);
         }
         return data;
     }

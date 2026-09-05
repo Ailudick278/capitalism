@@ -23,7 +23,10 @@ public final class TaxTransactionService {
         if (taxAmount <= 0L) return null;
         TaxSubject subject = subjectFor(type, taxpayerUuid, sourceEventId);
         if (type == TaxType.VAT) {
-            taxAmount -= TaxCreditSavedData.get(server).consume(subject, currencyId, taxAmount);
+            TaxCreditSavedData credits = TaxCreditSavedData.get(server);
+            if (credits.hasAppliedSource(sourceEventId)) return null;
+            taxAmount -= credits.consume(subject, currencyId, taxAmount);
+            credits.markAppliedSource(sourceEventId);
             if (taxAmount <= 0L) return null;
         }
         return TaxService.createBill(server, subject, currencyId, taxAmount, now, now, now,
@@ -36,11 +39,14 @@ public final class TaxTransactionService {
         if (taxpayerUuid == null || grossAmountMinor <= 0L || sourceEventId == null || sourceEventId.isBlank()) {
             return 0L;
         }
+        TaxCreditSavedData credits = TaxCreditSavedData.get(server);
+        String creditSource = "vat-input:" + sourceEventId;
+        if (credits.hasAppliedSource(creditSource)) return 0L;
         long credit = TaxRuleService.taxMinor(server, TaxType.VAT, grossAmountMinor, now);
         if (credit <= 0L) return 0L;
         TaxSubject subject = subjectFor(TaxType.VAT, taxpayerUuid, sourceEventId);
-        TaxCreditSavedData.get(server).add(subject, currencyId, credit,
-                "vat-input:" + sourceEventId, now, now, now);
+        credits.add(subject, currencyId, credit, creditSource, now, now, now);
+        credits.markAppliedSource(creditSource);
         return credit;
     }
 
