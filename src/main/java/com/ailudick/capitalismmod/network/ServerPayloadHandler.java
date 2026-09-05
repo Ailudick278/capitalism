@@ -85,6 +85,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.land.LandClaim;
 import com.ailudick.capitalismmod.land.LandPermissionSavedData;
 import com.ailudick.capitalismmod.land.LandSavedData;
@@ -332,8 +333,17 @@ public class ServerPayloadHandler {
             if (!(context.player() instanceof ServerPlayer player)) return;
             TaxLedgerSavedData ledger = TaxLedgerSavedData.get(player.getServer());
             TaxBill bill = ledger.get(payload.billId());
-            if (bill == null || !bill.subject().taxpayerUuid().equals(player.getUUID())
-                    || !TaxService.pay(player, bill.id(), bill.outstanding())) {
+            boolean success = false;
+            if (bill != null && bill.subject().taxpayerUuid().equals(player.getUUID())) {
+                if (bill.subject().type() == TaxType.CORPORATE_INCOME) {
+                    Company company = CompanySavedData.get(player.getServer()).get(bill.subject().subjectId());
+                    success = company != null && TaxService.payFromCompany(player.getServer(), company,
+                            bill.id(), bill.outstanding());
+                } else {
+                    success = TaxService.pay(player, bill.id(), bill.outstanding());
+                }
+            }
+            if (!success) {
                 player.displayClientMessage(Component.literal("税单不存在、无权缴税或余额不足"), true);
                 sendTaxBills(player);
                 return;

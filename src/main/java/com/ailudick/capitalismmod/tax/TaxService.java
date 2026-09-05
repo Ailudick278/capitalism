@@ -11,6 +11,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import java.util.List;
 import java.util.UUID;
 import com.ailudick.capitalismmod.company.Company;
+import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 
@@ -111,6 +112,33 @@ public final class TaxService {
         ledger.addPayment(new TaxPayment(UUID.randomUUID().toString(), bill.id(), player.getUUID(),
                 bill.currencyId(), payment, player.getServer().overworld().getGameTime()));
         if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(player.getServer(), paidBill));
+        return true;
+    }
+
+    /** Pays a corporate tax bill from the company's treasury, not its owner's wallet. */
+    public static boolean payFromCompany(MinecraftServer server, Company company, String billId, long amount) {
+        if (server == null || company == null || billId == null || amount <= 0L) return false;
+        TaxLedgerSavedData ledger = TaxLedgerSavedData.get(server);
+        TaxBill bill = ledger.get(billId);
+        if (bill == null || bill.paid() || !bill.declared()
+                || bill.subject().type() != TaxType.CORPORATE_INCOME
+                || !bill.subject().subjectId().equals(company.companyId())
+                || !bill.subject().taxpayerUuid().equals(company.ownerUuid())
+                || !Currencies.exists(bill.currencyId())) return false;
+        bill = updateLateFee(server, bill, server.overworld().getGameTime());
+        long payment = Math.min(amount, bill.outstanding());
+        long majorPayment = Math.min(Math.max(0L, company.treasuryOf(bill.currencyId())),
+                payment / Money.MINOR_UNITS_PER_UNIT);
+        if (majorPayment <= 0L || !CompanyHelper.debitTreasuryNonOperating(server, company.companyId(),
+                bill.currencyId(), majorPayment, "tax_payment", "Corporate tax payment")) {
+            return false;
+        }
+        payment = Money.toMinorSaturated(majorPayment);
+        TaxBill paidBill = bill.withPayment(payment);
+        ledger.replace(paidBill);
+        ledger.addPayment(new TaxPayment(UUID.randomUUID().toString(), bill.id(), company.ownerUuid(),
+                bill.currencyId(), payment, server.overworld().getGameTime()));
+        if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(server, paidBill));
         return true;
     }
 

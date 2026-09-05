@@ -12,6 +12,7 @@ import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.tax.TaxService;
+import com.ailudick.capitalismmod.tax.TaxLedgerSavedData;
 import com.ailudick.capitalismmod.tax.TaxSubject;
 import com.ailudick.capitalismmod.tax.TaxType;
 import com.ailudick.capitalismmod.tax.TaxableIncomeEvent;
@@ -605,19 +606,26 @@ public final class CompanyHelper {
     /** Pays a company's accrued corporate income tax through the unified tax ledger. */
     public static boolean payTax(Player player, String name) {
         Company company = getCompany(player, name);
-        if (company == null || company.taxOwed() <= 0 || !(player instanceof ServerPlayer serverPlayer)) {
+        if (company == null || !(player instanceof ServerPlayer serverPlayer)) {
             return false;
         }
         TaxSubject subject = new TaxSubject(TaxType.CORPORATE_INCOME, company.companyId(), company.ownerUuid());
-        long legacyAmount = Money.toMinor(company.taxOwed());
-        TaxService.ensureOutstanding(serverPlayer.getServer(), subject, "usd", legacyAmount,
-                serverPlayer.level().getGameTime(), 0L, 0L);
-        long outstanding = TaxService.outstanding(serverPlayer.getServer(), subject);
-        if (outstanding <= 0L || !TaxService.pay(serverPlayer, subject, outstanding)) {
-            return false;
+        if (company.taxOwed() > 0L) {
+            long legacyAmount = Money.toMinor(company.taxOwed());
+            TaxService.ensureOutstanding(serverPlayer.getServer(), subject, "usd", legacyAmount,
+                    serverPlayer.level().getGameTime(), 0L, 0L);
         }
-        setCompany(player, name, company.withTaxOwed(0));
-        return true;
+        boolean paid = false;
+        for (var bill : TaxLedgerSavedData.get(serverPlayer.getServer()).bills()) {
+            if (!bill.subject().equals(subject) || bill.paid()) continue;
+            if (!bill.declared()) {
+                TaxLedgerSavedData.get(serverPlayer.getServer()).replace(
+                        bill.withDeclaration(serverPlayer.level().getGameTime(), player.getUUID().toString()));
+                bill = TaxLedgerSavedData.get(serverPlayer.getServer()).get(bill.id());
+            }
+            paid |= TaxService.payFromCompany(serverPlayer.getServer(), company, bill.id(), bill.outstanding());
+        }
+        return paid;
     }
 
     /** Updates the legacy company tax mirror after a unified tax payment. */
