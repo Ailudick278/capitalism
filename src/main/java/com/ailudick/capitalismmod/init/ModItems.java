@@ -274,6 +274,18 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY_CELL = ITEMS.register("battery_cell",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LITHIUM_MINERAL = ITEMS.register("lithium_mineral",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LITHIUM_CARBONATE = ITEMS.register("lithium_carbonate",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> GRAPHITE_ANODE = ITEMS.register("graphite_anode",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CATHODE_ACTIVE_MATERIAL = ITEMS.register("cathode_active_material",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BATTERY_SEPARATOR = ITEMS.register("battery_separator",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BATTERY_ELECTROLYTE = ITEMS.register("battery_electrolyte",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY = ITEMS.register("battery",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> SMARTPHONE = ITEMS.register("smartphone",

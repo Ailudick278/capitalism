@@ -44,6 +44,12 @@ public enum MachineType {
     SMT_LINE("smt_line", 4800L, 12L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:electric_motor", 2, "capitalismmod:copper_wire", 4,
             "minecraft:redstone", 4, "minecraft:glass", 2)),
+    BATTERY_MATERIALS("battery_materials", 3600L, 9L, Map.of("capitalismmod:machine_frame", 2,
+            "capitalismmod:steel_sheet", 3, "minecraft:iron_ingot", 4,
+            "minecraft:redstone", 2, "minecraft:glass", 2)),
+    BATTERY_CELL_LINE("battery_cell_line", 4500L, 11L, Map.of("capitalismmod:machine_frame", 2,
+            "capitalismmod:electric_motor", 2, "capitalismmod:copper_wire", 3,
+            "capitalismmod:steel_sheet", 3, "minecraft:glass", 2)),
     ROLLING_MILL("rolling_mill", 2200L, 6L, Map.of("minecraft:iron_ingot", 6, "minecraft:coal", 2)),
     ASSEMBLY_LINE("assembly_line", 3000L, 8L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:electric_motor", 2, "minecraft:glass", 1));

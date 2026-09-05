@@ -122,6 +122,12 @@ public class ModCreativeTabs {
                         output.accept(ModItems.MICROPHONE_MODULE.get());
                         output.accept(ModItems.CHARGING_PORT.get());
                         output.accept(ModItems.BATTERY_CELL.get());
+                        output.accept(ModItems.LITHIUM_MINERAL.get());
+                        output.accept(ModItems.LITHIUM_CARBONATE.get());
+                        output.accept(ModItems.GRAPHITE_ANODE.get());
+                        output.accept(ModItems.CATHODE_ACTIVE_MATERIAL.get());
+                        output.accept(ModItems.BATTERY_SEPARATOR.get());
+                        output.accept(ModItems.BATTERY_ELECTROLYTE.get());
                         output.accept(ModItems.BATTERY.get());
                         output.accept(ModItems.SMARTPHONE.get());
                         output.accept(ModItems.ELECTRIC_FAN.get());
