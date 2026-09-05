@@ -10,7 +10,7 @@
 - 已投保货物按 `min(实际损失, 保险金额)` 自动结算，并通过 `/logistics claims` 查询理赔记录。
 - 企业货物损失按采购成本写入 `inventory_loss` 非现金账本记录，不重复扣除企业现金。
 - 台账使用货运编号去重，最多保存 4096 条，避免世界存档无限增长。
-- 新增供应订单生命周期台账，记录 CREATED、DELIVERED、BACKORDERED、PARTIAL、FULFILLED、EXPIRED_REFUND 和 LOST 事件。
+- 新增供应订单生命周期台账，记录 CREATED、DISPATCHED、DELIVERED、BACKORDERED、PARTIAL、FULFILLED、EXPIRED_REFUND 和 LOST 事件；在途货物只有进入买方仓库后才算 DELIVERED。
 - 新增 `/logistics order <订单号>` 查询订单完整事件链。
 
 ## 现实逻辑对应

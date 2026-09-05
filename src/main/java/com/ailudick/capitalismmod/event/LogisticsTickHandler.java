@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.market.LogisticsClaimSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.supply.SupplyOrderAuditService;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -76,6 +77,11 @@ public final class LogisticsTickHandler {
             Item item = parseItem(shipment.itemId());
             if (item != null) {
                 warehouse.credit(shipment.buyer(), item, shipment.quantity());
+                if (!shipment.supplyOrderId().isBlank() && shipment.supplierUuid() != null) {
+                    SupplyOrderAuditService.record(server, shipment.supplyOrderId(), "DELIVERED",
+                            shipment.buyer(), shipment.supplierUuid(), shipment.itemId(), shipment.quantity(),
+                            shipmentValue(shipment));
+                }
             }
             data.remove(shipment.id());
         }
@@ -85,6 +91,15 @@ public final class LogisticsTickHandler {
         if (shipment.unitPrice() <= 0L) {
             return fallback;
         }
+        try {
+            return Math.multiplyExact((long) shipment.quantity(), shipment.unitPrice());
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static long shipmentValue(LogisticsSavedData.Shipment shipment) {
+        if (shipment.unitPrice() <= 0L) return 0L;
         try {
             return Math.multiplyExact((long) shipment.quantity(), shipment.unitPrice());
         } catch (ArithmeticException e) {

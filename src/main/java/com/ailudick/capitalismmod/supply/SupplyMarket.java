@@ -137,9 +137,12 @@ public final class SupplyMarket {
         int filled = Math.min(quantity, stock);
         if (filled > 0) {
             warehouse.consume(supplierOwner, item, filled);
+            String destination = TradeRegion.of(buyer.blockPosition());
             deliverOrShip(buyer.getServer(), buyer.getUUID(), item, filled, offer.region(),
-                    TradeRegion.of(buyer.blockPosition()), supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid());
-            SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "DELIVERED", buyer.getUUID(),
+                    destination, supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid());
+            SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId,
+                    TradeRegion.distance(offer.region(), destination) == 0 ? "DELIVERED" : "DISPATCHED",
+                    buyer.getUUID(),
                     offer.ownerUuid(), offer.itemId(), filled, EconomyMath.multiply(offer.price(), filled));
         }
         paySupplier(buyer.getServer(), offer, total, orderSource);
@@ -209,9 +212,11 @@ public final class SupplyMarket {
                 continue;
             }
             warehouse.consume(resolvedOwner, item, deliver);
+            String deliveryType = TradeRegion.distance(order.originRegion(), order.destinationRegion()) == 0
+                    ? "DELIVERED" : "DISPATCHED";
             deliverOrShip(server, order.buyerUuid(), item, deliver, order.originRegion(), order.destinationRegion(),
                     order.id(), order.buyerCompanyId(), order.unitPrice(), order.supplierUuid());
-            SupplyOrderAuditService.record(server, order, "DELIVERED", deliver,
+            SupplyOrderAuditService.record(server, order, deliveryType, deliver,
                     EconomyMath.multiply(order.unitPrice(), deliver));
             int newRemaining = order.remaining() - deliver;
             if (newRemaining <= 0) {
