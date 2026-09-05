@@ -42,7 +42,9 @@ public final class PerpetualCalendar {
     }
 
     public static LocalDate dateAt(ServerLevel level) {
-        return dateAtMinecraftDay(Math.floorDiv(level.getDayTime(), TICKS_PER_DAY));
+        // Economic periods use gameTime, which is monotonic and is not changed
+        // by /time set. dayTime remains the visual in-world clock below.
+        return dateAtMinecraftDay(Math.floorDiv(level.getGameTime(), TICKS_PER_DAY));
     }
 
     public static TimeOfDay timeAtMinecraftTicks(long ticks) {
