@@ -147,7 +147,7 @@ public final class IndividualBusinessHelper {
         IndividualBusiness business = get(player);
         if (business != null) {
             IndividualBusinessSavedData.get(player.getServer()).put(
-                    business.afterSettlement(business.account(), Math.max(0L, outstandingMinor / 100L)));
+                    business.afterSettlement(business.account(), Money.toMajorCeiling(outstandingMinor)));
         }
     }
 

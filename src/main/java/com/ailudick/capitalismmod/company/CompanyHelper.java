@@ -355,7 +355,7 @@ public final class CompanyHelper {
     public static void syncTaxMirror(Player player, String companyId, long outstandingMinor) {
         for (Map.Entry<String, Company> entry : getCompanies(player).entrySet()) {
             if (entry.getValue().companyId().equals(companyId)) {
-                setCompany(player, entry.getKey(), entry.getValue().withTaxOwed(Math.max(0L, outstandingMinor / 100L)));
+                setCompany(player, entry.getKey(), entry.getValue().withTaxOwed(Money.toMajorCeiling(outstandingMinor)));
                 return;
             }
         }
