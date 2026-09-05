@@ -13,6 +13,10 @@ public enum MachineType {
     LATHE("lathe", 1200L, 4L, Map.of("minecraft:iron_ingot", 5, "minecraft:redstone", 2)),
     MILLING_MACHINE("milling_machine", 1500L, 5L, Map.of("minecraft:iron_ingot", 5, "minecraft:redstone", 2)),
     FOOD_PROCESSOR("food_processor", 1000L, 3L, Map.of("minecraft:iron_ingot", 3, "minecraft:copper_ingot", 2)),
+    SAWMILL("sawmill", 1400L, 4L, Map.of("minecraft:iron_ingot", 5,
+            "minecraft:copper_ingot", 2, "minecraft:oak_planks", 4)),
+    DRY_KILN("dry_kiln", 1800L, 6L, Map.of("minecraft:iron_ingot", 6,
+            "minecraft:copper_ingot", 2, "minecraft:glass", 2, "minecraft:coal", 2)),
     ROLLING_MILL("rolling_mill", 2200L, 6L, Map.of("minecraft:iron_ingot", 6, "minecraft:coal", 2)),
     ASSEMBLY_LINE("assembly_line", 3000L, 8L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:electric_motor", 2, "minecraft:glass", 1));

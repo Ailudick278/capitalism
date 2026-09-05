@@ -212,4 +212,12 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> ELECTRIC_MOTOR = ITEMS.register("electric_motor",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> GREEN_LUMBER = ITEMS.register("green_lumber",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DRIED_LUMBER = ITEMS.register("dried_lumber",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> WOODEN_CRATE = ITEMS.register("wooden_crate",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FURNITURE = ITEMS.register("furniture",
+            () -> new Item(new Item.Properties().stacksTo(64)));
 }

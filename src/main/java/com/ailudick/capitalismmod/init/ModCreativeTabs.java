@@ -101,6 +101,10 @@ public class ModCreativeTabs {
                         output.accept(ModItems.FLOUR.get());
                         output.accept(ModItems.METAL_CAN.get());
                         output.accept(ModItems.CANNED_FOOD.get());
+                        output.accept(ModItems.GREEN_LUMBER.get());
+                        output.accept(ModItems.DRIED_LUMBER.get());
+                        output.accept(ModItems.WOODEN_CRATE.get());
+                        output.accept(ModItems.FURNITURE.get());
                     })
                     .build());
 }
