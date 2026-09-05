@@ -10,12 +10,16 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.Set;
 
 /** Weighted-average cost layers for company-owned warehouse inventory. */
 public final class CompanyInventoryCostSavedData extends SavedData {
     private static final String ID = "capitalismmod_company_inventory_cost";
     private final Map<String, Map<String, CostLayer>> layers = new HashMap<>();
+    private final Set<String> freightSources = new HashSet<>();
 
     public record CostLayer(int quantity, long totalCost) {
         private static final Codec<CostLayer> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -27,10 +31,14 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     public record Consumption(int quantity, long cost) {
     }
 
-    private record State(Map<String, Map<String, CostLayer>> layers) {
+    private record State(Map<String, Map<String, CostLayer>> layers, Set<String> freightSources) {
         private static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, CostLayer.CODEC))
-                        .fieldOf("layers").forGetter(State::layers)
+                        .fieldOf("layers").forGetter(State::layers),
+                Codec.STRING.listOf().xmap(values -> (Set<String>) new HashSet<String>(values),
+                                values -> new ArrayList<>(values))
+                        .optionalFieldOf("freightSources", Set.of())
+                        .forGetter(State::freightSources)
         ).apply(instance, State::new));
     }
 
@@ -57,6 +65,20 @@ public final class CompanyInventoryCostSavedData extends SavedData {
         layers.computeIfAbsent(companyId, ignored -> new HashMap<>())
                 .put(itemId, new CostLayer(next.quantity(), next.totalCost()));
         setDirty();
+    }
+
+    /** Adds an inbound freight estimate exactly once for a shipment. */
+    public boolean addFreightCost(String companyId, String itemId, long totalCost, String sourceId) {
+        if (companyId == null || companyId.isBlank() || itemId == null || itemId.isBlank()
+                || totalCost < 0L || sourceId == null || sourceId.isBlank()
+                || freightSources.contains(sourceId)) return false;
+        CostLayer previous = layer(companyId, itemId);
+        long nextCost = addSaturated(previous == null ? 0L : previous.totalCost(), totalCost);
+        layers.computeIfAbsent(companyId, ignored -> new HashMap<>())
+                .put(itemId, new CostLayer(previous == null ? 0 : previous.quantity(), nextCost));
+        freightSources.add(sourceId);
+        setDirty();
+        return true;
     }
 
     /** Consumes the tracked portion of a batch and returns its weighted-average cost. */
@@ -107,7 +129,7 @@ public final class CompanyInventoryCostSavedData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers)).result()
+        State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers, freightSources)).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
     }
@@ -115,9 +137,11 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     public static CompanyInventoryCostSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         CompanyInventoryCostSavedData data = new CompanyInventoryCostSavedData();
         if (tag.contains("data")) {
-            State.CODEC.parse(NbtOps.INSTANCE, tag.get("data")).result().ifPresent(state ->
-                    state.layers().forEach((companyId, values) ->
-                            data.layers.put(companyId, new HashMap<>(values))));
+            State.CODEC.parse(NbtOps.INSTANCE, tag.get("data")).result().ifPresent(state -> {
+                state.layers().forEach((companyId, values) ->
+                        data.layers.put(companyId, new HashMap<>(values)));
+                data.freightSources.addAll(state.freightSources());
+            });
         }
         return data;
     }

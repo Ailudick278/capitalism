@@ -16,6 +16,8 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
+import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -111,6 +113,21 @@ public final class LogisticsTickHandler {
                         ? InventoryOwner.player(shipment.buyer())
                         : InventoryOwner.company(shipment.buyerCompanyId());
                 warehouse.credit(owner, item, shipment.quantity());
+                if (!shipment.buyerCompanyId().isBlank()) {
+                    Company company = CompanySavedData.get(server).get(shipment.buyerCompanyId());
+                    LogisticsCostSavedData.FuelPlan fuelPlan = LogisticsCostSavedData.get(server)
+                            .find(shipment.id());
+                    if (company != null && fuelPlan != null
+                            && shipment.buyerCompanyId().equals(fuelPlan.buyerCompanyId())
+                            && fuelPlan.estimatedCost() >= 0L) {
+                        CompanyInventoryCostSavedData.get(server).addFreightCost(
+                                company.companyId(), shipment.itemId(), fuelPlan.estimatedCost(), shipment.id());
+                        CompanyLogisticsCostSavedData.get(server).record(
+                                new CompanyLogisticsCostSavedData.CapitalizedCost(
+                                        shipment.id(), company.companyId(), shipment.itemId(),
+                                        shipment.quantity(), fuelPlan.estimatedCost(), now));
+                    }
+                }
                 if (!shipment.supplyOrderId().isBlank() && shipment.supplierUuid() != null) {
                     SupplyOrderAuditService.record(server, shipment.supplyOrderId(), "DELIVERED",
                             shipment.buyer(), shipment.supplierUuid(), shipment.itemId(), shipment.quantity(),

@@ -84,6 +84,15 @@ public final class LogisticsCostSavedData extends SavedData {
         return plans.stream().filter(plan -> companyId.equals(plan.buyerCompanyId())).toList();
     }
 
+    public FuelPlan find(String shipmentId) {
+        if (shipmentId == null || shipmentId.isBlank()) return null;
+        for (int i = plans.size() - 1; i >= 0; i--) {
+            FuelPlan plan = plans.get(i);
+            if (shipmentId.equals(plan.shipmentId())) return plan;
+        }
+        return null;
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(plans)).result()

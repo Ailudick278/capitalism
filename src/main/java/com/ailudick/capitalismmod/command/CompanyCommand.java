@@ -12,6 +12,7 @@ import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
 import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
 import com.ailudick.capitalismmod.company.CompanyProductionBatchSavedData;
 import com.ailudick.capitalismmod.company.CompanyQualityControlSavedData;
+import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyServiceDeliverySavedData;
 import com.ailudick.capitalismmod.company.Industries;
@@ -519,6 +520,18 @@ public class CompanyCommand {
                     + " x" + plan.quantity() + " | " + plan.transport().id()
                     + " | fuel " + plan.fuelUnits() + "x " + plan.fuelItemId()
                     + " | estimated USD " + plan.estimatedCost()), false);
+        }
+        var capitalized = CompanyLogisticsCostSavedData.get(player.getServer()).forCompany(company.companyId());
+        source.sendSuccess(() -> Component.literal("Capitalized inbound freight records: "
+                + capitalized.size()), false);
+        int capitalizedStart = Math.max(0, capitalized.size() - 20);
+        for (int i = capitalizedStart; i < capitalized.size(); i++) {
+            var cost = capitalized.get(i);
+            source.sendSuccess(() -> Component.literal("landed cost "
+                    + cost.shipmentId().substring(0, Math.min(8, cost.shipmentId().length()))
+                    + " | " + cost.itemId() + " x" + cost.quantity()
+                    + " | capitalized USD " + cost.estimatedCost()
+                    + " | tick " + cost.appliedAt()), false);
         }
         return records.size();
     }
