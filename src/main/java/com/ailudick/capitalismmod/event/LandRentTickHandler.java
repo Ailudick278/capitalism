@@ -16,6 +16,7 @@ import com.ailudick.capitalismmod.land.LandStatusSavedData;
 import com.ailudick.capitalismmod.land.LandOwnershipSavedData;
 import com.ailudick.capitalismmod.land.LandValuationHelper;
 import com.ailudick.capitalismmod.land.LandTaxPeriodSavedData;
+import com.ailudick.capitalismmod.land.LandLeaseDebtService;
 import com.ailudick.capitalismmod.tax.TaxService;
 import com.ailudick.capitalismmod.tax.TaxSubject;
 import com.ailudick.capitalismmod.tax.TaxType;
@@ -157,7 +158,7 @@ public final class LandRentTickHandler {
         for (LandClaim claim : data.claims().values()) {
             if (claim.leaseeUuid() == null || claim.leaseUntil() <= 0L) continue;
             if (claim.leaseUntil() <= now) {
-                data.put(claim.clearLease());
+                data.put(LandLeaseDebtService.endLease(server, claim));
                 notifyPlayer(server, claim.leaseeUuid(), "土地租约已到期");
                 notifyPlayer(server, claim.ownerUuid(), "你的土地租约已到期");
                 continue;
@@ -171,7 +172,7 @@ public final class LandRentTickHandler {
                 long debt = addSaturated(claim.leaseDebt(), claim.leaseRent());
                 long graceUntil = claim.leaseGraceUntil() > 0L ? claim.leaseGraceUntil() : now + GRACE_DAYS * TICKS_PER_DAY;
                 if (now >= graceUntil) {
-                    data.put(claim.clearLease());
+                    data.put(LandLeaseDebtService.endLease(server, claim));
                     logLand(server, claim, "租约自动解除");
                     if (owner != null) {
                         owner.displayClientMessage(net.minecraft.network.chat.Component.literal("租客离线且欠租超过宽限期，租约已解除"), true);
@@ -195,7 +196,7 @@ public final class LandRentTickHandler {
                 long debt = addSaturated(claim.leaseDebt(), claim.leaseRent());
                 long graceUntil = claim.leaseGraceUntil() > 0L ? claim.leaseGraceUntil() : now + GRACE_DAYS * TICKS_PER_DAY;
                 if (now >= graceUntil) {
-                    data.put(claim.clearLease());
+                    data.put(LandLeaseDebtService.endLease(server, claim));
                     logLand(server, claim, "租约自动解除");
                     tenant.displayClientMessage(net.minecraft.network.chat.Component.literal("土地欠租超过宽限期，租约已解除"), true);
                     owner.displayClientMessage(net.minecraft.network.chat.Component.literal("承租人欠租超过宽限期，租约已解除"), true);
@@ -215,6 +216,7 @@ public final class LandRentTickHandler {
         if (!(event.getEntity() instanceof ServerPlayer tenant)) return;
         MinecraftServer server = tenant.getServer();
         MarketMailboxSavedData.get(server).redeem(tenant);
+        LandLeaseDebtService.settleFor(tenant);
         LandSavedData data = LandSavedData.get(server);
         long now = server.overworld().getGameTime();
         for (LandClaim claim : data.claims().values()) {

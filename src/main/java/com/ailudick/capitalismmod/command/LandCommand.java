@@ -437,27 +437,22 @@ public final class LandCommand {
     private static int lease(CommandSourceStack source, ServerPlayer target, int days, long rent)
             throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        LandClaim claim = LandHelper.at(player, player.blockPosition());
-        if (claim == null || !claim.ownerUuid().equals(player.getUUID())) {
-            source.sendFailure(Component.literal("你不是当前领地所有者。"));
+        boolean leased = LandHelper.lease(player, player.chunkPosition().x, player.chunkPosition().z,
+                target.getUUID(), days, rent);
+        if (!leased) {
+            source.sendFailure(Component.literal("出租失败：土地不存在、已被冻结、已有租约或参数无效。"));
             return 0;
         }
-        long until = player.level().getGameTime() + PerpetualCalendar.ticksForDays(days);
-        LandSavedData.get(player.getServer()).put(claim.withLease(target.getUUID(), until, rent));
         source.sendSuccess(() -> Component.literal("领地已出租给 " + target.getName().getString()), false);
         return 1;
     }
 
     private static int unlease(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        LandClaim claim = LandHelper.at(player, player.blockPosition());
-        if (claim == null || !claim.ownerUuid().equals(player.getUUID())) {
-            source.sendFailure(Component.literal("你不是当前领地所有者。"));
-            return 0;
-        }
-        LandSavedData.get(player.getServer()).put(claim.clearLease());
-        source.sendSuccess(() -> Component.literal("租赁已结束。"), false);
-        return 1;
+        boolean unleased = LandHelper.unlease(player,
+                player.chunkPosition().x, player.chunkPosition().z);
+        source.sendSuccess(() -> Component.literal(unleased ? "租赁已结束。" : "解除租赁失败。"), false);
+        return unleased ? 1 : 0;
     }
 
     private static int transfer(CommandSourceStack source, ServerPlayer target) throws CommandSyntaxException {

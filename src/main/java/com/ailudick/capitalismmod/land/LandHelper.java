@@ -34,8 +34,8 @@ public final class LandHelper {
         if (claim != null && isTaxFrozen(player, claim)) return false;
         if (claim != null && claim.leaseeUuid() != null
                 && player.level().getGameTime() >= claim.leaseUntil()) {
-            LandSavedData.get(player.getServer()).put(claim.clearLease());
-            claim = claim.clearLease();
+            claim = LandLeaseDebtService.endLease(player.getServer(), claim);
+            LandSavedData.get(player.getServer()).put(claim);
         }
         return claim == null || claim.ownerUuid().equals(player.getUUID())
                 || (claim.trusts(player.getUUID())
@@ -193,7 +193,7 @@ public final class LandHelper {
         LandClaim claim = LandSavedData.get(player.getServer()).get(id);
         if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || claim.leaseeUuid() == null
                 || isTaxFrozen(player, claim)) return false;
-        LandSavedData.get(player.getServer()).put(claim.clearLease());
+        LandSavedData.get(player.getServer()).put(LandLeaseDebtService.endLease(player.getServer(), claim));
         LandOperationLogSavedData.get(player.getServer()).record(player.level().getGameTime(), player.getUUID(),
                 "解除租约", claim.dimension(), chunkX, chunkZ);
         return true;
