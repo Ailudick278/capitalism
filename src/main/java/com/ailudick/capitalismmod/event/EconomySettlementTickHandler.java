@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.economy.EconomySettlementSavedData;
 import com.ailudick.capitalismmod.futures.FuturesMarket;
 import com.ailudick.capitalismmod.loan.PeerLoan;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
+import com.ailudick.capitalismmod.loan.PeerLoanNotificationService;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
 import net.minecraft.server.level.ServerPlayer;
@@ -46,6 +47,7 @@ public final class EconomySettlementTickHandler {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
+            PeerLoanNotificationService.deliver(player);
         }
     }
 
@@ -56,7 +58,19 @@ public final class EconomySettlementTickHandler {
 
         PeerLoanSavedData loans = PeerLoanSavedData.get(server);
         for (PeerLoan loan : new ArrayList<>(loans.loans())) {
-            loans.replaceLoan(loan.withDaysRemaining(loan.daysRemaining() - 1));
+            PeerLoan updated = loan.withDaysRemaining(loan.daysRemaining() - 1);
+            if (loan.daysRemaining() > 0 && updated.daysRemaining() <= 0) {
+                PeerLoanNotificationService.notify(server, loan.borrower(), "due:" + loan.id(),
+                        "贷款已到期，请及时偿还本金及利息（" + loan.id().substring(0, Math.min(8, loan.id().length())) + "）");
+                PeerLoanNotificationService.notify(server, loan.lender(), "due-lender:" + loan.id(),
+                        "你出借的贷款已到期，等待借款人偿还（" + loan.id().substring(0, Math.min(8, loan.id().length())) + "）");
+            } else if (loan.daysRemaining() >= 0 && updated.daysRemaining() < 0) {
+                PeerLoanNotificationService.notify(server, loan.borrower(), "overdue:" + loan.id(),
+                        "贷款已逾期，逾期利息将按规则计算（" + loan.id().substring(0, Math.min(8, loan.id().length())) + "）");
+                PeerLoanNotificationService.notify(server, loan.lender(), "overdue-lender:" + loan.id(),
+                        "你出借的贷款已逾期（" + loan.id().substring(0, Math.min(8, loan.id().length())) + "）");
+            }
+            loans.replaceLoan(updated);
         }
         loans.setDirty();
 
