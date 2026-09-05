@@ -78,6 +78,23 @@ public final class CompanyServiceDeliverySavedData extends SavedData {
         setDirty();
     }
 
+    /** Keeps service-production history under the surviving company identity. */
+    public void transferCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.isBlank()
+                || targetId.isBlank() || sourceId.equals(targetId)) return;
+        List<ServiceDelivery> source = deliveries.remove(sourceId);
+        if (source == null || source.isEmpty()) return;
+        List<ServiceDelivery> target = deliveries.computeIfAbsent(targetId, ignored -> new ArrayList<>());
+        for (ServiceDelivery delivery : source) {
+            target.add(new ServiceDelivery(targetId, delivery.timestamp(), delivery.recipeId(),
+                    delivery.revenue(), delivery.inputCost(), delivery.operatingCost(),
+                    delivery.depreciation(), delivery.workers()));
+        }
+        target.sort(java.util.Comparator.comparingLong(ServiceDelivery::timestamp));
+        while (target.size() > MAX_PER_COMPANY) target.remove(0);
+        setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(deliveries)).result()

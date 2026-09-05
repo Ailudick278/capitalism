@@ -42,6 +42,21 @@ public final class CompanyLedgerSavedData extends SavedData {
         setDirty();
     }
 
+    /** Keeps historical accounting entries reachable after a company merger. */
+    public void transferCompany(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.isBlank()
+                || targetId.isBlank() || sourceId.equals(targetId)) return;
+        List<CompanyLedgerEntry> source = entries.remove(sourceId);
+        if (source == null || source.isEmpty()) return;
+        List<CompanyLedgerEntry> target = entries.computeIfAbsent(targetId, ignored -> new ArrayList<>());
+        for (CompanyLedgerEntry entry : source) {
+            target.add(new CompanyLedgerEntry(targetId, entry.timestamp(), entry.type(), entry.currencyId(),
+                    entry.amount(), entry.balanceAfter(), entry.description()));
+        }
+        target.sort(java.util.Comparator.comparingLong(CompanyLedgerEntry::timestamp));
+        setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(entries)).result()
