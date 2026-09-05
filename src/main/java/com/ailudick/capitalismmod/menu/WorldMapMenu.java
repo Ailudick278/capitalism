@@ -106,6 +106,13 @@ public class WorldMapMenu extends AbstractContainerMenu {
         return List.copyOf(logisticsNodes);
     }
 
+    public com.ailudick.capitalismmod.network.payload.SyncLogisticsNodeOverlayPayload.Node logisticsNode(int chunkX, int chunkZ) {
+        for (var node : logisticsNodes) {
+            if (node.chunkX() == chunkX && node.chunkZ() == chunkZ) return node;
+        }
+        return null;
+    }
+
     private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xFFFFFFFFL); }
 
     @Override public ItemStack quickMoveStack(Player player, int index) { return ItemStack.EMPTY; }

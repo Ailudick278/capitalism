@@ -363,12 +363,15 @@ public final class WorldMapWidget {
         var land = menu.landCell(chunkX, chunkZ);
         var oil = menu.oilField(chunkX, chunkZ);
         var site = menu.companySite(chunkX, chunkZ);
+        var logistics = menu.logisticsNode(chunkX, chunkZ);
         String landStatus = land == null || !land.claimed() ? "unclaimed"
                 : land.auction() ? "auction" : land.ownedByPlayer() ? "your land" : "owned land";
         String oilStatus = oil == null ? "no oil field"
                 : "oil " + oil.remainingReserve() + "/" + oil.initialReserve();
         String siteStatus = site == null ? "no company site" : "site " + site.companyName();
-        String[] lines = {"Chunk " + chunkX + ", " + chunkZ, landStatus, oilStatus, siteStatus};
+        String logisticsStatus = logistics == null ? "no logistics facility"
+                : "logistics " + logistics.facility();
+        String[] lines = {"Chunk " + chunkX + ", " + chunkZ, landStatus, oilStatus, siteStatus, logisticsStatus};
         int textWidth = 0;
         for (String line : lines) textWidth = Math.max(textWidth, font.width(line));
         int lineHeight = 11;
