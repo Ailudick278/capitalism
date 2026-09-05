@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.company.Company;
+import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.AcquisitionSavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.PublicTakeoverSavedData;
@@ -29,6 +30,9 @@ import com.ailudick.capitalismmod.loan.CompanyCreditSnapshot;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
+import com.ailudick.capitalismmod.currency.Money;
+import com.ailudick.capitalismmod.tax.TaxTransactionService;
+import com.ailudick.capitalismmod.tax.TaxType;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -89,6 +93,14 @@ public class CompanyCommand {
                         .executes(ctx -> qualityCheck(ctx.getSource(),
                                 StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("logistics")
+                .then(Commands.literal("settle")
+                        .then(Commands.argument("buyer", StringArgumentType.word())
+                                .then(Commands.argument("shipmentId", StringArgumentType.word())
+                                        .then(Commands.argument("carrierCompanyId", StringArgumentType.word())
+                                                .executes(ctx -> settleFreight(ctx.getSource(),
+                                                        StringArgumentType.getString(ctx, "buyer"),
+                                                        StringArgumentType.getString(ctx, "shipmentId"),
+                                                        StringArgumentType.getString(ctx, "carrierCompanyId")))))))
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> logistics(ctx.getSource(),
                                 StringArgumentType.getString(ctx, "name")))));
@@ -533,9 +545,66 @@ public class CompanyCommand {
                     + cost.shipmentId().substring(0, Math.min(8, cost.shipmentId().length()))
                     + " | " + cost.itemId() + " x" + cost.quantity()
                     + " | capitalized USD " + cost.estimatedCost()
+                    + " | " + (cost.settled()
+                    ? "settled by " + cost.carrierCompanyId() + " at " + cost.settledAt()
+                    : "payable outstanding")
                     + " | tick " + cost.appliedAt()), false);
         }
         return records.size();
+    }
+
+    private static int settleFreight(CommandSourceStack source, String buyerName,
+                                     String shipmentId, String carrierCompanyId)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company buyer = CompanyHelper.getCompany(player, buyerName);
+        Company carrier = CompanySavedData.get(source.getServer()).get(carrierCompanyId);
+        if (buyer == null) {
+            source.sendFailure(Component.literal("Buyer company not found."));
+            return 0;
+        }
+        if (carrier == null || !"transport".equals(carrier.type())) {
+            source.sendFailure(Component.literal("Carrier must be an existing transport company ID."));
+            return 0;
+        }
+        CompanyLogisticsCostSavedData data = CompanyLogisticsCostSavedData.get(source.getServer());
+        CompanyLogisticsCostSavedData.CapitalizedCost payable = data.forCompany(buyer.companyId()).stream()
+                .filter(cost -> shipmentId.equals(cost.shipmentId())).findFirst().orElse(null);
+        if (payable == null || payable.settled()) {
+            source.sendFailure(Component.literal("Freight payable not found or already settled."));
+            return 0;
+        }
+        long amount = payable.estimatedCost();
+        if (amount <= 0L) {
+            source.sendFailure(Component.literal("Freight payable has no positive settlement amount."));
+            return 0;
+        }
+        if (buyer.treasuryOf(Currencies.USD.id()) < amount) {
+            source.sendFailure(Component.literal("Buyer company has insufficient USD cash."));
+            return 0;
+        }
+        long now = source.getServer().overworld().getGameTime();
+        if (!CompanyHelper.creditTreasury(source.getServer(), carrier.companyId(), Currencies.USD.id(), amount)) {
+            source.sendFailure(Component.literal("Carrier treasury could not be credited."));
+            return 0;
+        }
+        if (!CompanyHelper.debitTreasuryNonOperating(source.getServer(), buyer.companyId(), Currencies.USD.id(),
+                amount, "freight_payable_settlement", "Settlement for shipment " + shipmentId)) {
+            CompanyHelper.debitTreasuryNonOperating(source.getServer(), carrier.companyId(), Currencies.USD.id(),
+                    amount, "freight_settlement_reversal", "Reversal for failed shipment settlement " + shipmentId);
+            source.sendFailure(Component.literal("Freight settlement failed before the payable was closed."));
+            return 0;
+        }
+        data.settle(shipmentId, carrier.companyId(), now);
+        CompanyHelper.recordTaxableIncome(source.getServer(), carrier, "freight:" + shipmentId,
+                amount, Currencies.USD.id(), now);
+        TaxTransactionService.assess(source.getServer(), TaxType.VAT, carrier.ownerUuid(), Currencies.USD.id(),
+                Money.toMinorSaturated(amount), "freight-vat:" + shipmentId, now);
+        TaxTransactionService.recordInputCredit(source.getServer(), buyer.ownerUuid(), Currencies.USD.id(),
+                Money.toMinorSaturated(amount), "freight-vat:" + shipmentId, now);
+        source.sendSuccess(() -> Component.literal("Freight settled: USD " + amount
+                + " paid by " + buyer.name() + " to " + carrier.name() + "."), false);
+        return 1;
     }
 
     private static int qualityReview(CommandSourceStack source, String name, String batchId, String status)

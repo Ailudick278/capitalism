@@ -18,10 +18,16 @@ public final class CompanyLogisticsCostSavedData extends SavedData {
     private final List<CapitalizedCost> costs = new ArrayList<>();
 
     public record CapitalizedCost(String shipmentId, String companyId, String itemId,
-                                  int quantity, long estimatedCost, long appliedAt, boolean settled) {
+                                  int quantity, long estimatedCost, long appliedAt, boolean settled,
+                                  String carrierCompanyId, long settledAt) {
         public CapitalizedCost(String shipmentId, String companyId, String itemId,
                                int quantity, long estimatedCost, long appliedAt) {
-            this(shipmentId, companyId, itemId, quantity, estimatedCost, appliedAt, false);
+            this(shipmentId, companyId, itemId, quantity, estimatedCost, appliedAt, false, "", 0L);
+        }
+
+        public CapitalizedCost(String shipmentId, String companyId, String itemId,
+                               int quantity, long estimatedCost, long appliedAt, boolean settled) {
+            this(shipmentId, companyId, itemId, quantity, estimatedCost, appliedAt, settled, "", 0L);
         }
 
         private static final Codec<CapitalizedCost> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -31,7 +37,9 @@ public final class CompanyLogisticsCostSavedData extends SavedData {
                 Codec.INT.fieldOf("quantity").forGetter(CapitalizedCost::quantity),
                 Codec.LONG.fieldOf("estimatedCost").forGetter(CapitalizedCost::estimatedCost),
                 Codec.LONG.fieldOf("appliedAt").forGetter(CapitalizedCost::appliedAt),
-                Codec.BOOL.optionalFieldOf("settled", false).forGetter(CapitalizedCost::settled)
+                Codec.BOOL.optionalFieldOf("settled", false).forGetter(CapitalizedCost::settled),
+                Codec.STRING.optionalFieldOf("carrierCompanyId", "").forGetter(CapitalizedCost::carrierCompanyId),
+                Codec.LONG.optionalFieldOf("settledAt", 0L).forGetter(CapitalizedCost::settledAt)
         ).apply(instance, CapitalizedCost::new));
     }
 
@@ -77,6 +85,25 @@ public final class CompanyLogisticsCostSavedData extends SavedData {
             }
         }
         return total;
+    }
+
+    /** Marks one accrued freight payable as settled by a named carrier company. */
+    public boolean settle(String shipmentId, String carrierCompanyId, long settledAt) {
+        if (shipmentId == null || shipmentId.isBlank() || carrierCompanyId == null || carrierCompanyId.isBlank()) {
+            return false;
+        }
+        for (int i = 0; i < costs.size(); i++) {
+            CapitalizedCost cost = costs.get(i);
+            if (shipmentId.equals(cost.shipmentId())) {
+                if (cost.settled()) return false;
+                costs.set(i, new CapitalizedCost(cost.shipmentId(), cost.companyId(), cost.itemId(),
+                        cost.quantity(), cost.estimatedCost(), cost.appliedAt(), true,
+                        carrierCompanyId, Math.max(0L, settledAt)));
+                setDirty();
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
