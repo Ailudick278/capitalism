@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.stock;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.event.TradeCompletedEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
@@ -150,6 +151,36 @@ public final class StockMarket {
         data.setDirty();
     }
 
+    /** Releases escrow for new stock orders that exceed the configured lifetime. */
+    public static void expireOrders(MinecraftServer server, long now) {
+        int expiryDays = Config.STOCK_ORDER_EXPIRY_DAYS.get();
+        if (expiryDays <= 0) return;
+        long lifetime = PerpetualCalendar.ticksForDays(expiryDays);
+        EconomySavedData data = EconomySavedData.get(server);
+        for (StockOrder order : new ArrayList<>(data.orders())) {
+            if (order.createdAt() <= 0L || now < order.createdAt()
+                    || now - order.createdAt() < lifetime) {
+                continue;
+            }
+            UUID owner;
+            try {
+                owner = UUID.fromString(order.ownerId());
+            } catch (IllegalArgumentException | NullPointerException exception) {
+                continue;
+            }
+            data.removeOrder(order.id());
+            if (order.sell()) {
+                data.addShares(order.stockId(), owner, order.quantity());
+            } else {
+                long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
+                long minor = total > 0L ? Money.toMinor(total) : -1L;
+                if (minor > 0L) {
+                    MarketMailboxSavedData.get(server).creditMoney(owner, Currencies.USD.id(), minor);
+                }
+            }
+        }
+    }
+
     // ---- matching internals ----
 
     private static boolean placeBuyOrder(ServerPlayer player, EconomySavedData data, String stockId, int quantity, long pricePerUnit) {
@@ -185,7 +216,7 @@ public final class StockMarket {
 
         if (remaining > 0) {
             data.addOrder(new StockOrder(UUID.randomUUID().toString(), player.getStringUUID(),
-                    stockId, remaining, pricePerUnit, false));
+                    stockId, remaining, pricePerUnit, false, player.getServer().overworld().getGameTime()));
         }
         long reserved = EconomyMath.multiply(remaining, pricePerUnit);
         long refund = total - spent - reserved;
@@ -226,7 +257,7 @@ public final class StockMarket {
 
         if (remaining > 0) {
             data.addOrder(new StockOrder(UUID.randomUUID().toString(), player.getStringUUID(),
-                    stockId, remaining, pricePerUnit, true));
+                    stockId, remaining, pricePerUnit, true, player.getServer().overworld().getGameTime()));
         }
         return true;
     }
@@ -240,7 +271,9 @@ public final class StockMarket {
                 result.add(order);
             }
         }
-        result.sort(Comparator.comparingLong(StockOrder::pricePerUnit));
+        result.sort(Comparator.comparingLong(StockOrder::pricePerUnit)
+                .thenComparingLong(StockOrder::createdAt)
+                .thenComparing(StockOrder::id));
         return result;
     }
 
@@ -253,7 +286,9 @@ public final class StockMarket {
                 result.add(order);
             }
         }
-        result.sort(Comparator.comparingLong(StockOrder::pricePerUnit).reversed());
+        result.sort(Comparator.comparingLong(StockOrder::pricePerUnit).reversed()
+                .thenComparingLong(StockOrder::createdAt)
+                .thenComparing(StockOrder::id));
         return result;
     }
 

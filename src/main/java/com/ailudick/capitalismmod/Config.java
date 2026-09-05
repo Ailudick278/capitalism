@@ -178,6 +178,10 @@ public class Config {
             .comment("Stock price limit band as a fraction of the previous close (0.10 = 10%).")
             .defineInRange("stockPriceLimit", 0.10, 0.0, 1.0);
 
+    public static final ModConfigSpec.IntValue STOCK_ORDER_EXPIRY_DAYS = BUILDER
+            .comment("Number of Minecraft days before a new stock limit order expires; 0 disables expiry.")
+            .defineInRange("stockOrderExpiryDays", 30, 0, 3650);
+
     // Futures margin rate (fraction of notional value required as margin). 0.10 = 10x leverage.
     public static final ModConfigSpec.DoubleValue FUTURES_MARGIN_RATE = BUILDER
             .comment("Futures margin rate (fraction of notional value required as margin). 0.10 = 10x leverage.")
