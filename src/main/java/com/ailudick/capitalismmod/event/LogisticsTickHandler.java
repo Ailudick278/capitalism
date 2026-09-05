@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.market.LogisticsLossService;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.market.LogisticsClaimSavedData;
+import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
@@ -43,10 +44,18 @@ public final class LogisticsTickHandler {
         tickCounter = 0;
         MinecraftServer server = event.getServer();
         LogisticsSavedData data = LogisticsSavedData.get(server);
+        LogisticsDeliverySavedData deliveries = LogisticsDeliverySavedData.get(server);
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
         long now = server.overworld().getGameTime();
         for (LogisticsSavedData.Shipment shipment : new ArrayList<>(data.shipments())) {
             if (shipment.deliveryTick() > now) {
+                continue;
+            }
+            if (deliveries.hasShipment(shipment.id())) {
+                // A previous delivery was committed but the shipment removal was
+                // interrupted. Do not route the residual shipment through risk or
+                // credit the warehouse a second time.
+                data.remove(shipment.id());
                 continue;
             }
             double risk = Config.LOGISTICS_RISK_RATE.get()
@@ -107,6 +116,8 @@ public final class LogisticsTickHandler {
                             shipment.buyer(), shipment.supplierUuid(), shipment.itemId(), shipment.quantity(),
                             shipmentValue(shipment));
                 }
+                deliveries.record(new LogisticsDeliverySavedData.Delivery(shipment.id(), shipment.buyer(),
+                        shipment.itemId(), shipment.quantity(), now));
             }
             data.remove(shipment.id());
         }
