@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
 import com.ailudick.capitalismmod.market.LogisticsClaimSavedData;
 import com.ailudick.capitalismmod.supply.SupplyOrderAuditSavedData;
+import com.ailudick.capitalismmod.supply.SupplyOrderAuditService;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
@@ -136,6 +137,8 @@ public final class LogisticsCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("=== Supply order " + orderId + " ==="), false);
+        String status = SupplyOrderAuditService.currentStatus(source.getServer(), orderId);
+        source.sendSuccess(() -> Component.literal("Current status: " + status), false);
         for (var event : events) {
             source.sendSuccess(() -> Component.literal(event.type() + " | quantity " + event.quantity()
                     + " | amount " + event.amount() + " | tick " + event.occurredAt()), false);
