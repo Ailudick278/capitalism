@@ -274,17 +274,11 @@ public final class CompanyHelper {
                 <= 0) {
             return false;
         }
-        long dailyWages = labor.dailyWages(company.companyId());
-        long cyclesPerDay = Math.max(1L, (long) Math.ceil(24000.0
-                / Math.max(1L, Config.COMPANY_PRODUCTION_CYCLE_TICKS.get())));
-        int parallelBatches = Math.max(1, parallelCapacity(server, company));
-        long wages = dailyWages == Long.MAX_VALUE ? Long.MAX_VALUE
-                : dailyWages / cyclesPerDay / parallelBatches;
         long machineCost = machine == MachineType.NONE ? 0L : machine.maintenancePerCycle();
         long cost;
         try {
             long operatingOverhead = Config.COMPANY_FIXED_OVERHEAD_PER_CYCLE.get();
-            cost = Math.addExact(Math.addExact(Math.addExact(wages, Math.max(0L, recipe.energyCost())),
+            cost = Math.addExact(Math.addExact(Math.addExact(0L, Math.max(0L, recipe.energyCost())),
                             Math.max(0L, recipe.maintenanceCost())),
                     Math.addExact(machineCost, operatingOverhead));
         } catch (ArithmeticException e) {

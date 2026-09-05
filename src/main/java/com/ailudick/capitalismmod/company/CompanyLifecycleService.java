@@ -51,6 +51,7 @@ public final class CompanyLifecycleService {
                 company.companyId(), company.ownerUuid())) > 0L) return false;
         if (CompanyLoanSavedData.get(player.getServer()).forCompany(company.companyId()).stream()
                 .anyMatch(loan -> loan.daysRemaining() < 0)) return false;
+        if (CompanyPayrollSavedData.get(player.getServer()).unpaid(company.companyId()) > 0L) return false;
         data.set(new CompanyStatusSavedData.Status(company.companyId(), "ACTIVE",
                 player.getServer().overworld().getGameTime(), "resumed by owner"));
         return true;
@@ -90,6 +91,9 @@ public final class CompanyLifecycleService {
 
         Company current = CompanySavedData.get(server).get(company.companyId());
         if (current == null) return false;
+        CompanyPayrollService.payOutstanding(server, current);
+        current = CompanySavedData.get(server).get(company.companyId());
+        if (current == null || CompanyPayrollSavedData.get(server).unpaid(company.companyId()) > 0L) return false;
         TaxSubject subject = new TaxSubject(TaxType.CORPORATE_INCOME, current.companyId(), current.ownerUuid());
         long taxMinor = TaxService.outstanding(server, subject);
         if (taxMinor > 0L) {
