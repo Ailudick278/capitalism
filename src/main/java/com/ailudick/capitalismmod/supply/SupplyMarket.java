@@ -252,6 +252,7 @@ public final class SupplyMarket {
 
     public static void fulfill(MinecraftServer server, InventoryOwner supplierOwner, UUID supplierUuid, String itemId) {
         SupplyMarketSavedData data = SupplyMarketSavedData.get(server);
+        SupplyDeliverySavedData deliveryJournal = SupplyDeliverySavedData.get(server);
         Item item = parseItem(itemId);
         if (item == null) {
             return;
@@ -259,6 +260,16 @@ public final class SupplyMarket {
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
         for (PurchaseOrder order : new ArrayList<>(data.orders())) {
             if (!order.supplierUuid().equals(supplierUuid) || !order.itemId().equals(itemId)) {
+                continue;
+            }
+            String deliveryKey = order.id() + ":delivery:" + order.remaining();
+            SupplyDeliverySavedData.Delivery recorded = deliveryJournal.find(deliveryKey);
+            if (recorded != null) {
+                // The goods were already dispatched; recover the order state without
+                // consuming fresh stock. The payment key makes this retry safe too.
+                paySupplier(server, order.supplierUuid(), order.companyName(),
+                        EconomyMath.multiply(order.unitPrice(), recorded.quantity()), deliveryKey);
+                applyDeliveryProgress(server, data, order, recorded.remaining(), recorded.quantity(), false);
                 continue;
             }
             Company supplierCompany = CompanyHelper.findCompany(server, supplierUuid, order.companyName());
@@ -287,15 +298,27 @@ public final class SupplyMarket {
             // dispatched. The undelivered remainder remains refundable.
             paySupplier(server, order.supplierUuid(), order.companyName(),
                     EconomyMath.multiply(order.unitPrice(), deliver),
-                    order.id() + ":delivery:" + newRemaining);
+                    deliveryKey);
+            deliveryJournal.record(new SupplyDeliverySavedData.Delivery(deliveryKey, order.id(), deliver,
+                    newRemaining));
             SupplyOrderAuditService.record(server, order, deliveryType, deliver,
                     EconomyMath.multiply(order.unitPrice(), deliver));
-            if (newRemaining <= 0) {
-                SupplyOrderAuditService.record(server, order, "FULFILLED", deliver,
-                        EconomyMath.multiply(order.unitPrice(), deliver));
-                data.removeOrder(order.id());
-            } else {
-                data.replaceOrder(order.withRemaining(newRemaining));
+            applyDeliveryProgress(server, data, order, newRemaining, deliver, true);
+        }
+    }
+
+    private static void applyDeliveryProgress(MinecraftServer server, SupplyMarketSavedData data,
+                                              PurchaseOrder order, int newRemaining, int delivered,
+                                              boolean writeAudit) {
+        if (newRemaining <= 0) {
+            if (writeAudit) {
+                SupplyOrderAuditService.record(server, order, "FULFILLED", delivered,
+                        EconomyMath.multiply(order.unitPrice(), delivered));
+            }
+            data.removeOrder(order.id());
+        } else {
+            data.replaceOrder(order.withRemaining(newRemaining));
+            if (writeAudit) {
                 SupplyOrderAuditService.record(server, order.withRemaining(newRemaining), "PARTIAL", newRemaining,
                         EconomyMath.multiply(order.unitPrice(), newRemaining));
             }
