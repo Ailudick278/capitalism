@@ -14,6 +14,7 @@ import com.ailudick.capitalismmod.land.LandTransferSavedData;
 import com.ailudick.capitalismmod.land.LandOperationLogSavedData;
 import com.ailudick.capitalismmod.land.LandAuctionSavedData;
 import com.ailudick.capitalismmod.land.LandAuctionSettlementSavedData;
+import com.ailudick.capitalismmod.land.LandTransferSettlementSavedData;
 import com.ailudick.capitalismmod.land.LandValuationHelper;
 import com.ailudick.capitalismmod.land.LandStatus;
 import com.ailudick.capitalismmod.land.LandOwnershipSavedData;
@@ -521,31 +522,57 @@ public final class LandCommand {
         }
         String id = pending.dimension() + ":" + pending.chunkX() + ":" + pending.chunkZ();
         LandSavedData data = LandSavedData.get(player.getServer()); LandClaim claim = data.get(id);
-        if (claim == null || !claim.ownerUuid().equals(pending.from()) || claim.leaseeUuid() != null
+        LandTransferSettlementSavedData journal = LandTransferSettlementSavedData.get(player.getServer());
+        String transferKey = pending.dimension() + ":" + pending.chunkX() + ":" + pending.chunkZ() + ":"
+                + pending.from() + ":" + pending.to() + ":" + pending.price() + ":" + pending.expiresAt();
+        String completedKey = transferKey + ":completed";
+        if (journal.has(completedKey)) {
+            transfers.remove(player.getUUID());
+            source.sendSuccess(() -> Component.literal("土地转让已完成"), false);
+            return 1;
+        }
+        boolean alreadyTransferred = claim != null && claim.ownerUuid().equals(player.getUUID());
+        if (claim == null || (!alreadyTransferred && !claim.ownerUuid().equals(pending.from()))
+                || claim.leaseeUuid() != null
                 || LandHelper.taxOwed(player, claim) > 0 || claim.leaseDebt() > 0) {
             transfers.remove(player.getUUID()); source.sendFailure(Component.literal("土地状态已变化，转让失败")); return 0;
         }
         long price = pending.price();
-        if (!EconomyHelper.tryPay(player, Currencies.CNY, price)) {
+        String paymentKey = transferKey + ":buyer-payment";
+        if (!journal.has(paymentKey) && !alreadyTransferred && !EconomyHelper.tryPay(player, Currencies.CNY, price)) {
             source.sendFailure(Component.literal("余额不足，无法支付土地转让费：" + price));
             return 0;
         }
-        data.put(claim.withOwner(player.getUUID()));
-        LandOwnershipSavedData.get(player.getServer()).record(claim.id(), player.getUUID(),
-                player.level().getGameTime(), "主动转让");
-        LandMarketSavedData.get(player.getServer()).record(new LandMarketSavedData.Transaction(
-                player.level().getGameTime(), claim.dimension(), claim.chunkX(), claim.chunkZ(), claim.purpose(), price));
-        LandPermissionSavedData.get(player.getServer()).remove(claim.id());
-        transfers.remove(player.getUUID());
+        journal.record(paymentKey);
+        String ownershipKey = transferKey + ":ownership";
+        if (!journal.has(ownershipKey)) {
+            if (!alreadyTransferred) data.put(claim.withOwner(player.getUUID()));
+            LandOwnershipSavedData.get(player.getServer()).record(claim.id(), player.getUUID(),
+                    player.level().getGameTime(), "主动转让");
+            LandPermissionSavedData.get(player.getServer()).remove(claim.id());
+            journal.record(ownershipKey);
+        }
+        String marketKey = transferKey + ":market";
+        if (!journal.has(marketKey)) {
+            LandMarketSavedData.get(player.getServer()).record(new LandMarketSavedData.Transaction(
+                    player.level().getGameTime(), claim.dimension(), claim.chunkX(), claim.chunkZ(), claim.purpose(), price));
+            journal.record(marketKey);
+        }
         LandOperationLogSavedData.get(player.getServer()).record(player.level().getGameTime(), pending.from(), "土地转让给" + player.getUUID(),
                 claim.dimension(), claim.chunkX(), claim.chunkZ());
         source.sendSuccess(() -> Component.literal("土地转让成功"), false);
+        String payoutKey = transferKey + ":seller-payout";
         ServerPlayer oldOwner = player.getServer().getPlayerList().getPlayer(pending.from());
-        if (oldOwner != null) EconomyHelper.giveMoney(oldOwner, Currencies.CNY, price);
-        else MarketMailboxSavedData.get(player.getServer()).creditMoney(pending.from(), Currencies.CNY.id(), price);
+        if (!journal.has(payoutKey)) {
+            if (oldOwner != null) EconomyHelper.giveMoney(oldOwner, Currencies.CNY, price);
+            else MarketMailboxSavedData.get(player.getServer()).creditMoney(pending.from(), Currencies.CNY.id(), price);
+            journal.record(payoutKey);
+        }
         TaxTransactionService.assess(player.getServer(), TaxType.LAND_TRANSFER, pending.from(), Currencies.CNY.id(),
                 com.ailudick.capitalismmod.currency.Money.toMinorSaturated(price),
                 "land-transfer:" + claim.id() + ":" + player.getUUID(), player.level().getGameTime());
+        journal.record(completedKey);
+        transfers.remove(player.getUUID());
         if (oldOwner != null) oldOwner.displayClientMessage(Component.literal("土地已转让给 " + player.getName().getString()), false);
         return 1;
     }
