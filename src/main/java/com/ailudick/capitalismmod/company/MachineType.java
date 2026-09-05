@@ -26,6 +26,8 @@ public enum MachineType {
             "minecraft:glass", 2)),
     POLYMER_REACTOR("polymer_reactor", 2400L, 7L, Map.of("minecraft:iron_ingot", 6,
             "minecraft:copper_ingot", 3, "minecraft:redstone", 2, "minecraft:glass", 2)),
+    BLENDING_UNIT("blending_unit", 2800L, 8L, Map.of("capitalismmod:machine_frame", 2,
+            "capitalismmod:steel_sheet", 3, "minecraft:iron_ingot", 4, "minecraft:redstone", 2)),
     INJECTION_MOLDER("injection_molder", 2600L, 7L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:electric_motor", 1, "capitalismmod:steel_sheet", 2)),
     SILICON_REFINER("silicon_refiner", 4600L, 13L, Map.of("capitalismmod:machine_frame", 2,
@@ -39,6 +41,9 @@ public enum MachineType {
     ELECTRONICS_ASSEMBLY("electronics_assembly", 4200L, 10L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:electric_motor", 1, "capitalismmod:copper_wire", 3, "minecraft:redstone", 3,
             "minecraft:glass", 1)),
+    SMT_LINE("smt_line", 4800L, 12L, Map.of("capitalismmod:machine_frame", 2,
+            "capitalismmod:electric_motor", 2, "capitalismmod:copper_wire", 4,
+            "minecraft:redstone", 4, "minecraft:glass", 2)),
     ROLLING_MILL("rolling_mill", 2200L, 6L, Map.of("minecraft:iron_ingot", 6, "minecraft:coal", 2)),
     ASSEMBLY_LINE("assembly_line", 3000L, 8L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:electric_motor", 2, "minecraft:glass", 1));

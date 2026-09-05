@@ -304,7 +304,12 @@ public final class CapitalismData {
                 new CommodityJson("capitalismmod:diesel", 82),
                 new CommodityJson("capitalismmod:gasoline", 88),
                 new CommodityJson("capitalismmod:lpg", 68),
+                new CommodityJson("capitalismmod:lubricant", 95),
+                new CommodityJson("capitalismmod:asphalt", 42),
                 new CommodityJson("capitalismmod:plastic_pellets", 18),
+                new CommodityJson("capitalismmod:polyethylene_pellets", 22),
+                new CommodityJson("capitalismmod:polypropylene_pellets", 24),
+                new CommodityJson("capitalismmod:synthetic_rubber", 48),
                 new CommodityJson("capitalismmod:fan_blades", 60),
                 new CommodityJson("capitalismmod:fan_control", 50),
                 new CommodityJson("capitalismmod:polysilicon", 125),
@@ -321,6 +326,9 @@ public final class CapitalismData {
                 new CommodityJson("capitalismmod:battery", 95),
                 new CommodityJson("capitalismmod:smartphone", 650),
                 new CommodityJson("capitalismmod:electric_fan", 240)
+                ,new CommodityJson("capitalismmod:power_adapter", 180)
+                ,new CommodityJson("capitalismmod:television", 820)
+                ,new CommodityJson("capitalismmod:laptop", 1150)
         );
     }
 
@@ -416,10 +424,15 @@ public final class CapitalismData {
                         new RecipeJson("refining", Map.of("capitalismmod:crude_oil", 2), Map.of(
                                 "capitalismmod:naphtha", 1, "capitalismmod:fuel_oil", 1,
                                 "capitalismmod:diesel", 1, "capitalismmod:gasoline", 1,
-                                "capitalismmod:lpg", 1), 130, "oil_refinery", 4, 8, 14),
+                                "capitalismmod:lpg", 1, "capitalismmod:lubricant", 1,
+                                "capitalismmod:asphalt", 1), 130, "oil_refinery", 4, 8, 14),
                         new RecipeJson("steam_cracking", Map.of("capitalismmod:naphtha", 1), Map.of("capitalismmod:ethylene", 1, "capitalismmod:propylene", 1), 115, "steam_cracker", 3, 7, 12),
                         new RecipeJson("polyethylene_pellets", Map.of("capitalismmod:ethylene", 1), Map.of("capitalismmod:plastic_pellets", 3), 78, "polymer_reactor", 2, 4, 7),
                         new RecipeJson("polypropylene_pellets", Map.of("capitalismmod:propylene", 1), Map.of("capitalismmod:plastic_pellets", 3), 82, "polymer_reactor", 2, 4, 7),
+                        new RecipeJson("polyethylene_grade", Map.of("capitalismmod:ethylene", 1), Map.of("capitalismmod:polyethylene_pellets", 3), 82, "polymer_reactor", 2, 4, 7),
+                        new RecipeJson("polypropylene_grade", Map.of("capitalismmod:propylene", 1), Map.of("capitalismmod:polypropylene_pellets", 3), 86, "polymer_reactor", 2, 4, 7),
+                        new RecipeJson("synthetic_rubber", Map.of("capitalismmod:propylene", 1, "capitalismmod:naphtha", 1), Map.of("capitalismmod:synthetic_rubber", 2), 105, "polymer_reactor", 3, 5, 9),
+                        new RecipeJson("lubricant_blending", Map.of("capitalismmod:fuel_oil", 1, "capitalismmod:naphtha", 1), Map.of("capitalismmod:lubricant", 2), 95, "blending_unit", 2, 3, 7),
                         new RecipeJson("plastic_pellets", Map.of("capitalismmod:naphtha", 1, "minecraft:coal", 1), Map.of("capitalismmod:plastic_pellets", 3), 70, "polymer_reactor", 2, 4, 7),
                         new RecipeJson("fan_blades", Map.of("capitalismmod:plastic_pellets", 2, "capitalismmod:steel_sheet", 1), Map.of("capitalismmod:fan_blades", 1), 105, "injection_molder", 2, 3, 8),
                         new RecipeJson("fan_control", Map.of("capitalismmod:copper_wire", 1, "minecraft:redstone", 1, "minecraft:iron_ingot", 1), Map.of("capitalismmod:fan_control", 1), 95, "assembly_line", 2, 2, 6),
@@ -438,7 +451,10 @@ public final class CapitalismData {
                         new RecipeJson("battery_cell", Map.of("minecraft:iron_ingot", 1, "minecraft:copper_ingot", 1, "minecraft:redstone", 1), Map.of("capitalismmod:battery_cell", 2), 80, "electronics_assembly", 2, 3, 7),
                         new RecipeJson("battery", Map.of("capitalismmod:battery_cell", 2, "capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:battery", 1), 120, "electronics_assembly", 2, 3, 7),
                         new RecipeJson("smartphone", Map.of("capitalismmod:circuit_board", 1, "capitalismmod:battery", 1, "capitalismmod:display_panel", 1, "capitalismmod:phone_casing", 1, "capitalismmod:camera_module", 1, "capitalismmod:speaker_module", 1, "capitalismmod:microphone_module", 1, "capitalismmod:charging_port", 1), Map.of("capitalismmod:smartphone", 1), 650, "electronics_assembly", 4, 6, 12),
-                        new RecipeJson("electric_fan", Map.of("capitalismmod:electric_motor", 1, "capitalismmod:fan_blades", 1, "capitalismmod:fan_control", 1, "capitalismmod:machine_frame", 1), Map.of("capitalismmod:electric_fan", 1), 240, "assembly_line", 3, 3, 9)),
+                        new RecipeJson("electric_fan", Map.of("capitalismmod:electric_motor", 1, "capitalismmod:fan_blades", 1, "capitalismmod:fan_control", 1, "capitalismmod:machine_frame", 1), Map.of("capitalismmod:electric_fan", 1), 240, "assembly_line", 3, 3, 9),
+                        new RecipeJson("power_adapter", Map.of("capitalismmod:circuit_board", 1, "capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:power_adapter", 1), 180, "smt_line", 2, 4, 9),
+                        new RecipeJson("television", Map.of("capitalismmod:display_panel", 1, "capitalismmod:packaged_chip", 1, "capitalismmod:circuit_board", 1, "capitalismmod:speaker_module", 1, "capitalismmod:plastic_pellets", 2), Map.of("capitalismmod:television", 1), 820, "electronics_assembly", 4, 7, 14),
+                        new RecipeJson("laptop", Map.of("capitalismmod:display_panel", 1, "capitalismmod:packaged_chip", 2, "capitalismmod:circuit_board", 1, "capitalismmod:battery", 1, "capitalismmod:plastic_pellets", 2), Map.of("capitalismmod:laptop", 1), 1150, "electronics_assembly", 5, 8, 16)),
                 withRecipes(new IndustryJson("utilities", Map.of("minecraft:coal", 1), Map.of(), 60),
                         new RecipeJson("coal_generation", Map.of("minecraft:coal", 1), Map.of(), 60,
                                 "none", 1, 0, 0),

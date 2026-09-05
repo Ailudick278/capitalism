@@ -236,7 +236,17 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> LPG = ITEMS.register("lpg",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LUBRICANT = ITEMS.register("lubricant",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ASPHALT = ITEMS.register("asphalt",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PLASTIC_PELLETS = ITEMS.register("plastic_pellets",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> POLYETHYLENE_PELLETS = ITEMS.register("polyethylene_pellets",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> POLYPROPYLENE_PELLETS = ITEMS.register("polypropylene_pellets",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SYNTHETIC_RUBBER = ITEMS.register("synthetic_rubber",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FAN_BLADES = ITEMS.register("fan_blades",
             () -> new Item(new Item.Properties().stacksTo(64)));
@@ -269,5 +279,11 @@ public class ModItems {
     public static final DeferredItem<Item> SMARTPHONE = ITEMS.register("smartphone",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> ELECTRIC_FAN = ITEMS.register("electric_fan",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> POWER_ADAPTER = ITEMS.register("power_adapter",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> TELEVISION = ITEMS.register("television",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LAPTOP = ITEMS.register("laptop",
             () -> new Item(new Item.Properties().stacksTo(64)));
 }
