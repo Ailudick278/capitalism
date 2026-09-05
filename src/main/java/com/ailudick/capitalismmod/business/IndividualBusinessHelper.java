@@ -162,7 +162,7 @@ public final class IndividualBusinessHelper {
         String id = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 10);
         long now = player.level().getGameTime();
         BusinessOrder order = new BusinessOrder(id, business.businessId(), player.getUUID(), itemId, quantity,
-                quantity, unitPrice, now, now + days * 24000L, "open");
+                quantity, unitPrice, now, now + PerpetualCalendar.ticksForDays(days), "open");
         BusinessOrderSavedData.get(player.getServer()).put(order);
         BusinessLedgerSavedData.get(player.getServer()).append(new BusinessLedgerEntry(
                 business.businessId(), now, "order_created", "", 0L, business.balance("usd"),

@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.tax;
 
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
@@ -14,7 +15,7 @@ public final class TaxRefundService {
         TaxCreditSavedData credits = TaxCreditSavedData.get(player.getServer());
         TaxRefundSavedData data = TaxRefundSavedData.get(player.getServer());
         long now = player.getServer().overworld().getGameTime();
-        long periodTicks = Config.TAX_REFUND_PERIOD_DAYS.get().longValue() * 24000L;
+        long periodTicks = PerpetualCalendar.ticksForDays(Config.TAX_REFUND_PERIOD_DAYS.get().longValue());
         TaxRefundRules.Decision decision = TaxRefundRules.evaluate(
                 Currencies.exists(currencyId), amount,
                 Currencies.exists(currencyId) ? credits.totalFor(player.getUUID(), currencyId) : 0L,

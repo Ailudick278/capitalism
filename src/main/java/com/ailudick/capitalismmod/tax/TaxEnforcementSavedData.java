@@ -1,5 +1,7 @@
 package com.ailudick.capitalismmod.tax;
 
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
+
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -25,7 +27,7 @@ public final class TaxEnforcementSavedData extends SavedData {
 
     public boolean shouldNotify(String billId, long now) {
         Notice notice = notices.get(billId);
-        return notice == null || now - notice.lastNoticeAt() >= 3L * 24000L;
+        return notice == null || now - notice.lastNoticeAt() >= PerpetualCalendar.ticksForDays(3L);
     }
 
     public void recordNotice(String billId, long now) {

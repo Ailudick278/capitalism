@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.tax;
 
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
@@ -150,7 +151,7 @@ public final class TaxService {
 
     public static TaxBill updateLateFee(MinecraftServer server, TaxBill bill, long now) {
         if (!bill.declared() || bill.dueAt() <= 0L || now <= bill.dueAt() || bill.paid()) return bill;
-        long daysLate = Math.max(1L, (now - bill.dueAt()) / 24000L);
+        long daysLate = Math.max(1L, (now - bill.dueAt()) / PerpetualCalendar.TICKS_PER_DAY);
         long daily = bill.amount() > Long.MAX_VALUE / 5L
                 ? Long.MAX_VALUE : (bill.amount() * 5L) / 10_000L;
         daily = Math.max(1L, daily);

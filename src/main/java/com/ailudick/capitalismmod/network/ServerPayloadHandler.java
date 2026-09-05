@@ -224,7 +224,7 @@ public class ServerPayloadHandler {
             }
             long now = player.getServer().overworld().getGameTime();
             long lastReplacement = player.getData(ModAttachments.LAST_CARD_REPLACEMENT_TICK);
-            if (lastReplacement != Long.MIN_VALUE && now - lastReplacement < 24000L) {
+            if (lastReplacement != Long.MIN_VALUE && now - lastReplacement < PerpetualCalendar.TICKS_PER_DAY) {
                 operationResult(player, false, Component.literal("请等待一个 Minecraft 日后再补办银行卡。"));
                 return;
             }

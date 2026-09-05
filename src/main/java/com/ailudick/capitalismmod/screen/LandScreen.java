@@ -296,7 +296,7 @@ public class LandScreen<T extends AbstractContainerMenu> extends AbstractContain
             y += 14;
             if (untilGrace < 0L) {
                 long disposalAt = landMenu.taxGraceUntil
-                        + com.ailudick.capitalismmod.Config.LAND_TAX_DISPOSAL_DAYS.get() * 24000L;
+                        + PerpetualCalendar.ticksForDays(com.ailudick.capitalismmod.Config.LAND_TAX_DISPOSAL_DAYS.get());
                 graphics.drawString(font, Component.literal(formatDeadline("处置时间", disposalAt, currentGameTime)),
                         x, y, 0xFFFF6666, false);
                 y += 14;

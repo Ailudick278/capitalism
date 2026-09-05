@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.event;
 
 import com.ailudick.capitalismmod.CapitalismMod;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.land.LandClaim;
@@ -36,9 +37,9 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 /** Settles one rent installment per Minecraft day for active online leases. */
 @EventBusSubscriber(modid = CapitalismMod.MODID)
 public final class LandRentTickHandler {
-    private static final long TICKS_PER_DAY = 24000L;
+    private static final long TICKS_PER_DAY = PerpetualCalendar.TICKS_PER_DAY;
     private static final long GRACE_DAYS = 3L;
-    private static final long TAX_TICKS_PER_DAY = 24000L;
+    private static final long TAX_TICKS_PER_DAY = PerpetualCalendar.TICKS_PER_DAY;
     private LandRentTickHandler() {}
 
     @SubscribeEvent

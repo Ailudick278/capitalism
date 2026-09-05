@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.command;
 
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.business.IndividualBusiness;
 import com.ailudick.capitalismmod.business.IndividualBusinessSavedData;
 import com.ailudick.capitalismmod.currency.Money;
@@ -106,13 +107,13 @@ public final class TaxCorrectionCommand {
         long difference = newTax - oldTax;
         String correctionSource = "individual-correction:" + businessId + ":" + periodEnd + ":" + source.getServer().overworld().getGameTime();
         if (difference > 0L) {
-            TaxPeriod period = new TaxPeriod(Math.max(0L, periodEnd - 90L * 24000L), periodEnd,
-                    periodEnd + 15L * 24000L, periodEnd + 30L * 24000L);
+            TaxPeriod period = new TaxPeriod(Math.max(0L, periodEnd - PerpetualCalendar.ticksForDays(90L)), periodEnd,
+                    periodEnd + PerpetualCalendar.ticksForDays(15L), periodEnd + PerpetualCalendar.ticksForDays(30L));
             TaxService.createPeriodicBill(source.getServer(), subject, "usd", difference, period,
                     Money.toMinorSaturated(newProfit), TaxRuleService.rateBasisPoints(source.getServer(), TaxType.INDIVIDUAL_BUSINESS_INCOME, periodEnd), correctionSource);
         } else if (difference < 0L) {
             com.ailudick.capitalismmod.tax.TaxCreditSavedData.get(source.getServer()).add(subject, "usd", -difference,
-                    correctionSource, Math.max(0L, periodEnd - 90L * 24000L), periodEnd, source.getServer().overworld().getGameTime());
+                    correctionSource, Math.max(0L, periodEnd - PerpetualCalendar.ticksForDays(90L)), periodEnd, source.getServer().overworld().getGameTime());
         }
         source.sendSuccess(() -> Component.literal("更正已记录：" + reason + " | 税额差额 " + Money.format(Math.abs(difference))), true);
         TaxCorrectionAuditSavedData.get(source.getServer()).add(new TaxCorrectionAuditSavedData.Entry(

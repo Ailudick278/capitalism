@@ -8,6 +8,7 @@
 - Calendar command day counters now use the same `gameTime` source as the displayed date.
 - Added a shared overflow-safe `ticksForDays` conversion utility for future economic periods.
 - Company, individual-business, and annual tax-report periods now use that shared conversion utility without changing their existing 90/360-day values.
+- Land leases, land transfer windows, tax late fees, refund windows, enforcement notices, and periodic settlement handlers now reference the shared day constant/conversion utility instead of duplicating `24000`.
 
 ## Design boundary
 

@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.event;
 
 import com.ailudick.capitalismmod.CapitalismMod;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.business.IndividualBusiness;
 import com.ailudick.capitalismmod.business.IndividualBusinessSavedData;
 import com.ailudick.capitalismmod.currency.Money;
@@ -19,7 +20,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 /** Closes individual-business periods and taxes profit after deductible costs. */
 @EventBusSubscriber(modid = CapitalismMod.MODID)
 public final class IndividualBusinessTaxTickHandler {
-    private static final long TICKS_PER_DAY = 24000L;
+    private static final long TICKS_PER_DAY = PerpetualCalendar.TICKS_PER_DAY;
     private IndividualBusinessTaxTickHandler() {}
 
     @SubscribeEvent

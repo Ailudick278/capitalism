@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.event;
 
 import com.ailudick.capitalismmod.CapitalismMod;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.bank.BankAccountHelper;
 import com.ailudick.capitalismmod.bond.BondMarket;
 import com.ailudick.capitalismmod.economy.EconomySettlementSavedData;
@@ -20,7 +21,7 @@ import java.util.ArrayList;
 /** Runs every missed Minecraft-day settlement exactly once, including after restart. */
 @EventBusSubscriber(modid = CapitalismMod.MODID)
 public final class EconomySettlementTickHandler {
-    private static final long TICKS_PER_DAY = 24000L;
+    private static final long TICKS_PER_DAY = PerpetualCalendar.TICKS_PER_DAY;
 
     private EconomySettlementTickHandler() {
     }

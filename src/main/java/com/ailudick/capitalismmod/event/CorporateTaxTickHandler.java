@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.event;
 
 import com.ailudick.capitalismmod.CapitalismMod;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
@@ -23,7 +24,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 /** Closes company quarterly income periods and creates prepayment bills. */
 @EventBusSubscriber(modid = CapitalismMod.MODID)
 public final class CorporateTaxTickHandler {
-    private static final long TICKS_PER_DAY = 24000L;
+    private static final long TICKS_PER_DAY = PerpetualCalendar.TICKS_PER_DAY;
     private CorporateTaxTickHandler() {}
 
     @SubscribeEvent

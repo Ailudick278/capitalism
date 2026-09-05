@@ -1,5 +1,7 @@
 package com.ailudick.capitalismmod.tax;
 
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
+
 /** Persistent, auditable tax liability. Monetary amounts use minor currency units. */
 public record TaxBill(String id, TaxSubject subject, String currencyId, long amount,
                       long paidAmount, long createdAt, long dueAt, long graceUntil,
@@ -37,7 +39,7 @@ public record TaxBill(String id, TaxSubject subject, String currencyId, long amo
 
     public long declarationDaysLate(long now) {
         if (declared() || declarationDueAt <= 0L || now <= declarationDueAt) return 0L;
-        return Math.max(1L, (now - declarationDueAt) / 24000L);
+        return Math.max(1L, (now - declarationDueAt) / PerpetualCalendar.TICKS_PER_DAY);
     }
 
     public Status status(long now) {

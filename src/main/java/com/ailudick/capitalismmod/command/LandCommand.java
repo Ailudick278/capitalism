@@ -167,7 +167,7 @@ public final class LandCommand {
                 + " | 缴税到期：" + formatGameTime(claim.taxDueAt())
                 + " | 宽限截止：" + formatGameTime(claim.taxGraceUntil())
                 + " | 处置时间：" + formatGameTime(claim.taxGraceUntil()
-                + com.ailudick.capitalismmod.Config.LAND_TAX_DISPOSAL_DAYS.get() * 24000L)), false);
+                + PerpetualCalendar.ticksForDays(com.ailudick.capitalismmod.Config.LAND_TAX_DISPOSAL_DAYS.get()))), false);
         if (auction != null) {
             source.sendSuccess(() -> Component.literal("拍卖：起拍价 " + auction.startPrice()
                     + " | 当前最高价 " + auction.highestBid() + " | 结束时间 " + formatGameTime(auction.endsAt())), false);
@@ -298,7 +298,7 @@ public final class LandCommand {
         }
         auctions.put(auction.withBid(player.getUUID(), price));
         source.sendSuccess(() -> Component.literal("出价成功：" + price + "，拍卖剩余 "
-                + Math.max(0L, (auction.endsAt() - now) / 24000L) + " 天"), false);
+                + Math.max(0L, (auction.endsAt() - now) / PerpetualCalendar.TICKS_PER_DAY) + " 天"), false);
         return 1;
     }
 
@@ -442,7 +442,7 @@ public final class LandCommand {
             source.sendFailure(Component.literal("你不是当前领地所有者。"));
             return 0;
         }
-        long until = player.level().getGameTime() + days * 24000L;
+        long until = player.level().getGameTime() + PerpetualCalendar.ticksForDays(days);
         LandSavedData.get(player.getServer()).put(claim.withLease(target.getUUID(), until, rent));
         source.sendSuccess(() -> Component.literal("领地已出租给 " + target.getName().getString()), false);
         return 1;
@@ -473,7 +473,7 @@ public final class LandCommand {
         }
         LandTransferSavedData.get(player.getServer()).put(new LandTransferSavedData.Pending(player.getUUID(), target.getUUID(),
                 claim.dimension(), claim.chunkX(), claim.chunkZ(), com.ailudick.capitalismmod.Config.LAND_TRANSFER_PRICE.get(),
-                player.level().getGameTime() + 24000L * 3L));
+                player.level().getGameTime() + PerpetualCalendar.ticksForDays(3L)));
         target.displayClientMessage(Component.literal("你收到一项土地转让请求，请使用 /land accepttransfer 接受"), false);
         source.sendSuccess(() -> Component.literal("土地转让请求已发送给 " + target.getName().getString()), false);
         return 1;
@@ -493,7 +493,7 @@ public final class LandCommand {
         }
         LandTransferSavedData.get(player.getServer()).put(new LandTransferSavedData.Pending(player.getUUID(), target.getUUID(),
                 claim.dimension(), chunkX, chunkZ, com.ailudick.capitalismmod.Config.LAND_TRANSFER_PRICE.get(),
-                player.level().getGameTime() + 24000L * 3L));
+                player.level().getGameTime() + PerpetualCalendar.ticksForDays(3L)));
         target.displayClientMessage(Component.literal("你收到土地转让请求，请使用 /land accepttransfer 接受"), false);
         source.sendSuccess(() -> Component.literal("土地转让请求已发送"), false);
         return 1;
@@ -513,7 +513,8 @@ public final class LandCommand {
             source.sendFailure(Component.literal("当前土地已经有出售请求")); return 0;
         }
         LandTransferSavedData.get(player.getServer()).put(new LandTransferSavedData.Pending(player.getUUID(), target.getUUID(),
-                claim.dimension(), claim.chunkX(), claim.chunkZ(), price, player.level().getGameTime() + 24000L * 3L));
+                claim.dimension(), claim.chunkX(), claim.chunkZ(), price,
+                player.level().getGameTime() + PerpetualCalendar.ticksForDays(3L)));
         target.displayClientMessage(Component.literal("收到土地出售请求，价格：" + price + "，请使用 /land accepttransfer 接受"), false);
         source.sendSuccess(() -> Component.literal("土地出售请求已发送，价格：" + price), false);
         return 1;

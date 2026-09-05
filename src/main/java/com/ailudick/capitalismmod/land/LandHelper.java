@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.land;
 
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.business.IndividualBusinessHelper;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.tax.TaxService;
 import com.ailudick.capitalismmod.tax.TaxSubject;
@@ -180,7 +181,7 @@ public final class LandHelper {
         String id = player.level().dimension().location() + ":" + chunkX + ":" + chunkZ;
         LandClaim claim = LandSavedData.get(player.getServer()).get(id);
         if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || isTaxFrozen(player, claim)) return false;
-        long until = player.level().getGameTime() + days * 24000L;
+        long until = player.level().getGameTime() + PerpetualCalendar.ticksForDays(days);
         LandSavedData.get(player.getServer()).put(claim.withLease(targetUuid, until, rent));
         LandOperationLogSavedData.get(player.getServer()).record(player.level().getGameTime(), player.getUUID(),
                 "创建租约", claim.dimension(), chunkX, chunkZ);
