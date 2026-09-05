@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.tax;
 
+import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
@@ -10,6 +11,8 @@ import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
@@ -220,8 +223,14 @@ public final class TaxService {
     public static TaxBill updateLateFee(MinecraftServer server, TaxBill bill, long now) {
         if (!bill.declared() || bill.dueAt() <= 0L || now <= bill.dueAt() || bill.paid()) return bill;
         long daysLate = Math.max(1L, (now - bill.dueAt()) / PerpetualCalendar.TICKS_PER_DAY);
-        long daily = bill.amount() > Long.MAX_VALUE / 5L
-                ? Long.MAX_VALUE : (bill.amount() * 5L) / 10_000L;
+        long daily;
+        try {
+            daily = BigDecimal.valueOf(bill.amount())
+                    .multiply(BigDecimal.valueOf(Config.TAX_LATE_FEE_RATE_PER_DAY.get()))
+                    .setScale(0, RoundingMode.DOWN).longValueExact();
+        } catch (ArithmeticException e) {
+            daily = Long.MAX_VALUE;
+        }
         daily = Math.max(1L, daily);
         long fee = daily > Long.MAX_VALUE / daysLate ? Long.MAX_VALUE : daily * daysLate;
         if (fee <= bill.lateFeeAmount() && bill.lateFeeUpdatedAt() == now) return bill;

@@ -141,6 +141,10 @@ public class Config {
             .comment("Default inheritance and gift tax rate; 0 disables it.")
             .defineInRange("inheritanceTaxRate", 0.0, 0.0, 1.0);
 
+    public static final ModConfigSpec.DoubleValue TAX_LATE_FEE_RATE_PER_DAY = BUILDER
+            .comment("Daily tax late fee rate after the due date; 0.0005 is 5 basis points.")
+            .defineInRange("taxLateFeeRatePerDay", 0.0005, 0.0, 1.0);
+
     // Fixed operating overhead in USD per production batch.
     public static final ModConfigSpec.LongValue COMPANY_FIXED_OVERHEAD_PER_CYCLE = BUILDER
             .comment("Fixed company overhead in USD per production batch; 0 disables it.")
