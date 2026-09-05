@@ -15,18 +15,28 @@ import java.util.UUID;
  */
 public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId, long principal, double ratePerYear, int totalDays, int daysRemaining) {
 
-    private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
+    /**
+     * Codec construction is lazy so pure loan calculations do not require the
+     * Minecraft data-fixer runtime to be present. Persistence asks for the
+     * codec explicitly through this method.
+     */
+    public static Codec<PeerLoan> codec() {
+        return Codecs.CODEC;
+    }
 
-    public static final Codec<PeerLoan> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.STRING.fieldOf("id").forGetter(PeerLoan::id),
-            UUID_CODEC.fieldOf("lender").forGetter(PeerLoan::lender),
-            UUID_CODEC.fieldOf("borrower").forGetter(PeerLoan::borrower),
-            Codec.STRING.fieldOf("currencyId").forGetter(PeerLoan::currencyId),
-            Codec.LONG.fieldOf("principal").forGetter(PeerLoan::principal),
-            Codec.DOUBLE.fieldOf("ratePerYear").forGetter(PeerLoan::ratePerYear),
-            Codec.INT.fieldOf("totalDays").forGetter(PeerLoan::totalDays),
-            Codec.INT.fieldOf("daysRemaining").forGetter(PeerLoan::daysRemaining)
-    ).apply(instance, PeerLoan::new));
+    private static final class Codecs {
+        private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
+        private static final Codec<PeerLoan> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.STRING.fieldOf("id").forGetter(PeerLoan::id),
+                UUID_CODEC.fieldOf("lender").forGetter(PeerLoan::lender),
+                UUID_CODEC.fieldOf("borrower").forGetter(PeerLoan::borrower),
+                Codec.STRING.fieldOf("currencyId").forGetter(PeerLoan::currencyId),
+                Codec.LONG.fieldOf("principal").forGetter(PeerLoan::principal),
+                Codec.DOUBLE.fieldOf("ratePerYear").forGetter(PeerLoan::ratePerYear),
+                Codec.INT.fieldOf("totalDays").forGetter(PeerLoan::totalDays),
+                Codec.INT.fieldOf("daysRemaining").forGetter(PeerLoan::daysRemaining)
+        ).apply(instance, PeerLoan::new));
+    }
 
     public PeerLoan withDaysRemaining(int newDays) {
         return new PeerLoan(id, lender, borrower, currencyId, principal, ratePerYear, totalDays, newDays);

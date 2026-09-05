@@ -125,6 +125,7 @@ dependencies {
     localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.0'
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
     // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar
@@ -152,6 +153,10 @@ def modTestModsDir = providers.gradleProperty('modTestModsDir')
         .orElse('C:/Users/常翔/AppData/Roaming/.minecraft/versions/mod test/mods')
         .get()
 tasks.register('copyModJar', Copy) {
+    // The destination is an external local Minecraft instance and may contain
+    // files Gradle cannot inspect. State tracking is not useful for this
+    // deployment-only task and can make Gradle 9 fail before copying.
+    doNotTrackState('Deployment target is an external Minecraft instance')
     dependsOn tasks.named('jar')
     from tasks.named('jar')
     into file(modTestModsDir)

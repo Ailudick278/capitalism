@@ -12,7 +12,7 @@ class PeerLoanTest {
         PeerLoan loan = new PeerLoan("id", UUID.randomUUID(), UUID.randomUUID(), "usd",
                 3650, 0.10, 365, 0);
         assertEquals(365, loan.interestDue());
-        assertEquals(730, loan.withDaysRemaining(-1).interestDue());
+        assertEquals(732, loan.withDaysRemaining(-1).interestDue());
     }
 
     @Test

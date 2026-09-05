@@ -21,7 +21,7 @@ public final class PeerLoanSavedData extends SavedData {
 
     private record State(List<PeerLoan> loans) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                PeerLoan.CODEC.listOf().fieldOf("loans").forGetter(State::loans)
+                PeerLoan.codec().listOf().fieldOf("loans").forGetter(State::loans)
         ).apply(instance, State::new));
     }
 

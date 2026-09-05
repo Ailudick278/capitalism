@@ -64,6 +64,7 @@ public final class SupplyMarketSavedData extends SavedData {
         for (int i = 0; i < offers.size(); i++) {
             if (offers.get(i).id().equals(offer.id())) {
                 offers.set(i, offer);
+                setDirty();
                 return;
             }
         }
@@ -89,6 +90,7 @@ public final class SupplyMarketSavedData extends SavedData {
         for (int i = 0; i < orders.size(); i++) {
             if (orders.get(i).id().equals(order.id())) {
                 orders.set(i, order);
+                setDirty();
                 return;
             }
         }

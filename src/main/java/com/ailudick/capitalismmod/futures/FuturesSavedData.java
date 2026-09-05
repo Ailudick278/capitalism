@@ -68,6 +68,7 @@ public final class FuturesSavedData extends SavedData {
         futuresPrice.putIfAbsent(itemId, initialPrice);
         netVolume.putIfAbsent(itemId, 0L);
         expiryDay.putIfAbsent(itemId, (long) Config.FUTURES_EXPIRY_DAYS.get());
+        setDirty();
     }
 
     // ---- prices ----
@@ -82,6 +83,7 @@ public final class FuturesSavedData extends SavedData {
 
     public void putPrice(String itemId, long price) {
         futuresPrice.put(itemId, price);
+        setDirty();
     }
 
     // ---- volume ----
@@ -92,10 +94,12 @@ public final class FuturesSavedData extends SavedData {
 
     public void addNetVolume(String itemId, long delta) {
         netVolume.merge(itemId, delta, Long::sum);
+        setDirty();
     }
 
     public void resetNetVolume(String itemId) {
         netVolume.put(itemId, 0L);
+        setDirty();
     }
 
     // ---- expiry & day counter ----
@@ -106,6 +110,7 @@ public final class FuturesSavedData extends SavedData {
 
     public void setExpiryDay(String itemId, long day) {
         expiryDay.put(itemId, day);
+        setDirty();
     }
 
     public long dayCounter() {
@@ -114,6 +119,7 @@ public final class FuturesSavedData extends SavedData {
 
     public void incrementDay() {
         dayCounter++;
+        setDirty();
     }
 
     // ---- margin balance ----
@@ -128,6 +134,7 @@ public final class FuturesSavedData extends SavedData {
         } else {
             marginBalance.put(playerId.toString(), balance);
         }
+        setDirty();
     }
 
     public void addMarginBalance(UUID playerId, long delta) {
@@ -151,16 +158,19 @@ public final class FuturesSavedData extends SavedData {
 
     public void addPosition(Position position) {
         positions.add(position);
+        setDirty();
     }
 
     public void removePosition(String positionId) {
         positions.removeIf(position -> position.id().equals(positionId));
+        setDirty();
     }
 
     public void replacePosition(Position position) {
         for (int i = 0; i < positions.size(); i++) {
             if (positions.get(i).id().equals(position.id())) {
                 positions.set(i, position);
+                setDirty();
                 return;
             }
         }

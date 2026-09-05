@@ -88,10 +88,12 @@ public final class CommoditySavedData extends SavedData {
         history.computeIfAbsent(itemId, k -> new ArrayList<>());
         supply.putIfAbsent(itemId, 0L);
         prevClose.putIfAbsent(itemId, initialPrice);
+        setDirty();
     }
 
     public void putPrice(String itemId, long price) {
         prices.put(itemId, price);
+        setDirty();
     }
 
     public void addCandle(String itemId, Candle candle) {
@@ -100,6 +102,7 @@ public final class CommoditySavedData extends SavedData {
         while (candles.size() > MAX_CANDLES) {
             candles.remove(0);
         }
+        setDirty();
     }
 
     public long netVolume(String itemId) {
@@ -108,10 +111,12 @@ public final class CommoditySavedData extends SavedData {
 
     public void addNetVolume(String itemId, long delta) {
         netVolume.merge(itemId, delta, Long::sum);
+        setDirty();
     }
 
     public void resetNetVolume(String itemId) {
         netVolume.put(itemId, 0L);
+        setDirty();
     }
 
     // ---- supply / demand (production +, consumption -) ----
@@ -122,10 +127,12 @@ public final class CommoditySavedData extends SavedData {
 
     public void addSupply(String itemId, long delta) {
         supply.merge(itemId, delta, Long::sum);
+        setDirty();
     }
 
     public void resetSupply(String itemId) {
         supply.put(itemId, 0L);
+        setDirty();
     }
 
     // ---- previous close (price limit band) ----
@@ -136,6 +143,7 @@ public final class CommoditySavedData extends SavedData {
 
     public void setPrevClose(String itemId, long price) {
         prevClose.put(itemId, price);
+        setDirty();
     }
 
     // ---- orders ----
@@ -146,16 +154,19 @@ public final class CommoditySavedData extends SavedData {
 
     public void addOrder(MarketOrder order) {
         orders.add(order);
+        setDirty();
     }
 
     public void removeOrder(String orderId) {
         orders.removeIf(order -> order.id().equals(orderId));
+        setDirty();
     }
 
     public void replaceOrder(MarketOrder order) {
         for (int i = 0; i < orders.size(); i++) {
             if (orders.get(i).id().equals(order.id())) {
                 orders.set(i, order);
+                setDirty();
                 return;
             }
         }

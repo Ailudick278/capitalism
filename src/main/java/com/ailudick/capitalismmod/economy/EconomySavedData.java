@@ -130,10 +130,12 @@ public final class EconomySavedData extends SavedData {
         netVolume.putIfAbsent(stockId, 0L);
         history.computeIfAbsent(stockId, k -> new ArrayList<>());
         prevClose.putIfAbsent(stockId, initialPrice);
+        setDirty();
     }
 
     public void putPrice(String stockId, long price) {
         prices.put(stockId, price);
+        setDirty();
     }
 
     public void addCandle(String stockId, Candle candle) {
@@ -142,6 +144,7 @@ public final class EconomySavedData extends SavedData {
         while (candles.size() > MAX_CANDLES) {
             candles.remove(0);
         }
+        setDirty();
     }
 
     public long netVolume(String stockId) {
@@ -150,10 +153,12 @@ public final class EconomySavedData extends SavedData {
 
     public void addNetVolume(String stockId, long delta) {
         netVolume.merge(stockId, delta, Long::sum);
+        setDirty();
     }
 
     public void resetNetVolume(String stockId) {
         netVolume.put(stockId, 0L);
+        setDirty();
     }
 
     // ---- listings ----
@@ -223,6 +228,7 @@ public final class EconomySavedData extends SavedData {
         } else {
             holders.put(key, next);
         }
+        setDirty();
         if (holders.isEmpty()) {
             shareholders.remove(stockId);
         }
@@ -237,16 +243,19 @@ public final class EconomySavedData extends SavedData {
 
     public void addOrder(StockOrder order) {
         orders.add(order);
+        setDirty();
     }
 
     public void removeOrder(String orderId) {
         orders.removeIf(order -> order.id().equals(orderId));
+        setDirty();
     }
 
     public void replaceOrder(StockOrder order) {
         for (int i = 0; i < orders.size(); i++) {
             if (orders.get(i).id().equals(order.id())) {
                 orders.set(i, order);
+                setDirty();
                 return;
             }
         }
@@ -269,6 +278,7 @@ public final class EconomySavedData extends SavedData {
 
     public void setPrevClose(String stockId, long price) {
         prevClose.put(stockId, price);
+        setDirty();
     }
 
     // ---- persistence ----

@@ -60,6 +60,7 @@ public final class BondSavedData extends SavedData {
         for (int i = 0; i < holdings.size(); i++) {
             if (holdings.get(i).id().equals(holding.id())) {
                 holdings.set(i, holding);
+                setDirty();
                 return;
             }
         }
