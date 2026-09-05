@@ -18,7 +18,16 @@ public final class LogisticsClaimSavedData extends SavedData {
     private final List<Claim> claims = new ArrayList<>();
 
     public record Claim(String claimId, String shipmentId, UUID buyer, long insuredValue,
-                        long actualLoss, long payout, long decidedAt, String status) {
+                        long actualLoss, long payout, long decidedAt, String status,
+                        String carrierCompanyId) {
+        public Claim(String claimId, String shipmentId, UUID buyer, long insuredValue,
+                     long actualLoss, long payout, long decidedAt, String status) {
+            this(claimId, shipmentId, buyer, insuredValue, actualLoss, payout, decidedAt, status, "");
+        }
+
+        public Claim {
+            carrierCompanyId = carrierCompanyId == null ? "" : carrierCompanyId;
+        }
     }
 
     private LogisticsClaimSavedData() {
@@ -63,6 +72,7 @@ public final class LogisticsClaimSavedData extends SavedData {
             entry.putLong("payout", claim.payout());
             entry.putLong("decidedAt", claim.decidedAt());
             entry.putString("status", claim.status());
+            if (!claim.carrierCompanyId().isBlank()) entry.putString("carrierCompanyId", claim.carrierCompanyId());
             list.add(entry);
         }
         tag.put("claims", list);
@@ -78,7 +88,8 @@ public final class LogisticsClaimSavedData extends SavedData {
                 data.claims.add(new Claim(entry.getString("claimId"), entry.getString("shipmentId"),
                         entry.getUUID("buyer"), Math.max(0L, entry.getLong("insuredValue")),
                         Math.max(0L, entry.getLong("actualLoss")), Math.max(0L, entry.getLong("payout")),
-                        Math.max(0L, entry.getLong("decidedAt")), entry.getString("status")));
+                        Math.max(0L, entry.getLong("decidedAt")), entry.getString("status"),
+                        entry.getString("carrierCompanyId")));
             }
         }
         while (data.claims.size() > MAX_RECORDS) {

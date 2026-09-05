@@ -116,7 +116,9 @@ public final class LogisticsCommand {
             var claim = records.get(i);
             source.sendSuccess(() -> Component.literal("shipment " + claim.shipmentId()
                     + " | loss " + claim.actualLoss() + " | insured " + claim.insuredValue()
-                    + " | payout " + claim.payout() + " | " + claim.status()), false);
+                    + " | payout " + claim.payout()
+                    + (claim.carrierCompanyId().isBlank() ? "" : " | carrier " + claim.carrierCompanyId())
+                    + " | " + claim.status()), false);
         }
         if (records.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No insurance claim records."), false);

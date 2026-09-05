@@ -81,6 +81,9 @@ public final class LogisticsTickHandler {
                     }
                     long actualLoss = actualLoss(shipment, insuredValue);
                     long payout = Math.min(insuredValue, actualLoss);
+                    CompanyFreightContractSavedData.Contract freightContract =
+                            CompanyFreightContractSavedData.get(server).activeForShipment(shipment.id());
+                    String carrierCompanyId = freightContract == null ? "" : freightContract.carrierCompanyId();
                     Company company = shipment.buyerCompanyId().isBlank()
                             ? null : CompanySavedData.get(server).get(shipment.buyerCompanyId());
                     boolean companyShipment = company != null && company.ownerUuid().equals(shipment.buyer());
@@ -94,7 +97,7 @@ public final class LogisticsTickHandler {
                     }
                     claims.settle(new LogisticsClaimSavedData.Claim(
                             java.util.UUID.randomUUID().toString(), shipment.id(), shipment.buyer(), insuredValue,
-                            actualLoss, payout, now, "settled"));
+                            actualLoss, payout, now, "settled", carrierCompanyId));
                     CompanyFreightContractSavedData.get(server).closeForLoss(shipment.id());
                     data.remove(shipment.id());
                 } else if (shipment.disruptionCount() + 1 >= Config.LOGISTICS_MAX_DISRUPTIONS.get()) {
