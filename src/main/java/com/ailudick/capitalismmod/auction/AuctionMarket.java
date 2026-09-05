@@ -52,6 +52,7 @@ public final class AuctionMarket {
     /** Places a bid on an auction, refunding the previous high bidder. */
     public static boolean bid(ServerPlayer player, String auctionId, long amount) {
         AuctionSavedData data = AuctionSavedData.get(player.getServer());
+        AuctionBidSavedData bidJournal = AuctionBidSavedData.get(player.getServer());
         Auction auction = data.findAuction(auctionId);
         if (auction == null || auction.endTick() <= player.getServer().overworld().getGameTime()
                 || auction.seller().equals(player.getUUID())) {
@@ -59,6 +60,11 @@ public final class AuctionMarket {
         }
         if (amount < auction.startingPrice() || amount <= auction.currentBid()) {
             return false;
+        }
+        AuctionBidSavedData.Bid recorded = bidJournal.find(auctionId, player.getUUID(), amount);
+        if (recorded != null) {
+            data.replaceAuction(auction.withBid(amount, player.getStringUUID()));
+            return true;
         }
         long bidMinor = Money.toMinor(amount);
         if (bidMinor <= 0L || !EconomyHelper.tryPay(player, Currencies.USD, bidMinor)) {
@@ -85,6 +91,7 @@ public final class AuctionMarket {
                 MarketMailboxSavedData.get(player.getServer()).creditMoney(prevBidder, "usd", previousBidMinor);
             }
         }
+        bidJournal.record(new AuctionBidSavedData.Bid(auctionId, player.getUUID(), amount));
         data.replaceAuction(auction.withBid(amount, player.getStringUUID()));
         return true;
     }
