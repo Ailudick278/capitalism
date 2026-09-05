@@ -90,7 +90,7 @@ public final class LandHelper {
         LandClaim claim = LandSavedData.get(server).get(dimension + ":" + chunkX + ":" + chunkZ);
         if (claim == null) return false;
         long now = server.overworld().getGameTime();
-        LandStatus status = LandStatus.resolve(claim.taxOwed(), claim.taxDueAt(), claim.taxGraceUntil(),
+        LandStatus status = LandStatus.resolve(taxOwed(server, claim), claim.taxDueAt(), claim.taxGraceUntil(),
                 LandAuctionSavedData.get(server).get(claim.id()) != null, now);
         if (status == LandStatus.TAX_FROZEN || status == LandStatus.AUCTION) return false;
         if (claim.ownerUuid().equals(operator)) return true;
@@ -268,8 +268,14 @@ public final class LandHelper {
     /** Unified tax-ledger liability for one land claim, including legacy mirror data. */
     public static long taxOwed(ServerPlayer player, LandClaim claim) {
         if (player == null || claim == null) return 0L;
+        return taxOwed(player.getServer(), claim);
+    }
+
+    /** Unified tax-ledger liability for server-side checks without an online player. */
+    public static long taxOwed(MinecraftServer server, LandClaim claim) {
+        if (server == null || claim == null) return 0L;
         TaxSubject subject = new TaxSubject(TaxType.LAND, claim.id(), claim.ownerUuid());
-        long ledger = TaxService.outstanding(player.getServer(), subject);
+        long ledger = TaxService.outstanding(server, subject);
         return Money.toMajorCeiling(Math.max(ledger, Money.toMinorSaturated(claim.taxOwed())));
     }
 }
