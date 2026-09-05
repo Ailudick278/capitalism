@@ -181,6 +181,19 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Records an expense that creates or increases a liability without moving cash. */
+    public static boolean recordNonCashExpense(MinecraftServer server, Company company, String sourceId,
+                                                long expense, String currencyId, String description) {
+        if (server == null || company == null || sourceId == null || sourceId.isBlank()
+                || expense <= 0L || currencyId == null || currencyId.isBlank()) return false;
+        long occurredAt = server.overworld().getGameTime();
+        if (!recordTaxableExpense(server, company, sourceId, expense, currencyId, occurredAt)) return false;
+        CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                company.companyId(), occurredAt, "accrued_expense", currencyId, -expense,
+                company.treasuryOf(currencyId), description == null ? "Accrued expense" : description));
+        return true;
+    }
+
     /**
      * Removes the cost basis of goods sold from the company's inventory ledger.
      *

@@ -19,12 +19,17 @@ public final class CompanyPayrollService {
             long employerContribution = employerContribution(wages);
             long dailyLaborCost = add(wages, employerContribution);
             long unpaid = payroll.unpaid(company.companyId());
+            if (dailyLaborCost > 0L) {
+                CompanyHelper.recordNonCashExpense(server, company,
+                        "payroll_accrual:" + company.companyId() + ":" + settlementDay,
+                        dailyLaborCost, Currencies.USD.id(), "Daily wages and employer contributions accrued");
+            }
             long due = add(unpaid, dailyLaborCost);
             if (due <= 0L) continue;
             Company current = CompanySavedData.get(server).get(company.companyId());
             long available = current == null ? 0L : Math.max(0L, current.treasuryOf(Currencies.USD.id()));
             long paid = Math.min(available, due);
-            if (paid > 0L && !CompanyHelper.debitTreasury(server, company.companyId(), Currencies.USD.id(),
+            if (paid > 0L && !CompanyHelper.debitTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(),
                     paid, "payroll", "每日员工工资")) paid = 0L;
             payroll.settle(company.companyId(), settlementDay, paid, due - paid);
         }
@@ -38,7 +43,7 @@ public final class CompanyPayrollService {
         Company current = CompanySavedData.get(server).get(company.companyId());
         if (current == null) return 0L;
         long paid = Math.min(unpaid, Math.max(0L, current.treasuryOf(Currencies.USD.id())));
-        if (paid > 0L && CompanyHelper.debitTreasury(server, company.companyId(), Currencies.USD.id(),
+        if (paid > 0L && CompanyHelper.debitTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(),
                 paid, "liquidation_payroll", "清算优先清偿员工工资")) {
             payroll.settle(company.companyId(), server.overworld().getGameTime() / 24000L, paid, unpaid - paid);
             return paid;

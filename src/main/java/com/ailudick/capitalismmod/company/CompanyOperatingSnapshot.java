@@ -49,7 +49,7 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
                     || entry.timestamp() < start || entry.timestamp() > now || !isOperating(entry)) continue;
             if (isCashFlow(entry)) cashFlow = addSignedSaturated(cashFlow, entry.amount());
             if (entry.amount() > 0L) revenue = addSaturated(revenue, entry.amount());
-            if (entry.amount() < 0L) {
+            if (entry.amount() < 0L && isProfitExpense(entry)) {
                 long expense = entry.amount() == Long.MIN_VALUE ? Long.MAX_VALUE : -entry.amount();
                 expenses = addSaturated(expenses, expense);
                 if (isCostOfSales(entry)) costOfSales = addSaturated(costOfSales, expense);
@@ -97,6 +97,14 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
 
     private static boolean isCashFlow(CompanyLedgerEntry entry) {
         return !isCostOfSales(entry) && !"inventory_loss".equals(entry.type());
+    }
+
+    private static boolean isProfitExpense(CompanyLedgerEntry entry) {
+        String type = entry.type() == null ? "" : entry.type();
+        // Inventory purchases and payment of an already-accrued liability are
+        // cash movements; their expense was recognized at consumption/accrual.
+        return !"supply_purchase".equals(type) && !"payroll".equals(type)
+                && !"payroll_payment".equals(type) && !"liquidation_payroll".equals(type);
     }
 
     private static long subtractFloorZero(long left, long right) {
