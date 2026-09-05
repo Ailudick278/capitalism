@@ -741,18 +741,22 @@ public final class CompanyHelper {
             warehouse.credit(owner, item, output.getValue());
             CompanyQualitySavedData.get(server).record(company.companyId(), output.getKey(),
                     output.getValue(), qualityScore);
-            commodityData.ensureCommodity(output.getKey(),
-                    Math.max(1L, CapitalismData.getCommodityPrices().getOrDefault(output.getKey(), 1L)));
-            commodityData.addSupply(output.getKey(), output.getValue());
+            if (qualityScore >= Config.COMPANY_QUALITY_RELEASE_THRESHOLD.get()) {
+                commodityData.ensureCommodity(output.getKey(),
+                        Math.max(1L, CapitalismData.getCommodityPrices().getOrDefault(output.getKey(), 1L)));
+                commodityData.addSupply(output.getKey(), output.getValue());
+            }
         }
         // Cost layers must exist before fulfillment consumes any newly produced
         // stock; otherwise COGS falls back to the market price and the full
         // conversion cost remains incorrectly capitalized in inventory.
         addProducedInventoryCosts(server, company.companyId(), CompanyEconomy.outputs(company), conversionCost);
-        for (String itemId : CompanyEconomy.outputs(company).keySet()) {
-            SupplyMarket.fulfill(server,
-                    com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId()),
-                    company.ownerUuid(), itemId);
+        if (qualityScore >= Config.COMPANY_QUALITY_RELEASE_THRESHOLD.get()) {
+            for (String itemId : CompanyEconomy.outputs(company).keySet()) {
+                SupplyMarket.fulfill(server,
+                        com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId()),
+                        company.ownerUuid(), itemId);
+            }
         }
         CompanyProductionBatchSavedData.Batch batch = CompanyProductionBatchSavedData.newBatch(
                 company, recipe, conversionCost, qualityScore, recipe.workersPerCycle(),

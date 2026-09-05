@@ -251,6 +251,10 @@ public class Config {
             .comment("Maximum production cycles simulated after a server restart or long offline period.")
             .defineInRange("companyProductionMaxCatchupCycles", 240, 1, 10000);
 
+    public static final ModConfigSpec.IntValue COMPANY_QUALITY_RELEASE_THRESHOLD = BUILDER
+            .comment("Minimum batch quality score required before company goods enter supply offers or automatic fulfillment.")
+            .defineInRange("companyQualityReleaseThreshold", 80, 0, 100);
+
     // Futures margin rate (fraction of notional value required as margin). 0.10 = 10x leverage.
     public static final ModConfigSpec.DoubleValue FUTURES_MARGIN_RATE = BUILDER
             .comment("Futures margin rate (fraction of notional value required as margin). 0.10 = 10x leverage.")

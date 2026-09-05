@@ -68,6 +68,10 @@ public final class SupplyMarket {
         }
         CompanyQualitySavedData.ProductQuality quality = CompanyQualitySavedData.get(player.getServer())
                 .get(company.companyId(), itemId);
+        if (quality != null && quality.units() > 0L
+                && quality.averageScore() < Config.COMPANY_QUALITY_RELEASE_THRESHOLD.get()) {
+            return false;
+        }
         int qualityScore = quality == null ? 0 : quality.averageScore();
         data.addOffer(new SupplyOffer(UUID.randomUUID().toString(), player.getUUID(), companyName, itemId, price,
                 TradeRegion.of(player.blockPosition()), qualityScore));
