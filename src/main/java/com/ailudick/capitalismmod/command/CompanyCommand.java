@@ -577,6 +577,8 @@ public class CompanyCommand {
                         + " | machine " + batch.machineType() + " | outputs " + batch.outputs()
                         + " | inputs " + batch.inputs() + " | quality " + batch.qualityScore()
                         + "/100 | conversion USD " + batch.conversionCost()
+                        + " | site " + (batch.siteDimension().isBlank() ? "legacy/unassigned"
+                        : batch.siteDimension() + " " + batch.siteChunkX() + "," + batch.siteChunkZ())
                         + " | tick " + batch.createdAt()), false));
         return Math.min(20, records.size());
     }

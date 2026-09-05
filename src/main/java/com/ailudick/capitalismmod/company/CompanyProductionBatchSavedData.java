@@ -21,7 +21,8 @@ public final class CompanyProductionBatchSavedData extends SavedData {
 
     public record Batch(String id, String companyId, String recipeId, String machineType,
                         Map<String, Integer> inputs, Map<String, Integer> outputs,
-                        long conversionCost, int qualityScore, int workers, long createdAt) {
+                        long conversionCost, int qualityScore, int workers, long createdAt,
+                        String siteDimension, int siteChunkX, int siteChunkZ) {
         private static final Codec<Batch> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("id").forGetter(Batch::id),
                 Codec.STRING.fieldOf("companyId").forGetter(Batch::companyId),
@@ -32,7 +33,10 @@ public final class CompanyProductionBatchSavedData extends SavedData {
                 Codec.LONG.fieldOf("conversionCost").forGetter(Batch::conversionCost),
                 Codec.INT.fieldOf("qualityScore").forGetter(Batch::qualityScore),
                 Codec.INT.fieldOf("workers").forGetter(Batch::workers),
-                Codec.LONG.fieldOf("createdAt").forGetter(Batch::createdAt)
+                Codec.LONG.fieldOf("createdAt").forGetter(Batch::createdAt),
+                Codec.STRING.optionalFieldOf("siteDimension", "").forGetter(Batch::siteDimension),
+                Codec.INT.optionalFieldOf("siteChunkX", 0).forGetter(Batch::siteChunkX),
+                Codec.INT.optionalFieldOf("siteChunkZ", 0).forGetter(Batch::siteChunkZ)
         ).apply(instance, Batch::new));
 
         public Batch {
@@ -42,6 +46,15 @@ public final class CompanyProductionBatchSavedData extends SavedData {
             qualityScore = Math.max(0, Math.min(100, qualityScore));
             workers = Math.max(0, workers);
             createdAt = Math.max(0L, createdAt);
+            siteDimension = siteDimension == null ? "" : siteDimension;
+        }
+
+        /** Compatibility constructor for callers and older integrations. */
+        public Batch(String id, String companyId, String recipeId, String machineType,
+                     Map<String, Integer> inputs, Map<String, Integer> outputs,
+                     long conversionCost, int qualityScore, int workers, long createdAt) {
+            this(id, companyId, recipeId, machineType, inputs, outputs, conversionCost,
+                    qualityScore, workers, createdAt, "", 0, 0);
         }
     }
 
@@ -96,7 +109,8 @@ public final class CompanyProductionBatchSavedData extends SavedData {
             if (sourceId.equals(batch.companyId())) {
                 batches.set(i, new Batch(batch.id(), targetId, batch.recipeId(), batch.machineType(),
                         batch.inputs(), batch.outputs(), batch.conversionCost(), batch.qualityScore(),
-                        batch.workers(), batch.createdAt()));
+                        batch.workers(), batch.createdAt(), batch.siteDimension(), batch.siteChunkX(),
+                        batch.siteChunkZ()));
                 changed = true;
             }
         }
@@ -123,7 +137,17 @@ public final class CompanyProductionBatchSavedData extends SavedData {
 
     public static Batch newBatch(Company company, ProductionRecipe recipe, long conversionCost,
                                  int qualityScore, int workers, long createdAt) {
+        return newBatch(company, recipe, conversionCost, qualityScore, workers, createdAt, null);
+    }
+
+    public static Batch newBatch(Company company, ProductionRecipe recipe, long conversionCost,
+                                 int qualityScore, int workers, long createdAt,
+                                 CompanySiteSavedData.Site site) {
+        String dimension = site == null ? "" : site.dimension();
+        int chunkX = site == null ? 0 : site.chunkX();
+        int chunkZ = site == null ? 0 : site.chunkZ();
         return new Batch(UUID.randomUUID().toString(), company.companyId(), recipe.id(), recipe.machineType(),
-                recipe.inputs(), recipe.outputs(), conversionCost, qualityScore, workers, createdAt);
+                recipe.inputs(), recipe.outputs(), conversionCost, qualityScore, workers, createdAt,
+                dimension, chunkX, chunkZ);
     }
 }

@@ -393,9 +393,10 @@ public final class CompanyHelper {
         }
         MachineType machine = MachineType.parse(recipe.machineType());
         if (machine == null) return ProductionCycleResult.failure("invalid_machine");
+        CompanySiteSavedData.Site operatingSite = null;
         OilFieldSavedData.Field oilField = null;
         if (machine == MachineType.OIL_WELL) {
-            CompanySiteSavedData.Site site = CompanySiteSavedData.get(server).sites(company.companyId()).stream()
+            operatingSite = CompanySiteSavedData.get(server).sites(company.companyId()).stream()
                     .filter(candidate -> com.ailudick.capitalismmod.land.LandHelper.hasCommercialRight(server,
                             candidate.dimension(), candidate.chunkX(), candidate.chunkZ(), company.ownerUuid()))
                     .map(candidate -> new Object[]{candidate, OilFieldSavedData.get(server).get(candidate.dimension(),
@@ -404,9 +405,17 @@ public final class CompanyHelper {
                             && OilFieldSavedData.get(server).canExtract(field, 3L))
                     .map(pair -> (CompanySiteSavedData.Site) pair[0])
                     .findFirst().orElse(null);
-            if (site == null) return ProductionCycleResult.failure("missing_oil_site");
-            oilField = OilFieldSavedData.get(server).get(site.dimension(), site.chunkX(), site.chunkZ());
+            if (operatingSite == null) return ProductionCycleResult.failure("missing_oil_site");
+            oilField = OilFieldSavedData.get(server).get(operatingSite.dimension(), operatingSite.chunkX(), operatingSite.chunkZ());
             if (oilField == null) return ProductionCycleResult.failure("missing_oil_site");
+        } else {
+            // A batch can still be produced by legacy companies without a
+            // registered site, but new batches record the first authorized
+            // operating site when one exists.
+            operatingSite = CompanySiteSavedData.get(server).sites(company.companyId()).stream()
+                    .filter(candidate -> com.ailudick.capitalismmod.land.LandHelper.hasCommercialRight(server,
+                            candidate.dimension(), candidate.chunkX(), candidate.chunkZ(), company.ownerUuid()))
+                    .findFirst().orElse(null);
         }
         CompanyLaborSavedData labor = CompanyLaborSavedData.get(server);
         if (recipe.workersPerCycle() > 0 && labor.activeWorkers(company.companyId()) < recipe.workersPerCycle()) {
@@ -465,7 +474,7 @@ public final class CompanyHelper {
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
         if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return ProductionCycleResult.failure("oil_reservation");
         int qualityScore = productionQuality(server, company, machine);
-        produceOutputs(server, company, recipe, conversionCost, qualityScore);
+        produceOutputs(server, company, recipe, conversionCost, qualityScore, operatingSite);
         if (serviceCycle) {
             CompanyServiceDeliverySavedData.get(server).append(
                     new CompanyServiceDeliverySavedData.ServiceDelivery(
@@ -776,7 +785,8 @@ public final class CompanyHelper {
 
     /** Deposits outputs, records their conversion cost, then fulfills backorders. */
     private static void produceOutputs(MinecraftServer server, Company company, ProductionRecipe recipe,
-                                       long conversionCost, int qualityScore) {
+                                       long conversionCost, int qualityScore,
+                                       CompanySiteSavedData.Site operatingSite) {
         if (server == null) {
             return;
         }
@@ -811,7 +821,7 @@ public final class CompanyHelper {
         }
         CompanyProductionBatchSavedData.Batch batch = CompanyProductionBatchSavedData.newBatch(
                 company, recipe, conversionCost, qualityScore, recipe.workersPerCycle(),
-                server.overworld().getGameTime());
+                server.overworld().getGameTime(), operatingSite);
         CompanyProductionBatchSavedData.get(server).record(batch);
         CompanyQualityControlSavedData.get(server).screen(batch, batch.createdAt());
         CompanyQualityHoldSavedData.get(server).hold(batch);
