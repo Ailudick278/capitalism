@@ -7,6 +7,7 @@ public enum MachineType {
     NONE("none", 0L, 0L, Map.of()),
     FARM_PLOT("farm_plot", 250L, 1L, Map.of("minecraft:iron_ingot", 2, "minecraft:oak_planks", 4)),
     ORE_PROCESSOR("ore_processor", 500L, 2L, Map.of("minecraft:iron_ingot", 4, "minecraft:copper_ingot", 2, "minecraft:redstone", 1)),
+    BLAST_FURNACE("blast_furnace", 1800L, 9L, Map.of("minecraft:iron_ingot", 5, "minecraft:coal", 4, "minecraft:stone", 3)),
     GLASS_FURNACE("glass_furnace", 900L, 3L, Map.of("minecraft:iron_ingot", 4, "minecraft:copper_ingot", 2, "minecraft:glass", 2)),
     WIRE_MILL("wire_mill", 1100L, 3L, Map.of("minecraft:iron_ingot", 4, "minecraft:copper_ingot", 3)),
     LATHE("lathe", 1200L, 4L, Map.of("minecraft:iron_ingot", 5, "minecraft:redstone", 2)),
