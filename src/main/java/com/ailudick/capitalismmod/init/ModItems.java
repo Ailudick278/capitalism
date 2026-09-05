@@ -242,6 +242,12 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> CAMERA_MODULE = ITEMS.register("camera_module",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SPEAKER_MODULE = ITEMS.register("speaker_module",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> MICROPHONE_MODULE = ITEMS.register("microphone_module",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CHARGING_PORT = ITEMS.register("charging_port",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY_CELL = ITEMS.register("battery_cell",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY = ITEMS.register("battery",

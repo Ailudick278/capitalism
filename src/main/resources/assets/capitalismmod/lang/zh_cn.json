@@ -347,4 +347,7 @@
   ,"item.capitalismmod.fuel_oil": "燃料油"
   ,"item.capitalismmod.phone_casing": "手机机壳"
   ,"item.capitalismmod.camera_module": "摄像头模组"
+  ,"item.capitalismmod.speaker_module": "扬声器模组"
+  ,"item.capitalismmod.microphone_module": "麦克风模组"
+  ,"item.capitalismmod.charging_port": "充电接口模组"
 }

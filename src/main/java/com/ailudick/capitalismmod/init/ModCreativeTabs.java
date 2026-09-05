@@ -116,6 +116,9 @@ public class ModCreativeTabs {
                         output.accept(ModItems.DISPLAY_PANEL.get());
                         output.accept(ModItems.PHONE_CASING.get());
                         output.accept(ModItems.CAMERA_MODULE.get());
+                        output.accept(ModItems.SPEAKER_MODULE.get());
+                        output.accept(ModItems.MICROPHONE_MODULE.get());
+                        output.accept(ModItems.CHARGING_PORT.get());
                         output.accept(ModItems.BATTERY_CELL.get());
                         output.accept(ModItems.BATTERY.get());
                         output.accept(ModItems.SMARTPHONE.get());
