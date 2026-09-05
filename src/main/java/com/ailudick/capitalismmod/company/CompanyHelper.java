@@ -20,6 +20,7 @@ import com.ailudick.capitalismmod.tax.CorporateTaxAnnualSavedData;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxExpenseService;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
+import com.ailudick.capitalismmod.data.CapitalismData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -362,6 +363,8 @@ public final class CompanyHelper {
                 continue;
             }
             warehouse.credit(owner, item, output.getValue());
+            commodityData.ensureCommodity(output.getKey(),
+                    Math.max(1L, CapitalismData.getCommodityPrices().getOrDefault(output.getKey(), 1L)));
             commodityData.addSupply(output.getKey(), output.getValue());
             // automatically fulfill any backorders for this commodity
             SupplyMarket.fulfill(server,

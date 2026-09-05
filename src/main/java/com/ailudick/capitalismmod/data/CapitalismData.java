@@ -35,6 +35,7 @@ public final class CapitalismData {
 
     private static List<ShopOffer> shopOffers = new ArrayList<>();
     private static List<ItemStack> commodities = new ArrayList<>();
+    private static List<String> commodityItemIds = new ArrayList<>();
     private static Map<String, Long> commodityPrices = new HashMap<>();
     private static List<Stock> stocks = new ArrayList<>();
     private static List<IndustrySpec> industries = new ArrayList<>();
@@ -61,7 +62,18 @@ public final class CapitalismData {
     }
 
     public static List<ItemStack> getCommodities() {
-        return commodities;
+        // Custom items are registered after the initial config load. Resolve the
+        // configured ids lazily so they also appear in the commodity exchange.
+        List<ItemStack> resolved = new ArrayList<>();
+        for (String id : commodityItemIds) {
+            try {
+                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
+                if (item != null && item != Items.AIR) resolved.add(new ItemStack(item));
+            } catch (Exception ignored) {
+                // Invalid ids are already filtered by load-time validation.
+            }
+        }
+        return resolved.isEmpty() ? commodities : resolved;
     }
 
     /** itemId (e.g. "minecraft:diamond") -> initial price per unit, in USD. */
@@ -94,7 +106,14 @@ public final class CapitalismData {
         List<CommodityJson> raw = read(dir.resolve("commodities.json"), CommodityJson[].class, defaultCommodities());
         List<ItemStack> result = new ArrayList<>();
         Map<String, Long> prices = new HashMap<>();
+        List<String> itemIds = new ArrayList<>();
         for (CommodityJson j : raw) {
+            // Keep configured prices even before custom mod items are registered;
+            // production and market data are loaded before the NeoForge registry event.
+            if (j.item != null && !j.item.isBlank()) {
+                itemIds.add(j.item);
+                prices.put(j.item, Math.max(1L, j.initial_price));
+            }
             Item item = parseItem(j.item);
             if (item != null) {
                 result.add(new ItemStack(item));
@@ -102,6 +121,7 @@ public final class CapitalismData {
             }
         }
         commodityPrices = prices;
+        commodityItemIds = itemIds;
         return result;
     }
 
@@ -211,7 +231,14 @@ public final class CapitalismData {
                 new CommodityJson("minecraft:emerald", 50),
                 new CommodityJson("minecraft:coal", 10),
                 new CommodityJson("minecraft:wheat", 5),
-                new CommodityJson("minecraft:rail", 30)
+                new CommodityJson("minecraft:rail", 30),
+                new CommodityJson("capitalismmod:steel_sheet", 35),
+                new CommodityJson("capitalismmod:copper_wire", 20),
+                new CommodityJson("capitalismmod:glass_lens", 25),
+                new CommodityJson("capitalismmod:electric_lamp", 120),
+                new CommodityJson("capitalismmod:flour", 8),
+                new CommodityJson("capitalismmod:metal_can", 18),
+                new CommodityJson("capitalismmod:canned_food", 50)
         );
     }
 
