@@ -95,7 +95,8 @@ public final class CommodityMarket {
 
         if (remaining > 0) {
             data.addOrder(new MarketOrder(UUID.randomUUID().toString(), player.getStringUUID(),
-                    commodity.copy(), remaining, pricePerUnit, true));
+                    commodity.copy(), remaining, pricePerUnit, true,
+                    player.getServer().overworld().getGameTime()));
         }
         data.setDirty();
         return true;
@@ -146,7 +147,8 @@ public final class CommodityMarket {
 
         if (remaining > 0) {
             data.addOrder(new MarketOrder(UUID.randomUUID().toString(), player.getStringUUID(),
-                    commodity.copy(), remaining, pricePerUnit, false));
+                    commodity.copy(), remaining, pricePerUnit, false,
+                    player.getServer().overworld().getGameTime()));
         }
         long reserved = EconomyMath.multiply(remaining, pricePerUnit);
         long refund = total - spent - reserved;
@@ -225,7 +227,9 @@ public final class CommodityMarket {
                 result.add(order);
             }
         }
-        result.sort(Comparator.comparingLong(MarketOrder::pricePerUnit).reversed());
+        result.sort(Comparator.comparingLong(MarketOrder::pricePerUnit).reversed()
+                .thenComparingLong(MarketOrder::createdAt)
+                .thenComparing(MarketOrder::id));
         return result;
     }
 
@@ -238,7 +242,9 @@ public final class CommodityMarket {
                 result.add(order);
             }
         }
-        result.sort(Comparator.comparingLong(MarketOrder::pricePerUnit));
+        result.sort(Comparator.comparingLong(MarketOrder::pricePerUnit)
+                .thenComparingLong(MarketOrder::createdAt)
+                .thenComparing(MarketOrder::id));
         return result;
     }
 

@@ -17,7 +17,8 @@ import net.minecraft.world.item.Items;
  * @param sell        {@code true} = sell order (commodity is escrowed), {@code false} = buy order (money is escrowed)
  * @param pricePerUnit price per single item, in USD
  */
-public record MarketOrder(String id, String ownerId, ItemStack commodity, int quantity, long pricePerUnit, boolean sell) {
+public record MarketOrder(String id, String ownerId, ItemStack commodity, int quantity, long pricePerUnit,
+                          boolean sell, long createdAt) {
 
     /** Persistence codec: {@code commodity} is stored as its item registry id (commodities carry no NBT components). */
     private static final Codec<ItemStack> ITEM_CODEC = Codec.STRING.xmap(
@@ -33,8 +34,15 @@ public record MarketOrder(String id, String ownerId, ItemStack commodity, int qu
             ITEM_CODEC.fieldOf("commodity").forGetter(MarketOrder::commodity),
             Codec.INT.fieldOf("quantity").forGetter(MarketOrder::quantity),
             Codec.LONG.fieldOf("pricePerUnit").forGetter(MarketOrder::pricePerUnit),
-            Codec.BOOL.fieldOf("sell").forGetter(MarketOrder::sell)
-    ).apply(instance, MarketOrder::new));
+            Codec.BOOL.fieldOf("sell").forGetter(MarketOrder::sell),
+            Codec.LONG.optionalFieldOf("createdAt", 0L).forGetter(MarketOrder::createdAt)
+    ).apply(instance, (id, owner, commodity, quantity, price, sell, createdAt) ->
+            new MarketOrder(id, owner, commodity, quantity, price, sell, createdAt)));
+
+    /** Compatibility constructor for orders saved before time priority was added. */
+    public MarketOrder(String id, String ownerId, ItemStack commodity, int quantity, long pricePerUnit, boolean sell) {
+        this(id, ownerId, commodity, quantity, pricePerUnit, sell, 0L);
+    }
 
     // Manual StreamCodec: StreamCodec.composite has no 6-field overload.
     public static final StreamCodec<RegistryFriendlyByteBuf, MarketOrder> STREAM_CODEC = StreamCodec.of(
@@ -45,6 +53,7 @@ public record MarketOrder(String id, String ownerId, ItemStack commodity, int qu
                 ByteBufCodecs.VAR_INT.encode(buf, order.quantity());
                 ByteBufCodecs.VAR_LONG.encode(buf, order.pricePerUnit());
                 ByteBufCodecs.BOOL.encode(buf, order.sell());
+                ByteBufCodecs.VAR_LONG.encode(buf, order.createdAt());
             },
             buf -> new MarketOrder(
                     ByteBufCodecs.STRING_UTF8.decode(buf),
@@ -52,11 +61,12 @@ public record MarketOrder(String id, String ownerId, ItemStack commodity, int qu
                     ItemStack.STREAM_CODEC.decode(buf),
                     ByteBufCodecs.VAR_INT.decode(buf),
                     ByteBufCodecs.VAR_LONG.decode(buf),
-                    ByteBufCodecs.BOOL.decode(buf)
+                    ByteBufCodecs.BOOL.decode(buf),
+                    ByteBufCodecs.VAR_LONG.decode(buf)
             )
     );
 
     public MarketOrder withQuantity(int newQuantity) {
-        return new MarketOrder(id, ownerId, commodity, newQuantity, pricePerUnit, sell);
+        return new MarketOrder(id, ownerId, commodity, newQuantity, pricePerUnit, sell, createdAt);
     }
 }
