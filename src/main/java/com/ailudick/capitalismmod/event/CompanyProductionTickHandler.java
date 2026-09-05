@@ -11,6 +11,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
+import java.util.Map;
+
 /** Runs persisted company production attempts for both online and offline owners. */
 @EventBusSubscriber(modid = CapitalismMod.MODID)
 public final class CompanyProductionTickHandler {
@@ -44,14 +46,18 @@ public final class CompanyProductionTickHandler {
             int cycles = (int) Math.min((long) maxCatchup, dueCycles);
             long successful = state.successfulCycles();
             long failed = state.failedCycles();
+            Map<String, Long> failureReasons = state.failureReasons();
             for (int i = 0; i < cycles; i++) {
                 int capacity = Math.max(1, CompanyHelper.parallelCapacity(server, company));
                 boolean anySuccess = false;
                 for (int batch = 0; batch < capacity; batch++) {
-                    if (CompanyHelper.runProductionCycle(server, company)) {
+                    CompanyHelper.ProductionCycleResult result = CompanyHelper.runProductionCycleResult(server, company);
+                    if (result.success()) {
                         successful = increment(Math.max(0L, successful));
                         anySuccess = true;
                     } else {
+                        failureReasons = CompanyProductionSavedData.incrementReason(failureReasons,
+                                result.failureReason());
                         break;
                     }
                 }
@@ -61,7 +67,7 @@ public final class CompanyProductionTickHandler {
             // attempt means the factory was idle, not that it stores infinite
             // unpaid production time for later exploitation.
             production.put(new CompanyProductionSavedData.ProductionState(
-                    company.companyId(), now, successful, failed));
+                    company.companyId(), now, successful, failed, failureReasons));
         }
     }
 

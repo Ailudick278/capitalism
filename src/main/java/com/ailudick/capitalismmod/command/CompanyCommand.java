@@ -383,6 +383,7 @@ public class CompanyCommand {
                 + ", failed cycles " + metrics.failedCycles() + ", operational success "
                 + metrics.productionSuccessPercent() + "% (not product quality), assets USD " + metrics.assets()
                 + ", equity USD " + metrics.equity()), false);
+        source.sendSuccess(() -> Component.literal("Failure reasons: " + metrics.failureReasons()), false);
         return 1;
     }
 

@@ -17,12 +17,24 @@ public final class CompanyProductionSavedData extends SavedData {
     private final Map<String, ProductionState> states = new HashMap<>();
 
     public record ProductionState(String companyId, long lastProcessedTick,
-                                  long successfulCycles, long failedCycles) {
+                                  long successfulCycles, long failedCycles,
+                                  Map<String, Long> failureReasons) {
+        public ProductionState(String companyId, long lastProcessedTick,
+                               long successfulCycles, long failedCycles) {
+            this(companyId, lastProcessedTick, successfulCycles, failedCycles, Map.of());
+        }
+
+        public ProductionState {
+            failureReasons = failureReasons == null ? Map.of() : Map.copyOf(failureReasons);
+        }
+
         private static final Codec<ProductionState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("companyId").forGetter(ProductionState::companyId),
                 Codec.LONG.fieldOf("lastProcessedTick").forGetter(ProductionState::lastProcessedTick),
                 Codec.LONG.fieldOf("successfulCycles").forGetter(ProductionState::successfulCycles),
-                Codec.LONG.fieldOf("failedCycles").forGetter(ProductionState::failedCycles)
+                Codec.LONG.fieldOf("failedCycles").forGetter(ProductionState::failedCycles),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("failureReasons", Map.of())
+                        .forGetter(ProductionState::failureReasons)
         ).apply(instance, ProductionState::new));
     }
 
@@ -50,6 +62,14 @@ public final class CompanyProductionSavedData extends SavedData {
         setDirty();
     }
 
+    public static Map<String, Long> incrementReason(Map<String, Long> reasons, String reason) {
+        Map<String, Long> updated = new HashMap<>(reasons == null ? Map.of() : reasons);
+        String key = reason == null || reason.isBlank() ? "unknown" : reason;
+        long previous = Math.max(0L, updated.getOrDefault(key, 0L));
+        updated.put(key, previous == Long.MAX_VALUE ? previous : previous + 1L);
+        return updated;
+    }
+
     public void remove(String companyId) {
         if (states.remove(companyId) != null) setDirty();
     }
@@ -65,12 +85,15 @@ public final class CompanyProductionSavedData extends SavedData {
         }
         if (target == null) {
             states.put(targetId, new ProductionState(targetId, source.lastProcessedTick(),
-                    source.successfulCycles(), source.failedCycles()));
+                    source.successfulCycles(), source.failedCycles(), source.failureReasons()));
         } else {
+            Map<String, Long> reasons = new HashMap<>(target.failureReasons());
+            source.failureReasons().forEach((key, value) -> reasons.merge(key, Math.max(0L, value),
+                    (left, right) -> left > Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right));
             states.put(targetId, new ProductionState(targetId,
                     Math.min(source.lastProcessedTick(), target.lastProcessedTick()),
                     add(source.successfulCycles(), target.successfulCycles()),
-                    add(source.failedCycles(), target.failedCycles())));
+                    add(source.failedCycles(), target.failedCycles()), reasons));
         }
         setDirty();
     }

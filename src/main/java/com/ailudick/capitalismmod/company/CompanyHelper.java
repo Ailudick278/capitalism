@@ -316,45 +316,63 @@ public final class CompanyHelper {
         // Kept as an integration hook for the future order settlement service.
     }
 
+    /** Result of one production attempt, including a stable reporting reason. */
+    public record ProductionCycleResult(boolean success, String failureReason) {
+        public static ProductionCycleResult completed() {
+            return new ProductionCycleResult(true, "");
+        }
+
+        public static ProductionCycleResult failure(String reason) {
+            return new ProductionCycleResult(false, reason == null || reason.isBlank()
+                    ? "unknown" : reason);
+        }
+    }
+
     /** Runs one atomic recipe batch: all inputs are checked before any are consumed. */
     public static boolean runProductionCycle(MinecraftServer server, Company company) {
+        return runProductionCycleResult(server, company).success();
+    }
+
+    /** Runs one batch and reports why a non-mutating precondition failed. */
+    public static ProductionCycleResult runProductionCycleResult(MinecraftServer server, Company company) {
         if (server == null || company == null || company.registeredCapital() <= 0) {
-            return false;
+            return ProductionCycleResult.failure("invalid_company");
         }
-        if (!CompanyLifecycleService.canOperate(server, company.companyId())) return false;
+        if (!CompanyLifecycleService.canOperate(server, company.companyId())) return ProductionCycleResult.failure("company_inactive");
         // Unpaid wages are a persistent labor liability. Employees do not
         // continue producing new batches while the liability is outstanding.
-        if (CompanyPayrollSavedData.get(server).unpaid(company.companyId()) > 0L) return false;
+        if (CompanyPayrollSavedData.get(server).unpaid(company.companyId()) > 0L) return ProductionCycleResult.failure("unpaid_wages");
         ProductionRecipe recipe = CompanyEconomy.recipe(company);
-        if (recipe == null) return false;
+        if (recipe == null) return ProductionCycleResult.failure("missing_recipe");
         boolean serviceCycle = recipe.isService();
-        if (!serviceCycle && recipe.outputs().isEmpty()) return false;
-        if (!canProduceOutputs(server, company) || !canConsumeInputs(server, company)) return false;
+        if (!serviceCycle && recipe.outputs().isEmpty()) return ProductionCycleResult.failure("no_outputs");
+        if (!canProduceOutputs(server, company)) return ProductionCycleResult.failure("output_capacity");
+        if (!canConsumeInputs(server, company)) return ProductionCycleResult.failure("missing_inputs");
         if (serviceCycle) {
             Company current = CompanySavedData.get(server).get(company.companyId());
             if (current == null || EconomyMath.add(current.treasuryOf(Currencies.USD.id()), recipe.income()) < 0L) {
-                return false;
+                return ProductionCycleResult.failure("service_settlement");
             }
         }
         MachineType machine = MachineType.parse(recipe.machineType());
-        if (machine == null) return false;
+        if (machine == null) return ProductionCycleResult.failure("invalid_machine");
         OilFieldSavedData.Field oilField = null;
         if (machine == MachineType.OIL_WELL) {
             CompanySiteSavedData.Site site = CompanySiteSavedData.get(server).get(company.companyId());
-            if (site == null) return false;
+            if (site == null) return ProductionCycleResult.failure("missing_oil_site");
             if (!com.ailudick.capitalismmod.land.LandHelper.hasCommercialRight(server, site.dimension(),
-                    site.chunkX(), site.chunkZ(), company.ownerUuid())) return false;
+                    site.chunkX(), site.chunkZ(), company.ownerUuid())) return ProductionCycleResult.failure("no_land_right");
             oilField = OilFieldSavedData.get(server).get(site.dimension(), site.chunkX(), site.chunkZ());
-            if (!OilFieldSavedData.get(server).canExtract(oilField, 3L)) return false;
+            if (!OilFieldSavedData.get(server).canExtract(oilField, 3L)) return ProductionCycleResult.failure("oil_depleted");
         }
         CompanyLaborSavedData labor = CompanyLaborSavedData.get(server);
         if (recipe.workersPerCycle() > 0 && labor.activeWorkers(company.companyId()) < recipe.workersPerCycle()) {
-            return false;
+            return ProductionCycleResult.failure("insufficient_workers");
         }
         if (machine != MachineType.NONE
                 && CompanyEquipmentSavedData.get(server).count(company.companyId(), machine)
                 <= 0) {
-            return false;
+            return ProductionCycleResult.failure("missing_equipment");
         }
         long machineCost = machine == MachineType.NONE ? 0L : machine.maintenancePerCycle();
         long cost;
@@ -364,20 +382,20 @@ public final class CompanyHelper {
                             Math.max(0L, recipe.maintenanceCost())),
                     Math.addExact(machineCost, operatingOverhead));
         } catch (ArithmeticException e) {
-            return false;
+            return ProductionCycleResult.failure("cost_overflow");
         }
         if (!debitTreasury(server, company.companyId(),
                 Currencies.USD.id(), cost, "production_expense", "生产周期劳动力、能源与设备维护成本")) {
-            return false;
+            return ProductionCycleResult.failure("insufficient_funds");
         }
         InputConsumption inputConsumption = consumeInputs(server, company);
         if (!inputConsumption.success()) {
-            return false;
+            return ProductionCycleResult.failure("input_reservation");
         }
         if (serviceCycle) {
             long occurredAt = server.overworld().getGameTime();
             if (!creditTreasury(server, company.companyId(), Currencies.USD.id(), recipe.income())) {
-                return false;
+                return ProductionCycleResult.failure("service_income");
             }
             Company current = CompanySavedData.get(server).get(company.companyId());
             if (current != null) {
@@ -388,11 +406,11 @@ public final class CompanyHelper {
         }
         long equipmentDepreciation = machine == MachineType.NONE ? 0L
                 : CompanyEquipmentSavedData.get(server).useAndMeasureBookValueLoss(company.companyId(), machine);
-        if (equipmentDepreciation < 0L) return false;
+        if (equipmentDepreciation < 0L) return ProductionCycleResult.failure("equipment_accounting");
         long conversionCost = EconomyMath.add(inputConsumption.cost(), cost);
         conversionCost = EconomyMath.add(Math.max(0L, conversionCost), equipmentDepreciation);
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
-        if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return false;
+        if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return ProductionCycleResult.failure("oil_reservation");
         produceOutputs(server, company, conversionCost);
         if (equipmentDepreciation > 0L) {
             Company current = CompanySavedData.get(server).get(company.companyId());
@@ -403,7 +421,7 @@ public final class CompanyHelper {
                         "Production equipment depreciation");
             }
         }
-        return true;
+        return ProductionCycleResult.completed();
     }
 
     /**

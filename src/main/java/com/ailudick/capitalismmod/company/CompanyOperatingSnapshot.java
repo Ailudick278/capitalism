@@ -5,6 +5,8 @@ import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 
+import java.util.Map;
+
 /**
  * Read-only operating indicators for comparing companies without inventing a
  * universal company level. The cash-flow window is derived from the persisted
@@ -16,7 +18,12 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
                                        int activeWorkers, long grossDailyWages,
                                        long employerDailyContributions, long dailyLaborCost,
                                        int machineUnits, int parallelCapacity, long successfulBatches,
-                                       long failedCycles, long assets, long equity) {
+                                       long failedCycles, Map<String, Long> failureReasons,
+                                       long assets, long equity) {
+    public CompanyOperatingSnapshot {
+        failureReasons = failureReasons == null ? Map.of() : Map.copyOf(failureReasons);
+    }
+
     public CompanySizeProfile sizeProfile() {
         return CompanySizeProfile.classify(activeWorkers, annualizedRevenue(), assets);
     }
@@ -51,8 +58,8 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
     public static CompanyOperatingSnapshot from(MinecraftServer server, Company company, long lookbackDays) {
         long days = Math.max(1L, Math.min(360L, lookbackDays));
         if (server == null || company == null) {
-            return new CompanyOperatingSnapshot(days, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0L, 0L, 0L, 0, 0,
-                    0L, 0L, 0L, 0L);
+            return new CompanyOperatingSnapshot(days, 0L, 0L, 0L, 0L, 0L, 0L,
+                    0, 0L, 0L, 0L, 0, 0, 0L, 0L, Map.of(), 0L, 0L);
         }
 
         long now = server.overworld().getGameTime();
@@ -91,12 +98,13 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
                 CompanyProductionSavedData.get(server).get(company.companyId());
         long successful = production == null ? 0L : Math.max(0L, production.successfulCycles());
         long failed = production == null ? 0L : Math.max(0L, production.failedCycles());
+        Map<String, Long> failureReasons = production == null ? Map.of() : production.failureReasons();
         CompanyFinancialSnapshot financial = CompanyFinancialSnapshot.from(server, company);
         long grossProfit = subtractFloorZero(revenue, costOfSales);
         long otherOperatingExpenses = subtractFloorZero(expenses, costOfSales);
         long operatingProfit = subtractFloorZero(grossProfit, otherOperatingExpenses);
         return new CompanyOperatingSnapshot(days, revenue, expenses, costOfSales, grossProfit, operatingProfit, cashFlow, workers, grossWages,
-                employerContributions, dailyLaborCost, machineUnits, capacity, successful, failed,
+                employerContributions, dailyLaborCost, machineUnits, capacity, successful, failed, failureReasons,
                 financial.assets(), financial.equity());
     }
 
