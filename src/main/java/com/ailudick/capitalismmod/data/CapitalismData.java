@@ -189,6 +189,17 @@ public final class CapitalismData {
             // while making newly added official recipes available to existing worlds.
             IndustryJson maintained = defaultById.get(j.id);
             if (maintained != null) {
+                // Older generated configs used zero workers for service industries
+                // because they had no item outputs. Upgrade only an unchanged
+                // legacy default; keep deliberately customized labor settings.
+                if ((j.recipes == null || j.recipes.isEmpty())
+                        && j.workers_per_cycle == 0
+                        && maintained.workers_per_cycle > 0
+                        && j.income == maintained.income
+                        && java.util.Objects.equals(j.inputs, maintained.inputs)
+                        && java.util.Objects.equals(j.outputs, maintained.outputs)) {
+                    j.workers_per_cycle = maintained.workers_per_cycle;
+                }
                 List<RecipeJson> configured = j.recipes == null
                         ? new ArrayList<>() : new ArrayList<>(j.recipes);
                 Set<String> configuredIds = new java.util.HashSet<>();
@@ -412,7 +423,7 @@ public final class CapitalismData {
             this.inputs = new HashMap<>(inputs);
             this.outputs = new HashMap<>(outputs);
             this.income = income;
-            this.workers_per_cycle = outputs.isEmpty() ? 0 : 1;
+            this.workers_per_cycle = outputs.isEmpty() ? (income > 0 ? 1 : 0) : 1;
         }
 
         public IndustryJson(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, long income,
