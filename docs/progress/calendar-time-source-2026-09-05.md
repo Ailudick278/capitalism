@@ -7,6 +7,7 @@
 - Added regression tests for Gregorian day mapping and Minecraft tick-to-clock conversion.
 - Calendar command day counters now use the same `gameTime` source as the displayed date.
 - Added a shared overflow-safe `ticksForDays` conversion utility for future economic periods.
+- Company, individual-business, and annual tax-report periods now use that shared conversion utility without changing their existing 90/360-day values.
 
 ## Design boundary
 

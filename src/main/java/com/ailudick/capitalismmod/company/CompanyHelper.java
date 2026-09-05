@@ -19,6 +19,7 @@ import com.ailudick.capitalismmod.tax.CorporateTaxPeriodSavedData;
 import com.ailudick.capitalismmod.tax.CorporateTaxAnnualSavedData;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxExpenseService;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -89,12 +90,12 @@ public final class CompanyHelper {
     public static boolean recordTaxableIncome(MinecraftServer server, Company company, String sourceId,
                                               long revenue, String currencyId, long occurredAt) {
         if (server == null || company == null || sourceId == null || sourceId.isBlank() || revenue <= 0L) return false;
-        long quarter = 90L * 24000L;
+        long quarter = PerpetualCalendar.ticksForDays(90L);
         long periodEnd = ((occurredAt / quarter) + 1L) * quarter;
         long periodStart = periodEnd - quarter;
         CorporateTaxPeriodSavedData.get(server).record(company.companyId() + ":" + sourceId,
                 company.companyId(), currencyId, revenue, periodStart, periodEnd);
-        long year = 360L * 24000L;
+        long year = PerpetualCalendar.ticksForDays(360L);
         long yearEnd = ((occurredAt / year) + 1L) * year;
         CorporateTaxAnnualSavedData.get(server).record(company.companyId(), currencyId, revenue,
                 yearEnd - year, yearEnd);
@@ -105,12 +106,12 @@ public final class CompanyHelper {
     public static boolean recordTaxableExpense(MinecraftServer server, Company company, String sourceId,
                                                 long expense, String currencyId, long occurredAt) {
         if (server == null || company == null || sourceId == null || sourceId.isBlank() || expense <= 0L) return false;
-        long quarter = 90L * 24000L;
+        long quarter = PerpetualCalendar.ticksForDays(90L);
         long periodEnd = ((occurredAt / quarter) + 1L) * quarter;
         long periodStart = periodEnd - quarter;
         CorporateTaxPeriodSavedData.get(server).recordExpense(company.companyId() + ":expense:" + sourceId,
                 company.companyId(), currencyId, expense, periodStart, periodEnd);
-        long year = 360L * 24000L;
+        long year = PerpetualCalendar.ticksForDays(360L);
         long yearEnd = ((occurredAt / year) + 1L) * year;
         CorporateTaxAnnualSavedData.get(server).recordExpense(company.companyId(), currencyId, expense,
                 yearEnd - year, yearEnd);

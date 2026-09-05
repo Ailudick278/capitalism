@@ -10,6 +10,7 @@ import com.ailudick.capitalismmod.tax.TaxType;
 import com.ailudick.capitalismmod.tax.TaxableIncomeEvent;
 import com.ailudick.capitalismmod.tax.IndividualTaxPeriodSavedData;
 import com.ailudick.capitalismmod.tax.TaxIncomeVoucherService;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import net.minecraft.server.level.ServerPlayer;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -32,7 +33,7 @@ public final class IndividualBusinessHelper {
     public static void recordTaxableIncome(ServerPlayer player, IndividualBusiness business, String sourceId,
                                            long income, long occurredAt) {
         if (business == null || income <= 0L) return;
-        long period = 90L * 24000L;
+        long period = PerpetualCalendar.ticksForDays(90L);
         long end = ((occurredAt / period) + 1L) * period;
         IndividualTaxPeriodSavedData periods = IndividualTaxPeriodSavedData.get(player.getServer());
         if (periods.isClosed(business.businessId(), end)) return;
@@ -48,7 +49,7 @@ public final class IndividualBusinessHelper {
     public static void recordTaxableExpense(ServerPlayer player, IndividualBusiness business, String sourceId,
                                             long expense, long occurredAt, String details) {
         if (business == null || expense <= 0L) return;
-        long period = 90L * 24000L;
+        long period = PerpetualCalendar.ticksForDays(90L);
         long end = ((occurredAt / period) + 1L) * period;
         IndividualTaxPeriodSavedData periods = IndividualTaxPeriodSavedData.get(player.getServer());
         if (periods.isClosed(business.businessId(), end)) return;

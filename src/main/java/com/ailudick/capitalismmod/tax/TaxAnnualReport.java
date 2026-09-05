@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.tax;
 
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import java.util.UUID;
 
 /** Read-only annual tax summary derived from the persistent tax ledger and audit trail. */
@@ -7,7 +8,7 @@ public record TaxAnnualReport(long year, long yearStart, long yearEnd, long taxa
                               long assessedTax, long paidTax, long refunds, long outstandingTax,
                               long currentCreditBalance, long refundActions) {
     public static TaxAnnualReport calculate(net.minecraft.server.MinecraftServer server, UUID taxpayerUuid, long now) {
-        long yearTicks = 360L * 24000L;
+        long yearTicks = PerpetualCalendar.ticksForDays(360L);
         long year = Math.floorDiv(now, yearTicks);
         long start = year * yearTicks;
         long end = start + yearTicks;
