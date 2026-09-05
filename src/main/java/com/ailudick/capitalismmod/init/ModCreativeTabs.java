@@ -128,6 +128,9 @@ public class ModCreativeTabs {
                         output.accept(ModItems.PACKAGED_CHIP.get());
                         output.accept(ModItems.CIRCUIT_BOARD.get());
                         output.accept(ModItems.PCB_SUBSTRATE.get());
+                        output.accept(ModItems.DRILLED_PCB_PANEL.get());
+                        output.accept(ModItems.ETCHED_PCB.get());
+                        output.accept(ModItems.SOLDER_MASKED_PCB.get());
                         output.accept(ModItems.COPPER_FOIL.get());
                         output.accept(ModItems.SOLDER.get());
                         output.accept(ModItems.SMD_COMPONENTS.get());

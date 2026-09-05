@@ -280,6 +280,12 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PCB_SUBSTRATE = ITEMS.register("pcb_substrate",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DRILLED_PCB_PANEL = ITEMS.register("drilled_pcb_panel",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ETCHED_PCB = ITEMS.register("etched_pcb",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SOLDER_MASKED_PCB = ITEMS.register("solder_masked_pcb",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> COPPER_FOIL = ITEMS.register("copper_foil",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> SOLDER = ITEMS.register("solder",
