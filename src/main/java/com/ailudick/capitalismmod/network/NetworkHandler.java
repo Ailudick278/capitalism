@@ -23,6 +23,7 @@ import com.ailudick.capitalismmod.network.payload.RequestWorldMapTilesPayload;
 import com.ailudick.capitalismmod.network.payload.SyncWorldMapTilesPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload;
 import com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload;
+import com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandPermissionsPayload;
 import com.ailudick.capitalismmod.network.payload.ClearLandLogsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandSalePayload;
@@ -151,6 +152,7 @@ public class NetworkHandler {
         registrar.playToClient(SyncWorldMapTilesPayload.TYPE, SyncWorldMapTilesPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncWorldMapTiles);
         registrar.playToClient(SyncLandOverlayPayload.TYPE, SyncLandOverlayPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncLandOverlay);
         registrar.playToClient(SyncResourceOverlayPayload.TYPE, SyncResourceOverlayPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncResourceOverlay);
+        registrar.playToClient(SyncCompanySiteOverlayPayload.TYPE, SyncCompanySiteOverlayPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncCompanySites);
         registrar.playToClient(SyncLandPermissionsPayload.TYPE, SyncLandPermissionsPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncLandPermissions);
         registrar.playToClient(SyncLandSalePayload.TYPE, SyncLandSalePayload.STREAM_CODEC, ClientPayloadHandler::handleSyncLandSale);
         registrar.playToClient(SyncLandOwnershipPayload.TYPE, SyncLandOwnershipPayload.STREAM_CODEC, ClientPayloadHandler::handleSyncLandOwnership);

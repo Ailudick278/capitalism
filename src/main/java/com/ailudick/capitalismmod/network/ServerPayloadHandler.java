@@ -61,6 +61,9 @@ import com.ailudick.capitalismmod.network.payload.SyncOwnedLandsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandLogsPayload;
 import com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload;
 import com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload;
+import com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload;
+import com.ailudick.capitalismmod.company.CompanySiteSavedData;
+import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.OilFieldSavedData;
 import com.ailudick.capitalismmod.network.payload.RenameConglomeratePayload;
 import com.ailudick.capitalismmod.network.payload.SyncConglomeratePayload;
@@ -1154,6 +1157,7 @@ public class ServerPayloadHandler {
             sendLandOverlay(player, player.chunkPosition().x, player.chunkPosition().z,
                     Config.WORLD_MAP_DISCOVERY_RADIUS.get());
             sendResourceOverlay(player);
+            sendCompanySiteOverlay(player);
         });
     }
 
@@ -1163,6 +1167,7 @@ public class ServerPayloadHandler {
             sendWorldMapTiles(player, payload.centerChunkX(), payload.centerChunkZ(), payload.radius(), payload.discover());
             sendLandOverlay(player, payload.centerChunkX(), payload.centerChunkZ(), payload.radius());
             sendResourceOverlay(player);
+            sendCompanySiteOverlay(player);
         });
     }
 
@@ -1177,6 +1182,22 @@ public class ServerPayloadHandler {
             }
         }
         PacketDistributor.sendToPlayer(player, new SyncResourceOverlayPayload(dimension, List.copyOf(fields)));
+    }
+
+    private static void sendCompanySiteOverlay(ServerPlayer player) {
+        String dimension = player.serverLevel().dimension().location().toString();
+        WorldMapTileSavedData tiles = WorldMapTileSavedData.get(player.getServer());
+        Map<String, com.ailudick.capitalismmod.company.Company> companies =
+                CompanySavedData.get(player.getServer()).companies();
+        List<SyncCompanySiteOverlayPayload.Site> sites = new ArrayList<>();
+        for (CompanySiteSavedData.Site site : CompanySiteSavedData.get(player.getServer()).sitesInDimension(dimension)) {
+            if (tiles.get(dimension + ":" + site.chunkX() + ":" + site.chunkZ()) == null) continue;
+            var company = companies.get(site.companyId());
+            if (company == null) continue;
+            sites.add(new SyncCompanySiteOverlayPayload.Site(site.chunkX(), site.chunkZ(),
+                    company.name(), company.type()));
+        }
+        PacketDistributor.sendToPlayer(player, new SyncCompanySiteOverlayPayload(dimension, List.copyOf(sites)));
     }
 
     private static void sendLandOverlay(ServerPlayer player, int centerChunkX, int centerChunkZ, int requestedRadius) {

@@ -229,6 +229,43 @@ public final class WorldMapWidget {
         drawOilFields(graphics, explored, menu.oilFields());
     }
 
+    public void drawCompanySiteOverlay(GuiGraphics graphics, WorldMapMenu menu) {
+        drawCompanySites(graphics, menu.companySites());
+    }
+
+    public void drawCompanySiteOverlay(GuiGraphics graphics, LandMenu menu) {
+        drawCompanySites(graphics, menu.companySites());
+    }
+
+    private void drawCompanySites(GuiGraphics graphics,
+                                  java.util.List<com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload.Site> sites) {
+        float blockSize = viewport.zoom();
+        for (var site : sites) {
+            float screenX = viewport.screenX(site.chunkX() * 16.0 + 8.0, x + width / 2.0F);
+            float screenZ = viewport.screenZ(site.chunkZ() * 16.0 + 8.0, y + height / 2.0F);
+            float size = Math.max(3.0F, Math.min(8.0F, blockSize * 3.0F));
+            int color = companySiteColor(site.companyType());
+            int cx = Math.round(screenX);
+            int cz = Math.round(screenZ);
+            graphics.fill(cx - (int) size, cz - (int) size, cx + (int) size + 1, cz + (int) size + 1, color);
+            graphics.fill(cx - (int) (size + 2), cz - 1, cx + (int) (size + 3), cz + 2, 0xD0FFFFFF);
+            graphics.fill(cx - 1, cz - (int) (size + 2), cx + 2, cz + (int) (size + 3), 0xD0FFFFFF);
+        }
+    }
+
+    private static int companySiteColor(String companyType) {
+        if (companyType == null) return 0xFFB388FF;
+        return switch (companyType.toLowerCase(java.util.Locale.ROOT)) {
+            case "mining" -> 0xFFD7A86E;
+            case "agriculture" -> 0xFF7BC96F;
+            case "manufacturing" -> 0xFFFFA45B;
+            case "transport" -> 0xFF64B5F6;
+            case "retail" -> 0xFFE573B7;
+            case "utilities" -> 0xFFFFD54F;
+            default -> 0xFFB388FF;
+        };
+    }
+
     private void drawOilFields(GuiGraphics graphics, java.util.List<long[]> explored,
                                java.util.List<com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload.OilField> fields) {
         float blockSize = viewport.zoom();

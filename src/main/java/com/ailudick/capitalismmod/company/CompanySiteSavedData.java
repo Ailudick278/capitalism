@@ -8,6 +8,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 /** Persistent registered operating locations for companies. */
 public final class CompanySiteSavedData extends SavedData {
@@ -25,6 +26,11 @@ public final class CompanySiteSavedData extends SavedData {
 
     public Site get(String companyId) {
         return companyId == null ? null : sites.get(companyId);
+    }
+
+    public List<Site> sitesInDimension(String dimension) {
+        if (dimension == null || dimension.isBlank()) return List.of();
+        return sites.values().stream().filter(site -> dimension.equals(site.dimension())).toList();
     }
 
     public void set(Site site) {

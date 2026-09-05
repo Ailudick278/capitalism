@@ -18,6 +18,7 @@ public class WorldMapMenu extends AbstractContainerMenu {
     private final Map<Long, int[]> tiles = new HashMap<>();
     private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncLandOverlayPayload.Cell> landOverlay = new HashMap<>();
     private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload.OilField> oilFields = new HashMap<>();
+    private final Map<Long, com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload.Site> companySites = new HashMap<>();
     public int selectedChunkX;
     public int selectedChunkZ;
     public boolean hasSelectedChunk;
@@ -80,6 +81,15 @@ public class WorldMapMenu extends AbstractContainerMenu {
 
     public List<com.ailudick.capitalismmod.network.payload.SyncResourceOverlayPayload.OilField> oilFields() {
         return List.copyOf(oilFields.values());
+    }
+
+    public void setCompanySites(com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload data) {
+        companySites.clear();
+        for (var site : data.sites()) companySites.put(key(site.chunkX(), site.chunkZ()), site);
+    }
+
+    public List<com.ailudick.capitalismmod.network.payload.SyncCompanySiteOverlayPayload.Site> companySites() {
+        return List.copyOf(companySites.values());
     }
 
     private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xFFFFFFFFL); }
