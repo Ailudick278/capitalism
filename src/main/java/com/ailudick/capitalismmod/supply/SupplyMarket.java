@@ -97,25 +97,31 @@ public final class SupplyMarket {
             return false;
         }
         long total = EconomyMath.multiply(offer.price(), quantity);
-        if (total < 0 || !EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(total))) {
+        if (total < 0L || Money.toMinor(total) <= 0L) {
             return false;
         }
 
         Company buyerCompany = selectedCompanyName.isBlank()
                 ? null : CompanyHelper.getCompany(buyer, selectedCompanyName);
-        if (!selectedCompanyName.isBlank() && buyerCompany == null) {
-            // The company name is client-provided, so never accept an unknown company.
-            EconomyHelper.giveMoney(buyer, Currencies.USD, Money.toMinor(total));
+        if (!selectedCompanyName.isBlank() && (buyerCompany == null
+                || !CompanyLifecycleService.canOperate(buyer.getServer(), buyerCompany.companyId()))) {
+            // The company name is client-provided; an unknown or suspended company cannot procure.
             return false;
         }
         String supplyOrderId = UUID.randomUUID().toString();
         String buyerCompanyId = buyerCompany == null ? "" : buyerCompany.companyId();
+        String orderSource = "supply_order:" + supplyOrderId;
+        if (buyerCompany != null) {
+            if (!CompanyHelper.debitTreasury(buyer.getServer(), buyerCompany.companyId(), Currencies.USD.id(),
+                    total, "supply_purchase", "采购原料并取得存货")) {
+                return false;
+            }
+        } else if (!EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(total))) {
+            return false;
+        }
         SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "CREATED", buyer.getUUID(),
                 offer.ownerUuid(), offer.itemId(), quantity, total);
-        String orderSource = "supply_order:" + UUID.randomUUID();
         if (buyerCompany != null) {
-            CompanyHelper.recordTaxableExpense(buyer.getServer(), buyerCompany, orderSource,
-                    total, Currencies.USD.id(), buyer.getServer().overworld().getGameTime());
             TaxTransactionService.recordInputCredit(buyer.getServer(), buyerCompany.ownerUuid(),
                     Currencies.USD.id(), Money.toMinorSaturated(total), orderSource,
                     buyer.getServer().overworld().getGameTime());
