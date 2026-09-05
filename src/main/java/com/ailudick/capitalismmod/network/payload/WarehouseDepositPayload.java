@@ -10,11 +10,15 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * Client -> Server: move {@code count} of a commodity from the backpack into the warehouse.
  */
-public record WarehouseDepositPayload(int commodityIndex, int count) implements CustomPacketPayload {
+public record WarehouseDepositPayload(String ownerKey, int commodityIndex, int count) implements CustomPacketPayload {
+    public WarehouseDepositPayload(int commodityIndex, int count) {
+        this("", commodityIndex, count);
+    }
     public static final Type<WarehouseDepositPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(CapitalismMod.MODID, "warehouse_deposit"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, WarehouseDepositPayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.STRING_UTF8, WarehouseDepositPayload::ownerKey,
             ByteBufCodecs.VAR_INT, WarehouseDepositPayload::commodityIndex,
             ByteBufCodecs.VAR_INT, WarehouseDepositPayload::count,
             WarehouseDepositPayload::new);

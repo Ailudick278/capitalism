@@ -21,6 +21,21 @@ public final class Money {
         }
     }
 
+    /** Converts a non-negative major-unit amount to minor units, saturating on overflow. */
+    public static long toMinorSaturated(long major) {
+        if (major <= 0L) return Math.max(0L, major);
+        long minor = toMinor(major);
+        return minor < 0L ? Long.MAX_VALUE : minor;
+    }
+
+    /** Converts minor units to whole major units for legacy mirrors. */
+    public static long toMajorCeiling(long minor) {
+        if (minor <= 0L) return 0L;
+        return minor > Long.MAX_VALUE - (MINOR_UNITS_PER_UNIT - 1L)
+                ? Long.MAX_VALUE
+                : (minor + MINOR_UNITS_PER_UNIT - 1L) / MINOR_UNITS_PER_UNIT;
+    }
+
     /** Formats a minor-unit amount as a major-unit string ("7", "7.25", "-0.05"). */
     public static String format(long minor) {
         long major = minor / MINOR_UNITS_PER_UNIT;

@@ -25,13 +25,25 @@ import java.util.UUID;
 public final class WarehouseSavedData extends SavedData {
     private static final String ID = "capitalismmod_warehouse";
 
-    // player uuid string -> (item id -> count)
+    // owner storage key (player:<uuid> or company:<companyId>) -> (item id -> count)
     private final Map<String, Map<String, Integer>> storage = new HashMap<>();
+    private final java.util.List<AuditEntry> audit = new java.util.ArrayList<>();
 
-    private record State(Map<String, Map<String, Integer>> storage) {
+    public record AuditEntry(String action, String from, String to, String itemId, int count) {
+        static final Codec<AuditEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.STRING.fieldOf("action").forGetter(AuditEntry::action),
+                Codec.STRING.fieldOf("from").forGetter(AuditEntry::from),
+                Codec.STRING.fieldOf("to").forGetter(AuditEntry::to),
+                Codec.STRING.fieldOf("itemId").forGetter(AuditEntry::itemId),
+                Codec.INT.fieldOf("count").forGetter(AuditEntry::count)
+        ).apply(instance, AuditEntry::new));
+    }
+
+    private record State(Map<String, Map<String, Integer>> storage, java.util.List<AuditEntry> audit) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, Codec.INT))
-                        .fieldOf("storage").forGetter(State::storage)
+                        .fieldOf("storage").forGetter(State::storage),
+                AuditEntry.CODEC.listOf().optionalFieldOf("audit", java.util.List.of()).forGetter(State::audit)
         ).apply(instance, State::new));
     }
 
@@ -43,23 +55,31 @@ public final class WarehouseSavedData extends SavedData {
                 new Factory<>(WarehouseSavedData::new, WarehouseSavedData::load), ID);
     }
 
-    public Map<String, Integer> storage(UUID playerId) {
-        return storage.getOrDefault(playerId.toString(), Map.of());
+    public Map<String, Integer> storage(InventoryOwner owner) {
+        return storage.getOrDefault(owner.storageKey(), Map.of());
     }
 
-    public int count(UUID playerId, String itemId) {
-        return storage.getOrDefault(playerId.toString(), Map.of()).getOrDefault(itemId, 0);
+    public int count(InventoryOwner owner, String itemId) {
+        return storage(owner).getOrDefault(itemId, 0);
     }
+
+    /** Compatibility accessor for legacy player-owned orders and old integrations. */
+    public Map<String, Integer> storage(UUID playerId) { return storage(InventoryOwner.player(playerId)); }
+
+    /** Compatibility accessor for legacy player-owned orders and old integrations. */
+    public int count(UUID playerId, String itemId) { return count(InventoryOwner.player(playerId), itemId); }
 
     /** Adds {@code count} of {@code item} to the player's warehouse inventory (no backpack interaction). */
-    public void credit(UUID playerId, Item item, int count) {
+    public void credit(InventoryOwner owner, Item item, int count) {
         if (item == null || item == Items.AIR || count <= 0) {
             return;
         }
         String itemId = BuiltInRegistries.ITEM.getKey(item).toString();
-        storage.computeIfAbsent(playerId.toString(), k -> new HashMap<>()).merge(itemId, count, WarehouseSavedData::saturatingAdd);
+        storage.computeIfAbsent(owner.storageKey(), k -> new HashMap<>()).merge(itemId, count, WarehouseSavedData::saturatingAdd);
         setDirty();
     }
+
+    public void credit(UUID playerId, Item item, int count) { credit(InventoryOwner.player(playerId), item, count); }
 
     private static int saturatingAdd(int left, int right) {
         if (right > Integer.MAX_VALUE - left) {
@@ -69,12 +89,12 @@ public final class WarehouseSavedData extends SavedData {
     }
 
     /** Removes {@code count} of {@code item} from the warehouse, returning {@code false} if insufficient. */
-    public boolean consume(UUID playerId, Item item, int count) {
+    public boolean consume(InventoryOwner owner, Item item, int count) {
         if (item == null || item == Items.AIR || count <= 0) {
             return false;
         }
         String itemId = BuiltInRegistries.ITEM.getKey(item).toString();
-        Map<String, Integer> inv = storage.get(playerId.toString());
+        Map<String, Integer> inv = storage.get(owner.storageKey());
         if (inv == null) {
             return false;
         }
@@ -89,30 +109,69 @@ public final class WarehouseSavedData extends SavedData {
             inv.put(itemId, remaining);
         }
         if (inv.isEmpty()) {
-            storage.remove(playerId.toString());
+            storage.remove(owner.storageKey());
         }
         setDirty();
         return true;
     }
 
+    public boolean consume(UUID playerId, Item item, int count) { return consume(InventoryOwner.player(playerId), item, count); }
+
+    /** Moves items between two persistent owner inventories, recording no player interaction. */
+    public boolean transfer(InventoryOwner from, InventoryOwner to, Item item, int count) {
+        if (from.equals(to) || !consume(from, item, count)) return false;
+        credit(to, item, count);
+        audit.add(new AuditEntry("transfer", from.storageKey(), to.storageKey(),
+                BuiltInRegistries.ITEM.getKey(item).toString(), count));
+        trimAudit();
+        setDirty();
+        return true;
+    }
+
+    public java.util.List<AuditEntry> audit() { return java.util.List.copyOf(audit); }
+
+    private void trimAudit() {
+        while (audit.size() > 500) audit.remove(0);
+    }
+
+    /** Moves every item from one owner inventory to another. */
+    public int transferAll(InventoryOwner from, InventoryOwner to) {
+        if (from.equals(to)) return 0;
+        Map<String, Integer> source = new HashMap<>(storage(from));
+        int moved = 0;
+        for (Map.Entry<String, Integer> entry : source.entrySet()) {
+            Item item = itemById(entry.getKey());
+            if (item != null && transfer(from, to, item, entry.getValue())) moved++;
+        }
+        return moved;
+    }
+
     /** Moves {@code count} of {@code item} from the player's backpack into the warehouse. */
     public boolean deposit(Player player, Item item, int count) {
+        return deposit(player, InventoryOwner.player(player.getUUID()), item, count);
+    }
+
+    public boolean deposit(Player player, InventoryOwner owner, Item item, int count) {
         if (item == null || item == Items.AIR || count <= 0) {
             return false;
         }
         if (!consumeInventory(player, item, count)) {
             return false;
         }
-        credit(player.getUUID(), item, count);
+        credit(owner, item, count);
         return true;
     }
 
     /** Moves {@code count} of {@code item} from the warehouse into the player's backpack. */
     public boolean withdraw(Player player, Item item, int count) {
+        return withdraw(player, InventoryOwner.player(player.getUUID()), item, count);
+    }
+
+    public boolean withdraw(Player player, InventoryOwner owner, Item item, int count) {
         if (item == null || item == Items.AIR || count <= 0) {
             return false;
         }
-        if (!consume(player.getUUID(), item, count)) {
+        if (!consume(owner, item, count)) {
             return false;
         }
         giveInventory(player, item, count);
@@ -155,9 +214,18 @@ public final class WarehouseSavedData extends SavedData {
         }
     }
 
+    private static Item itemById(String itemId) {
+        try {
+            Item item = BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(itemId));
+            return item == null || item == Items.AIR ? null : item;
+        } catch (IllegalArgumentException | NullPointerException ignored) {
+            return null;
+        }
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        State state = new State(new HashMap<>(storage));
+        State state = new State(new HashMap<>(storage), new java.util.ArrayList<>(audit));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -166,9 +234,22 @@ public final class WarehouseSavedData extends SavedData {
     public static WarehouseSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         WarehouseSavedData data = new WarehouseSavedData();
         if (tag.contains("data")) {
-            State.CODEC.parse(NbtOps.INSTANCE, tag.get("data")).result().ifPresent(state ->
-                    state.storage().forEach((k, v) -> data.storage.put(k, new HashMap<>(v))));
+            State.CODEC.parse(NbtOps.INSTANCE, tag.get("data")).result().ifPresent(state -> {
+                    state.storage().forEach((k, v) -> {
+                        // Version 1 used the raw player UUID as the key. Keep all
+                        // existing stock in the player's personal warehouse.
+                        String ownerKey = InventoryOwner.parse(k) == null && isUuid(k)
+                                ? "player:" + k : k;
+                        data.storage.put(ownerKey, new HashMap<>(v));
+                    });
+                    data.audit.addAll(state.audit());
+            });
         }
         return data;
+    }
+
+    private static boolean isUuid(String value) {
+        try { UUID.fromString(value); return true; }
+        catch (IllegalArgumentException | NullPointerException ignored) { return false; }
     }
 }

@@ -1,4 +1,4 @@
 {
   "parent": "minecraft:block/cube_all",
-  "textures": { "all": "capitalismmod:block/stock_exchange" }
+  "textures": { "all": "capitalismmod:block/transfer_station" }
 }

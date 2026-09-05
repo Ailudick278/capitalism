@@ -4,10 +4,13 @@ import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyEconomy;
 import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.business.IndividualBusinessHelper;
+import com.ailudick.capitalismmod.business.IndividualBusiness;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import com.ailudick.capitalismmod.market.TransportMode;
@@ -70,9 +73,15 @@ public final class SupplyMarket {
 
     /** Places a buy order: pays up front, fills from supplier stock, backorders the rest. */
     public static boolean placeOrder(ServerPlayer buyer, String offerId, int quantity) {
+        return placeOrder(buyer, offerId, quantity, "");
+    }
+
+    /** Places an order and records its cost against the selected buyer company. */
+    public static boolean placeOrder(ServerPlayer buyer, String offerId, int quantity, String companyName) {
         if (quantity <= 0) {
             return false;
         }
+        String selectedCompanyName = companyName == null ? "" : companyName.trim();
         SupplyMarketSavedData data = SupplyMarketSavedData.get(buyer.getServer());
         SupplyOffer offer = data.findOffer(offerId);
         if (offer == null) {
@@ -87,15 +96,38 @@ public final class SupplyMarket {
             return false;
         }
 
+        Company buyerCompany = selectedCompanyName.isBlank()
+                ? null : CompanyHelper.getCompany(buyer, selectedCompanyName);
+        if (!selectedCompanyName.isBlank() && buyerCompany == null) {
+            // The company name is client-provided, so never accept an unknown company.
+            EconomyHelper.giveMoney(buyer, Currencies.USD, Money.toMinor(total));
+            return false;
+        }
+        String orderSource = "supply_order:" + UUID.randomUUID();
+        if (buyerCompany != null) {
+            CompanyHelper.recordTaxableExpense(buyer.getServer(), buyerCompany, orderSource,
+                    total, Currencies.USD.id(), buyer.getServer().overworld().getGameTime());
+        } else {
+            IndividualBusiness business = IndividualBusinessHelper.get(buyer);
+            if (business != null && "active".equals(business.status())) {
+                IndividualBusinessHelper.recordTaxableExpense(buyer, business, orderSource, total,
+                        buyer.getServer().overworld().getGameTime(), offer.itemId() + " x" + quantity
+                                + " from " + offer.companyName());
+            }
+        }
+
         WarehouseSavedData warehouse = WarehouseSavedData.get(buyer.getServer());
-        int stock = warehouse.count(offer.ownerUuid(), offer.itemId());
+        Company supplierCompany = CompanyHelper.findCompany(buyer.getServer(), offer.ownerUuid(), offer.companyName());
+        InventoryOwner supplierOwner = supplierCompany == null
+                ? InventoryOwner.player(offer.ownerUuid()) : InventoryOwner.company(supplierCompany.companyId());
+        int stock = warehouse.count(supplierOwner, offer.itemId());
         int filled = Math.min(quantity, stock);
         if (filled > 0) {
-            warehouse.consume(offer.ownerUuid(), item, filled);
+            warehouse.consume(supplierOwner, item, filled);
             deliverOrShip(buyer.getServer(), buyer.getUUID(), item, filled, offer.region(),
                     TradeRegion.of(buyer.blockPosition()));
         }
-        paySupplier(buyer.getServer(), offer.ownerUuid(), total);
+        paySupplier(buyer.getServer(), offer, total);
 
         int remaining = quantity - filled;
         if (remaining > 0) {
@@ -108,6 +140,10 @@ public final class SupplyMarket {
 
     /** Delivers backorders to buyers from the supplier's current stock. Called after production. */
     public static void fulfill(MinecraftServer server, UUID supplierUuid, String itemId) {
+        fulfill(server, InventoryOwner.player(supplierUuid), supplierUuid, itemId);
+    }
+
+    public static void fulfill(MinecraftServer server, InventoryOwner supplierOwner, UUID supplierUuid, String itemId) {
         SupplyMarketSavedData data = SupplyMarketSavedData.get(server);
         Item item = parseItem(itemId);
         if (item == null) {
@@ -118,12 +154,15 @@ public final class SupplyMarket {
             if (!order.supplierUuid().equals(supplierUuid) || !order.itemId().equals(itemId)) {
                 continue;
             }
-            int stock = warehouse.count(supplierUuid, itemId);
+            Company supplierCompany = CompanyHelper.findCompany(server, supplierUuid, order.companyName());
+            InventoryOwner resolvedOwner = supplierCompany == null ? supplierOwner
+                    : InventoryOwner.company(supplierCompany.companyId());
+            int stock = warehouse.count(resolvedOwner, itemId);
             int deliver = Math.min(order.remaining(), stock);
             if (deliver <= 0) {
                 continue;
             }
-            warehouse.consume(supplierUuid, item, deliver);
+            warehouse.consume(resolvedOwner, item, deliver);
             deliverOrShip(server, order.buyerUuid(), item, deliver, order.originRegion(), order.destinationRegion());
             int newRemaining = order.remaining() - deliver;
             if (newRemaining <= 0) {
@@ -134,7 +173,12 @@ public final class SupplyMarket {
         }
     }
 
-    private static void paySupplier(MinecraftServer server, UUID supplierUuid, long amount) {
+    private static void paySupplier(MinecraftServer server, SupplyOffer offer, long amount) {
+        Company company = CompanyHelper.findCompany(server, offer.ownerUuid(), offer.companyName());
+        if (company != null && CompanyHelper.creditTreasury(server, company.companyId(), Currencies.USD.id(), amount)) {
+            return;
+        }
+        UUID supplierUuid = offer.ownerUuid();
         ServerPlayer supplier = server.getPlayerList().getPlayer(supplierUuid);
         if (supplier != null) {
             EconomyHelper.giveMoney(supplier, Currencies.USD, Money.toMinor(amount));

@@ -14,6 +14,9 @@ import com.ailudick.capitalismmod.menu.SecuritiesCommissionMenu;
 import com.ailudick.capitalismmod.menu.StockExchangeMenu;
 import com.ailudick.capitalismmod.menu.TaxBureauMenu;
 import com.ailudick.capitalismmod.menu.WarehouseMenu;
+import com.ailudick.capitalismmod.menu.MailboxMenu;
+import com.ailudick.capitalismmod.menu.LandMenu;
+import com.ailudick.capitalismmod.menu.WorldMapMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
@@ -63,4 +66,11 @@ public class ModMenuTypes {
 
     public static final DeferredHolder<MenuType<?>, MenuType<ProcurementMenu>> PROCUREMENT_MENU =
             MENUS.register("procurement_menu", () -> new MenuType<>(ProcurementMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<MailboxMenu>> MAILBOX_MENU =
+            MENUS.register("mailbox_menu", () -> new MenuType<>(MailboxMenu::new, FeatureFlags.DEFAULT_FLAGS));
+    public static final DeferredHolder<MenuType<?>, MenuType<LandMenu>> LAND_MENU =
+            MENUS.register("land_menu", () -> new MenuType<>(LandMenu::new, FeatureFlags.DEFAULT_FLAGS));
+    public static final DeferredHolder<MenuType<?>, MenuType<WorldMapMenu>> WORLD_MAP_MENU =
+            MENUS.register("world_map_menu", () -> new MenuType<>(WorldMapMenu::new, FeatureFlags.DEFAULT_FLAGS));
 }

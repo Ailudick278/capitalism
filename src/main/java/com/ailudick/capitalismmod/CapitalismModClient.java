@@ -1,7 +1,9 @@
 package com.ailudick.capitalismmod;
 
 import com.ailudick.capitalismmod.client.ConglomerateKeyMapping;
+import com.ailudick.capitalismmod.entity.PlaceholderNpc;
 import com.ailudick.capitalismmod.init.ModMenuTypes;
+import com.ailudick.capitalismmod.init.ModEntities;
 import com.ailudick.capitalismmod.screen.AuctionHouseScreen;
 import com.ailudick.capitalismmod.screen.BankScreen;
 import com.ailudick.capitalismmod.screen.BondMarketScreen;
@@ -10,16 +12,24 @@ import com.ailudick.capitalismmod.screen.BusinessLicenseScreen;
 import com.ailudick.capitalismmod.screen.CommodityExchangeScreen;
 import com.ailudick.capitalismmod.screen.CompanyScreen;
 import com.ailudick.capitalismmod.screen.FuturesExchangeScreen;
-import com.ailudick.capitalismmod.screen.ConglomerateScreen;
 import com.ailudick.capitalismmod.screen.SecuritiesCommissionScreen;
 import com.ailudick.capitalismmod.screen.StockExchangeScreen;
 import com.ailudick.capitalismmod.screen.TaxBureauScreen;
 import com.ailudick.capitalismmod.screen.WarehouseScreen;
+import com.ailudick.capitalismmod.screen.MailboxScreen;
+import com.ailudick.capitalismmod.screen.WorldMapScreen;
+import com.ailudick.capitalismmod.screen.LandScreenAdapter;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.MobRenderer;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
@@ -31,12 +41,12 @@ public class CapitalismModClient {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         modEventBus.addListener(CapitalismModClient::registerMenuScreens);
         modEventBus.addListener(ConglomerateKeyMapping::register);
+        modEventBus.addListener(CapitalismModClient::registerEntityRenderers);
     }
 
     static void registerMenuScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.BANK_MENU.get(), BankScreen::new);
         event.register(ModMenuTypes.BUSINESS_LICENSE_MENU.get(), BusinessLicenseScreen::new);
-        event.register(ModMenuTypes.CONGLOMERATE_MENU.get(), ConglomerateScreen::new);
         event.register(ModMenuTypes.COMMODITY_EXCHANGE_MENU.get(), CommodityExchangeScreen::new);
         event.register(ModMenuTypes.STOCK_EXCHANGE_MENU.get(), StockExchangeScreen::new);
         event.register(ModMenuTypes.SECURITIES_COMMISSION_MENU.get(), SecuritiesCommissionScreen::new);
@@ -47,5 +57,26 @@ public class CapitalismModClient {
         event.register(ModMenuTypes.AUCTION_HOUSE_MENU.get(), AuctionHouseScreen::new);
         event.register(ModMenuTypes.BOND_MARKET_MENU.get(), BondMarketScreen::new);
         event.register(ModMenuTypes.PROCUREMENT_MENU.get(), ProcurementScreen::new);
+        event.register(ModMenuTypes.MAILBOX_MENU.get(), MailboxScreen::new);
+        event.register(ModMenuTypes.LAND_MENU.get(), LandScreenAdapter::new);
+        event.register(ModMenuTypes.WORLD_MAP_MENU.get(), WorldMapScreen::new);
+    }
+
+    static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(ModEntities.PLACEHOLDER_NPC.get(), PlaceholderNpcRenderer::new);
+    }
+
+    private static final class PlaceholderNpcRenderer extends MobRenderer<PlaceholderNpc, HumanoidModel<PlaceholderNpc>> {
+        private static final ResourceLocation TEXTURE = ResourceLocation.withDefaultNamespace(
+                "textures/entity/player/wide/steve.png");
+
+        private PlaceholderNpcRenderer(EntityRendererProvider.Context context) {
+            super(context, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER)), 0.5F);
+        }
+
+        @Override
+        public ResourceLocation getTextureLocation(PlaceholderNpc entity) {
+            return TEXTURE;
+        }
     }
 }

@@ -6,6 +6,8 @@ import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.tax.TaxTransactionService;
+import com.ailudick.capitalismmod.tax.TaxType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
@@ -88,6 +90,9 @@ public final class AuctionMarket {
                 } else {
                     MarketMailboxSavedData.get(server).creditMoney(auction.seller(), "usd", Money.toMinor(auction.currentBid()));
                 }
+                TaxTransactionService.assess(server, TaxType.VAT, auction.seller(), Currencies.USD.id(),
+                        Money.toMinorSaturated(auction.currentBid()), "auction-sale:" + auction.id(),
+                        server.overworld().getGameTime());
             }
             data.removeAuction(auction.id());
         }

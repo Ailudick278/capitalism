@@ -6,9 +6,11 @@ import com.ailudick.capitalismmod.init.ModBlockEntities;
 import com.ailudick.capitalismmod.init.ModBlocks;
 import com.ailudick.capitalismmod.init.ModCreativeTabs;
 import com.ailudick.capitalismmod.init.ModDataComponents;
+import com.ailudick.capitalismmod.init.ModEntities;
 import com.ailudick.capitalismmod.init.ModItems;
 import com.ailudick.capitalismmod.init.ModMenuTypes;
 import com.ailudick.capitalismmod.network.NetworkHandler;
+import com.ailudick.capitalismmod.event.PlaceholderNpcEvents;
 import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -34,9 +36,11 @@ public class CapitalismMod {
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModDataComponents.DATA_COMPONENT_TYPES.register(modEventBus);
+        ModEntities.ENTITY_TYPES.register(modEventBus);
 
         // Register network payload handlers on the mod bus.
         modEventBus.addListener(NetworkHandler::register);
+        modEventBus.addListener(PlaceholderNpcEvents::registerAttributes);
 
         // Register our mod's ModConfigSpec so that FML can create and load the config file for us
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);

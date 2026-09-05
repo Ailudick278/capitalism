@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.block;
 
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.market.WarehouseAccess;
 import com.ailudick.capitalismmod.menu.WarehouseMenu;
 import com.ailudick.capitalismmod.network.payload.SyncWarehousePayload;
 import net.minecraft.core.BlockPos;
@@ -34,7 +35,8 @@ public class WarehouseBlock extends Block {
                     Component.translatable("container.capitalismmod.warehouse")));
 
             PacketDistributor.sendToPlayer(serverPlayer, new SyncWarehousePayload(
-                    new HashMap<>(WarehouseSavedData.get(serverPlayer.getServer()).storage(serverPlayer.getUUID()))));
+                    new HashMap<>(WarehouseSavedData.get(serverPlayer.getServer()).storage(WarehouseAccess.personal(serverPlayer))),
+                    WarehouseAccess.personal(serverPlayer).storageKey(), WarehouseAccess.accessibleOwners(serverPlayer)));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

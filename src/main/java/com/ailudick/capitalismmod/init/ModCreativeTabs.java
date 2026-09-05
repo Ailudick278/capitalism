@@ -22,6 +22,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.USD_25C.get());
                         output.accept(ModItems.USD_50C.get());
                         output.accept(ModItems.USD_1.get());
+                        output.accept(ModItems.USD_2.get());
                         output.accept(ModItems.USD_5.get());
                         output.accept(ModItems.USD_10.get());
                         output.accept(ModItems.USD_20.get());
@@ -32,6 +33,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.CNY_1J.get());
                         output.accept(ModItems.CNY_5J.get());
                         output.accept(ModItems.CNY_1.get());
+                        output.accept(ModItems.CNY_1_COIN.get());
                         output.accept(ModItems.CNY_5.get());
                         output.accept(ModItems.CNY_10.get());
                         output.accept(ModItems.CNY_20.get());
@@ -50,6 +52,8 @@ public class ModCreativeTabs {
                         output.accept(ModItems.EUR_20.get());
                         output.accept(ModItems.EUR_50.get());
                         output.accept(ModItems.EUR_100.get());
+                        output.accept(ModItems.EUR_200.get());
+                        output.accept(ModItems.EUR_500.get());
                         output.accept(ModItems.RUB_1K.get());
                         output.accept(ModItems.RUB_5K.get());
                         output.accept(ModItems.RUB_10K.get());
@@ -58,11 +62,15 @@ public class ModCreativeTabs {
                         output.accept(ModItems.RUB_2.get());
                         output.accept(ModItems.RUB_5.get());
                         output.accept(ModItems.RUB_10.get());
+                        output.accept(ModItems.RUB_5_NOTE.get());
+                        output.accept(ModItems.RUB_10_NOTE.get());
                         output.accept(ModItems.RUB_50.get());
                         output.accept(ModItems.RUB_100.get());
                         output.accept(ModItems.RUB_200.get());
                         output.accept(ModItems.RUB_500.get());
                         output.accept(ModItems.RUB_1000.get());
+                        output.accept(ModItems.RUB_2000.get());
+                        output.accept(ModItems.RUB_5000.get());
                         output.accept(ModItems.DEBIT_CARD.get());
                         output.accept(ModItems.CREDIT_CARD.get());
                         output.accept(ModItems.BANK.get());
@@ -70,6 +78,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.BUSINESS_LICENSE.get());
                         output.accept(ModItems.INVOICE.get());
                         output.accept(ModItems.DEBUG_STICK.get());
+                        output.accept(ModItems.PLACEHOLDER_NPC_SPAWN_EGG.get());
                         output.accept(ModItems.COMMODITY_EXCHANGE.get());
                         output.accept(ModItems.STOCK_EXCHANGE.get());
                         output.accept(ModItems.SECURITIES_COMMISSION.get());
@@ -83,6 +92,8 @@ public class ModCreativeTabs {
                         output.accept(ModItems.LOGISTICS_CENTER.get());
                         output.accept(ModItems.TRANSFER_STATION.get());
                         output.accept(ModItems.PORT.get());
+                        output.accept(ModItems.MAILBOX.get());
+                        output.accept(ModItems.INDIVIDUAL_BUSINESS.get());
                     })
                     .build());
 }

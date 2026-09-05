@@ -1,0 +1,6 @@
+newmtl front
+map_Kd #texture0
+newmtl back
+map_Kd #texture1
+newmtl edge
+map_Kd #texture0

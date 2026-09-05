@@ -2,7 +2,7 @@ package com.ailudick.capitalismmod.block;
 
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.menu.TaxBureauMenu;
-import com.ailudick.capitalismmod.network.payload.SyncConglomeratePayload;
+import com.ailudick.capitalismmod.network.ServerPayloadHandler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,9 +13,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.network.PacketDistributor;
-
-import java.util.HashMap;
 
 /**
  * Tax bureau (税务局) block. Opens a GUI where the player pays their companies'
@@ -32,9 +29,7 @@ public class TaxBureau extends Block {
             serverPlayer.openMenu(new SimpleMenuProvider(
                     (id, inv, p) -> new TaxBureauMenu(id, inv),
                     Component.translatable("container.capitalismmod.tax_bureau")));
-            PacketDistributor.sendToPlayer(serverPlayer, new SyncConglomeratePayload(
-                    CompanyHelper.getConglomerate(serverPlayer).name(),
-                    new HashMap<>(CompanyHelper.getCompanies(serverPlayer))));
+            ServerPayloadHandler.sendTaxBills(serverPlayer);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

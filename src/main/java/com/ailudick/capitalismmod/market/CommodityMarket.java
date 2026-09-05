@@ -3,12 +3,12 @@ package com.ailudick.capitalismmod.market;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
-import com.ailudick.capitalismmod.event.EconomyNews;
 import com.ailudick.capitalismmod.event.TradeCompletedEvent;
 import com.ailudick.capitalismmod.stock.Candle;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
-import net.minecraft.network.chat.Component;
+import com.ailudick.capitalismmod.tax.TaxTransactionService;
+import com.ailudick.capitalismmod.tax.TaxType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -83,6 +83,9 @@ public final class CommodityMarket {
             UUID buyerId = UUID.fromString(buy.ownerId());
             warehouse.credit(buyerId, commodity.getItem(), fill);
             EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(gross - commission(gross)));
+            TaxTransactionService.assess(player.getServer(), TaxType.VAT, player.getUUID(), Currencies.USD.id(),
+                    Money.toMinorSaturated(gross), "commodity-sale:" + UUID.randomUUID(),
+                    player.getServer().overworld().getGameTime());
             data.addNetVolume(itemId, -fill);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
@@ -130,6 +133,9 @@ public final class CommodityMarket {
             UUID sellerId = UUID.fromString(sell.ownerId());
             ServerPlayer seller = player.getServer().getPlayerList().getPlayer(sellerId);
             payOrPend(player.getServer(), seller, sellerId, gross - commission(gross));
+            TaxTransactionService.assess(player.getServer(), TaxType.VAT, sellerId, Currencies.USD.id(),
+                    Money.toMinorSaturated(gross), "commodity-sale:" + UUID.randomUUID(),
+                    player.getServer().overworld().getGameTime());
             data.addNetVolume(itemId, fill);
             spent += gross;
             remaining -= fill;
@@ -194,21 +200,8 @@ public final class CommodityMarket {
             data.resetNetVolume(id);
             data.resetSupply(id);
             data.addCandle(id, new Candle(oldPrice, Math.max(oldPrice, newPrice), Math.min(oldPrice, newPrice), newPrice));
-            broadcastPriceMove(server, id, oldPrice, newPrice);
         }
         data.setDirty();
-    }
-
-    private static void broadcastPriceMove(MinecraftServer server, String itemId, long oldPrice, long newPrice) {
-        if (oldPrice <= 0) {
-            return;
-        }
-        double percent = (double) (newPrice - oldPrice) / oldPrice * 100.0;
-        if (Math.abs(percent) >= 10.0) {
-            ItemStack commodity = Commodities.byId(itemId);
-            Component name = commodity != null ? commodity.getHoverName() : Component.literal(itemId);
-            EconomyNews.broadcast(server, "news.capitalismmod.price_move", name, String.format("%+.0f%%", percent));
-        }
     }
 
     /** Rolls the trading day: the previous close becomes the current price for every commodity. */

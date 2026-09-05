@@ -1,6 +1,18 @@
 {
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "capitalismmod:item/eur_20"
-  }
+  "parent": "minecraft:block/block",
+  "textures": { "front": "capitalismmod:item/eur_20_front", "back": "capitalismmod:item/eur_20_back" },
+  "display": {
+    "gui": { "rotation": [0, 180, 0], "scale": [1.0, 1.0, 1.0] },
+    "ground": { "translation": [0, 3, 0], "scale": [0.3125, 0.3125, 0.3125] },
+    "fixed": { "rotation": [0, 180, 0], "scale": [0.625, 0.625, 0.625] },
+    "thirdperson_righthand": { "rotation": [75, 45, 0], "translation": [0, 2.5, 0], "scale": [0.46875, 0.46875, 0.46875] },
+    "thirdperson_lefthand": { "rotation": [75, 45, 0], "translation": [0, 2.5, 0], "scale": [0.46875, 0.46875, 0.46875] },
+    "firstperson_righthand": { "rotation": [0, 45, 0], "scale": [0.5, 0.5, 0.5] },
+    "firstperson_lefthand": { "rotation": [0, 225, 0], "scale": [0.5, 0.5, 0.5] }
+  },
+  "elements": [{ "from": [0, 4.5, 7.9375], "to": [16, 11.5, 8.0625], "faces": {
+    "north": { "uv": [0, 0, 16, 16], "texture": "#front" }, "south": { "uv": [0, 0, 16, 16], "texture": "#back" },
+    "east": { "texture": "#front" }, "west": { "texture": "#front" }, "up": { "texture": "#front" }, "down": { "texture": "#front" }
+  }}]
 }
+

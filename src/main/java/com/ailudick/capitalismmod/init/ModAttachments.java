@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.init;
 import com.ailudick.capitalismmod.CapitalismMod;
 import com.ailudick.capitalismmod.bank.BankAccount;
 import com.ailudick.capitalismmod.company.Conglomerate;
+import com.ailudick.capitalismmod.mailbox.MailboxMessage;
 import com.mojang.serialization.Codec;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -11,6 +12,9 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.function.Supplier;
 
 public class ModAttachments {
     public static final DeferredRegister<AttachmentType<?>> ATTACHMENT_TYPES =
@@ -23,7 +27,7 @@ public class ModAttachments {
                             .serialize(Codec.unboundedMap(Codec.STRING, BankAccount.CODEC))
                             .build());
 
-    // Player's conglomerate (group): auto-created on first join, holds all their companies.
+    // Player's conglomerate (group): created lazily when the player registers a company.
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Conglomerate>> CONGLOMERATE =
             ATTACHMENT_TYPES.register("conglomerate",
                     () -> AttachmentType.<Conglomerate>builder(() -> Conglomerate.create(""))
@@ -42,5 +46,12 @@ public class ModAttachments {
             ATTACHMENT_TYPES.register("last_card_replacement_tick",
                     () -> AttachmentType.<Long>builder(() -> Long.MIN_VALUE)
                             .serialize(com.mojang.serialization.Codec.LONG)
+                            .build());
+
+    // Player mailbox messages, persisted for future bank and system notifications.
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<List<MailboxMessage>>> MAILBOX_MESSAGES =
+            ATTACHMENT_TYPES.register("mailbox_messages",
+                    () -> AttachmentType.<List<MailboxMessage>>builder((Supplier<List<MailboxMessage>>) ArrayList::new)
+                            .serialize(MailboxMessage.CODEC.listOf())
                             .build());
 }

@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.menu.ProcurementMenu;
 import com.ailudick.capitalismmod.network.payload.SyncSupplyMarketPayload;
 import com.ailudick.capitalismmod.supply.PurchaseOrder;
 import com.ailudick.capitalismmod.supply.SupplyMarketSavedData;
+import com.ailudick.capitalismmod.company.CompanyHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,7 +42,8 @@ public class ProcurementBlock extends Block {
                 }
             }
             PacketDistributor.sendToPlayer(serverPlayer, new SyncSupplyMarketPayload(
-                    new ArrayList<>(SupplyMarketSavedData.get(serverPlayer.getServer()).offers()), mine));
+                    new ArrayList<>(SupplyMarketSavedData.get(serverPlayer.getServer()).offers()), mine,
+                    new ArrayList<>(CompanyHelper.getCompanies(serverPlayer).keySet())));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "capitalismmod:item/rub_10"
+    "layer0": "capitalismmod:item/rub_coin"
   }
 }

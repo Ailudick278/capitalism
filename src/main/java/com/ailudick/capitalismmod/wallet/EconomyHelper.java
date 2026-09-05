@@ -15,6 +15,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
 
 /**
  * Settlement helpers. There is no standalone wallet anymore; payments consume
@@ -105,10 +106,14 @@ public final class EconomyHelper {
 
         Map<Item, Long> plan = new HashMap<>();
         long selected = 0L;
-        List<Map.Entry<Long, Item>> denominations = CurrencyItem.denominations(currency.id());
+        List<Map.Entry<Long, Item>> denominations = new java.util.ArrayList<>(
+                CurrencyItem.denominations(currency.id()));
+        // Use smaller denominations first, but prefer common circulation items
+        // over rare or discontinued items at the same face value.
+        denominations.sort(Comparator.comparingLong(Map.Entry<Long, Item>::getKey)
+                .thenComparing(entry -> ((CurrencyItem) entry.getValue()).isCommonCirculation() ? 0 : 1));
         // Deposit from smaller denominations first so exact payment is preferred.
-        for (int i = denominations.size() - 1; i >= 0; i--) {
-            Map.Entry<Long, Item> denomination = denominations.get(i);
+        for (Map.Entry<Long, Item> denomination : denominations) {
             long value = denomination.getKey();
             long available = 0L;
             for (ItemStack stack : player.getInventory().items) {

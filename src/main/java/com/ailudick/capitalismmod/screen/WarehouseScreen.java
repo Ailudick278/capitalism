@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.menu.WarehouseMenu;
 import com.ailudick.capitalismmod.network.payload.WarehouseDepositPayload;
 import com.ailudick.capitalismmod.network.payload.WarehouseWithdrawPayload;
+import com.ailudick.capitalismmod.network.payload.SelectWarehouseOwnerPayload;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -14,8 +15,12 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class WarehouseScreen extends AbstractContainerScreen<WarehouseMenu> {
     private EditBox quantityField;
+    private final List<Button> ownerButtons = new ArrayList<>();
 
     public WarehouseScreen(WarehouseMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -31,6 +36,8 @@ public class WarehouseScreen extends AbstractContainerScreen<WarehouseMenu> {
         this.quantityField.setValue("1");
         addRenderableWidget(this.quantityField);
 
+        rebuildOwnerButtons();
+
         for (int i = 0; i < Commodities.ALL.size(); i++) {
             final int index = i;
             int y = topPos + 32 + i * 22;
@@ -41,11 +48,25 @@ public class WarehouseScreen extends AbstractContainerScreen<WarehouseMenu> {
         }
     }
 
+    public void rebuildOwnerButtons() {
+        for (Button button : ownerButtons) removeWidget(button);
+        ownerButtons.clear();
+        int index = 0;
+        for (var entry : menu.getOwners().entrySet()) {
+            final String key = entry.getKey();
+            Button button = Button.builder(Component.literal(entry.getValue()), btn ->
+                    PacketDistributor.sendToServer(new SelectWarehouseOwnerPayload(key)))
+                    .bounds(leftPos + 52 + index * 72, topPos + 6, 68, 20).build();
+            ownerButtons.add(addRenderableWidget(button));
+            if (++index >= 2) break;
+        }
+    }
+
     private void deposit(int index) {
         try {
             int count = Integer.parseInt(this.quantityField.getValue());
             if (count > 0) {
-                PacketDistributor.sendToServer(new WarehouseDepositPayload(index, count));
+                PacketDistributor.sendToServer(new WarehouseDepositPayload(menu.getOwnerKey(), index, count));
             }
         } catch (NumberFormatException ignored) {
         }
@@ -55,7 +76,7 @@ public class WarehouseScreen extends AbstractContainerScreen<WarehouseMenu> {
         try {
             int count = Integer.parseInt(this.quantityField.getValue());
             if (count > 0) {
-                PacketDistributor.sendToServer(new WarehouseWithdrawPayload(index, count));
+                PacketDistributor.sendToServer(new WarehouseWithdrawPayload(menu.getOwnerKey(), index, count));
             }
         } catch (NumberFormatException ignored) {
         }

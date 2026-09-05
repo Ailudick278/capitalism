@@ -34,6 +34,11 @@ public final class CapitalismCommand {
                 player.sendSystemMessage(Component.literal("公司每个生产周期会计入税款和维护费，原料不足会停产。"));
                 player.sendSystemMessage(Component.literal("使用 /company list、/company upgrade、/company withdraw 管理公司。"));
             }
+            case "business", "个体户" -> {
+                player.sendSystemMessage(Component.literal("个体户：先登记经营名称和经营范围，再使用独立经营账户管理经营资金。"));
+                player.sendSystemMessage(Component.literal("/business register <名称> <经营范围>，/business info 查看登记信息。"));
+                player.sendSystemMessage(Component.literal("/business deposit <金额> 存入现金，/business withdraw <金额> 进行业主提款。"));
+            }
             case "market", "市场" -> {
                 player.sendSystemMessage(Component.literal("市场：股票和商品支持限价单、部分成交和取消订单。"));
                 player.sendSystemMessage(Component.literal("使用 /marketorders 查看活动订单，/markettrades 查看成交记录。"));

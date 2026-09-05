@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.item.DebugStick;
 import com.ailudick.capitalismmod.item.Invoice;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.SpawnEggItem;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -19,7 +20,7 @@ public class ModItems {
     // US Dollar uses cents, Chinese Yuan uses fen, Euro uses cents, Ruble uses kopecks.
     // US Dollar
     public static final DeferredItem<CurrencyItem> USD_1C = ITEMS.register("usd_1c",
-            () -> new CurrencyItem(Currencies.USD, 1, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.USD, 1, CurrencyItem.Form.COIN, "停止普通生产", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> USD_5C = ITEMS.register("usd_5c",
             () -> new CurrencyItem(Currencies.USD, 5, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> USD_10C = ITEMS.register("usd_10c",
@@ -30,6 +31,8 @@ public class ModItems {
             () -> new CurrencyItem(Currencies.USD, 50, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> USD_1 = ITEMS.register("usd_1",
             () -> new CurrencyItem(Currencies.USD, 100, new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<CurrencyItem> USD_2 = ITEMS.register("usd_2",
+            () -> new CurrencyItem(Currencies.USD, 200, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> USD_5 = ITEMS.register("usd_5",
             () -> new CurrencyItem(Currencies.USD, 500, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> USD_10 = ITEMS.register("usd_10",
@@ -43,15 +46,17 @@ public class ModItems {
 
     // Chinese Yuan
     public static final DeferredItem<CurrencyItem> CNY_1F = ITEMS.register("cny_1f",
-            () -> new CurrencyItem(Currencies.CNY, 1, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.CNY, 1, CurrencyItem.Form.COIN, "历史/少见", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> CNY_5F = ITEMS.register("cny_5f",
-            () -> new CurrencyItem(Currencies.CNY, 5, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.CNY, 5, CurrencyItem.Form.COIN, "历史/少见", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> CNY_1J = ITEMS.register("cny_1j",
             () -> new CurrencyItem(Currencies.CNY, 10, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> CNY_5J = ITEMS.register("cny_5j",
             () -> new CurrencyItem(Currencies.CNY, 50, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> CNY_1 = ITEMS.register("cny_1",
             () -> new CurrencyItem(Currencies.CNY, 100, new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<CurrencyItem> CNY_1_COIN = ITEMS.register("cny_1_coin",
+            () -> new CurrencyItem(Currencies.CNY, 100, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> CNY_5 = ITEMS.register("cny_5",
             () -> new CurrencyItem(Currencies.CNY, 500, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> CNY_10 = ITEMS.register("cny_10",
@@ -77,9 +82,9 @@ public class ModItems {
     public static final DeferredItem<CurrencyItem> EUR_50C = ITEMS.register("eur_50c",
             () -> new CurrencyItem(Currencies.EUR, 50, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> EUR_1 = ITEMS.register("eur_1",
-            () -> new CurrencyItem(Currencies.EUR, 100, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.EUR, 100, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> EUR_2 = ITEMS.register("eur_2",
-            () -> new CurrencyItem(Currencies.EUR, 200, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.EUR, 200, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> EUR_5 = ITEMS.register("eur_5",
             () -> new CurrencyItem(Currencies.EUR, 500, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> EUR_10 = ITEMS.register("eur_10",
@@ -90,24 +95,32 @@ public class ModItems {
             () -> new CurrencyItem(Currencies.EUR, 5000, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> EUR_100 = ITEMS.register("eur_100",
             () -> new CurrencyItem(Currencies.EUR, 10000, new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<CurrencyItem> EUR_200 = ITEMS.register("eur_200",
+            () -> new CurrencyItem(Currencies.EUR, 20000, new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<CurrencyItem> EUR_500 = ITEMS.register("eur_500",
+            () -> new CurrencyItem(Currencies.EUR, 50000, CurrencyItem.Form.BANKNOTE, "停止生产", new Item.Properties().stacksTo(64)));
 
     // Russian Ruble
     public static final DeferredItem<CurrencyItem> RUB_1K = ITEMS.register("rub_1k",
-            () -> new CurrencyItem(Currencies.RUB, 1, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.RUB, 1, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_5K = ITEMS.register("rub_5k",
-            () -> new CurrencyItem(Currencies.RUB, 5, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.RUB, 5, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_10K = ITEMS.register("rub_10k",
-            () -> new CurrencyItem(Currencies.RUB, 10, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.RUB, 10, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_50K = ITEMS.register("rub_50k",
-            () -> new CurrencyItem(Currencies.RUB, 50, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.RUB, 50, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_1 = ITEMS.register("rub_1",
-            () -> new CurrencyItem(Currencies.RUB, 100, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.RUB, 100, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_2 = ITEMS.register("rub_2",
-            () -> new CurrencyItem(Currencies.RUB, 200, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.RUB, 200, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_5 = ITEMS.register("rub_5",
-            () -> new CurrencyItem(Currencies.RUB, 500, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.RUB, 500, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_10 = ITEMS.register("rub_10",
-            () -> new CurrencyItem(Currencies.RUB, 1000, new Item.Properties().stacksTo(64)));
+            () -> new CurrencyItem(Currencies.RUB, 1000, CurrencyItem.Form.COIN, "current", new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<CurrencyItem> RUB_5_NOTE = ITEMS.register("rub_5_note",
+            () -> new CurrencyItem(Currencies.RUB, 500, CurrencyItem.Form.BANKNOTE, "少见", new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<CurrencyItem> RUB_10_NOTE = ITEMS.register("rub_10_note",
+            () -> new CurrencyItem(Currencies.RUB, 1000, CurrencyItem.Form.BANKNOTE, "少见", new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_50 = ITEMS.register("rub_50",
             () -> new CurrencyItem(Currencies.RUB, 5000, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_100 = ITEMS.register("rub_100",
@@ -118,6 +131,10 @@ public class ModItems {
             () -> new CurrencyItem(Currencies.RUB, 50000, new Item.Properties().stacksTo(64)));
     public static final DeferredItem<CurrencyItem> RUB_1000 = ITEMS.register("rub_1000",
             () -> new CurrencyItem(Currencies.RUB, 100000, new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<CurrencyItem> RUB_2000 = ITEMS.register("rub_2000",
+            () -> new CurrencyItem(Currencies.RUB, 200000, new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<CurrencyItem> RUB_5000 = ITEMS.register("rub_5000",
+            () -> new CurrencyItem(Currencies.RUB, 500000, new Item.Properties().stacksTo(64)));
 
     // Bank cards.
     public static final DeferredItem<BankCard> DEBIT_CARD = ITEMS.register("debit_card",
@@ -156,6 +173,10 @@ public class ModItems {
             () -> new BlockItem(ModBlocks.TRANSFER_STATION_BLOCK.get(), new Item.Properties()));
     public static final DeferredItem<BlockItem> PORT = ITEMS.register("port",
             () -> new BlockItem(ModBlocks.PORT_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> MAILBOX = ITEMS.register("mailbox",
+            () -> new BlockItem(ModBlocks.MAILBOX_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> INDIVIDUAL_BUSINESS = ITEMS.register("individual_business",
+            () -> new BlockItem(ModBlocks.INDIVIDUAL_BUSINESS_BLOCK.get(), new Item.Properties()));
 
     // Business license.
     public static final DeferredItem<BusinessLicense> BUSINESS_LICENSE = ITEMS.register("business_license",
@@ -165,7 +186,10 @@ public class ModItems {
     public static final DeferredItem<DebugStick> DEBUG_STICK = ITEMS.register("debug_stick",
             () -> new DebugStick(new Item.Properties().stacksTo(1)));
 
-    // Invoice (发票), issued on shop purchases and reimbursable at the tax bureau.
+    public static final DeferredItem<SpawnEggItem> PLACEHOLDER_NPC_SPAWN_EGG = ITEMS.register("placeholder_npc_spawn_egg",
+            () -> new SpawnEggItem(ModEntities.PLACEHOLDER_NPC.get(), 0x1D3557, 0xE9C46A, new Item.Properties()));
+
+    // Invoice (发票), issued on shop purchases and reserved for future tax workflows.
     public static final DeferredItem<Invoice> INVOICE = ITEMS.register("invoice",
             () -> new Invoice(new Item.Properties().stacksTo(64)));
 }

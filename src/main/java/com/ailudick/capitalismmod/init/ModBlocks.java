@@ -13,6 +13,8 @@ import com.ailudick.capitalismmod.block.StockExchangeBlock;
 import com.ailudick.capitalismmod.block.TaxBureau;
 import com.ailudick.capitalismmod.block.SecuritiesCommission;
 import com.ailudick.capitalismmod.block.WarehouseBlock;
+import com.ailudick.capitalismmod.block.MailboxBlock;
+import com.ailudick.capitalismmod.block.IndividualBusinessBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -51,4 +53,8 @@ public class ModBlocks {
             () -> new Block(BlockBehaviour.Properties.of().strength(3.0f)));
     public static final DeferredBlock<Block> PORT_BLOCK = BLOCKS.register("port",
             () -> new Block(BlockBehaviour.Properties.of().strength(3.0f)));
+    public static final DeferredBlock<Block> MAILBOX_BLOCK = BLOCKS.register("mailbox",
+            () -> new MailboxBlock(BlockBehaviour.Properties.of().strength(2.5f)));
+    public static final DeferredBlock<Block> INDIVIDUAL_BUSINESS_BLOCK = BLOCKS.register("individual_business",
+            () -> new IndividualBusinessBlock(BlockBehaviour.Properties.of().strength(3.0f)));
 }

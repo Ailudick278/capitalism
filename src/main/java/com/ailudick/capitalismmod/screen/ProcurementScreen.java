@@ -22,6 +22,7 @@ public class ProcurementScreen extends AbstractContainerScreen<ProcurementMenu> 
     private EditBox quantityField;
     private List<SupplyOffer> builtOffers = new ArrayList<>();
     private List<PurchaseOrder> builtOrders = new ArrayList<>();
+    private int selectedCompany = 0;
 
     public ProcurementScreen(ProcurementMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -40,6 +41,18 @@ public class ProcurementScreen extends AbstractContainerScreen<ProcurementMenu> 
         clearWidgets();
         builtOffers = new ArrayList<>(menu.getOffers());
         builtOrders = new ArrayList<>(menu.getOrders());
+
+        if (selectedCompany >= menu.getCompanyNames().size()) {
+            selectedCompany = 0;
+        }
+        if (!menu.getCompanyNames().isEmpty()) {
+            addRenderableWidget(Button.builder(Component.literal("采购主体: "
+                            + menu.getCompanyNames().get(selectedCompany)), btn -> {
+                        selectedCompany = (selectedCompany + 1) % menu.getCompanyNames().size();
+                        refreshWidgets();
+                    })
+                    .bounds(leftPos + 54, topPos + 50, 100, 20).build());
+        }
 
         for (int i = 0; i < Commodities.ALL.size(); i++) {
             final int index = i;
@@ -77,7 +90,9 @@ public class ProcurementScreen extends AbstractContainerScreen<ProcurementMenu> 
         try {
             int quantity = Integer.parseInt(this.quantityField.getValue());
             if (quantity > 0) {
-                PacketDistributor.sendToServer(new PlaceSupplyOrderPayload(offer.id(), quantity));
+                String companyName = menu.getCompanyNames().isEmpty()
+                        ? "" : menu.getCompanyNames().get(selectedCompany);
+                PacketDistributor.sendToServer(new PlaceSupplyOrderPayload(offer.id(), quantity, companyName));
             }
         } catch (NumberFormatException ignored) {
         }

@@ -14,6 +14,7 @@ import java.util.List;
 public class ProcurementMenu extends AbstractContainerMenu {
     private List<SupplyOffer> offers = new ArrayList<>();
     private List<PurchaseOrder> orders = new ArrayList<>();
+    private List<String> companyNames = new ArrayList<>();
 
     public ProcurementMenu(int containerId, Inventory playerInventory) {
         super(ModMenuTypes.PROCUREMENT_MENU.get(), containerId);
@@ -33,6 +34,14 @@ public class ProcurementMenu extends AbstractContainerMenu {
 
     public void setOrders(List<PurchaseOrder> orders) {
         this.orders = orders;
+    }
+
+    public List<String> getCompanyNames() {
+        return companyNames;
+    }
+
+    public void setCompanyNames(List<String> companyNames) {
+        this.companyNames = companyNames;
     }
 
     @Override

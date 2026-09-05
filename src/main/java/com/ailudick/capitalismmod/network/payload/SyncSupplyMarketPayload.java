@@ -14,13 +14,15 @@ import java.util.List;
 /**
  * Server -> Client: sync supplier offers and the player's own pending orders.
  */
-public record SyncSupplyMarketPayload(List<SupplyOffer> offers, List<PurchaseOrder> orders) implements CustomPacketPayload {
+public record SyncSupplyMarketPayload(List<SupplyOffer> offers, List<PurchaseOrder> orders,
+                                      List<String> companyNames) implements CustomPacketPayload {
     public static final Type<SyncSupplyMarketPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(CapitalismMod.MODID, "sync_supply_market"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncSupplyMarketPayload> STREAM_CODEC = StreamCodec.composite(
             SupplyOffer.STREAM_CODEC.apply(ByteBufCodecs.list()), SyncSupplyMarketPayload::offers,
             PurchaseOrder.STREAM_CODEC.apply(ByteBufCodecs.list()), SyncSupplyMarketPayload::orders,
+            ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), SyncSupplyMarketPayload::companyNames,
             SyncSupplyMarketPayload::new);
 
     @Override

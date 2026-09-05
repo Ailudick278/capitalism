@@ -5,12 +5,12 @@ import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.event.TradeCompletedEvent;
 import net.neoforged.neoforge.common.NeoForge;
-import com.ailudick.capitalismmod.event.EconomyNews;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
-import net.minecraft.network.chat.Component;
+import com.ailudick.capitalismmod.tax.TaxTransactionService;
+import com.ailudick.capitalismmod.tax.TaxType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -118,13 +118,6 @@ public final class StockMarket {
             data.putPrice(id, newPrice);
             data.resetNetVolume(id);
             data.addCandle(id, new Candle(oldPrice, Math.max(oldPrice, newPrice), Math.min(oldPrice, newPrice), newPrice));
-            if (oldPrice > 0) {
-                double percent = (double) (newPrice - oldPrice) / oldPrice * 100.0;
-                if (Math.abs(percent) >= 10.0) {
-                    EconomyNews.broadcast(server, "news.capitalismmod.price_move",
-                            stockDisplayName(data, id), String.format("%+.0f%%", percent));
-                }
-            }
         }
         data.setDirty();
     }
@@ -157,15 +150,6 @@ public final class StockMarket {
         data.setDirty();
     }
 
-    private static Component stockDisplayName(EconomySavedData data, String id) {
-        Stock stock = Stocks.byId(id);
-        if (stock != null) {
-            return Component.translatable(stock.nameKey());
-        }
-        EconomySavedData.Listing listing = data.listings().get(id);
-        return listing != null ? Component.literal(listing.name()) : Component.literal(id);
-    }
-
     // ---- matching internals ----
 
     private static boolean placeBuyOrder(ServerPlayer player, EconomySavedData data, String stockId, int quantity, long pricePerUnit) {
@@ -188,6 +172,9 @@ public final class StockMarket {
             }
             data.addShares(stockId, player.getUUID(), fill);
             payTo(player.getServer(), UUID.fromString(sell.ownerId()), Money.toMinor(gross - duty(gross)));
+            TaxTransactionService.assess(player.getServer(), TaxType.STAMP_DUTY, UUID.fromString(sell.ownerId()), Currencies.USD.id(),
+                    Money.toMinorSaturated(gross), "stock-sale:" + UUID.randomUUID(),
+                    player.getServer().overworld().getGameTime());
             data.addNetVolume(stockId, fill);
             spent += gross;
             remaining -= fill;
@@ -227,6 +214,9 @@ public final class StockMarket {
             }
             data.addShares(stockId, UUID.fromString(buy.ownerId()), fill);
             EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(gross - duty(gross)));
+            TaxTransactionService.assess(player.getServer(), TaxType.STAMP_DUTY, player.getUUID(), Currencies.USD.id(),
+                    Money.toMinorSaturated(gross), "stock-sale:" + UUID.randomUUID(),
+                    player.getServer().overworld().getGameTime());
             data.addNetVolume(stockId, -fill);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
