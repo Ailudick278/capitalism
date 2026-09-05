@@ -109,12 +109,21 @@ public class ModCreativeTabs {
                         output.accept(ModItems.NAPHTHA.get());
                         output.accept(ModItems.FUEL_OIL.get());
                         output.accept(ModItems.PLASTIC_PELLETS.get());
+                        output.accept(ModItems.POLYETHYLENE_PELLETS.get());
+                        output.accept(ModItems.POLYPROPYLENE_PELLETS.get());
+                        output.accept(ModItems.SYNTHETIC_RUBBER.get());
+                        output.accept(ModItems.ETHYLENE_GLYCOL.get());
+                        output.accept(ModItems.EPOXY_RESIN.get());
                         output.accept(ModItems.FAN_BLADES.get());
                         output.accept(ModItems.FAN_CONTROL.get());
                         output.accept(ModItems.POLYSILICON.get());
                         output.accept(ModItems.SILICON_WAFER.get());
                         output.accept(ModItems.PACKAGED_CHIP.get());
                         output.accept(ModItems.CIRCUIT_BOARD.get());
+                        output.accept(ModItems.PCB_SUBSTRATE.get());
+                        output.accept(ModItems.COPPER_FOIL.get());
+                        output.accept(ModItems.SOLDER.get());
+                        output.accept(ModItems.SMD_COMPONENTS.get());
                         output.accept(ModItems.DISPLAY_PANEL.get());
                         output.accept(ModItems.PHONE_CASING.get());
                         output.accept(ModItems.CAMERA_MODULE.get());
@@ -133,6 +142,9 @@ public class ModCreativeTabs {
                         output.accept(ModItems.BATTERY.get());
                         output.accept(ModItems.SMARTPHONE.get());
                         output.accept(ModItems.ELECTRIC_FAN.get());
+                        output.accept(ModItems.POWER_ADAPTER.get());
+                        output.accept(ModItems.TELEVISION.get());
+                        output.accept(ModItems.LAPTOP.get());
                     })
                     .build());
 }

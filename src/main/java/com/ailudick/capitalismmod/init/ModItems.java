@@ -248,6 +248,10 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> SYNTHETIC_RUBBER = ITEMS.register("synthetic_rubber",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ETHYLENE_GLYCOL = ITEMS.register("ethylene_glycol",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> EPOXY_RESIN = ITEMS.register("epoxy_resin",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FAN_BLADES = ITEMS.register("fan_blades",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FAN_CONTROL = ITEMS.register("fan_control",
@@ -259,6 +263,14 @@ public class ModItems {
     public static final DeferredItem<Item> PACKAGED_CHIP = ITEMS.register("packaged_chip",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> CIRCUIT_BOARD = ITEMS.register("circuit_board",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PCB_SUBSTRATE = ITEMS.register("pcb_substrate",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> COPPER_FOIL = ITEMS.register("copper_foil",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SOLDER = ITEMS.register("solder",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SMD_COMPONENTS = ITEMS.register("smd_components",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> DISPLAY_PANEL = ITEMS.register("display_panel",
             () -> new Item(new Item.Properties().stacksTo(64)));
