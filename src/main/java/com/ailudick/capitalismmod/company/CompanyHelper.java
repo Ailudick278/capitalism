@@ -344,10 +344,38 @@ public final class CompanyHelper {
         if (server == null || company == null || type == null || type == MachineType.NONE || count <= 0
                 || count > 10000 || type.purchasePrice() > Long.MAX_VALUE / count) return false;
         long cost = type.purchasePrice() * count;
+        Map<String, Integer> materials = machineMaterials(type, count);
+        com.ailudick.capitalismmod.market.InventoryOwner owner =
+                com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        if (materials == null || !warehouse.canConsumeBatch(owner, materials)) return false;
         if (!debitTreasury(server, company.companyId(), Currencies.USD.id(), cost,
                 "equipment_purchase", "购买生产设备 " + type.id() + " x" + count)) return false;
+        if (!warehouse.consumeBatch(owner, materials)) {
+            creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), cost,
+                    "equipment_purchase_rollback", "Equipment material reservation failed");
+            return false;
+        }
+        CommoditySavedData commodityData = CommoditySavedData.get(server);
+        for (Map.Entry<String, Integer> material : materials.entrySet()) {
+            commodityData.addSupply(material.getKey(), -material.getValue());
+        }
         CompanyEquipmentSavedData.get(server).install(company.companyId(), type, count);
         return true;
+    }
+
+    private static Map<String, Integer> machineMaterials(MachineType type, int count) {
+        Map<String, Integer> materials = new HashMap<>();
+        for (Map.Entry<String, Integer> material : type.materials().entrySet()) {
+            int perMachine = material.getValue() == null ? 0 : material.getValue();
+            if (perMachine <= 0) return null;
+            try {
+                materials.put(material.getKey(), Math.multiplyExact(perMachine, count));
+            } catch (ArithmeticException e) {
+                return null;
+            }
+        }
+        return materials;
     }
 
     public static boolean maintainMachine(Player player, String name, String machineId) {

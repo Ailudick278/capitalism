@@ -121,24 +121,9 @@ public final class WarehouseSavedData extends SavedData {
      * of its bill of materials.
      */
     public boolean consumeBatch(InventoryOwner owner, Map<String, Integer> requirements) {
-        if (owner == null || requirements == null) {
-            return false;
-        }
-        if (requirements.isEmpty()) {
-            return true;
-        }
+        if (!canConsumeBatch(owner, requirements)) return false;
+        if (requirements.isEmpty()) return true;
         Map<String, Integer> inventory = storage.get(owner.storageKey());
-        if (inventory == null) {
-            return false;
-        }
-        for (Map.Entry<String, Integer> requirement : requirements.entrySet()) {
-            String itemId = requirement.getKey();
-            int count = requirement.getValue() == null ? 0 : requirement.getValue();
-            if (itemId == null || count <= 0 || itemById(itemId) == null
-                    || inventory.getOrDefault(itemId, 0) < count) {
-                return false;
-            }
-        }
         for (Map.Entry<String, Integer> requirement : requirements.entrySet()) {
             String itemId = requirement.getKey();
             int remaining = inventory.get(itemId) - requirement.getValue();
@@ -152,6 +137,21 @@ public final class WarehouseSavedData extends SavedData {
             storage.remove(owner.storageKey());
         }
         setDirty();
+        return true;
+    }
+
+    /** Checks a complete material batch without changing warehouse state. */
+    public boolean canConsumeBatch(InventoryOwner owner, Map<String, Integer> requirements) {
+        if (owner == null || requirements == null) return false;
+        if (requirements.isEmpty()) return true;
+        Map<String, Integer> inventory = storage.get(owner.storageKey());
+        if (inventory == null) return false;
+        for (Map.Entry<String, Integer> requirement : requirements.entrySet()) {
+            String itemId = requirement.getKey();
+            int count = requirement.getValue() == null ? 0 : requirement.getValue();
+            if (itemId == null || count <= 0 || itemById(itemId) == null
+                    || inventory.getOrDefault(itemId, 0) < count) return false;
+        }
         return true;
     }
 
