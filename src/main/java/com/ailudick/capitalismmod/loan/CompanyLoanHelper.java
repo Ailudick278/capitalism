@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLedgerEntry;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
@@ -32,6 +33,11 @@ public final class CompanyLoanHelper {
         }
         long newDebt = EconomyMath.add(existingDebt, amount);
         if (newDebt < 0L || newDebt > maximumDebt) return null;
+        long lookback = PerpetualCalendar.ticksForDays(90L);
+        CompanyCashFlowAssessment cashFlow = CompanyCashFlowAssessment.evaluate(
+                CompanyLedgerSavedData.get(server).entries(company.companyId()),
+                server.overworld().getGameTime(), lookback, existingDebt, amount);
+        if (!cashFlow.approved()) return null;
         if (!CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), amount,
                 "loan_proceeds", "Company loan principal received")) return null;
         String id = UUID.randomUUID().toString();

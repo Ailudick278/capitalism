@@ -20,7 +20,7 @@ public final class CompanyLedgerSavedData extends SavedData {
 
     private record State(Map<String, List<CompanyLedgerEntry>> entries) {
         private static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                Codec.unboundedMap(Codec.STRING, CompanyLedgerEntry.CODEC.listOf()).fieldOf("entries")
+                Codec.unboundedMap(Codec.STRING, CompanyLedgerEntry.codec().listOf()).fieldOf("entries")
                         .forGetter(State::entries)
         ).apply(instance, State::new));
     }

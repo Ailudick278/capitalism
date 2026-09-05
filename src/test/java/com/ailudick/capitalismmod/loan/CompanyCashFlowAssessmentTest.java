@@ -1,0 +1,50 @@
+package com.ailudick.capitalismmod.loan;
+
+import com.ailudick.capitalismmod.company.CompanyLedgerEntry;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class CompanyCashFlowAssessmentTest {
+    @Test
+    void financingFlowsDoNotPretendToBeOperatingCashFlow() {
+        CompanyCashFlowAssessment assessment = CompanyCashFlowAssessment.evaluate(List.of(
+                entry("loan_proceeds", 100_000L, 100L),
+                entry("capital_contribution", 100_000L, 100L),
+                entry("dividend_distribution", -100_000L, 100L)),
+                100L, 1_000L, 0L, 1_000L);
+
+        assertFalse(assessment.hasOperatingHistory());
+        assertTrue(assessment.approved());
+    }
+
+    @Test
+    void negativeOperatingCashFlowBlocksNewDebt() {
+        CompanyCashFlowAssessment assessment = CompanyCashFlowAssessment.evaluate(List.of(
+                entry("revenue", 100L, 100L),
+                entry("production_expense", -150L, 100L)),
+                100L, 1_000L, 0L, 1L);
+
+        assertTrue(assessment.hasOperatingHistory());
+        assertTrue(assessment.operatingCashFlow() < 0L);
+        assertFalse(assessment.approved());
+    }
+
+    @Test
+    void profitableOperationsSupportDebtWithinCashFlowMultiple() {
+        CompanyCashFlowAssessment assessment = CompanyCashFlowAssessment.evaluate(List.of(
+                entry("revenue", 1_000L, 100L),
+                entry("production_expense", -100L, 100L)),
+                100L, 1_000L, 500L, 2_000L);
+
+        assertTrue(assessment.approved());
+        assertTrue(assessment.maximumSupportedDebt() >= 2_000L);
+    }
+
+    private static CompanyLedgerEntry entry(String type, long amount, long timestamp) {
+        return new CompanyLedgerEntry("company", timestamp, type, "usd", amount, 0L, type);
+    }
+}
