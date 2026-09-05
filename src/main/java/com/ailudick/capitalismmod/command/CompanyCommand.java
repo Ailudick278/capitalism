@@ -10,6 +10,7 @@ import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
 import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
 import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
 import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
+import com.ailudick.capitalismmod.company.CompanyProductionBatchSavedData;
 import com.ailudick.capitalismmod.company.CompanyServiceDeliverySavedData;
 import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
@@ -75,6 +76,10 @@ public class CompanyCommand {
         root.then(Commands.literal("quality")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> quality(ctx.getSource(),
+                                StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("batches")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> batches(ctx.getSource(),
                                 StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("services")
                 .then(Commands.argument("name", StringArgumentType.word())
@@ -426,6 +431,30 @@ public class CompanyCommand {
                     + " | average score " + quality.averageScore() + "/100"), false);
         });
         return 1;
+    }
+
+    private static int batches(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        var records = CompanyProductionBatchSavedData.get(player.getServer())
+                .forCompany(company.companyId());
+        source.sendSuccess(() -> Component.literal("Recent production batches for " + company.name()
+                + " (latest 20):"), false);
+        if (records.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No production batches recorded."), false);
+            return 1;
+        }
+        records.stream().limit(20).forEach(batch -> source.sendSuccess(() -> Component.literal(
+                batch.id().substring(0, Math.min(8, batch.id().length())) + " | " + batch.recipeId()
+                        + " | machine " + batch.machineType() + " | outputs " + batch.outputs()
+                        + " | inputs " + batch.inputs() + " | quality " + batch.qualityScore()
+                        + "/100 | conversion USD " + batch.conversionCost()
+                        + " | tick " + batch.createdAt()), false));
+        return Math.min(20, records.size());
     }
 
     private static int services(CommandSourceStack source, String name) throws CommandSyntaxException {

@@ -422,7 +422,8 @@ public final class CompanyHelper {
         conversionCost = EconomyMath.add(Math.max(0L, conversionCost), equipmentDepreciation);
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
         if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return ProductionCycleResult.failure("oil_reservation");
-        produceOutputs(server, company, conversionCost, productionQuality(server, company, machine));
+        int qualityScore = productionQuality(server, company, machine);
+        produceOutputs(server, company, recipe, conversionCost, qualityScore);
         if (serviceCycle) {
             CompanyServiceDeliverySavedData.get(server).append(
                     new CompanyServiceDeliverySavedData.ServiceDelivery(
@@ -688,7 +689,8 @@ public final class CompanyHelper {
     }
 
     /** Deposits outputs, records their conversion cost, then fulfills backorders. */
-    private static void produceOutputs(MinecraftServer server, Company company, long conversionCost, int qualityScore) {
+    private static void produceOutputs(MinecraftServer server, Company company, ProductionRecipe recipe,
+                                       long conversionCost, int qualityScore) {
         if (server == null) {
             return;
         }
@@ -717,6 +719,9 @@ public final class CompanyHelper {
                     com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId()),
                     company.ownerUuid(), itemId);
         }
+        CompanyProductionBatchSavedData.get(server).record(CompanyProductionBatchSavedData.newBatch(
+                company, recipe, conversionCost, qualityScore, recipe.workersPerCycle(),
+                server.overworld().getGameTime()));
     }
 
     /** Game-scale process-quality proxy based on active skill and equipment condition. */
@@ -993,6 +998,7 @@ public final class CompanyHelper {
             CompanyInventoryCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyQualitySavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
+            CompanyProductionBatchSavedData.get(server).mergeCompany(source.companyId(), target.companyId());
             CompanyLoanSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanySiteSavedData.get(server).remove(source.companyId());
         }
