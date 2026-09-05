@@ -230,6 +230,12 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FUEL_OIL = ITEMS.register("fuel_oil",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DIESEL = ITEMS.register("diesel",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> GASOLINE = ITEMS.register("gasoline",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LPG = ITEMS.register("lpg",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PLASTIC_PELLETS = ITEMS.register("plastic_pellets",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FAN_BLADES = ITEMS.register("fan_blades",
