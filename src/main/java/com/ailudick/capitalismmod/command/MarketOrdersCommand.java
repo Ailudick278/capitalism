@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.auction.Auction;
 import com.ailudick.capitalismmod.auction.AuctionSavedData;
+import com.ailudick.capitalismmod.auction.AuctionMarket;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.market.MarketOrder;
@@ -9,6 +10,7 @@ import com.ailudick.capitalismmod.stock.StockOrder;
 import com.ailudick.capitalismmod.supply.PurchaseOrder;
 import com.ailudick.capitalismmod.supply.SupplyMarketSavedData;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -24,9 +26,21 @@ public final class MarketOrdersCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("marketorders")
                 .executes(ctx -> list(ctx.getSource(), false))
+                .then(Commands.literal("cancel")
+                        .then(Commands.argument("id", StringArgumentType.word())
+                                .executes(ctx -> cancel(ctx.getSource(), StringArgumentType.getString(ctx, "id")))))
                 .then(Commands.literal("all")
                         .requires(source -> source.hasPermission(2))
                         .executes(ctx -> list(ctx.getSource(), true))));
+    }
+
+    private static int cancel(CommandSourceStack source, String id) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) return 0;
+        boolean cancelled = AuctionMarket.cancelAuction(player, id);
+        source.sendSuccess(() -> Component.literal(cancelled
+                ? "Auction cancelled and escrowed goods returned."
+                : "Auction cannot be cancelled after bidding or was not found."), !cancelled);
+        return cancelled ? 1 : 0;
     }
 
     private static int list(CommandSourceStack source, boolean all) {

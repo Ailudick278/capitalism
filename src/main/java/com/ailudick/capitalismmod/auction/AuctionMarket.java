@@ -89,6 +89,20 @@ public final class AuctionMarket {
         return true;
     }
 
+    /** Cancels the seller's auction only while it has no bids, returning escrowed goods. */
+    public static boolean cancelAuction(ServerPlayer player, String auctionId) {
+        if (player == null || auctionId == null || auctionId.isBlank()) return false;
+        AuctionSavedData data = AuctionSavedData.get(player.getServer());
+        Auction auction = data.findAuction(auctionId);
+        if (auction == null || !auction.seller().equals(player.getUUID())
+                || !auction.currentBidder().isEmpty()) return false;
+        var commodity = Commodities.byId(auction.itemId());
+        if (commodity == null || auction.quantity() <= 0) return false;
+        data.removeAuction(auction.id());
+        WarehouseSavedData.get(player.getServer()).credit(player.getUUID(), commodity.getItem(), auction.quantity());
+        return true;
+    }
+
     /** Settles all auctions whose end time has passed. */
     public static void settleExpired(MinecraftServer server) {
         AuctionSavedData data = AuctionSavedData.get(server);
