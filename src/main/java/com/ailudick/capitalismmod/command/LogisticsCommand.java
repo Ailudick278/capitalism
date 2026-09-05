@@ -12,6 +12,8 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
@@ -22,6 +24,8 @@ import com.ailudick.capitalismmod.company.CompanySavedData;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.ailudick.capitalismmod.market.LogisticsNodeSavedData;
 
 /** Shows the player's current trade region and cargo still in transit. */
 public final class LogisticsCommand {
@@ -33,6 +37,12 @@ public final class LogisticsCommand {
                 .executes(ctx -> list(ctx.getSource()))
                 .then(Commands.literal("losses").executes(ctx -> losses(ctx.getSource())))
                 .then(Commands.literal("claims").executes(ctx -> claims(ctx.getSource())))
+                .then(Commands.literal("repair")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> repair(ctx.getSource(), 0))
+                        .then(Commands.argument("radius", IntegerArgumentType.integer(0, 8))
+                                .executes(ctx -> repair(ctx.getSource(),
+                                        IntegerArgumentType.getInteger(ctx, "radius")))))
                 .then(Commands.literal("order")
                         .then(Commands.argument("id", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(ctx -> order(ctx.getSource(),
@@ -41,6 +51,26 @@ public final class LogisticsCommand {
                         .then(Commands.argument("shipment", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(ctx -> insure(ctx.getSource(),
                                         com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "shipment"))))));
+    }
+
+    private static int repair(CommandSourceStack source, int radius) {
+        ServerPlayer player;
+        try {
+            player = source.getPlayerOrException();
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            source.sendFailure(Component.literal("This command can only be used by a player."));
+            return 0;
+        }
+        if (!(player.level() instanceof ServerLevel level)) {
+            source.sendFailure(Component.literal("A server world is required."));
+            return 0;
+        }
+        ChunkPos chunk = new ChunkPos(player.blockPosition());
+        int found = LogisticsNodeSavedData.get(source.getServer()).repair(level, chunk.x, chunk.z, radius);
+        int scanned = (radius * 2 + 1) * (radius * 2 + 1);
+        source.sendSuccess(() -> Component.literal("Logistics node repair scanned " + scanned
+                + " loaded chunks and registered " + found + " existing facilities."), false);
+        return found;
     }
 
     private static int losses(CommandSourceStack source) {

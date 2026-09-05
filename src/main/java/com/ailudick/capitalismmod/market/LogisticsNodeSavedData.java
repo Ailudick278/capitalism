@@ -1,9 +1,12 @@
 package com.ailudick.capitalismmod.market;
 
+import com.ailudick.capitalismmod.init.ModBlocks;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
@@ -41,6 +44,50 @@ public final class LogisticsNodeSavedData extends SavedData {
     public List<Node> inDimension(String dimension) {
         if (dimension == null || dimension.isBlank()) return List.of();
         return nodes.values().stream().filter(node -> dimension.equals(node.dimension())).toList();
+    }
+
+    /**
+     * Backfills facilities placed before node tracking existed. This is
+     * intentionally an explicit, bounded operation rather than a chunk-load
+     * hook, so old worlds do not pay a full-height scan on every chunk load.
+     */
+    public int repair(ServerLevel level, int centerChunkX, int centerChunkZ, int radius) {
+        if (level == null) return 0;
+        int boundedRadius = Math.max(0, Math.min(8, radius));
+        String dimension = level.dimension().location().toString();
+        int found = 0;
+        BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
+        for (int chunkZ = centerChunkZ - boundedRadius; chunkZ <= centerChunkZ + boundedRadius; chunkZ++) {
+            for (int chunkX = centerChunkX - boundedRadius; chunkX <= centerChunkX + boundedRadius; chunkX++) {
+                if (!level.hasChunk(chunkX, chunkZ)) continue;
+                int minX = chunkX * 16;
+                int minZ = chunkZ * 16;
+                for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); y++) {
+                    for (int localZ = 0; localZ < 16; localZ++) {
+                        for (int localX = 0; localX < 16; localX++) {
+                            mutable.set(minX + localX, y, minZ + localZ);
+                            String facility = facilityId(level.getBlockState(mutable));
+                            if (facility == null) continue;
+                            String nodeKey = key(dimension, mutable.getX(), mutable.getY(), mutable.getZ());
+                            if (!nodes.containsKey(nodeKey)) {
+                                nodes.put(nodeKey, new Node(nodeKey, dimension, mutable.getX(), mutable.getY(),
+                                        mutable.getZ(), facility));
+                                found++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (found > 0) setDirty();
+        return found;
+    }
+
+    private static String facilityId(net.minecraft.world.level.block.state.BlockState state) {
+        if (state.is(ModBlocks.LOGISTICS_CENTER_BLOCK.get())) return "logistics_center";
+        if (state.is(ModBlocks.TRANSFER_STATION_BLOCK.get())) return "transfer_station";
+        if (state.is(ModBlocks.PORT_BLOCK.get())) return "port";
+        return null;
     }
 
     private static String key(String dimension, int x, int y, int z) {
