@@ -33,6 +33,7 @@ import com.ailudick.capitalismmod.stock.StockTradeIntentSavedData;
 import com.ailudick.capitalismmod.stock.StockOrder;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
+import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.MarketOrder;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
@@ -92,6 +93,44 @@ public final class EconomyAuditService {
                 .forEach(intent -> issues.add("pending stock sell " + intent.orderId()));
         StockTradeIntentSavedData.get(server).intents().stream().limit(100)
                 .forEach(intent -> issues.add("pending stock trade " + intent.id()));
+        CommoditySavedData commodityBook = CommoditySavedData.get(server);
+        for (var intent : CommodityTradeIntentSavedData.get(server).intents()) {
+            var buy = commodityBook.findOrder(intent.buyOrderId());
+            var sell = commodityBook.findOrder(intent.sellOrderId());
+            if (intent.fill() <= 0 || intent.gross() < 0L || intent.buyQuantityBefore() < intent.fill()
+                    || intent.sellQuantityBefore() < intent.fill()
+                    || !reconciledOrderQuantity(buy, intent.buyQuantityBefore(), intent.fill())
+                    || !reconciledOrderQuantity(sell, intent.sellQuantityBefore(), intent.fill())) {
+                issues.add("commodity trade intent quantity mismatch " + intent.id());
+            }
+            if (buy != null && (buy.sell() || !buy.ownerId().equals(intent.buyer().toString())
+                    || !Commodities.id(buy.commodity()).equals(intent.itemId()))) {
+                issues.add("commodity trade intent buy order mismatch " + intent.id());
+            }
+            if (sell != null && (!sell.sell() || !sell.ownerId().equals(intent.seller().toString())
+                    || !Commodities.id(sell.commodity()).equals(intent.itemId()))) {
+                issues.add("commodity trade intent sell order mismatch " + intent.id());
+            }
+        }
+        EconomySavedData stockBook = EconomySavedData.get(server);
+        for (var intent : StockTradeIntentSavedData.get(server).intents()) {
+            var buy = stockBook.findOrder(intent.buyOrderId());
+            var sell = stockBook.findOrder(intent.sellOrderId());
+            if (intent.fill() <= 0 || intent.gross() < 0L || intent.buyQuantityBefore() < intent.fill()
+                    || intent.sellQuantityBefore() < intent.fill()
+                    || !reconciledOrderQuantity(buy, intent.buyQuantityBefore(), intent.fill())
+                    || !reconciledOrderQuantity(sell, intent.sellQuantityBefore(), intent.fill())) {
+                issues.add("stock trade intent quantity mismatch " + intent.id());
+            }
+            if (buy != null && (buy.sell() || !buy.ownerId().equals(intent.buyer().toString())
+                    || !buy.stockId().equals(intent.stockId()))) {
+                issues.add("stock trade intent buy order mismatch " + intent.id());
+            }
+            if (sell != null && (!sell.sell() || !sell.ownerId().equals(intent.seller().toString())
+                    || !sell.stockId().equals(intent.stockId()))) {
+                issues.add("stock trade intent sell order mismatch " + intent.id());
+            }
+        }
         Set<String> marketOrderIds = new HashSet<>();
         CommoditySavedData commodities = CommoditySavedData.get(server);
         for (MarketOrder order : commodities.orders()) {
@@ -409,5 +448,15 @@ public final class EconomyAuditService {
         } catch (RuntimeException exception) {
             return false;
         }
+    }
+
+    private static boolean reconciledOrderQuantity(com.ailudick.capitalismmod.market.MarketOrder order,
+                                                   int before, int fill) {
+        return order == null ? before == fill : order.quantity() == before || order.quantity() == before - fill;
+    }
+
+    private static boolean reconciledOrderQuantity(com.ailudick.capitalismmod.stock.StockOrder order,
+                                                   int before, int fill) {
+        return order == null ? before == fill : order.quantity() == before || order.quantity() == before - fill;
     }
 }
