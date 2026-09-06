@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborPayrollSavedData;
 import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -36,6 +37,14 @@ public final class EconomyAuditService {
         }
         PopulationSavedData population = PopulationSavedData.get(server);
         for (Household household : population.households()) if (household.cashMinor() < 0L || household.size() < household.workingAge()) issues.add("household " + household.id() + " invalid cash or age structure");
+        HousingLeaseSavedData housing = HousingLeaseSavedData.get(server);
+        for (var lease : housing.leases()) {
+            Household household = population.find(lease.householdId());
+            if (household == null) issues.add("housing lease " + lease.householdId() + " has no household");
+            if (lease.dailyRentMinor() < 0L || lease.arrearsMinor() < 0L || lease.depositHeldMinor() < 0L
+                    || lease.depositHeldMinor() > lease.depositDueMinor() || lease.missedDays() < 0
+                    || lease.missedDays() > 10000) issues.add("housing lease " + lease.householdId() + " invalid balance or status");
+        }
         LaborMarketSavedData labor = LaborMarketSavedData.get(server);
         for (EmploymentRecord employment : labor.employments()) if (employment.dailyWageMinor() < 0L || employment.workerId().isBlank() || employment.employerId().isBlank()) issues.add("employment " + employment.id() + " invalid participant or wage");
         for (var entry : labor.offers()) if (entry.vacancies() < 0 || entry.dailyWageMinor() <= 0L) issues.add("job offer " + entry.id() + " invalid vacancy or wage");

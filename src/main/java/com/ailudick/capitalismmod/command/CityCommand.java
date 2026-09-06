@@ -55,11 +55,19 @@ public final class CityCommand {
         int score = infrastructure.publicServiceScore(region, residents);
         long rent = CityHousingSavedData.get(source.getServer()).dailyRent(region, residents,
                 infrastructure.count(region, "housing"));
+        HousingLeaseSavedData leases = HousingLeaseSavedData.get(source.getServer());
+        long arrears = leases.leases().stream().filter(l -> l.region().equals(region))
+                .mapToLong(HousingLeaseSavedData.Lease::arrearsMinor).reduce(0L, CityCommand::add);
+        long deposits = leases.leases().stream().filter(l -> l.region().equals(region))
+                .mapToLong(HousingLeaseSavedData.Lease::depositHeldMinor).reduce(0L, CityCommand::add);
+        int activeLeases = (int) leases.leases().stream().filter(l -> l.region().equals(region)).count();
         source.sendSuccess(() -> Component.literal("city region=" + region + " residents=" + residents
                 + " housing=" + infrastructure.count(region, "housing") + " school="
                 + infrastructure.count(region, "school") + " clinic=" + infrastructure.count(region, "clinic")
                 + " serviceScore=" + score + " dailyRentPerResident=" + rent
-                + " landlord=" + CityHousingSavedData.get(source.getServer()).landlord(region)), false);
+                + " landlord=" + CityHousingSavedData.get(source.getServer()).landlord(region)
+                + " activeLeases=" + activeLeases + " rentArrearsMinor=" + arrears
+                + " depositsHeldMinor=" + deposits), false);
         return score;
     }
 
@@ -110,5 +118,9 @@ public final class CityCommand {
                 + " depositRefundMinor=" + termination.depositReleasedMinor()
                 + " residualArrearsMinor=" + termination.residualArrearsMinor()), true);
         return 1;
+    }
+
+    private static long add(long left, long right) {
+        try { return Math.addExact(left, right); } catch (ArithmeticException e) { return Long.MAX_VALUE; }
     }
 }
