@@ -16,6 +16,7 @@ import com.ailudick.capitalismmod.loan.PeerLoanPaymentSavedData;
 import com.ailudick.capitalismmod.bank.BankRecoveryRules;
 import com.ailudick.capitalismmod.bank.BankExposureAuditRules;
 import com.ailudick.capitalismmod.bank.BankExposureSavedData;
+import com.ailudick.capitalismmod.risk.FinancialRiskAuditRules;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
@@ -296,11 +297,7 @@ public final class EconomyAuditService {
             }
         }
         for (var snapshot : FinancialRiskSavedData.get(server).snapshots()) {
-            if (snapshot.day() < 0L || snapshot.companyDebtMinor() < 0L || snapshot.peerDebtMinor() < 0L
-                    || snapshot.bankDebtMinor() < 0L || snapshot.bondLiabilityMinor() < 0L
-                    || snapshot.overdueDebtMinor() < 0L || snapshot.overdueLoanCount() < 0
-                    || snapshot.overdueShareBasisPoints() < 0 || snapshot.overdueShareBasisPoints() > 10000
-                    || snapshot.overdueDebtMinor() > snapshot.totalDebtMinor()) {
+            if (!FinancialRiskAuditRules.validDerivedSnapshot(snapshot)) {
                 issues.add("financial risk snapshot invalid day " + snapshot.day());
             }
         }
