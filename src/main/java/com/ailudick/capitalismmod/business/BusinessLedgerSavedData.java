@@ -37,6 +37,16 @@ public final class BusinessLedgerSavedData extends SavedData {
         return List.copyOf(entries.getOrDefault(businessId, List.of()));
     }
 
+    public boolean hasSource(String businessId, String sourceId) {
+        return entries(businessId).stream().anyMatch(entry -> entry.description() != null
+                && entry.description().contains("[source=" + sourceId + "]"));
+    }
+
+    public BusinessLedgerEntry findSource(String businessId, String sourceId) {
+        return entries(businessId).stream().filter(entry -> entry.description() != null
+                && entry.description().contains("[source=" + sourceId + "]")).findFirst().orElse(null);
+    }
+
     public void append(BusinessLedgerEntry entry) {
         entries.computeIfAbsent(entry.businessId(), ignored -> new ArrayList<>()).add(entry);
         setDirty();

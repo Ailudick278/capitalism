@@ -14,6 +14,7 @@ import com.ailudick.capitalismmod.tax.TaxIncomeVoucherService;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import net.minecraft.server.level.ServerPlayer;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.market.InventoryOwner;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -215,7 +216,8 @@ public final class IndividualBusinessHelper {
             return false;
         }
         long now = player.level().getGameTime();
-        if (now > order.deadline()) {
+        String goodsSource = order.businessId() + ":order:" + order.id() + ":goods";
+        if (now > order.deadline() && !WarehouseSavedData.get(player.getServer()).hasConsumedSource(goodsSource)) {
             orderData.put(order.withStatus("expired"));
             return false;
         }
@@ -224,22 +226,45 @@ public final class IndividualBusinessHelper {
         if (item == null || warehouse.count(player.getUUID(), order.itemId()) < order.remaining()) {
             return false;
         }
-        warehouse.consume(player.getUUID(), item, order.remaining());
+        if (!warehouse.consumeOnce(InventoryOwner.player(player.getUUID()), item, order.remaining(), goodsSource)) return false;
         long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
-        Map<String, Long> account = new HashMap<>(business.account());
-        long newBalance = Math.addExact(business.balance("usd"), payment);
-        account.put("usd", newBalance);
-        IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
+        String source = business.businessId() + ":order:" + order.id();
+        BusinessLedgerSavedData ledger = BusinessLedgerSavedData.get(player.getServer());
+        BusinessLedgerEntry settlement = ledger.findSource(business.businessId(), source);
+        if (settlement == null) {
+            long newBalance = Math.addExact(business.balance("usd"), payment);
+            ledger.append(new BusinessLedgerEntry(business.businessId(), now, "order_payment", "usd", payment,
+                    newBalance, "完成销售订单 " + order.id() + "，交付 " + order.itemId() + " x" + order.quantity()
+                            + " [source=" + source + "]"));
+            Map<String, Long> account = new HashMap<>(business.account());
+            account.put("usd", newBalance);
+            IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
+        } else if (business.balance("usd") != settlement.balanceAfter()) {
+            Map<String, Long> account = new HashMap<>(business.account());
+            account.put("usd", settlement.balanceAfter());
+            IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
+        }
         orderData.put(order.withDelivery(0, "completed"));
         recordTaxableIncome(player, business, business.businessId() + ":order:" + order.id(), payment, now);
         TaxIncomeVoucherService.record(player.getServer(), business.ownerUuid(), business.businessId(),
                 "individual_business_income", Currencies.USD.id(), payment, now,
                 business.businessId() + ":income:" + order.id(),
                 order.itemId() + " x" + order.quantity() + " from order " + order.id());
-        BusinessLedgerSavedData.get(player.getServer()).append(new BusinessLedgerEntry(
-                business.businessId(), now, "order_payment", "usd", payment, newBalance,
-                "完成销售订单 " + order.id() + "，交付 " + order.itemId() + " x" + order.quantity()));
         return true;
+    }
+
+    /** Completes only orders whose inventory escrow was already consumed. */
+    public static int recoverOrders(ServerPlayer player) {
+        if (player == null || player.getServer() == null) return 0;
+        BusinessOrderSavedData orders = BusinessOrderSavedData.get(player.getServer());
+        WarehouseSavedData warehouse = WarehouseSavedData.get(player.getServer());
+        int recovered = 0;
+        for (BusinessOrder order : orders.orders().values()) {
+            if (!player.getUUID().equals(order.sellerUuid()) || !"open".equals(order.status())) continue;
+            String source = order.businessId() + ":order:" + order.id() + ":goods";
+            if (warehouse.hasConsumedSource(source) && deliverOrder(player, order.id())) recovered++;
+        }
+        return recovered;
     }
 
     public static boolean cancelOrder(ServerPlayer player, String orderId) {

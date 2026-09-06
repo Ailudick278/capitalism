@@ -87,6 +87,7 @@ public final class EconomySettlementTickHandler {
             BankAccountHelper.recoverCashDeposits(player);
             BankAccountHelper.recoverRepayments(player);
             IndividualBusinessHelper.recoverWithdrawals(player);
+            IndividualBusinessHelper.recoverOrders(player);
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
             PeerLoanNotificationService.deliver(player);
         }
