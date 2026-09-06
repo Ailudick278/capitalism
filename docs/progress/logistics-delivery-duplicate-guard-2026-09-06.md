@@ -5,6 +5,7 @@
 - Delivery processing now checks the persistent delivery ledger before crediting a warehouse.
 - A shipment that has already been recorded as delivered is removed as a stale transport entry instead of being credited twice.
 - Fuel planning records now reject a second plan for the same shipment ID.
+- Fuel planning records reject invalid transport modes, missing fuel identifiers and negative prices/costs before they enter the persistent ledger.
 
 ## Accounting rationale
 
