@@ -21,6 +21,7 @@ import com.ailudick.capitalismmod.economy.contract.ContractStatus;
 import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.market.TradeRegion;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -265,13 +266,22 @@ public final class IndividualBusinessHelper {
         if (!BusinessOrderEscrowSavedData.get(player.getServer())
                 .createOnce(order.id(), batchId, buyerId, paymentMinor)) return false;
         if (!goodsConsumed && !warehouse.consumeOnce(InventoryOwner.player(player.getUUID()), item, deliveryQuantity, goodsSource)) return false;
+        long feeMajor = Math.max(0L, Math.min(payment,
+                Math.round(payment * Config.BUSINESS_ORDER_FEE_RATE.get())));
+        long feeMinor = ExchangeRates.convert(Money.toMinorSaturated(feeMajor), Currencies.USD, Config.defaultCurrency());
+        String feeSource = source + ":fee";
+        GovernmentPolicySavedData government = GovernmentPolicySavedData.get(player.getServer());
+        if (feeMinor > 0L && !government.hasDeposit(feeSource)
+                && !government.depositOnce(feeMinor, feeSource)) return false;
+        long netPayment = payment - feeMajor;
         BusinessLedgerSavedData ledger = BusinessLedgerSavedData.get(player.getServer());
         BusinessLedgerEntry settlement = ledger.findSource(business.businessId(), source);
         if (settlement == null) {
-            long newBalance = Math.addExact(business.balance("usd"), payment);
-            ledger.append(new BusinessLedgerEntry(business.businessId(), now, "order_payment", "usd", payment,
+            long newBalance = Math.addExact(business.balance("usd"), netPayment);
+            ledger.append(new BusinessLedgerEntry(business.businessId(), now, "order_payment", "usd", netPayment,
                     newBalance, "完成销售订单 " + order.id() + "，交付 " + order.itemId() + " x" + order.quantity()
-                            + " x" + deliveryQuantity + " [source=" + source + "]"));
+                            + " x" + deliveryQuantity + "，销售额 " + payment + "，服务费 " + feeMajor
+                            + " [source=" + source + "]"));
             Map<String, Long> account = new HashMap<>(business.account());
             account.put("usd", newBalance);
             IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
@@ -288,6 +298,7 @@ public final class IndividualBusinessHelper {
         EconomicContractBridge.businessOrderEvent(player.getServer(), settledOrder,
                 newRemaining == 0 ? ContractStatus.COMPLETED : ContractStatus.ACTIVE, now);
         recordTaxableIncome(player, business, source, payment, now);
+        recordTaxableExpense(player, business, source + ":fee-expense", feeMajor, now, "订单托管服务费");
         TaxIncomeVoucherService.record(player.getServer(), business.ownerUuid(), business.businessId(),
                 "individual_business_income", Currencies.USD.id(), payment, now,
                 source + ":income", order.itemId() + " x" + deliveryQuantity + " from order " + order.id());

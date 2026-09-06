@@ -231,6 +231,10 @@ public class Config {
             .comment("Inter-account transfer fee as a fraction of the amount (0.001 = 0.1%).")
             .defineInRange("transferFeeRate", 0.001, 0.0, 1.0);
 
+    public static final ModConfigSpec.DoubleValue BUSINESS_ORDER_FEE_RATE = BUILDER
+            .comment("Platform service fee for individual-business order settlement (0.005 = 0.5%).")
+            .defineInRange("businessOrderFeeRate", 0.005, 0.0, 0.25);
+
     // Width/depth of one trade region in blocks.
     public static final ModConfigSpec.IntValue TRADE_REGION_SIZE = BUILDER
             .comment("Trade region size in blocks used for regional logistics.")
