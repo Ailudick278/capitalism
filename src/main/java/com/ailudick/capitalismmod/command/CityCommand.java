@@ -6,6 +6,8 @@ import com.ailudick.capitalismmod.population.CityHousingSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
 import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.government.PublicConstructionEconomics;
+import com.ailudick.capitalismmod.government.PublicConstructionSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
@@ -35,6 +37,14 @@ public final class CityCommand {
                                         StringArgumentType.getString(c, "type"), -IntegerArgumentType.getInteger(c, "count"))))));
         var facility = Commands.literal("facility").requires(source -> source.hasPermission(2))
                 .then(add).then(remove);
+        var projectStart = Commands.literal("start")
+                .then(Commands.argument("region", StringArgumentType.word())
+                        .then(Commands.argument("type", StringArgumentType.word())
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000000))
+                                        .executes(c -> startProject(c.getSource(), StringArgumentType.getString(c, "region"),
+                                                StringArgumentType.getString(c, "type"),
+                                                IntegerArgumentType.getInteger(c, "count"))))));
+        var project = Commands.literal("project").requires(source -> source.hasPermission(2)).then(projectStart);
         var rentAmount = Commands.argument("dailyRentMinor", IntegerArgumentType.integer(0, 1000000000))
                 .executes(c -> setRent(c.getSource(), StringArgumentType.getString(c, "region"),
                         IntegerArgumentType.getInteger(c, "dailyRentMinor")));
@@ -52,7 +62,8 @@ public final class CityCommand {
         var terminateHousing = Commands.literal("terminate").then(Commands.argument("household", StringArgumentType.word())
                 .executes(c -> terminateHousing(c.getSource(), StringArgumentType.getString(c, "household"))));
         var housing = Commands.literal("housing").requires(source -> source.hasPermission(2)).then(terminateHousing);
-        dispatcher.register(Commands.literal("city").then(info).then(facility).then(rent).then(housing).then(landlord));
+        dispatcher.register(Commands.literal("city").then(info).then(facility).then(project)
+                .then(rent).then(housing).then(landlord));
     }
 
     private static int info(CommandSourceStack source, String region) {
@@ -67,13 +78,15 @@ public final class CityCommand {
         long deposits = leases.leases().stream().filter(l -> l.region().equals(region))
                 .mapToLong(HousingLeaseSavedData.Lease::depositHeldMinor).reduce(0L, CityCommand::add);
         int activeLeases = (int) leases.leases().stream().filter(l -> l.region().equals(region)).count();
+        long activeProjects = PublicConstructionSavedData.get(source.getServer()).projects().stream()
+                .filter(p -> p.region().equals(region) && p.completedUnits() < p.units()).count();
         source.sendSuccess(() -> Component.literal("city region=" + region + " residents=" + residents
                 + " housing=" + infrastructure.count(region, "housing") + " school="
                 + infrastructure.count(region, "school") + " clinic=" + infrastructure.count(region, "clinic")
                 + " serviceScore=" + score + " dailyRentPerResident=" + rent
                 + " landlord=" + CityHousingSavedData.get(source.getServer()).landlord(region)
                 + " activeLeases=" + activeLeases + " rentArrearsMinor=" + arrears
-                + " depositsHeldMinor=" + deposits), false);
+                + " depositsHeldMinor=" + deposits + " activeConstructionProjects=" + activeProjects), false);
         return score;
     }
 
@@ -86,6 +99,24 @@ public final class CityCommand {
         source.sendSuccess(() -> Component.literal("city facility " + (delta > 0 ? "added" : "removed")
                 + " type=" + type + " count=" + Math.abs(delta) + " region=" + region), true);
         return Math.abs(delta);
+    }
+
+    private static int startProject(CommandSourceStack source, String region, String type, int count) {
+        if (!PublicConstructionEconomics.validFacility(type)) {
+            source.sendFailure(Component.literal("Invalid construction type."));
+            return 0;
+        }
+        PublicConstructionSavedData data = PublicConstructionSavedData.get(source.getServer());
+        long day = source.getServer().overworld().getGameTime() / 24000L;
+        String id = "city-project:" + day + ":" + region + ":" + type + ":" + data.projects().size();
+        if (data.start(id, region, type, count, day) == null) {
+            source.sendFailure(Component.literal("Unable to create construction project."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("city project started id=" + id + " region=" + region
+                + " type=" + type + " units=" + count + " unitCostMinor="
+                + PublicConstructionEconomics.unitCost(type)), true);
+        return count;
     }
 
     private static int setRent(CommandSourceStack source, String region, int rent) {

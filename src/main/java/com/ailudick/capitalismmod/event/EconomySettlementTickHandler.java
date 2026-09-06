@@ -30,6 +30,7 @@ import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.population.PopulationService;
 import com.ailudick.capitalismmod.government.GovernmentPolicyService;
 import com.ailudick.capitalismmod.government.GovernmentPublicBudgetService;
+import com.ailudick.capitalismmod.government.PublicConstructionSavedData;
 import com.ailudick.capitalismmod.risk.FinancialRiskService;
 import com.ailudick.capitalismmod.risk.FinancialCrisisService;
 import com.ailudick.capitalismmod.bank.BankLiquidityService;
@@ -135,6 +136,7 @@ public final class EconomySettlementTickHandler {
         LaborPayrollService.settleDaily(server, settlementDay);
         com.ailudick.capitalismmod.loan.PeerLoanHelper.recoverRecordedPayments(server);
         GovernmentPolicyService.settleDaily(server, settlementDay);
+        PublicConstructionSavedData.get(server).settleDaily(server, settlementDay);
         GovernmentPublicBudgetService.settleDaily(server, settlementDay);
         PopulationService.settleDaily(server, settlementDay);
         journal.markCompleted(settlementDay, "households-and-labor", server.overworld().getGameTime());
