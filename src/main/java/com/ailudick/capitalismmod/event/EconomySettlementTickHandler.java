@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.auction.AuctionMarket;
 import com.ailudick.capitalismmod.bond.BondMarket;
 import com.ailudick.capitalismmod.economy.EconomySettlementSavedData;
 import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
+import com.ailudick.capitalismmod.economy.EconomicRecoveryService;
 import com.ailudick.capitalismmod.futures.FuturesMarket;
 import com.ailudick.capitalismmod.loan.PeerLoan;
 import com.ailudick.capitalismmod.loan.PeerLoanHelper;
@@ -67,6 +68,9 @@ public final class EconomySettlementTickHandler {
             CurrencyExchangeService.recover(event.getServer());
             PlayerTransferService.recover(event.getServer());
         }
+        if (event.getServer().overworld().getGameTime() % 100L == 0L) {
+            EconomicRecoveryService.recoverServerSafe(event.getServer());
+        }
         long currentDay = event.getServer().overworld().getGameTime() / TICKS_PER_DAY;
         EconomySettlementSavedData state = EconomySettlementSavedData.get(event.getServer());
         long lastDay = state.lastSettlementDay();
@@ -116,11 +120,7 @@ public final class EconomySettlementTickHandler {
         EconomicContractBridge.syncSupply(server);
         EconomicContractSavedData.get(server).settleOverdue(server.overworld().getGameTime());
         IndividualBusinessHelper.expireUndeliveredOrders(server, server.overworld().getGameTime());
-        SupplyMarket.recoverPendingOrderIntents(server);
-        LogisticsLossService.recoverSupplyCompensations(server);
-        FuturesMarket.recoverPendingOpenPositions(server);
-        CommodityMarket.recoverPendingTrades(server);
-        StockMarket.recoverPendingTrades(server);
+        EconomicRecoveryService.recoverServerSafe(server);
         if (!journal.isCompleted(settlementDay, "households-and-labor")) {
             journal.markStarted(settlementDay, "households-and-labor", server.overworld().getGameTime());
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
