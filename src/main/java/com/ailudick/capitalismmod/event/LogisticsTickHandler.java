@@ -23,6 +23,7 @@ import com.ailudick.capitalismmod.company.CompanyFreightSettlementService;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
+import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -72,6 +73,9 @@ public final class LogisticsTickHandler {
             double risk = Config.LOGISTICS_RISK_RATE.get()
                     * (1.0 - LogisticsInfrastructureSavedData.get(server).riskReduction(
                     shipment.originRegion(), shipment.destinationRegion(), shipment.transport()));
+            risk = EconomicEventService.applyLogisticsRiskShock(risk,
+                    EconomicEventService.logisticsCapacityShockBps(server, shipment.originRegion(),
+                            shipment.destinationRegion(), now));
             if (risk > 0.0 && Math.random() < risk) {
                 if (shipment.insured()) {
                     LogisticsClaimSavedData claims = LogisticsClaimSavedData.get(server);

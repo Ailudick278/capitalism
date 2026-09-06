@@ -28,5 +28,8 @@ class EconomicEventServiceTest {
         assertEquals(125, EconomicEventService.applyTravelShock(100, -5000));
         assertEquals(75, EconomicEventService.applyTravelShock(100, 5000));
         assertEquals(10, EconomicEventService.applyCapacityShock(100, -9000));
+        assertEquals(0.15D, EconomicEventService.applyLogisticsRiskShock(0.1D, -5000), 0.000001D);
+        assertEquals(0.05D, EconomicEventService.applyLogisticsRiskShock(0.1D, 5000), 0.000001D);
+        assertEquals(0.95D, EconomicEventService.applyLogisticsRiskShock(0.9D, -9000), 0.000001D);
     }
 }

@@ -118,6 +118,14 @@ public final class EconomicEventService {
         }
     }
 
+    /** Applies route-capacity stress to a base disruption probability. */
+    public static double applyLogisticsRiskShock(double baseRisk, int shockBps) {
+        if (!Double.isFinite(baseRisk) || baseRisk <= 0D) return 0D;
+        int bounded = Math.max(-9000, Math.min(9000, shockBps));
+        double adjusted = baseRisk * (10_000D - bounded) / 10_000D;
+        return Math.max(0D, Math.min(0.95D, adjusted));
+    }
+
     private static String routeId(String origin, String destination) {
         return origin.trim() + "->" + destination.trim();
     }
