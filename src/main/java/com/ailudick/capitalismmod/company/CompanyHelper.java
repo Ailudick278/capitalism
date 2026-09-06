@@ -910,7 +910,7 @@ public final class CompanyHelper {
         CompanyProductionBatchSavedData.Batch batch = CompanyProductionBatchSavedData.newBatch(
                 company, recipe, conversionCost, qualityScore, recipe.workersPerCycle(),
                 server.overworld().getGameTime(), operatingSite,
-                cycleKey == null || cycleKey.isBlank() ? null : "production:" + cycleKey);
+                ProductionCycleIdentity.batchId(cycleKey));
         CompanyProductionBatchSavedData.get(server).record(batch);
         CompanyQualityControlSavedData.get(server).screen(batch, batch.createdAt());
         CompanyQualityHoldSavedData.get(server).hold(batch);

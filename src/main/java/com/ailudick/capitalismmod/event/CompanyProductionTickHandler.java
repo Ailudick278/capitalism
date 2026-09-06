@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyProductionSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.company.ProductionCycleIdentity;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -52,7 +53,7 @@ public final class CompanyProductionTickHandler {
                 int capacity = Math.max(1, CompanyHelper.parallelCapacity(server, company));
                 boolean anySuccess = false;
                 for (int batch = 0; batch < capacity; batch++) {
-                    String cycleKey = company.companyId() + ":" + cycleTick + ":" + batch;
+                    String cycleKey = ProductionCycleIdentity.key(company.companyId(), cycleTick, batch);
                     CompanyHelper.ProductionCycleResult result = CompanyHelper.runProductionCycleResult(server, company, cycleKey);
                     if (result.success()) {
                         successful = increment(Math.max(0L, successful));
