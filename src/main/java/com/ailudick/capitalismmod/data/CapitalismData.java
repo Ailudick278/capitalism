@@ -567,6 +567,8 @@ public final class CapitalismData {
                         new RecipeJson("phone_casing", Map.of("capitalismmod:abs_resin", 1), Map.of("capitalismmod:phone_casing", 1), 145, "injection_molder", 2, 3, 8),
                         new RecipeJson("plastic_container", Map.of("capitalismmod:polyethylene_pellets", 2), Map.of("capitalismmod:plastic_container", 1), 125, "injection_molder", 2, 3, 8),
                         new RecipeJson("packaging_film", Map.of("capitalismmod:polyethylene_pellets", 1), Map.of("capitalismmod:packaging_film", 4), 95, "extrusion_line", 2, 3, 8),
+                        new RecipeJson("packaging_film_recycling", Map.of("capitalismmod:packaging_film", 4), Map.of("capitalismmod:plastic_pellets", 2), 88, "plastic_recycler", 2, 5, 9),
+                        new RecipeJson("plastic_container_recycling", Map.of("capitalismmod:plastic_container", 2), Map.of("capitalismmod:plastic_pellets", 1), 82, "plastic_recycler", 2, 5, 9),
                         new RecipeJson("camera_module", Map.of("capitalismmod:glass_lens", 1, "capitalismmod:circuit_board", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:camera_module", 1), 280, "electronics_assembly", 3, 5, 10),
                         new RecipeJson("speaker_module", Map.of("capitalismmod:copper_wire", 1, "minecraft:iron_ingot", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:speaker_module", 1), 145, "electronics_assembly", 2, 3, 8),
                         new RecipeJson("microphone_module", Map.of("capitalismmod:copper_wire", 1, "minecraft:redstone", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:microphone_module", 1), 125, "electronics_assembly", 2, 3, 8),
