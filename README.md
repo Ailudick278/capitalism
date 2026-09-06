@@ -41,6 +41,7 @@
 /labor end <employmentId>        结束雇佣
 /population info [region]        查看区域人口和基本需求
 /population seed <region> <count> 管理员生成 NPC 家庭
+/population merge <source> <target> 管理员合并同区域 NPC 家庭
 /economy-audit                   管理员检查经济账本一致性
 ```
 
