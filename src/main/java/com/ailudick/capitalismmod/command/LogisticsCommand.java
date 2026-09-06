@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.ailudick.capitalismmod.market.LogisticsNodeSavedData;
+import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 
 /** Shows the player's current trade region and cargo still in transit. */
 public final class LogisticsCommand {
@@ -278,9 +279,11 @@ public final class LogisticsCommand {
                 ? null : CompanySavedData.get(source.getServer()).get(shipment.buyerCompanyId());
         boolean companyShipment = company != null && company.ownerUuid().equals(player.getUUID());
         boolean paid = companyShipment
-                ? CompanyHelper.debitTreasury(source.getServer(), company.companyId(), Currencies.USD.id(),
-                        premium, "cargo_insurance", "Cargo insurance premium")
-                : EconomyHelper.tryPay(player, Currencies.USD, premiumMinor);
+                ? CompanyHelper.debitTreasuryNonOperatingOnce(source.getServer(), company.companyId(),
+                        Currencies.USD.id(), premium, "cargo_insurance", "Cargo insurance premium",
+                        "cargo-insurance:" + id)
+                : EconomyHelper.tryPayWithReference(player, Currencies.USD, premiumMinor,
+                        "cargo-insurance:" + id);
         if (!paid) {
             source.sendFailure(Component.literal(companyShipment
                     ? "Insufficient company USD for insurance." : "Insufficient USD for insurance."));
@@ -288,10 +291,16 @@ public final class LogisticsCommand {
         }
         if (!data.insure(id, player.getUUID())) {
             if (companyShipment) {
-                CompanyHelper.creditTreasuryNonOperating(source.getServer(), company.companyId(),
-                        Currencies.USD.id(), premium, "cargo_insurance_refund", "Failed insurance enrollment refund");
+                CompanyHelper.creditTreasuryNonOperatingOnce(source.getServer(), company.companyId(),
+                        Currencies.USD.id(), premium, "cargo_insurance_refund",
+                        "Failed insurance enrollment refund", "cargo-insurance-refund:" + id);
             } else {
-                EconomyHelper.giveMoney(player, Currencies.USD, premiumMinor);
+                MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(source.getServer());
+                String refundSource = "cargo-insurance-refund:" + id;
+                if (!mailbox.hasCreditSource(refundSource)) {
+                    mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), premiumMinor, refundSource);
+                }
+                mailbox.redeem(player);
             }
             source.sendFailure(Component.literal("Shipment could not be insured; payment was refunded."));
             return 0;
