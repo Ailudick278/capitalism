@@ -29,6 +29,20 @@ public final class LaborMarketSavedData extends SavedData {
     public List<JobOffer> offers() { return List.copyOf(offers); }
     public List<EmploymentRecord> employments() { return List.copyOf(employments); }
     public LaborProfile profile(String actorId) { return profiles.stream().filter(p -> p.actorId().equals(actorId)).findFirst().orElse(null); }
+    public List<JobOffer> openOffers(long now) { return offers.stream().filter(o -> o.vacancies() > 0 && (o.closesAt() <= 0L || now < o.closesAt())).toList(); }
+    public List<EmploymentRecord> activeForWorker(String workerId) { return employments.stream().filter(e -> e.active() && e.workerId().equals(workerId)).toList(); }
+    public List<EmploymentRecord> activeForEmployer(String employerId) { return employments.stream().filter(e -> e.active() && e.employerId().equals(employerId)).toList(); }
+    public int activeWorkers(String employerId) { return activeForEmployer(employerId).size(); }
+    public long dailyWages(String employerId) { return activeForEmployer(employerId).stream().mapToLong(EmploymentRecord::dailyWageMinor).reduce(0L, LaborMarketSavedData::add); }
+
+    public JobOffer offer(String id) { return offers.stream().filter(o -> o.id().equals(id)).findFirst().orElse(null); }
+
+    public boolean reserveVacancy(String id) {
+        JobOffer offer = offer(id);
+        if (offer == null || offer.vacancies() <= 0) return false;
+        offers.set(offers.indexOf(offer), offer.withVacancies(offer.vacancies() - 1));
+        setDirty(); return true;
+    }
 
     public void registerProfile(LaborProfile profile) {
         if (profile == null) return;
@@ -63,6 +77,7 @@ public final class LaborMarketSavedData extends SavedData {
     }
 
     private void trim() { while (profiles.size() > MAX_RECORDS) profiles.remove(0); while (offers.size() > MAX_RECORDS) offers.remove(0); while (employments.size() > MAX_RECORDS) employments.remove(0); }
+    private static long add(long a, long b) { try { return Math.addExact(a, b); } catch (ArithmeticException e) { return Long.MAX_VALUE; } }
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag profileList = new ListTag();

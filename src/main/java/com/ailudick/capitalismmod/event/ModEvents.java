@@ -29,6 +29,7 @@ import com.ailudick.capitalismmod.command.TaxTransactionCommand;
 import com.ailudick.capitalismmod.command.TaxExpenseCommand;
 import com.ailudick.capitalismmod.command.TaxInvoiceCommand;
 import com.ailudick.capitalismmod.command.BankStatementCommand;
+import com.ailudick.capitalismmod.command.LaborCommand;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -69,5 +70,6 @@ public class ModEvents {
         TaxExpenseCommand.register(dispatcher);
         TaxInvoiceCommand.register(dispatcher);
         BankStatementCommand.register(dispatcher);
+        LaborCommand.register(dispatcher);
     }
 }

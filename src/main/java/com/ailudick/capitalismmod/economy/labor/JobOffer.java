@@ -14,4 +14,8 @@ public record JobOffer(String id, String employerId, String role, int vacancies,
             throw new IllegalArgumentException("Invalid job offer");
         }
     }
+
+    public JobOffer withVacancies(int value) {
+        return new JobOffer(id, employerId, role, value, dailyWageMinor, requiredSkill, minimumSkill, postedAt, closesAt);
+    }
 }

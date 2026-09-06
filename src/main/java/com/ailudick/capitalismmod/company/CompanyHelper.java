@@ -24,6 +24,7 @@ import com.ailudick.capitalismmod.tax.TaxExpenseService;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.data.CapitalismData;
+import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -636,7 +637,8 @@ public final class CompanyHelper {
         }
         if (machineCapacity <= 0) return 0;
         if (recipe.workersPerCycle() <= 0) return Math.min(10000, machineCapacity);
-        int workers = CompanyLaborSavedData.get(server).activeWorkers(company.companyId());
+        int workers = CompanyLaborSavedData.get(server).activeWorkers(company.companyId())
+                + LaborMarketSavedData.get(server).activeWorkers(company.companyId());
         if (allocations.hasWorkerAllocation(company.companyId())) {
             workers = Math.min(workers, allocations.maxWorkerCount(company.companyId()));
         }

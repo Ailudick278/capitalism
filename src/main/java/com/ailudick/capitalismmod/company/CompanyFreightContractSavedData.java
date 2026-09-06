@@ -67,6 +67,8 @@ public final class CompanyFreightContractSavedData extends SavedData {
         return null;
     }
 
+    public List<Contract> contracts() { return List.copyOf(contracts); }
+
     public Contract activeForShipment(String shipmentId) {
         if (shipmentId == null || shipmentId.isBlank()) return null;
         for (int i = contracts.size() - 1; i >= 0; i--) {

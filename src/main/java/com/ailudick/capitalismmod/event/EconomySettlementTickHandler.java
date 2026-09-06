@@ -16,6 +16,8 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyPayrollService;
+import com.ailudick.capitalismmod.economy.labor.LaborPayrollService;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
@@ -85,6 +87,8 @@ public final class EconomySettlementTickHandler {
         loans.setDirty();
 
         CompanyPayrollService.settleDaily(server, settlementDay);
+        LaborPayrollService.settleDaily(server, settlementDay);
+        EconomicContractBridge.syncFreight(server);
         TaxRefundService.recoverUnfinished(server);
 
         CompanyLoanSavedData companyLoans = CompanyLoanSavedData.get(server);

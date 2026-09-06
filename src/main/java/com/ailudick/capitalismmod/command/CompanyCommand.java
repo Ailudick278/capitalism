@@ -10,6 +10,8 @@ import com.ailudick.capitalismmod.company.PublicTakeoverSavedData;
 import com.ailudick.capitalismmod.company.CompanyTypes;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
+import com.ailudick.capitalismmod.economy.contract.ContractStatus;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import com.ailudick.capitalismmod.company.CompanyEquipmentSavedData;
 import com.ailudick.capitalismmod.company.CompanyOperatingSnapshot;
 import com.ailudick.capitalismmod.company.CompanyQualitySavedData;
@@ -785,7 +787,7 @@ public class CompanyCommand {
                     && carrier.companyId().equals(previous.carrierCompanyId())
                     && previous.amount() == payable.estimatedCost()) {
                 if (!previous.payableClosed()) settlementData.update(previous.withPayableClosed(true));
-                if (contract != null) contracts.settle(contract.id(), now);
+                if (contract != null) { contracts.settle(contract.id(), now); EconomicContractBridge.status(source.getServer(), contract.id(), ContractStatus.COMPLETED, now); }
                 CompanyHelper.recordTaxableIncome(source.getServer(), carrier, "freight:" + shipmentId,
                         payable.estimatedCost(), Currencies.USD.id(), now);
                 TaxTransactionService.assess(source.getServer(), TaxType.VAT, carrier.ownerUuid(),
@@ -858,7 +860,7 @@ public class CompanyCommand {
             }
             settlement = settlementData.update(settlement.withPayableClosed(true));
         }
-        if (contract != null) contracts.settle(contract.id(), now);
+        if (contract != null) { contracts.settle(contract.id(), now); EconomicContractBridge.status(source.getServer(), contract.id(), ContractStatus.COMPLETED, now); }
         CompanyHelper.recordTaxableIncome(source.getServer(), carrier, "freight:" + shipmentId,
                 amount, Currencies.USD.id(), now);
         TaxTransactionService.assess(source.getServer(), TaxType.VAT, carrier.ownerUuid(), Currencies.USD.id(),
@@ -908,6 +910,7 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("A non-cancelled freight contract already exists for this shipment."));
             return 0;
         }
+        EconomicContractBridge.offered(source.getServer(), contract);
         source.sendSuccess(() -> Component.literal("Freight offer " + contract.id()
                 + " created for carrier " + carrier.name() + "."), false);
         ServerPlayer carrierOwner = source.getServer().getPlayerList().getPlayer(carrier.ownerUuid());
@@ -932,6 +935,8 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Freight offer could not be accepted."));
             return 0;
         }
+        EconomicContractBridge.status(source.getServer(), contract.id(), ContractStatus.ACTIVE,
+                source.getServer().overworld().getGameTime());
         source.sendSuccess(() -> Component.literal("Freight contract " + contract.id() + " accepted."), false);
         return 1;
     }
