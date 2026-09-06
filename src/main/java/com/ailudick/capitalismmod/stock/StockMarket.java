@@ -11,6 +11,8 @@ import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
+import com.ailudick.capitalismmod.tax.TaxService;
+import com.ailudick.capitalismmod.tax.TaxSubject;
 import com.ailudick.capitalismmod.tax.TaxType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -214,10 +216,9 @@ public final class StockMarket {
                 break;
             }
             data.addShares(stockId, player.getUUID(), fill);
-            payTo(player.getServer(), UUID.fromString(sell.ownerId()), Money.toMinor(gross - duty(gross)));
-            TaxTransactionService.assess(player.getServer(), TaxType.STAMP_DUTY, UUID.fromString(sell.ownerId()), Currencies.USD.id(),
-                    Money.toMinorSaturated(gross), "stock-sale:" + UUID.randomUUID(),
-                    player.getServer().overworld().getGameTime());
+            settleStampDuty(player.getServer(), UUID.fromString(sell.ownerId()), gross);
+            payTo(player.getServer(), UUID.fromString(sell.ownerId()),
+                    Money.toMinor(gross - duty(gross)));
             data.addNetVolume(stockId, fill);
             spent += gross;
             remaining -= fill;
@@ -256,10 +257,9 @@ public final class StockMarket {
                 break;
             }
             data.addShares(stockId, UUID.fromString(buy.ownerId()), fill);
-            EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(gross - duty(gross)));
-            TaxTransactionService.assess(player.getServer(), TaxType.STAMP_DUTY, player.getUUID(), Currencies.USD.id(),
-                    Money.toMinorSaturated(gross), "stock-sale:" + UUID.randomUUID(),
-                    player.getServer().overworld().getGameTime());
+            settleStampDuty(player.getServer(), player.getUUID(), gross);
+            EconomyHelper.giveMoney(player, Currencies.USD,
+                    Money.toMinor(gross - duty(gross)));
             data.addNetVolume(stockId, -fill);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
@@ -315,6 +315,18 @@ public final class StockMarket {
 
     private static long duty(long value) {
         return Math.max(1L, value / STAMP_DUTY_DIVISOR);
+    }
+
+    /** Withholds the stamp duty from sale proceeds and closes the matching tax bill. */
+    private static void settleStampDuty(MinecraftServer server, UUID taxpayer, long gross) {
+        if (server == null || taxpayer == null || gross <= 0L) return;
+        long now = server.overworld().getGameTime();
+        String source = "stock-sale:" + UUID.randomUUID();
+        TaxTransactionService.assess(server, TaxType.STAMP_DUTY, taxpayer, Currencies.USD.id(),
+                Money.toMinorSaturated(gross), source, now);
+        TaxService.settleFromProceeds(server,
+                new TaxSubject(TaxType.STAMP_DUTY, source, taxpayer),
+                Money.toMinorSaturated(duty(gross)), source + ":withheld", now);
     }
 
     private static boolean withinLimit(EconomySavedData data, String stockId, long price) {
