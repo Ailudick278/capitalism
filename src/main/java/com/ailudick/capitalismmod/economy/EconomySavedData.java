@@ -33,6 +33,7 @@ public final class EconomySavedData extends SavedData {
     private static final int MAX_CANDLES = 30;
     private static final int MAX_SHARE_CREDIT_RECEIPTS = 8192;
     private static final int MAX_SHARE_TRANSFER_RECEIPTS = 8192;
+    private static final int MAX_NET_VOLUME_RECEIPTS = 8192;
 
     /** Fundamental value is derived from registered capital, not a game level. */
     public static final long FUNDAMENTAL_PER_CAPITAL = 1L;
@@ -50,6 +51,7 @@ public final class EconomySavedData extends SavedData {
     private final Map<String, Long> prevClose = new HashMap<>();
     private final Set<String> shareCreditReceipts = new HashSet<>();
     private final Set<String> shareTransferReceipts = new HashSet<>();
+    private final Set<String> netVolumeReceipts = new HashSet<>();
 
     /** Snapshot of a listed company, kept so its stock stays visible while the founder is offline. */
     public record Listing(String name, long registeredCapital, long totalShares) {
@@ -69,7 +71,8 @@ public final class EconomySavedData extends SavedData {
             List<StockOrder> orders,
             Map<String, Long> prevClose,
             List<String> shareCreditReceipts,
-            List<String> shareTransferReceipts) {
+            List<String> shareTransferReceipts,
+            List<String> netVolumeReceipts) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prices").forGetter(State::prices),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("netVolume").forGetter(State::netVolume),
@@ -79,7 +82,8 @@ public final class EconomySavedData extends SavedData {
                 StockOrder.CODEC.listOf().fieldOf("orders").forGetter(State::orders),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prevClose").forGetter(State::prevClose),
                 Codec.STRING.listOf().optionalFieldOf("shareCreditReceipts", List.of()).forGetter(State::shareCreditReceipts),
-                Codec.STRING.listOf().optionalFieldOf("shareTransferReceipts", List.of()).forGetter(State::shareTransferReceipts)
+                Codec.STRING.listOf().optionalFieldOf("shareTransferReceipts", List.of()).forGetter(State::shareTransferReceipts),
+                Codec.STRING.listOf().optionalFieldOf("netVolumeReceipts", List.of()).forGetter(State::netVolumeReceipts)
         ).apply(instance, State::new));
     }
 
@@ -261,6 +265,22 @@ public final class EconomySavedData extends SavedData {
         return sourceId != null && !sourceId.isBlank() && shareCreditReceipts.contains(sourceId);
     }
 
+    /** Records traded volume once for a durable settlement source. */
+    public boolean addNetVolumeOnce(String stockId, long delta, String sourceId) {
+        if (stockId == null || stockId.isBlank() || sourceId == null || sourceId.isBlank()) return false;
+        if (!netVolumeReceipts.add(sourceId)) return false;
+        addNetVolume(stockId, delta);
+        while (netVolumeReceipts.size() > MAX_NET_VOLUME_RECEIPTS) {
+            netVolumeReceipts.remove(netVolumeReceipts.iterator().next());
+        }
+        setDirty();
+        return true;
+    }
+
+    public boolean hasNetVolumeSource(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && netVolumeReceipts.contains(sourceId);
+    }
+
     /** Transfers shares atomically within this saved-data ledger, at most once per source. */
     public boolean transferSharesOnce(String stockId, UUID sellerId, UUID buyerId, long amount, String sourceId) {
         if (stockId == null || stockId.isBlank() || sellerId == null || buyerId == null
@@ -334,7 +354,8 @@ public final class EconomySavedData extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(prices), new HashMap<>(netVolume), new HashMap<>(history),
                 new HashMap<>(shareholders), new HashMap<>(listings), new ArrayList<>(orders), new HashMap<>(prevClose),
-                new ArrayList<>(shareCreditReceipts), new ArrayList<>(shareTransferReceipts));
+                new ArrayList<>(shareCreditReceipts), new ArrayList<>(shareTransferReceipts),
+                new ArrayList<>(netVolumeReceipts));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -353,6 +374,7 @@ public final class EconomySavedData extends SavedData {
                 data.prevClose.putAll(state.prevClose());
                 data.shareCreditReceipts.addAll(state.shareCreditReceipts());
                 data.shareTransferReceipts.addAll(state.shareTransferReceipts());
+                data.netVolumeReceipts.addAll(state.netVolumeReceipts());
             });
         }
         return data;
