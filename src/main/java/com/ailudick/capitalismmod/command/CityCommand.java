@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.government.PublicConstructionEconomics;
 import com.ailudick.capitalismmod.government.PublicConstructionSavedData;
+import com.ailudick.capitalismmod.government.CityStatisticsSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
@@ -25,6 +26,12 @@ public final class CityCommand {
                 .executes(c -> info(c.getSource(), "spawn"))
                 .then(Commands.argument("region", StringArgumentType.word())
                         .executes(c -> info(c.getSource(), StringArgumentType.getString(c, "region"))));
+        var history = Commands.literal("history").requires(source -> source.hasPermission(2))
+                .then(Commands.argument("region", StringArgumentType.word())
+                        .executes(c -> history(c.getSource(), StringArgumentType.getString(c, "region"), 7))
+                        .then(Commands.argument("days", IntegerArgumentType.integer(1, 365))
+                                .executes(c -> history(c.getSource(), StringArgumentType.getString(c, "region"),
+                                        IntegerArgumentType.getInteger(c, "days")))));
         var add = Commands.literal("add").then(Commands.argument("region", StringArgumentType.word())
                 .then(Commands.argument("type", StringArgumentType.word())
                         .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000000))
@@ -73,7 +80,7 @@ public final class CityCommand {
         var terminateHousing = Commands.literal("terminate").then(Commands.argument("household", StringArgumentType.word())
                 .executes(c -> terminateHousing(c.getSource(), StringArgumentType.getString(c, "household"))));
         var housing = Commands.literal("housing").requires(source -> source.hasPermission(2)).then(terminateHousing);
-        dispatcher.register(Commands.literal("city").then(info).then(facility).then(project)
+        dispatcher.register(Commands.literal("city").then(info).then(history).then(facility).then(project)
                 .then(rent).then(housing).then(landlord));
     }
 
@@ -99,6 +106,17 @@ public final class CityCommand {
                 + " activeLeases=" + activeLeases + " rentArrearsMinor=" + arrears
                 + " depositsHeldMinor=" + deposits + " activeConstructionProjects=" + activeProjects), false);
         return score;
+    }
+
+    private static int history(CommandSourceStack source, String region, int days) {
+        var entries = CityStatisticsSavedData.get(source.getServer()).snapshots(region, days);
+        for (var entry : entries) {
+            source.sendSuccess(() -> Component.literal("city history day=" + entry.day()
+                    + " residents=" + entry.residents() + " serviceScore=" + entry.serviceScore()
+                    + " treasuryMinor=" + entry.treasuryMinor() + " activeProjects="
+                    + entry.activeProjects()), false);
+        }
+        return entries.size();
     }
 
     private static int change(CommandSourceStack source, String region, String type, int delta) {
