@@ -1574,34 +1574,6 @@ public final class CompanyHelper {
         return true;
     }
 
-    /** Distributes {@code income} to the shareholders of a listed company, proportional to holdings. */
-    private static void distributeDividend(MinecraftServer server, String stockId, long income) {
-        EconomySavedData data = EconomySavedData.get(server);
-        EconomySavedData.Listing listing = data.listings().get(stockId);
-        Map<String, Long> holders = data.shareholders().get(stockId);
-        if (listing == null || listing.totalShares() <= 0 || holders == null || holders.isEmpty()) {
-            return;
-        }
-        long totalShares = listing.totalShares();
-        for (Map.Entry<String, Long> entry : holders.entrySet()) {
-            long portion = EconomyMath.multiply(income, entry.getValue());
-            if (portion < 0) {
-                continue;
-            }
-            portion = portion / totalShares;
-            if (portion <= 0) {
-                continue;
-            }
-            UUID holderId = UUID.fromString(entry.getKey());
-            ServerPlayer holder = server.getPlayerList().getPlayer(holderId);
-            if (holder != null) {
-                EconomyHelper.giveMoney(holder, Currencies.USD, Money.toMinor(portion));
-            } else {
-                MarketMailboxSavedData.get(server).creditMoney(holderId, "usd", Money.toMinor(portion));
-            }
-        }
-    }
-
     private static void setCompany(Player player, String name, Company company) {
         if (player.getServer() != null) {
             CompanySavedData.get(player.getServer()).put(company);
