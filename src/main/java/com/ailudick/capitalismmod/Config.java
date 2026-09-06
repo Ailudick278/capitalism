@@ -158,6 +158,10 @@ public class Config {
             .comment("Maximum company loan principal as a multiple of registered capital; 5 means 5x.")
             .defineInRange("maxCompanyDebtMultiple", 5L, 0L, 100L);
 
+    public static final ModConfigSpec.DoubleValue COMPANY_LOAN_MIN_COVERAGE_RATIO = BUILDER
+            .comment("Minimum annual debt-service coverage ratio for companies with operating history; 1.25 means 125%.")
+            .defineInRange("companyLoanMinCoverageRatio", 1.25, 0.0, 10.0);
+
     public static final ModConfigSpec.DoubleValue COMPANY_EMPLOYER_PAYROLL_RATE = BUILDER
             .comment("Employer labor-cost contribution applied to gross daily wages; 0.10 = 10%, set 0 to disable.")
             .defineInRange("companyEmployerPayrollRate", 0.10, 0.0, 1.0);

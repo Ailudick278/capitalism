@@ -42,7 +42,8 @@ public final class CompanyLoanHelper {
         if (!cashFlow.approved()) return null;
         CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
                 cashFlow.operatingCashFlow(), existingLoans,
-                amount, days, ratePercent / 100.0, cashFlow.hasOperatingHistory());
+                amount, days, ratePercent / 100.0, cashFlow.hasOperatingHistory(),
+                Config.COMPANY_LOAN_MIN_COVERAGE_RATIO.get());
         if (!debtService.approved()) return null;
         if (!CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), amount,
                 "loan_proceeds", "Company loan principal received")) return null;

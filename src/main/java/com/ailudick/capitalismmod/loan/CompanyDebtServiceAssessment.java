@@ -7,13 +7,21 @@ public record CompanyDebtServiceAssessment(double annualOperatingCashFlow,
                                            double annualDebtService,
                                            double coverageRatio,
                                            boolean approved) {
-    private static final double MINIMUM_COVERAGE_RATIO = 1.25;
-
     public static CompanyDebtServiceAssessment evaluate(long recentOperatingCashFlow,
                                                         List<CompanyLoan> existingLoans,
                                                         long requestedPrincipal, int requestedDays,
                                                         double requestedRatePerYear,
                                                         boolean hasOperatingHistory) {
+        return evaluate(recentOperatingCashFlow, existingLoans, requestedPrincipal, requestedDays,
+                requestedRatePerYear, hasOperatingHistory, 1.25);
+    }
+
+    public static CompanyDebtServiceAssessment evaluate(long recentOperatingCashFlow,
+                                                        List<CompanyLoan> existingLoans,
+                                                        long requestedPrincipal, int requestedDays,
+                                                        double requestedRatePerYear,
+                                                        boolean hasOperatingHistory,
+                                                        double minimumCoverageRatio) {
         double annualCashFlow = Math.max(0L, recentOperatingCashFlow) * 4.0;
         double debtService = 0.0;
         for (CompanyLoan loan : existingLoans) {
@@ -22,7 +30,8 @@ public record CompanyDebtServiceAssessment(double annualOperatingCashFlow,
         debtService += annualizedService(requestedPrincipal, requestedDays, requestedRatePerYear);
         double ratio = debtService <= 0.0 ? Double.POSITIVE_INFINITY : annualCashFlow / debtService;
         boolean approved = !hasOperatingHistory
-                || (annualCashFlow > 0.0 && debtService > 0.0 && ratio >= MINIMUM_COVERAGE_RATIO);
+                || (annualCashFlow > 0.0 && debtService > 0.0
+                && ratio >= Math.max(0.0, minimumCoverageRatio));
         return new CompanyDebtServiceAssessment(annualCashFlow, debtService, ratio, approved);
     }
 
