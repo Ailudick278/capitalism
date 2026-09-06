@@ -24,4 +24,11 @@ public final class InflationEconomics {
         if (!Double.isFinite(index)) return Integer.MAX_VALUE;
         return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, Math.round(index)));
     }
+
+    /** One-day bounded Taylor-style response: 25 bps toward the price-level target. */
+    public static int policyRateAdjustment(int currentIndexBps, int targetIndexBps) {
+        if (currentIndexBps > targetIndexBps) return 25;
+        if (currentIndexBps < targetIndexBps) return -25;
+        return 0;
+    }
 }

@@ -11,6 +11,7 @@ public final class GovernmentPolicyService {
 
     public static int settleDaily(MinecraftServer server, long day) {
         GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
+        applyAutomaticInflationPolicy(server, policy, day);
         long benefit = policy.dailyBenefitMinor();
         PopulationSavedData population = PopulationSavedData.get(server);
         stimulateHousing(server, population, policy, day);
@@ -31,6 +32,16 @@ public final class GovernmentPolicyService {
             }
         }
         return paid;
+    }
+
+    private static void applyAutomaticInflationPolicy(MinecraftServer server,
+                                                       GovernmentPolicySavedData policy, long day) {
+        if (!policy.automaticInflationPolicy()) return;
+        InflationSavedData.Snapshot snapshot = InflationSavedData.get(server).atOrBefore(day - 1L);
+        if (snapshot == null) return;
+        int adjustment = InflationEconomics.policyRateAdjustment(snapshot.indexBps(),
+                policy.inflationTargetIndexBps());
+        if (adjustment != 0) policy.adjustPolicyRate(adjustment);
     }
 
     private static void stimulateHousing(MinecraftServer server, PopulationSavedData population,

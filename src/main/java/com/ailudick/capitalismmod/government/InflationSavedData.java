@@ -28,6 +28,13 @@ public final class InflationSavedData extends SavedData {
     public List<Snapshot> snapshots() { return List.copyOf(snapshots); }
     public Snapshot latest() { return snapshots.isEmpty() ? null : snapshots.get(snapshots.size() - 1); }
 
+    public Snapshot atOrBefore(long day) {
+        for (int i = snapshots.size() - 1; i >= 0; i--) {
+            if (snapshots.get(i).day() <= day) return snapshots.get(i);
+        }
+        return null;
+    }
+
     public void record(Snapshot snapshot) {
         if (snapshot == null || (!snapshots.isEmpty() && snapshots.get(snapshots.size() - 1).day() >= snapshot.day())) return;
         snapshots.add(snapshot);

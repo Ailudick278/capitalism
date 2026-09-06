@@ -20,6 +20,8 @@ public final class GovernmentPolicySavedData extends SavedData {
     private long dailyBenefitMinor;
     private int regionalSupportRatePercent = 10;
     private int policyRateBasisPoints;
+    private boolean automaticInflationPolicy;
+    private int inflationTargetIndexBps = 10200;
     private final List<Transaction> transactions = new ArrayList<>();
     private final List<TaxRevenue> taxRevenues = new ArrayList<>();
     private final List<RentRevenue> rentRevenues = new ArrayList<>();
@@ -43,6 +45,8 @@ public final class GovernmentPolicySavedData extends SavedData {
     public long dailyBenefitMinor() { return dailyBenefitMinor; }
     public int regionalSupportRatePercent() { return regionalSupportRatePercent; }
     public int policyRateBasisPoints() { return policyRateBasisPoints; }
+    public boolean automaticInflationPolicy() { return automaticInflationPolicy; }
+    public int inflationTargetIndexBps() { return inflationTargetIndexBps; }
     public List<Transaction> transactions() { return List.copyOf(transactions); }
     public List<TaxRevenue> taxRevenues() { return List.copyOf(taxRevenues); }
     public List<RentRevenue> rentRevenues() { return List.copyOf(rentRevenues); }
@@ -60,6 +64,19 @@ public final class GovernmentPolicySavedData extends SavedData {
     public boolean setPolicyRateBasisPoints(int basisPoints) {
         if (basisPoints < -10000 || basisPoints > 20000) return false;
         policyRateBasisPoints = basisPoints; setDirty(); return true;
+    }
+
+    public boolean setAutomaticInflationPolicy(boolean enabled) {
+        automaticInflationPolicy = enabled; setDirty(); return true;
+    }
+
+    public boolean setInflationTargetIndexBps(int target) {
+        if (target < 9000 || target > 12000) return false;
+        inflationTargetIndexBps = target; setDirty(); return true;
+    }
+
+    public boolean adjustPolicyRate(int delta) {
+        return setPolicyRateBasisPoints(Math.max(-10000, Math.min(20000, policyRateBasisPoints + delta)));
     }
 
     public boolean deposit(long amount) {
@@ -131,6 +148,8 @@ public final class GovernmentPolicySavedData extends SavedData {
         tag.putLong("treasury", treasuryMinor); tag.putLong("benefit", dailyBenefitMinor);
         tag.putInt("regionalSupportRate", regionalSupportRatePercent);
         tag.putInt("policyRateBps", policyRateBasisPoints);
+        tag.putBoolean("automaticInflationPolicy", automaticInflationPolicy);
+        tag.putInt("inflationTargetIndexBps", inflationTargetIndexBps);
         ListTag list = new ListTag();
         for (Transaction t : transactions) {
             CompoundTag e = new CompoundTag(); e.putString("id", t.id()); e.putLong("day", t.day());
@@ -171,6 +190,9 @@ public final class GovernmentPolicySavedData extends SavedData {
         data.regionalSupportRatePercent = Math.max(0, Math.min(30, tag.contains("regionalSupportRate")
                 ? tag.getInt("regionalSupportRate") : 10));
         data.policyRateBasisPoints = Math.max(-10000, Math.min(20000, tag.getInt("policyRateBps")));
+        data.automaticInflationPolicy = tag.getBoolean("automaticInflationPolicy");
+        data.inflationTargetIndexBps = Math.max(9000, Math.min(12000,
+                tag.contains("inflationTargetIndexBps") ? tag.getInt("inflationTargetIndexBps") : 10200));
         ListTag deposits = tag.getList("depositReceipts", Tag.TAG_COMPOUND);
         for (int i = 0; i < deposits.size(); i++) {
             String source = deposits.getCompound(i).getString("source");
