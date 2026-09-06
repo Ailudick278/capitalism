@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.economy.EconomySettlementSavedData;
 import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.economy.MarketTradeSavedData;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.market.MarketOrder;
@@ -114,6 +115,9 @@ public final class EconomyStatsCommand {
                 + "  累计损益: " + bankCapital.cumulativeProfitLossMinor()
                 + "  损失准备: " + bankCapital.lossProvisionMinor()
                 + "  资本结算日: " + bankCapital.lastSettlementDay()), false);
+        var financialJournal = FinancialSettlementJournalSavedData.get(server);
+        source.sendSuccess(() -> Component.literal("金融托管阶段: " + financialJournal.entries().size()
+                + "  未完成: " + financialJournal.pendingEntries().size()), false);
         var journal = EconomicSettlementJournalSavedData.get(server);
         long journalDay = settlementDay;
         source.sendSuccess(() -> Component.literal("日结阶段 " + journalDay + ": household="

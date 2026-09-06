@@ -52,6 +52,11 @@ public final class FinancialSettlementJournalSavedData extends SavedData {
 
     public List<Entry> entries() { return List.copyOf(entries.values()); }
 
+    /** Returns phases that were started but have not yet been durably completed. */
+    public List<Entry> pendingEntries() {
+        return entries.values().stream().filter(entry -> "started".equals(entry.status())).toList();
+    }
+
     private void put(Entry entry) {
         if (entry == null || entry.transactionId() == null || entry.transactionId().isBlank()
                 || entry.instrument() == null || entry.instrument().isBlank()
