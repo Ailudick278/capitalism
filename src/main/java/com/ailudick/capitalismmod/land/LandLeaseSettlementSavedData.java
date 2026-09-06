@@ -36,18 +36,20 @@ public final class LandLeaseSettlementSavedData extends SavedData {
         return settlements.stream().filter(s -> !s.completed()).toList();
     }
 
-    public void put(Settlement settlement) {
+    public boolean put(Settlement settlement) {
         if (settlement == null || settlement.id() == null || settlement.id().isBlank()
                 || settlement.landId() == null || settlement.landId().isBlank()
-                || settlement.tenantUuid() == null || settlement.ownerUuid() == null) return;
+                || settlement.tenantUuid() == null || settlement.ownerUuid() == null) return false;
         for (int i = 0; i < settlements.size(); i++) {
             if (!settlements.get(i).id().equals(settlement.id())) continue;
             settlements.set(i, settlement);
             setDirty();
-            return;
+            return true;
         }
-        if (settlements.size() < MAX_RECORDS) settlements.add(settlement);
+        if (settlements.size() >= MAX_RECORDS) return false;
+        settlements.add(settlement);
         setDirty();
+        return true;
     }
 
     public void complete(String id) {

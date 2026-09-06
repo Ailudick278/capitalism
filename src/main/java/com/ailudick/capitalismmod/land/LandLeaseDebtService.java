@@ -24,7 +24,7 @@ public final class LandLeaseDebtService {
             settlement = new LandLeaseSettlementSavedData.Settlement(settlementId, claim.id(),
                     claim.leaseeUuid(), claim.ownerUuid(), applied, depositAmount - applied,
                     Math.max(0L, claim.leaseDebt() - applied), server.overworld().getGameTime(), false);
-            settlements.put(settlement);
+            if (!settlements.put(settlement)) return claim;
         }
         LandLeaseDepositSavedData.get(server).take(claim.id());
         complete(server, settlement);
