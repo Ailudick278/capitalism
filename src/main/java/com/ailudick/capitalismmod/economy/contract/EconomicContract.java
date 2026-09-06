@@ -29,6 +29,7 @@ public record EconomicContract(String id, ContractType type, EconomicActorRef pr
     }
 
     public EconomicContract withStatus(ContractStatus next) {
+        if (next == null || next == status || !ContractEconomics.canTransition(status, next)) return this;
         return new EconomicContract(id, type, proposer, counterparty, createdAt, startsAt, endsAt,
                 agreedAmountMinor, currencyId, next, fulfilledQuantity, agreedQuantity, breachAmountMinor);
     }
