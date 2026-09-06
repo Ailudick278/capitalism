@@ -14,6 +14,9 @@ class InflationEconomicsTest {
                 Map.of("food", 120L, "energy", 80L),
                 Map.of("food", 100L, "energy", 100L), List.of("food", "energy")));
         assertEquals(10000, InflationEconomics.weightedIndex(Map.of(), Map.of(), List.of()));
+        assertEquals(11000, InflationEconomics.weightedIndex(
+                Map.of("food", 120L, "energy", 100L),
+                Map.of("food", 100L, "energy", 100L), Map.of("food", 50, "energy", 50)));
         assertEquals(25, InflationEconomics.policyRateAdjustment(10201, 10200));
         assertEquals(-25, InflationEconomics.policyRateAdjustment(10199, 10200));
         assertEquals(0, InflationEconomics.policyRateAdjustment(10200, 10200));

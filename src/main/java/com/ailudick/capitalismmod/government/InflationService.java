@@ -21,15 +21,22 @@ public final class InflationService {
         if (latest != null && latest.day() >= day) return latest;
         CommoditySavedData commodities = CommoditySavedData.get(server);
         Set<String> basket = new LinkedHashSet<>();
+        Map<String, Integer> weights = new java.util.HashMap<>();
         for (ItemStack stack : Commodities.ALL) {
             String id = Commodities.id(stack).toLowerCase(Locale.ROOT);
-            if (containsAny(id, "food", "bread", "wheat", "potato", "carrot", "apple", "beef", "pork",
-                    "coal", "fuel", "diesel", "planks", "wood", "furniture")) basket.add(Commodities.id(stack));
+            String original = Commodities.id(stack);
+            if (containsAny(id, "food", "bread", "wheat", "potato", "carrot", "apple", "beef", "pork")) {
+                basket.add(original); weights.put(original, 50);
+            } else if (containsAny(id, "coal", "fuel", "diesel")) {
+                basket.add(original); weights.put(original, 30);
+            } else if (containsAny(id, "planks", "wood", "furniture")) {
+                basket.add(original); weights.put(original, 20);
+            }
         }
         Map<String, Long> current = commodities.prices();
         Map<String, Long> base = new java.util.HashMap<>();
         for (String id : basket) base.put(id, commodities.fundamental(id));
-        int index = InflationEconomics.weightedIndex(current, base, new ArrayList<>(basket));
+        int index = InflationEconomics.weightedIndex(current, base, weights);
         int previous = latest == null ? index : latest.indexBps();
         int change = index - previous;
         InflationSavedData.Snapshot snapshot = new InflationSavedData.Snapshot(day, index, change);
