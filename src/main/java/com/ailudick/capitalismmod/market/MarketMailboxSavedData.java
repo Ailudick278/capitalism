@@ -92,14 +92,19 @@ public final class MarketMailboxSavedData extends SavedData {
     /** Redeems only money, leaving any queued item delivery untouched. */
     public void redeemMoneyOnly(ServerPlayer player) {
         if (player == null) return;
-        Map<String, Long> owedMoney = money.remove(player.getUUID());
+        Map<String, Long> owedMoney = money.get(player.getUUID());
         if (owedMoney == null) return;
-        for (Map.Entry<String, Long> entry : owedMoney.entrySet()) {
-            if (Currencies.exists(entry.getKey())) {
-                EconomyHelper.giveMoney(player, Currencies.byId(entry.getKey()), entry.getValue());
-            }
+        boolean changed = false;
+        var iterator = owedMoney.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Long> entry = iterator.next();
+            if (!Currencies.exists(entry.getKey())) continue;
+            EconomyHelper.giveMoney(player, Currencies.byId(entry.getKey()), entry.getValue());
+            iterator.remove();
+            changed = true;
         }
-        setDirty();
+        if (owedMoney.isEmpty()) money.remove(player.getUUID());
+        if (changed) setDirty();
     }
 
     /** Hands over and clears everything owed to this player. */
@@ -107,14 +112,17 @@ public final class MarketMailboxSavedData extends SavedData {
         UUID id = player.getUUID();
         boolean changed = false;
 
-        Map<String, Long> owedMoney = money.remove(id);
+        Map<String, Long> owedMoney = money.get(id);
         if (owedMoney != null) {
-            changed = true;
-            for (Map.Entry<String, Long> entry : owedMoney.entrySet()) {
-                if (Currencies.exists(entry.getKey())) {
-                    EconomyHelper.giveMoney(player, Currencies.byId(entry.getKey()), entry.getValue());
-                }
+            var iterator = owedMoney.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<String, Long> entry = iterator.next();
+                if (!Currencies.exists(entry.getKey())) continue;
+                EconomyHelper.giveMoney(player, Currencies.byId(entry.getKey()), entry.getValue());
+                iterator.remove();
+                changed = true;
             }
+            if (owedMoney.isEmpty()) money.remove(id);
         }
 
         Map<String, Integer> owedItems = items.remove(id);
