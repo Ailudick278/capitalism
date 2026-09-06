@@ -117,7 +117,7 @@ public final class BondMarket {
                 data.replaceHolding(holding.withDaysToMaturity(remaining).withLastSettlementDay(settlementDay));
                 continue;
             }
-            long coupon = (long) (holding.faceValue() * holding.ratePerYear() * holding.totalDays() / 365.0);
+            long coupon = BondEconomics.maturityCoupon(holding.faceValue(), holding.ratePerYear(), holding.totalDays());
             long payout;
             try {
                 payout = Math.addExact(holding.faceValue(), coupon);
