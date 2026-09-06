@@ -20,6 +20,7 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     private static final String ID = "capitalismmod_company_inventory_cost";
     private final Map<String, Map<String, CostLayer>> layers = new HashMap<>();
     private final Set<String> freightSources = new HashSet<>();
+    private final Set<String> inventorySaleSources = new HashSet<>();
 
     public record CostLayer(int quantity, long totalCost) {
         private static final Codec<CostLayer> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -31,14 +32,19 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     public record Consumption(int quantity, long cost) {
     }
 
-    private record State(Map<String, Map<String, CostLayer>> layers, Set<String> freightSources) {
+    private record State(Map<String, Map<String, CostLayer>> layers, Set<String> freightSources,
+                         Set<String> inventorySaleSources) {
         private static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, CostLayer.CODEC))
                         .fieldOf("layers").forGetter(State::layers),
                 Codec.STRING.listOf().xmap(values -> (Set<String>) new HashSet<String>(values),
                                 values -> new ArrayList<>(values))
                         .optionalFieldOf("freightSources", Set.of())
-                        .forGetter(State::freightSources)
+                        .forGetter(State::freightSources),
+                Codec.STRING.listOf().xmap(values -> (Set<String>) new HashSet<String>(values),
+                                values -> new ArrayList<>(values))
+                        .optionalFieldOf("inventorySaleSources", Set.of())
+                        .forGetter(State::inventorySaleSources)
         ).apply(instance, State::new));
     }
 
@@ -53,6 +59,15 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     public CostLayer layer(String companyId, String itemId) {
         if (companyId == null || itemId == null) return null;
         return layers.getOrDefault(companyId, Map.of()).get(itemId);
+    }
+
+    public boolean hasInventorySale(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && inventorySaleSources.contains(sourceId);
+    }
+
+    public void recordInventorySale(String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || !inventorySaleSources.add(sourceId)) return;
+        setDirty();
     }
 
     /** Adds an acquired batch to the weighted-average cost layer. */
@@ -129,7 +144,7 @@ public final class CompanyInventoryCostSavedData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers, freightSources)).result()
+        State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers, freightSources, inventorySaleSources)).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
     }
@@ -141,6 +156,7 @@ public final class CompanyInventoryCostSavedData extends SavedData {
                 state.layers().forEach((companyId, values) ->
                         data.layers.put(companyId, new HashMap<>(values)));
                 data.freightSources.addAll(state.freightSources());
+                data.inventorySaleSources.addAll(state.inventorySaleSources());
             });
         }
         return data;

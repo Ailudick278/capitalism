@@ -212,14 +212,19 @@ public final class CompanyHelper {
         Company company = CompanySavedData.get(server).get(companyId);
         if (company == null) return 0L;
 
+        CompanyInventoryCostSavedData inventoryCosts = CompanyInventoryCostSavedData.get(server);
+        if (inventoryCosts.hasInventorySale(sourceId)) return 0L;
         CompanyInventoryCostSavedData.Consumption tracked =
-                CompanyInventoryCostSavedData.get(server).consume(companyId, itemId, quantity);
+                inventoryCosts.consume(companyId, itemId, quantity);
         CompanyQualitySavedData.get(server).consume(companyId, itemId, quantity);
         int untracked = quantity - tracked.quantity();
         long fallback = untracked <= 0 ? 0L
                 : EconomyMath.multiply(Math.max(0L, CommoditySavedData.get(server).price(itemId)), untracked);
         long cost = EconomyMath.add(tracked.cost(), fallback);
-        if (cost <= 0L) return 0L;
+        if (cost <= 0L) {
+            inventoryCosts.recordInventorySale(sourceId);
+            return 0L;
+        }
 
         long occurredAt = server.overworld().getGameTime();
         String accountingSource = "inventory_cogs:" + sourceId;
@@ -232,6 +237,7 @@ public final class CompanyHelper {
                 company.companyId(), occurredAt, "cost_of_goods_sold", Currencies.USD.id(),
                 -cost, company.treasuryOf(Currencies.USD.id()),
                 "Inventory cost of goods sold: " + itemId + " x" + quantity));
+        inventoryCosts.recordInventorySale(sourceId);
         return cost;
     }
 
