@@ -14,6 +14,10 @@ class FinancialRiskPolicyTest {
         assertEquals(0.25, FinancialRiskPolicy.creditMultiplier(10000), 0.000001);
         assertTrue(FinancialRiskPolicy.newCompanyCreditAllowed(5999));
         assertFalse(FinancialRiskPolicy.newCompanyCreditAllowed(6000));
+        assertTrue(FinancialRiskPolicy.newBankCreditAllowed(5999));
+        assertFalse(FinancialRiskPolicy.newBankCreditAllowed(6000));
+        assertFalse(FinancialRiskPolicy.bankCapacityRestrictionActive(1999));
+        assertTrue(FinancialRiskPolicy.bankCapacityRestrictionActive(2000));
         assertTrue(FinancialRiskPolicy.crisisTriggered(6000));
         assertFalse(FinancialRiskPolicy.crisisRecovered(4001));
         assertTrue(FinancialRiskPolicy.crisisRecovered(4000));

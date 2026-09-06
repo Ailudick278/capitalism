@@ -17,6 +17,7 @@
 | 市场、供应链与物流 | [market-logistics.md](market-logistics.md) |
 | 股票、债券与期货 | [securities.md](securities.md) |
 | 税务 | [tax.md](tax.md) |
+| 金融风险与信用 | [financial.md](financial.md) |
 | 界面、网络与基础设施 | [ui-network.md](ui-network.md) |
 | 世界地图 | [world-map.md](world-map.md) |
 

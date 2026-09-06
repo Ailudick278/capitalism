@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
 import com.ailudick.capitalismmod.risk.FinancialCrisisSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
+import com.ailudick.capitalismmod.risk.FinancialRiskPolicy;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import net.minecraft.server.MinecraftServer;
 
@@ -45,12 +46,14 @@ public final class BankLiquidityService {
 
     public static boolean authorizeLoan(MinecraftServer server, String currencyId, long amount) {
         if (server == null || amount <= 0L) return false;
-        if (!FinancialCrisisSavedData.get(server).active()) return true;
+        var risk = FinancialRiskSavedData.get(server).latest();
+        int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
+        if (!FinancialRiskPolicy.newBankCreditAllowed(overdueShare)) return false;
+        boolean crisis = FinancialCrisisSavedData.get(server).active();
+        if (!crisis && !FinancialRiskPolicy.bankCapacityRestrictionActive(overdueShare)) return true;
         BankLiquiditySnapshot snapshot = settleDaily(server,
                 server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY);
         long baseAmount = toBase(amount, currencyId);
-        var risk = FinancialRiskSavedData.get(server).latest();
-        int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
         long capacity = BankLiquidityEconomics.capitalAdjustedLoanCapacity(snapshot.depositsMinor(), overdueShare);
         long capital = BankCapitalService.settleDaily(server,
                 server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY).capitalMinor();

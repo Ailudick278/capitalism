@@ -15,6 +15,16 @@ public final class FinancialRiskPolicy {
         return overdueShareBasisPoints < 6000;
     }
 
+    /** Bank credit is tightened once delinquency becomes material, and frozen at severe stress. */
+    public static boolean newBankCreditAllowed(int overdueShareBasisPoints) {
+        return overdueShareBasisPoints < 6000;
+    }
+
+    /** Below 20% delinquency share, ordinary bank underwriting remains available. */
+    public static boolean bankCapacityRestrictionActive(int overdueShareBasisPoints) {
+        return overdueShareBasisPoints >= 2000;
+    }
+
     public static boolean crisisTriggered(int overdueShareBasisPoints) {
         return overdueShareBasisPoints >= 6000;
     }
