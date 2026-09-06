@@ -61,6 +61,10 @@ public final class FinancialSettlementJournalSavedData extends SavedData {
         if (entry == null || entry.transactionId() == null || entry.transactionId().isBlank()
                 || entry.instrument() == null || entry.instrument().isBlank()
                 || entry.phase() == null || entry.phase().isBlank()) return;
+        Entry previous = entries.get(key(entry.transactionId(), entry.phase()));
+        // Recovery is replay-safe: a completed phase must never be downgraded to started.
+        if (previous != null && "completed".equals(previous.status())
+                && "started".equals(entry.status())) return;
         entries.put(key(entry.transactionId(), entry.phase()), entry);
         while (entries.size() > MAX_ENTRIES) entries.remove(entries.keySet().iterator().next());
         setDirty();
