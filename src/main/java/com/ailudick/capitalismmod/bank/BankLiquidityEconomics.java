@@ -13,4 +13,13 @@ public final class BankLiquidityEconomics {
     public static long crisisLoanCapacity(long depositsMinor) {
         return depositsMinor <= 0L ? 0L : depositsMinor / 5L * 4L;
     }
+
+    /** Crisis lending capacity after applying a 0-10000 basis-point delinquency discount. */
+    public static long riskAdjustedLoanCapacity(long depositsMinor, int overdueShareBasisPoints) {
+        long base = crisisLoanCapacity(depositsMinor);
+        if (base <= 0L) return 0L;
+        int share = Math.max(0, Math.min(10000, overdueShareBasisPoints));
+        long scale = 10000L - share / 2L;
+        return (base / 10000L) * scale + (base % 10000L) * scale / 10000L;
+    }
 }

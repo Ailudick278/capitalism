@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
 import com.ailudick.capitalismmod.risk.FinancialCrisisSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
+import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import net.minecraft.server.MinecraftServer;
 
 /** Aggregates online bank exposure and limits crisis-period withdrawals to 10% of deposits per day. */
@@ -43,7 +44,9 @@ public final class BankLiquidityService {
         BankLiquiditySnapshot snapshot = settleDaily(server,
                 server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY);
         long baseAmount = toBase(amount, currencyId);
-        long capacity = BankLiquidityEconomics.crisisLoanCapacity(snapshot.depositsMinor());
+        var risk = FinancialRiskSavedData.get(server).latest();
+        int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
+        long capacity = BankLiquidityEconomics.riskAdjustedLoanCapacity(snapshot.depositsMinor(), overdueShare);
         return baseAmount > 0L && snapshot.loanDebtMinor() <= capacity
                 && baseAmount <= capacity - snapshot.loanDebtMinor();
     }

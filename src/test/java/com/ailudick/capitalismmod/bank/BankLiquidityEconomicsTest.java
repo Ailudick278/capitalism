@@ -10,5 +10,8 @@ class BankLiquidityEconomicsTest {
         assertEquals(10_000L, BankLiquidityEconomics.crisisWithdrawalLimit(100_000L));
         assertEquals(0L, BankLiquidityEconomics.crisisWithdrawalLimit(0L));
         assertEquals(80_000L, BankLiquidityEconomics.crisisLoanCapacity(100_000L));
+        assertEquals(80_000L, BankLiquidityEconomics.riskAdjustedLoanCapacity(100_000L, 0));
+        assertEquals(60_000L, BankLiquidityEconomics.riskAdjustedLoanCapacity(100_000L, 5000));
+        assertEquals(40_000L, BankLiquidityEconomics.riskAdjustedLoanCapacity(100_000L, 10000));
     }
 }
