@@ -158,6 +158,10 @@ public class Config {
             .comment("Maximum company loan principal as a multiple of registered capital; 5 means 5x.")
             .defineInRange("maxCompanyDebtMultiple", 5L, 0L, 100L);
 
+    public static final ModConfigSpec.DoubleValue COMPANY_LOAN_CASH_FLOW_DEBT_MULTIPLE = BUILDER
+            .comment("Maximum debt supported by recent operating cash flow; 3.0 means three times the measured cash flow.")
+            .defineInRange("companyLoanCashFlowDebtMultiple", 3.0, 0.0, 20.0);
+
     public static final ModConfigSpec.DoubleValue COMPANY_LOAN_MIN_COVERAGE_RATIO = BUILDER
             .comment("Minimum annual debt-service coverage ratio for companies with operating history; 1.25 means 125%.")
             .defineInRange("companyLoanMinCoverageRatio", 1.25, 0.0, 10.0);

@@ -40,7 +40,8 @@ public final class CompanyLoanHelper {
         long lookback = PerpetualCalendar.ticksForDays(lookbackDays);
         CompanyCashFlowAssessment cashFlow = CompanyCashFlowAssessment.evaluate(
                 CompanyLedgerSavedData.get(server).entries(company.companyId()),
-                server.overworld().getGameTime(), lookback, existingDebt, amount);
+                server.overworld().getGameTime(), lookback, existingDebt, amount,
+                Config.COMPANY_LOAN_CASH_FLOW_DEBT_MULTIPLE.get());
         if (!cashFlow.approved()) return null;
         CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
                 cashFlow.operatingCashFlow(), existingLoans,

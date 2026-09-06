@@ -27,7 +27,8 @@ public record CompanyCreditSnapshot(long lookbackDays, long operatingCashFlow,
         CompanyCreditAssessmentInputs inputs = CompanyCreditAssessmentInputs.from(server, company);
         CompanyCashFlowAssessment cash = CompanyCashFlowAssessment.evaluate(
                 CompanyLedgerSavedData.get(server).entries(company.companyId()), now,
-                PerpetualCalendar.ticksForDays(days), inputs.existingDebt(), 0L);
+                PerpetualCalendar.ticksForDays(days), inputs.existingDebt(), 0L,
+                Config.COMPANY_LOAN_CASH_FLOW_DEBT_MULTIPLE.get());
         CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
                 cash.operatingCashFlow(), CompanyLoanSavedData.get(server).forCompany(company.companyId()),
                 0L, 1, 0.0, cash.hasOperatingHistory(), 1.25, days);

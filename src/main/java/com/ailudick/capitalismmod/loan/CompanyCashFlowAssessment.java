@@ -14,6 +14,14 @@ public record CompanyCashFlowAssessment(long operatingCashFlow, long existingDeb
     public static CompanyCashFlowAssessment evaluate(List<CompanyLedgerEntry> entries,
                                                       long currentTick, long lookbackTicks,
                                                       long existingDebt, long requestedDebt) {
+        return evaluate(entries, currentTick, lookbackTicks, existingDebt, requestedDebt, 3.0);
+    }
+
+    /** Evaluates the same ledger with a server-defined cash-flow debt multiple. */
+    public static CompanyCashFlowAssessment evaluate(List<CompanyLedgerEntry> entries,
+                                                      long currentTick, long lookbackTicks,
+                                                      long existingDebt, long requestedDebt,
+                                                      double cashFlowDebtMultiple) {
         long windowStart = lookbackTicks > 0L && currentTick > Long.MIN_VALUE + lookbackTicks
                 ? currentTick - lookbackTicks : Long.MIN_VALUE;
         long cashFlow = 0L;
@@ -25,7 +33,7 @@ public record CompanyCashFlowAssessment(long operatingCashFlow, long existingDeb
             if (isCashFlow(entry)) cashFlow = addSaturated(cashFlow, entry.amount());
         }
         long totalDebt = addSaturated(Math.max(0L, existingDebt), Math.max(0L, requestedDebt));
-        long supportedDebt = cashFlow > 0L ? multiplySaturated(cashFlow, 3L) : 0L;
+        long supportedDebt = cashFlow > 0L ? multiplySaturated(cashFlow, cashFlowDebtMultiple) : 0L;
         boolean approved = !history || (cashFlow > 0L && totalDebt <= supportedDebt);
         return new CompanyCashFlowAssessment(cashFlow, Math.max(0L, existingDebt),
                 Math.max(0L, requestedDebt), supportedDebt, history, approved);
@@ -57,11 +65,9 @@ public record CompanyCashFlowAssessment(long operatingCashFlow, long existingDeb
         }
     }
 
-    private static long multiplySaturated(long value, long factor) {
-        try {
-            return Math.multiplyExact(value, factor);
-        } catch (ArithmeticException e) {
-            return Long.MAX_VALUE;
-        }
+    private static long multiplySaturated(long value, double factor) {
+        if (value <= 0L || !Double.isFinite(factor) || factor <= 0.0) return 0L;
+        double result = (double) value * factor;
+        return !Double.isFinite(result) || result >= Long.MAX_VALUE ? Long.MAX_VALUE : (long) result;
     }
 }

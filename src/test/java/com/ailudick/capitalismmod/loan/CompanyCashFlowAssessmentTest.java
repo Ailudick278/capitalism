@@ -58,6 +58,17 @@ class CompanyCashFlowAssessmentTest {
         assertTrue(assessment.approved());
     }
 
+    @Test
+    void cashFlowDebtMultipleIsPolicyControlled() {
+        CompanyCashFlowAssessment conservative = CompanyCashFlowAssessment.evaluate(List.of(
+                entry("revenue", 1_000L, 100L)), 100L, 1_000L, 0L, 2_500L, 2.0);
+        CompanyCashFlowAssessment permissive = CompanyCashFlowAssessment.evaluate(List.of(
+                entry("revenue", 1_000L, 100L)), 100L, 1_000L, 0L, 2_500L, 3.0);
+
+        assertFalse(conservative.approved());
+        assertTrue(permissive.approved());
+    }
+
     private static CompanyLedgerEntry entry(String type, long amount, long timestamp) {
         return new CompanyLedgerEntry("company", timestamp, type, "usd", amount, 0L, type);
     }
