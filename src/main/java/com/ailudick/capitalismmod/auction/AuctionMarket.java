@@ -43,12 +43,57 @@ public final class AuctionMarket {
         }
         // Validate the complete listing before escrow so an invalid duration
         // cannot remove goods without creating a recoverable auction record.
-        if (!WarehouseSavedData.get(player.getServer()).consume(player.getUUID(), item, quantity)) {
+        WarehouseSavedData warehouse = WarehouseSavedData.get(player.getServer());
+        String auctionId = UUID.randomUUID().toString();
+        AuctionListingIntentSavedData intents = AuctionListingIntentSavedData.get(player.getServer());
+        intents.add(new AuctionListingIntentSavedData.Intent(auctionId, player.getUUID(), itemId, quantity,
+                startingPrice, endTick, warehouse.count(player.getUUID(), itemId), false));
+        if (!warehouse.consume(player.getUUID(), item, quantity)) {
+            intents.remove(auctionId);
             return false;
         }
+        intents.markEscrowed(auctionId);
         AuctionSavedData.get(player.getServer()).addAuction(new Auction(
-                UUID.randomUUID().toString(), player.getUUID(), itemId, quantity, startingPrice, 0L, "", endTick));
+                auctionId, player.getUUID(), itemId, quantity, startingPrice, 0L, "", endTick));
+        intents.remove(auctionId);
         return true;
+    }
+
+    /** Restores escrowed auction listings whose auction record was interrupted. */
+    public static int recoverListingIntents(MinecraftServer server) {
+        if (server == null) return 0;
+        AuctionSavedData auctions = AuctionSavedData.get(server);
+        AuctionListingIntentSavedData intents = AuctionListingIntentSavedData.get(server);
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        int recovered = 0;
+        for (AuctionListingIntentSavedData.Intent intent : intents.intents()) {
+            if (auctions.findAuction(intent.auctionId()) != null) {
+                intents.remove(intent.auctionId());
+                recovered++;
+                continue;
+            }
+            ServerPlayer seller = server.getPlayerList().getPlayer(intent.seller());
+            if (seller == null) continue;
+            long current = warehouse.count(seller.getUUID(), intent.itemId());
+            long expectedAfter = intent.warehouseBefore() >= intent.quantity()
+                    ? intent.warehouseBefore() - intent.quantity() : -1L;
+            if (!intent.escrowed()) {
+                if (current == intent.warehouseBefore()) {
+                    var commodity = Commodities.byId(intent.itemId());
+                    if (commodity == null || !warehouse.consume(seller.getUUID(), commodity.getItem(), intent.quantity())) continue;
+                } else if (current != expectedAfter) {
+                    continue;
+                }
+                intents.markEscrowed(intent.auctionId());
+            } else if (current != expectedAfter) {
+                continue;
+            }
+            auctions.addAuction(new Auction(intent.auctionId(), intent.seller(), intent.itemId(), intent.quantity(),
+                    intent.startingPrice(), 0L, "", intent.endTick()));
+            intents.remove(intent.auctionId());
+            recovered++;
+        }
+        return recovered;
     }
 
     /** Places a bid on an auction, refunding the previous high bidder. */

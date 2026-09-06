@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.CapitalismMod;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.bank.BankAccountHelper;
+import com.ailudick.capitalismmod.auction.AuctionMarket;
 import com.ailudick.capitalismmod.bond.BondMarket;
 import com.ailudick.capitalismmod.economy.EconomySettlementSavedData;
 import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
@@ -76,6 +77,7 @@ public final class EconomySettlementTickHandler {
             CommodityMarket.recoverPendingSellIntents(player.getServer());
             StockMarket.recoverPendingBuyIntents(player.getServer());
             StockMarket.recoverPendingSellIntents(player.getServer());
+            AuctionMarket.recoverListingIntents(player.getServer());
             BankAccountHelper.recoverCashPayouts(player);
             BankAccountHelper.recoverCashDeposits(player);
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
