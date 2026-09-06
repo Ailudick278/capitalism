@@ -31,6 +31,7 @@ import java.util.UUID;
 public final class EconomySavedData extends SavedData {
     private static final String ID = "capitalismmod_economy";
     private static final int MAX_CANDLES = 30;
+    private static final int MAX_SHARE_CREDIT_RECEIPTS = 8192;
 
     /** Fundamental value is derived from registered capital, not a game level. */
     public static final long FUNDAMENTAL_PER_CAPITAL = 1L;
@@ -244,6 +245,9 @@ public final class EconomySavedData extends SavedData {
     public boolean addSharesOnce(String stockId, UUID playerId, long amount, String sourceId) {
         if (stockId == null || stockId.isBlank() || playerId == null || amount <= 0L
                 || sourceId == null || sourceId.isBlank() || !shareCreditReceipts.add(sourceId)) return false;
+        while (shareCreditReceipts.size() > MAX_SHARE_CREDIT_RECEIPTS) {
+            shareCreditReceipts.remove(shareCreditReceipts.iterator().next());
+        }
         addShares(stockId, playerId, amount);
         setDirty();
         return true;
