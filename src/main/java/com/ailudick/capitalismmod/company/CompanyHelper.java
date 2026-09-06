@@ -1190,8 +1190,13 @@ public final class CompanyHelper {
         if (company.treasuryOf(Currencies.USD.id()) < total || Money.toMinor(total) <= 0L) return false;
 
         long now = server.overworld().getGameTime();
-        String declaration = company.companyId() + ":dividend:" + now + ":" + amountPerShare + ":" + total;
+        long declarationDay = now / 24000L;
+        String declaration = company.companyId() + ":dividend:" + declarationDay + ":" + amountPerShare + ":" + total;
         FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+        if (journal.isCompleted(declaration, "treasury-debit")) {
+            recoverDividendPayouts(server);
+            return true;
+        }
         journal.markStarted(declaration, "dividend", "treasury-debit", Money.toMinorSaturated(total), now);
         Map<String, Long> treasury = new HashMap<>(company.treasury());
         long remaining = company.treasuryOf(Currencies.USD.id()) - total;
