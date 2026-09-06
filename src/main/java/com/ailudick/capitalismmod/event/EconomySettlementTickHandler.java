@@ -68,6 +68,7 @@ public final class EconomySettlementTickHandler {
         if (event.getEntity() instanceof ServerPlayer player) {
             CompanyHelper.syncRegistryOwnership(player);
             PopulationService.ensurePlayerHousehold(player);
+            SupplyMarket.recoverPendingOrderIntents(player.getServer());
             BankAccountHelper.recoverCashPayouts(player);
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
             PeerLoanNotificationService.deliver(player);
@@ -75,6 +76,7 @@ public final class EconomySettlementTickHandler {
     }
 
     private static void settleOneDay(net.minecraft.server.MinecraftServer server, long settlementDay) {
+        SupplyMarket.recoverPendingOrderIntents(server);
         EconomicSettlementJournalSavedData journal = EconomicSettlementJournalSavedData.get(server);
         journal.markStarted(settlementDay, "households-and-labor", server.overworld().getGameTime());
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {

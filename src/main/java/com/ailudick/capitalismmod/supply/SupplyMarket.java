@@ -123,15 +123,23 @@ public final class SupplyMarket {
         String supplyOrderId = UUID.randomUUID().toString();
         String buyerCompanyId = buyerCompany == null ? "" : buyerCompany.companyId();
         String orderSource = "supply_order:" + supplyOrderId;
+        SupplyOrderIntentSavedData intents = SupplyOrderIntentSavedData.get(buyer.getServer());
+        intents.add(new SupplyOrderIntentSavedData.Intent(supplyOrderId, buyer.getUUID(), offer.ownerUuid(),
+                offer.companyName(), offer.itemId(), quantity, offer.region(),
+                TradeRegion.of(buyer.blockPosition()), offer.price(), buyer.getServer().overworld().getGameTime(),
+                buyerCompanyId, offer.qualityScore(), false));
         long inputCreditMinor = 0L;
         if (buyerCompany != null) {
             if (!CompanyHelper.debitTreasuryNonOperatingOnce(buyer.getServer(), buyerCompany.companyId(),
                     Currencies.USD.id(), total, "supply_purchase", "采购原料并取得存货", orderSource)) {
+                intents.remove(supplyOrderId);
                 return false;
             }
         } else if (!EconomyHelper.tryPayWithReference(buyer, Currencies.USD, Money.toMinor(total), orderSource)) {
+            intents.remove(supplyOrderId);
             return false;
         }
+        intents.markPaid(supplyOrderId);
         // Persist the paid order before any inventory, logistics, or tax side
         // effect. If the server stops during fulfillment, the backorder
         // reconciler can continue from this complete snapshot.
@@ -141,6 +149,7 @@ public final class SupplyMarket {
                 buyer.getServer().overworld().getGameTime(), buyerCompanyId, offer.qualityScore())
                 .withOriginalQuantity(quantity);
         data.addOrder(paidOrder);
+        intents.remove(supplyOrderId);
         SupplyEscrowSavedData.get(buyer.getServer()).createOnce(supplyOrderId, Money.toMinorSaturated(total));
         SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "CREATED", buyer.getUUID(),
                 offer.ownerUuid(), offer.itemId(), quantity, total);
@@ -222,6 +231,47 @@ public final class SupplyMarket {
             data.removeOrder(supplyOrderId);
         }
         return true;
+    }
+
+    /** Recovers prepaid order intents that were interrupted before an order was recorded. */
+    public static int recoverPendingOrderIntents(MinecraftServer server) {
+        SupplyOrderIntentSavedData intents = SupplyOrderIntentSavedData.get(server);
+        SupplyMarketSavedData orders = SupplyMarketSavedData.get(server);
+        int recovered = 0;
+        for (SupplyOrderIntentSavedData.Intent intent : new ArrayList<>(intents.intents())) {
+            if (orders.findOrder(intent.orderId()) != null) {
+                intents.remove(intent.orderId());
+                continue;
+            }
+            ServerPlayer buyer = server.getPlayerList().getPlayer(intent.buyerUuid());
+            if (buyer == null) continue;
+            long total = EconomyMath.multiply(intent.unitPrice(), intent.quantity());
+            long totalMinor = Money.toMinor(total);
+            if (total <= 0L || totalMinor <= 0L) continue;
+            String source = "supply_order:" + intent.orderId();
+            boolean paid = intent.paid();
+            if (!paid) {
+                if (intent.buyerCompanyId() != null && !intent.buyerCompanyId().isBlank()) {
+                    Company company = CompanySavedData.get(server).get(intent.buyerCompanyId());
+                    paid = company != null && CompanyHelper.debitTreasuryNonOperatingOnce(server,
+                            company.companyId(), Currencies.USD.id(), total, "supply_purchase",
+                            "采购原料并取得存货", source);
+                } else {
+                    paid = EconomyHelper.tryPayWithReference(buyer, Currencies.USD, totalMinor, source);
+                }
+                if (!paid) continue;
+                intents.markPaid(intent.orderId());
+            }
+            orders.addOrder(new PurchaseOrder(intent.orderId(), intent.buyerUuid(), intent.supplierUuid(),
+                    intent.companyName(), intent.itemId(), intent.quantity(), intent.originRegion(),
+                    intent.destinationRegion(), intent.unitPrice(), intent.createdAt(), intent.buyerCompanyId(),
+                    intent.qualityScore()).withOriginalQuantity(intent.quantity()));
+            SupplyEscrowSavedData.get(server).createOnce(intent.orderId(), totalMinor);
+            intents.remove(intent.orderId());
+            recovered++;
+            fulfill(server, InventoryOwner.player(intent.supplierUuid()), intent.supplierUuid(), intent.itemId());
+        }
+        return recovered;
     }
 
     /** Expires stale paid backorders and returns the undelivered balance to the original payer. */

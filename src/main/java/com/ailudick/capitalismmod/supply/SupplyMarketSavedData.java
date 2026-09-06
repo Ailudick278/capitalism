@@ -76,6 +76,14 @@ public final class SupplyMarketSavedData extends SavedData {
         return orders;
     }
 
+    public PurchaseOrder findOrder(String orderId) {
+        if (orderId == null || orderId.isBlank()) return null;
+        for (PurchaseOrder order : orders) {
+            if (order.id().equals(orderId)) return order;
+        }
+        return null;
+    }
+
     public void addOrder(PurchaseOrder order) {
         orders.add(order);
         setDirty();
