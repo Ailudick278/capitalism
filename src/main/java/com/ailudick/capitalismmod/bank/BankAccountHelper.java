@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.ExchangeRateProvider;
 import com.ailudick.capitalismmod.currency.Money;
+import com.ailudick.capitalismmod.economy.EconomyTransferSavedData;
 import com.ailudick.capitalismmod.event.AccountOpenedEvent;
 import com.ailudick.capitalismmod.event.LoanTakenEvent;
 import com.ailudick.capitalismmod.init.ModAttachments;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Central helpers for the player's bank accounts (open / deposit / withdraw / loan / repay / interest / term deposits / transfer).
@@ -322,9 +324,27 @@ public final class BankAccountHelper {
 
     /** Transfers {@code amount} between two accounts by number. Both players must be online. */
     public static boolean transferBetween(ServerPlayer sender, String fromAccountId, String targetAccountId, String currencyId, long amount) {
+        return transferBetween(sender, null, fromAccountId, targetAccountId, currencyId, amount);
+    }
+
+    /** Transfers between accounts with a persistent client request receipt. */
+    public static boolean transferBetween(ServerPlayer sender, UUID requestId, String fromAccountId,
+                                          String targetAccountId, String currencyId, long amount) {
         if (amount <= 0 || !Currencies.exists(currencyId)
                 || java.util.Objects.equals(fromAccountId, targetAccountId)) {
             return false;
+        }
+        EconomyTransferSavedData transferReceipts = requestId == null ? null
+                : EconomyTransferSavedData.get(sender.getServer());
+        if (transferReceipts != null) {
+            EconomyTransferSavedData.Receipt existing = transferReceipts.find(requestId);
+            if (existing != null) {
+                return sender.getUUID().equals(existing.senderId())
+                        && existing.fromAccountId().equals(fromAccountId)
+                        && existing.targetAccountId().equals(targetAccountId)
+                        && existing.currencyId().equals(currencyId)
+                        && existing.amount() == amount;
+            }
         }
         ServerPlayer target = findAccountOwner(sender.getServer(), targetAccountId);
         if (target == null) {
@@ -350,6 +370,11 @@ public final class BankAccountHelper {
         updateAccount(target, to.withBalance(currencyId, targetBalance)
                 .withTransaction(BankTransaction.now(sender, "transfer_in", currencyId, amount,
                         "bank_transfer", fromAccountId)));
+        if (transferReceipts != null) {
+            transferReceipts.record(new EconomyTransferSavedData.Receipt(requestId, sender.getUUID(),
+                    fromAccountId, targetAccountId, currencyId, amount,
+                    sender.getServer().overworld().getGameTime()));
+        }
         return true;
     }
 

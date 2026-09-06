@@ -7,14 +7,27 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.UUID;
+
 /**
  * Client -> Server: transfer money between two bank accounts by account number.
  */
-public record TransferPayload(String fromAccountId, String targetAccountId, String currencyId, long amount) implements CustomPacketPayload {
+public record TransferPayload(UUID requestId, String fromAccountId, String targetAccountId, String currencyId, long amount) implements CustomPacketPayload {
     public static final Type<TransferPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(CapitalismMod.MODID, "transfer"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, TransferPayload> STREAM_CODEC = StreamCodec.composite(
+            new StreamCodec<RegistryFriendlyByteBuf, UUID>() {
+                @Override
+                public void encode(RegistryFriendlyByteBuf buf, UUID value) {
+                    buf.writeUUID(value);
+                }
+
+                @Override
+                public UUID decode(RegistryFriendlyByteBuf buf) {
+                    return buf.readUUID();
+                }
+            }, TransferPayload::requestId,
             ByteBufCodecs.STRING_UTF8, TransferPayload::fromAccountId,
             ByteBufCodecs.STRING_UTF8, TransferPayload::targetAccountId,
             ByteBufCodecs.STRING_UTF8, TransferPayload::currencyId,

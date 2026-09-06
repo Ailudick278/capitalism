@@ -88,7 +88,7 @@ public final class EconomyHelper {
             boolean success = trySpendFromAccounts(player, currency, amount);
             if (success) {
                 postChanged(player, currency);
-                log(player, "鏀粯", currency, amount);
+                log(player, "支付", currency, amount);
             }
             return success;
         }
@@ -176,13 +176,21 @@ public final class EconomyHelper {
 
         long change = selected - amount;
         if (change > 0) {
-            giveMoney(player, currency, change);
+            giveMoneyInternal(player, currency, change, false);
         }
         return true;
     }
 
     /** Gives {@code amount} of {@code currency} as physical items (greedy denominations). */
     public static void giveMoney(Player player, Currency currency, long amount) {
+        giveMoneyInternal(player, currency, amount, true);
+    }
+
+    /**
+     * Gives physical currency while optionally recording it as an economic
+     * income. Change is a return of the payer's own money, not new income.
+     */
+    private static void giveMoneyInternal(Player player, Currency currency, long amount, boolean recordIncome) {
         if (amount <= 0) {
             return;
         }
@@ -209,7 +217,9 @@ public final class EconomyHelper {
             }
         }
         postChanged(player, currency);
-        log(player, "收入", currency, amount);
+        if (recordIncome) {
+            log(player, "收入", currency, amount);
+        }
     }
 
     private static void log(Player player, String action, Currency currency, long amount) {

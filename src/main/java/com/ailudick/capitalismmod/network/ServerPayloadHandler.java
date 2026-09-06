@@ -287,7 +287,7 @@ public class ServerPayloadHandler {
             if (!Currencies.exists(payload.currencyId())) {
                 return;
             }
-            boolean success = BankAccountHelper.transferBetween(player, payload.fromAccountId(), payload.targetAccountId(), payload.currencyId(), Money.toMinor(payload.amount()));
+            boolean success = BankAccountHelper.transferBetween(player, payload.requestId(), payload.fromAccountId(), payload.targetAccountId(), payload.currencyId(), Money.toMinor(payload.amount()));
             if (!success) {
                 operationResult(player, false, Component.translatable("message.capitalismmod.transfer_failed"));
             }
