@@ -160,7 +160,7 @@ public final class SupplyMarket {
         financialJournal.markCompleted(supplyOrderId, "supply", "order-record", quantity, settlementTime);
         intents.remove(supplyOrderId);
         financialJournal.markStarted(supplyOrderId, "supply", "buyer-escrow", totalMinor, settlementTime);
-        SupplyEscrowSavedData.get(buyer.getServer()).createOnce(supplyOrderId, totalMinor);
+        SupplyEscrowSavedData.get(buyer.getServer()).createOnce(supplyOrderId, quantity, totalMinor);
         financialJournal.markCompleted(supplyOrderId, "supply", "buyer-escrow", totalMinor, settlementTime);
         SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "CREATED", buyer.getUUID(),
                 offer.ownerUuid(), offer.itemId(), quantity, total);
@@ -311,7 +311,7 @@ public final class SupplyMarket {
                     intent.qualityScore()).withOriginalQuantity(intent.quantity()));
             journal.markCompleted(intent.orderId(), "supply", "order-record", intent.quantity(), recoveryTime);
             journal.markStarted(intent.orderId(), "supply", "buyer-escrow", totalMinor, recoveryTime);
-            SupplyEscrowSavedData.get(server).createOnce(intent.orderId(), totalMinor);
+            SupplyEscrowSavedData.get(server).createOnce(intent.orderId(), intent.quantity(), totalMinor);
             journal.markCompleted(intent.orderId(), "supply", "buyer-escrow", totalMinor, recoveryTime);
             intents.remove(intent.orderId());
             recovered++;

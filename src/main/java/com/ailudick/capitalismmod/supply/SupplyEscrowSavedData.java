@@ -20,7 +20,7 @@ public final class SupplyEscrowSavedData extends SavedData {
     private final List<Escrow> escrows = new ArrayList<>();
     private final Set<String> operations = new HashSet<>();
 
-    public record Escrow(String orderId, long originalMinor, long heldMinor,
+    public record Escrow(String orderId, int quantity, long originalMinor, long heldMinor,
                          long releasedMinor, long refundedMinor) {}
 
     private SupplyEscrowSavedData() {}
@@ -35,9 +35,14 @@ public final class SupplyEscrowSavedData extends SavedData {
     public List<Escrow> escrows() { return List.copyOf(escrows); }
 
     public boolean createOnce(String orderId, long amountMinor) {
+        return createOnce(orderId, 0, amountMinor);
+    }
+
+    public boolean createOnce(String orderId, int quantity, long amountMinor) {
         if (orderId == null || orderId.isBlank() || amountMinor <= 0L) return false;
+        if (quantity < 0) return false;
         if (escrow(orderId) != null) return true;
-        escrows.add(new Escrow(orderId, amountMinor, amountMinor, 0L, 0L));
+        escrows.add(new Escrow(orderId, quantity, amountMinor, amountMinor, 0L, 0L));
         while (escrows.size() > MAX_ORDERS) escrows.remove(0);
         setDirty(); return true;
     }
@@ -57,9 +62,9 @@ public final class SupplyEscrowSavedData extends SavedData {
         if (current == null) return true; // legacy orders have no escrow journal
         if (amountMinor > current.heldMinor()) return false;
         Escrow next = release
-                ? new Escrow(orderId, current.originalMinor(), current.heldMinor() - amountMinor,
+                ? new Escrow(orderId, current.quantity(), current.originalMinor(), current.heldMinor() - amountMinor,
                 add(current.releasedMinor(), amountMinor), current.refundedMinor())
-                : new Escrow(orderId, current.originalMinor(), current.heldMinor() - amountMinor,
+                : new Escrow(orderId, current.quantity(), current.originalMinor(), current.heldMinor() - amountMinor,
                 current.releasedMinor(), add(current.refundedMinor(), amountMinor));
         escrows.set(escrows.indexOf(current), next);
         operations.add(operationId);
@@ -69,7 +74,7 @@ public final class SupplyEscrowSavedData extends SavedData {
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag list = new ListTag();
-        for (Escrow e : escrows) { CompoundTag n = new CompoundTag(); n.putString("order", e.orderId());
+        for (Escrow e : escrows) { CompoundTag n = new CompoundTag(); n.putString("order", e.orderId()); n.putInt("quantity", e.quantity());
             n.putLong("original", e.originalMinor()); n.putLong("held", e.heldMinor());
             n.putLong("released", e.releasedMinor()); n.putLong("refunded", e.refundedMinor()); list.add(n); }
         tag.put("escrows", list);
@@ -82,7 +87,7 @@ public final class SupplyEscrowSavedData extends SavedData {
         ListTag list = tag.getList("escrows", Tag.TAG_COMPOUND);
         for (int i = Math.max(0, list.size() - MAX_ORDERS); i < list.size(); i++) { CompoundTag n = list.getCompound(i);
             if (!n.getString("order").isBlank() && n.getLong("original") > 0L)
-                data.escrows.add(new Escrow(n.getString("order"), n.getLong("original"), Math.max(0L, n.getLong("held")),
+                data.escrows.add(new Escrow(n.getString("order"), Math.max(0, n.getInt("quantity")), n.getLong("original"), Math.max(0L, n.getLong("held")),
                         Math.max(0L, n.getLong("released")), Math.max(0L, n.getLong("refunded")))); }
         ListTag ops = tag.getList("operations", Tag.TAG_COMPOUND);
         for (int i = Math.max(0, ops.size() - MAX_OPERATIONS); i < ops.size(); i++) { String id = ops.getCompound(i).getString("id");

@@ -475,6 +475,10 @@ public final class EconomyAuditService {
             if (escrow.heldMinor() > 0L && supplyOrder == null) {
                 issues.add("held supply escrow has no order " + escrow.orderId());
             } else if (supplyOrder != null) {
+                if (escrow.quantity() > 0 && (escrow.quantity() != supplyOrder.originalQuantity()
+                        || escrow.originalMinor() != safeSupplyAmount(supplyOrder))) {
+                    issues.add("supply escrow amount differs from order " + supplyOrder.id());
+                }
                 String status = com.ailudick.capitalismmod.supply.SupplyOrderAuditService
                         .currentStatus(server, supplyOrder.id());
                 if (escrow.heldMinor() > 0L && ("RECEIVED".equals(status) || "LOST".equals(status)
@@ -624,6 +628,11 @@ public final class EconomyAuditService {
         } catch (RuntimeException exception) {
             return false;
         }
+    }
+
+    private static long safeSupplyAmount(com.ailudick.capitalismmod.supply.PurchaseOrder order) {
+        long major = safeMultiply(order.originalQuantity(), order.unitPrice());
+        return major < 0L ? Long.MIN_VALUE : com.ailudick.capitalismmod.currency.Money.toMinorSaturated(major);
     }
 
     private static boolean reconciledOrderQuantity(com.ailudick.capitalismmod.market.MarketOrder order,
