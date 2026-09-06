@@ -22,7 +22,7 @@ public record CompanyCashFlowAssessment(long operatingCashFlow, long existingDeb
             if (entry == null || entry.timestamp() < windowStart || entry.timestamp() > currentTick
                     || !isOperating(entry)) continue;
             history = true;
-            cashFlow = addSaturated(cashFlow, entry.amount());
+            if (isCashFlow(entry)) cashFlow = addSaturated(cashFlow, entry.amount());
         }
         long totalDebt = addSaturated(Math.max(0L, existingDebt), Math.max(0L, requestedDebt));
         long supportedDebt = cashFlow > 0L ? multiplySaturated(cashFlow, 3L) : 0L;
@@ -39,6 +39,14 @@ public record CompanyCashFlowAssessment(long operatingCashFlow, long existingDeb
                 && !type.equals("dividend_distribution")
                 && !type.equals("owner_withdrawal")
                 && !type.equals("equipment_purchase");
+    }
+
+    /** Excludes non-cash accounting entries from the lending cash-flow test. */
+    private static boolean isCashFlow(CompanyLedgerEntry entry) {
+        String type = entry.type() == null ? "" : entry.type();
+        return !type.equals("cost_of_goods_sold")
+                && !type.equals("inventory_loss")
+                && !type.equals("accrued_expense");
     }
 
     private static long addSaturated(long left, long right) {
