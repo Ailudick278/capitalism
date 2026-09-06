@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.CityHousingSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
+import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -37,7 +38,11 @@ public final class CityCommand {
                         IntegerArgumentType.getInteger(c, "dailyRentMinor")));
         var rentRegion = Commands.argument("region", StringArgumentType.word()).then(rentAmount);
         var rentSet = Commands.literal("set").then(rentRegion);
-        var rent = Commands.literal("rent").requires(source -> source.hasPermission(2)).then(rentSet);
+        var landlord = Commands.literal("landlord").then(Commands.argument("region", StringArgumentType.word())
+                .then(Commands.argument("landlordId", StringArgumentType.word())
+                        .executes(c -> setLandlord(c.getSource(), StringArgumentType.getString(c, "region"),
+                                StringArgumentType.getString(c, "landlordId")))));
+        var rent = Commands.literal("rent").requires(source -> source.hasPermission(2)).then(rentSet).then(landlord);
         var terminateHousing = Commands.literal("terminate").then(Commands.argument("household", StringArgumentType.word())
                 .executes(c -> terminateHousing(c.getSource(), StringArgumentType.getString(c, "household"))));
         var housing = Commands.literal("housing").requires(source -> source.hasPermission(2)).then(terminateHousing);
@@ -53,7 +58,8 @@ public final class CityCommand {
         source.sendSuccess(() -> Component.literal("city region=" + region + " residents=" + residents
                 + " housing=" + infrastructure.count(region, "housing") + " school="
                 + infrastructure.count(region, "school") + " clinic=" + infrastructure.count(region, "clinic")
-                + " serviceScore=" + score + " dailyRentPerResident=" + rent), false);
+                + " serviceScore=" + score + " dailyRentPerResident=" + rent
+                + " landlord=" + CityHousingSavedData.get(source.getServer()).landlord(region)), false);
         return score;
     }
 
@@ -74,6 +80,18 @@ public final class CityCommand {
         }
         source.sendSuccess(() -> Component.literal("city base daily rent set region=" + region
                 + " rentMinor=" + rent), true);
+        return 1;
+    }
+
+    private static int setLandlord(CommandSourceStack source, String region, String landlordId) {
+        if (!"government".equals(landlordId) && CompanySavedData.get(source.getServer()).get(landlordId) == null) {
+            source.sendFailure(Component.literal("Landlord must be government or an existing company ID.")); return 0;
+        }
+        if (!CityHousingSavedData.get(source.getServer()).setLandlord(region, landlordId)) {
+            source.sendFailure(Component.literal("Invalid region or landlord.")); return 0;
+        }
+        source.sendSuccess(() -> Component.literal("city housing landlord set region=" + region
+                + " landlord=" + landlordId), true);
         return 1;
     }
 

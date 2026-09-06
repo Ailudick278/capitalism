@@ -14,6 +14,7 @@ import java.util.Map;
 public final class CityHousingSavedData extends SavedData {
     private static final String ID = "capitalismmod_city_housing";
     private final Map<String, Long> baseRentPerResident = new HashMap<>();
+    private final Map<String, String> landlordByRegion = new HashMap<>();
 
     private CityHousingSavedData() {}
 
@@ -23,6 +24,7 @@ public final class CityHousingSavedData extends SavedData {
     }
 
     public long baseRent(String region) { return baseRentPerResident.getOrDefault(region, 0L); }
+    public String landlord(String region) { return landlordByRegion.getOrDefault(region, "government"); }
 
     public boolean setBaseRent(String region, long rent) {
         if (region == null || region.isBlank() || rent < 0L || rent > 1_000_000_000L) return false;
@@ -30,6 +32,13 @@ public final class CityHousingSavedData extends SavedData {
         else baseRentPerResident.put(region, rent);
         setDirty();
         return true;
+    }
+
+    public boolean setLandlord(String region, String landlordId) {
+        if (region == null || region.isBlank() || landlordId == null || landlordId.isBlank()) return false;
+        if ("government".equals(landlordId)) landlordByRegion.remove(region);
+        else landlordByRegion.put(region, landlordId);
+        setDirty(); return true;
     }
 
     public long dailyRent(String region, int residents, int housingUnits) {
@@ -41,7 +50,11 @@ public final class CityHousingSavedData extends SavedData {
         baseRentPerResident.forEach((region, rent) -> {
             CompoundTag entry = new CompoundTag(); entry.putString("region", region); entry.putLong("rent", rent); list.add(entry);
         });
-        tag.put("rents", list); return tag;
+        tag.put("rents", list);
+        ListTag landlords = new ListTag();
+        landlordByRegion.forEach((region, landlord) -> { CompoundTag entry = new CompoundTag();
+            entry.putString("region", region); entry.putString("landlord", landlord); landlords.add(entry); });
+        tag.put("landlords", landlords); return tag;
     }
 
     public static CityHousingSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
@@ -51,6 +64,11 @@ public final class CityHousingSavedData extends SavedData {
             CompoundTag entry = list.getCompound(i);
             String region = entry.getString("region"); long rent = entry.getLong("rent");
             if (!region.isBlank() && rent > 0L && rent <= 1_000_000_000L) data.baseRentPerResident.put(region, rent);
+        }
+        ListTag landlords = tag.getList("landlords", Tag.TAG_COMPOUND);
+        for (int i = 0; i < landlords.size(); i++) { CompoundTag entry = landlords.getCompound(i);
+            String region = entry.getString("region"), landlord = entry.getString("landlord");
+            if (!region.isBlank() && !landlord.isBlank() && !"government".equals(landlord)) data.landlordByRegion.put(region, landlord);
         }
         return data;
     }

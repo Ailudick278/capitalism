@@ -15,6 +15,8 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
+import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.company.CompanyHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 
@@ -44,8 +46,18 @@ public final class PopulationService {
             HousingLeaseSavedData.Payment rent = HousingLeaseSavedData.get(server).settleRent(household.id(),
                     household.region(), day, rentPerResident, rentDue, goods.remainingCash());
             if (rent.rentPaidMinor() > 0L) {
-                com.ailudick.capitalismmod.government.GovernmentPolicySavedData.get(server)
-                        .collectRent(rent.id(), day, household.id(), household.region(), rent.rentPaidMinor());
+                String landlord = CityHousingSavedData.get(server).landlord(household.region());
+                if ("government".equals(landlord)) {
+                    com.ailudick.capitalismmod.government.GovernmentPolicySavedData.get(server)
+                            .collectRent(rent.id(), day, household.id(), household.region(), rent.rentPaidMinor());
+                } else if (CompanySavedData.get(server).get(landlord) != null) {
+                    CompanyHelper.creditTreasuryNonOperatingOnce(server, landlord, "usd", rent.rentPaidMinor(),
+                            "housing_rent", "Household housing rent", rent.id());
+                } else {
+                    // A deleted landlord must not make household funds disappear.
+                    com.ailudick.capitalismmod.government.GovernmentPolicySavedData.get(server)
+                            .collectRent(rent.id(), day, household.id(), household.region(), rent.rentPaidMinor());
+                }
             }
             long remainingCash = Math.max(0L, goods.remainingCash() - rent.paidMinor());
             long totalSpent = add(goods.spent(), rent.paidMinor());
