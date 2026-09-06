@@ -15,6 +15,21 @@ public final class PeerLoanHelper {
 
     public static boolean repay(ServerPlayer borrower, String loanId, Long requestedAmount) {
         PeerLoanSavedData data = PeerLoanSavedData.get(borrower.getServer());
+        PeerLoanPaymentSavedData paymentData = PeerLoanPaymentSavedData.get(borrower.getServer());
+        for (PeerLoanPaymentSavedData.Payment previous : paymentData.forLoan(loanId)) {
+            if (!borrower.getUUID().equals(previous.borrower())) continue;
+            boolean sameRequestedPayment = requestedAmount != null && previous.total() == requestedAmount;
+            boolean completedFullPayment = requestedAmount == null && previous.remainingPrincipal() <= 0L;
+            if (sameRequestedPayment || completedFullPayment) {
+                creditLender(borrower.getServer(), previous);
+                Currency previousCurrency = Currencies.byId(previous.currencyId());
+                borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",
+                        previous.total(), previousCurrency == null
+                                ? Component.literal(previous.currencyId())
+                                : Component.translatable(previousCurrency.nameKey())));
+                return true;
+            }
+        }
         PeerLoan loan = data.findLoan(loanId);
         if (loan == null || !loan.borrower().equals(borrower.getUUID())) {
             borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_not_found"));
@@ -70,7 +85,7 @@ public final class PeerLoanHelper {
                 loan.id(), loan.lender(), loan.borrower(), currency.id(), borrower.getServer().overworld().getGameTime(),
                 payment, allocation.interestPayment(), allocation.principalPayment(),
                 allocation.remainingPrincipal(), loan.daysRemaining(), loan.isOverdue());
-        PeerLoanPaymentSavedData.get(borrower.getServer()).append(receipt);
+        paymentData.append(receipt);
         creditLender(borrower.getServer(), receipt);
         borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",
                 payment, Component.translatable(currency.nameKey())));
