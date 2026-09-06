@@ -108,6 +108,17 @@ public final class AuctionMarket {
         if (amount < auction.startingPrice() || amount <= auction.currentBid()) {
             return false;
         }
+        UUID previousBidder = null;
+        long previousBidMinor = 0L;
+        if (!auction.currentBidder().isEmpty()) {
+            try {
+                previousBidder = UUID.fromString(auction.currentBidder());
+            } catch (IllegalArgumentException exception) {
+                return false;
+            }
+            previousBidMinor = Money.toMinor(auction.currentBid());
+            if (previousBidMinor <= 0L) return false;
+        }
         AuctionBidSavedData.Bid recorded = bidJournal.find(auctionId, player.getUUID(), amount);
         if (recorded != null) {
             data.replaceAuction(auction.withBid(amount, player.getStringUUID()));
@@ -120,27 +131,14 @@ public final class AuctionMarket {
             return false;
         }
         if (!auction.currentBidder().isEmpty()) {
-            UUID prevBidder;
-            try {
-                prevBidder = UUID.fromString(auction.currentBidder());
-            } catch (IllegalArgumentException exception) {
-                // Do not accept a new bid while an inconsistent escrow owner needs repair.
-                EconomyHelper.giveMoney(player, Currencies.USD, bidMinor);
-                return false;
-            }
-            long previousBidMinor = Money.toMinor(auction.currentBid());
-            if (previousBidMinor <= 0L) {
-                EconomyHelper.giveMoney(player, Currencies.USD, bidMinor);
-                return false;
-            }
-            String refundSource = "auction-outbid:" + auction.id() + ":" + prevBidder
+            String refundSource = "auction-outbid:" + auction.id() + ":" + previousBidder
                     + ":" + previousBidMinor;
             MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
-            if (!mailbox.creditMoneyOnce(prevBidder, Currencies.USD.id(), previousBidMinor, refundSource)) {
+            if (!mailbox.creditMoneyOnce(previousBidder, Currencies.USD.id(), previousBidMinor, refundSource)) {
                 // A previous attempt already recorded this refund. Redeeming the
                 // mailbox below is still safe and lets an online bidder receive it.
             }
-            ServerPlayer prev = player.getServer().getPlayerList().getPlayer(prevBidder);
+            ServerPlayer prev = player.getServer().getPlayerList().getPlayer(previousBidder);
             if (prev != null) mailbox.redeemMoneyOnly(prev);
         }
         bidJournal.record(new AuctionBidSavedData.Bid(auctionId, player.getUUID(), amount));
