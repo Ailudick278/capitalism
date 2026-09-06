@@ -34,7 +34,7 @@
 /company logistics contracts <company>  查看货运合同
 /labor profile                   查看劳动档案
 /labor skill <skill> <value>     更新玩家技能
-/labor post <company> <role> <dailyWageMinor> 发布岗位
+/labor post <company> <role> <dailyWageMinor> [region] 发布区域岗位
 /labor jobs                      查看开放岗位
 /labor hire <offerId> <worker>   录用玩家
 /labor contracts                 查看雇佣合同

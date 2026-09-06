@@ -34,8 +34,15 @@ public final class PopulationService {
         for (JobOffer offer : labor.openOffers(server.overworld().getGameTime())) {
             for (Household household : population.households()) {
                 if (!isNpc(household.id()) || household.workingAge() <= 0 || !labor.activeForWorker(household.id()).isEmpty()) continue;
+                boolean local = household.region().equals(offer.region());
+                boolean willingToMove = !local && household.satisfaction() <= 40
+                        && offer.dailyWageMinor() >= household.dailyNeedMinor() * (long) household.size();
+                if (!local && !willingToMove) continue;
                 LaborMarketService.ensureNpcProfile(server, household.id(), household.workingAge());
-                if (LaborMarketService.hireNpc(server, offer.id(), household.id())) { hired++; break; }
+                if (LaborMarketService.hireNpc(server, offer.id(), household.id())) {
+                    if (!local) population.move(household.id(), offer.region(), now);
+                    hired++; break;
+                }
             }
         }
         return hired;

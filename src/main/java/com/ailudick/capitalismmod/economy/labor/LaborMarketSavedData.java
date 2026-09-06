@@ -30,6 +30,7 @@ public final class LaborMarketSavedData extends SavedData {
     public List<EmploymentRecord> employments() { return List.copyOf(employments); }
     public LaborProfile profile(String actorId) { return profiles.stream().filter(p -> p.actorId().equals(actorId)).findFirst().orElse(null); }
     public List<JobOffer> openOffers(long now) { return offers.stream().filter(o -> o.vacancies() > 0 && (o.closesAt() <= 0L || now < o.closesAt())).toList(); }
+    public List<JobOffer> openOffersInRegion(long now, String region) { return openOffers(now).stream().filter(o -> o.region().equals(region)).toList(); }
     public List<EmploymentRecord> activeForWorker(String workerId) { return employments.stream().filter(e -> e.active() && e.workerId().equals(workerId)).toList(); }
     public List<EmploymentRecord> activeForEmployer(String employerId) { return employments.stream().filter(e -> e.active() && e.employerId().equals(employerId)).toList(); }
     public int activeWorkers(String employerId) { return activeForEmployer(employerId).size(); }
@@ -84,7 +85,7 @@ public final class LaborMarketSavedData extends SavedData {
         for (LaborProfile p : profiles) { CompoundTag e = new CompoundTag(); e.putString("actor", p.actorId()); e.putInt("participation", p.participation()); e.putLong("reservation", p.reservationWageMinor()); CompoundTag skills = new CompoundTag(); p.skills().forEach((k,v)->skills.putInt(k.name(),v)); e.put("skills",skills); profileList.add(e); }
         tag.put("profiles", profileList);
         ListTag offerList = new ListTag();
-        for (JobOffer o : offers) { CompoundTag e = new CompoundTag(); e.putString("id",o.id()); e.putString("employer",o.employerId()); e.putString("role",o.role()); e.putInt("vacancies",o.vacancies()); e.putLong("wage",o.dailyWageMinor()); e.putString("skill",o.requiredSkill().name()); e.putInt("minimum",o.minimumSkill()); e.putLong("posted",o.postedAt()); e.putLong("closes",o.closesAt()); offerList.add(e); }
+        for (JobOffer o : offers) { CompoundTag e = new CompoundTag(); e.putString("id",o.id()); e.putString("employer",o.employerId()); e.putString("role",o.role()); e.putInt("vacancies",o.vacancies()); e.putLong("wage",o.dailyWageMinor()); e.putString("skill",o.requiredSkill().name()); e.putInt("minimum",o.minimumSkill()); e.putLong("posted",o.postedAt()); e.putLong("closes",o.closesAt()); e.putString("region",o.region()); offerList.add(e); }
         tag.put("offers", offerList);
         ListTag employmentList = new ListTag();
         for (EmploymentRecord e : employments) { CompoundTag n = new CompoundTag(); n.putString("id",e.id()); n.putString("worker",e.workerId()); n.putString("employer",e.employerId()); n.putString("role",e.role()); n.putLong("wage",e.dailyWageMinor()); n.putLong("started",e.startedAt()); n.putLong("ended",e.endedAt()); n.putBoolean("active",e.active()); employmentList.add(n); }
@@ -96,7 +97,7 @@ public final class LaborMarketSavedData extends SavedData {
         ListTag ps = tag.getList("profiles", Tag.TAG_COMPOUND);
         for (int i=0;i<ps.size();i++) { CompoundTag e=ps.getCompound(i); try { java.util.EnumMap<LaborSkill,Integer> s=new java.util.EnumMap<>(LaborSkill.class); CompoundTag st=e.getCompound("skills"); for(String k:st.getAllKeys()) try{s.put(LaborSkill.valueOf(k),st.getInt(k));}catch(IllegalArgumentException ignored){} data.profiles.add(new LaborProfile(e.getString("actor"),s,e.getInt("participation"),Math.max(0L,e.getLong("reservation")))); } catch(IllegalArgumentException ignored){} }
         ListTag os = tag.getList("offers", Tag.TAG_COMPOUND);
-        for (int i=0;i<os.size();i++) { CompoundTag e=os.getCompound(i); try { data.offers.add(new JobOffer(e.getString("id"),e.getString("employer"),e.getString("role"),e.getInt("vacancies"),Math.max(0L,e.getLong("wage")),LaborSkill.valueOf(e.getString("skill")),e.getInt("minimum"),e.getLong("posted"),e.getLong("closes"))); } catch(IllegalArgumentException ignored){} }
+        for (int i=0;i<os.size();i++) { CompoundTag e=os.getCompound(i); try { data.offers.add(new JobOffer(e.getString("id"),e.getString("employer"),e.getString("role"),e.getInt("vacancies"),Math.max(0L,e.getLong("wage")),LaborSkill.valueOf(e.getString("skill")),e.getInt("minimum"),e.getLong("posted"),e.getLong("closes"),e.getString("region"))); } catch(IllegalArgumentException ignored){} }
         ListTag es = tag.getList("employments", Tag.TAG_COMPOUND);
         for (int i=0;i<es.size();i++) { CompoundTag e=es.getCompound(i); try { data.employments.add(new EmploymentRecord(e.getString("id"),e.getString("worker"),e.getString("employer"),e.getString("role"),Math.max(0L,e.getLong("wage")),e.getLong("started"),Math.max(0L,e.getLong("ended")),e.getBoolean("active"))); } catch(IllegalArgumentException ignored){} }
         data.trim(); return data;

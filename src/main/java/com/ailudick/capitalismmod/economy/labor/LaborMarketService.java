@@ -36,15 +36,19 @@ public final class LaborMarketService {
 
     public static boolean post(ServerPlayer player, String companyName, String role, int vacancies,
                                long dailyWageMinor, LaborSkill skill, int minimumSkill, int durationDays) {
+        return post(player, companyName, role, vacancies, dailyWageMinor, skill, minimumSkill, durationDays, "spawn");
+    }
+    public static boolean post(ServerPlayer player, String companyName, String role, int vacancies,
+                               long dailyWageMinor, LaborSkill skill, int minimumSkill, int durationDays, String region) {
         Company company = CompanyHelper.getCompany(player, companyName);
         long now = player.getServer().overworld().getGameTime();
-        if (company == null || durationDays < 0 || durationDays > 100000 || dailyWageMinor <= 0L) return false;
+        if (company == null || durationDays < 0 || durationDays > 100000 || dailyWageMinor <= 0L || region == null || region.isBlank()) return false;
         long closes = durationDays == 0 ? 0L : EconomyMath.add(now, Math.multiplyExact(durationDays, 24000L));
         if (closes < now) return false;
         try {
             return LaborMarketSavedData.get(player.getServer()).post(new JobOffer(
                     UUID.randomUUID().toString(), employer(company), role, vacancies, dailyWageMinor,
-                    skill, minimumSkill, now, closes));
+                    skill, minimumSkill, now, closes, region));
         } catch (RuntimeException ignored) { return false; }
     }
 
