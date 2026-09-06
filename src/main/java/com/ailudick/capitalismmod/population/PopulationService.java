@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
+import com.ailudick.capitalismmod.market.TradeRegion;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
@@ -33,7 +34,10 @@ public final class PopulationService {
             long income = isNpc(household.id()) ? 0L : labor.employments().stream().filter(e -> e.active() && e.workerId().equals(household.id()))
                     .mapToLong(EmploymentRecord::dailyWageMinor).reduce(0L, PopulationService::add);
             long cash = add(household.cashMinor(), income);
-            long need = add(0L, household.dailyNeedMinor() * (long) household.size());
+            int residents = population.population(household.region());
+            int housingUnits = LogisticsInfrastructureSavedData.get(server).count(household.region(), "housing");
+            long need = add(multiply(household.dailyNeedMinor(), household.size()),
+                    multiply(CityHousingSavedData.get(server).dailyRent(household.region(), residents, housingUnits), household.size()));
             ConsumptionResult result = consume(server, household, cash, need, day);
             int spendingWelfare = need <= 0L ? 100 : (int) Math.max(0L, Math.min(100L, result.spent() * 100L / need));
             int serviceWelfare = LogisticsInfrastructureSavedData.get(server)
@@ -49,10 +53,15 @@ public final class PopulationService {
                 if (!isNpc(household.id()) || household.workingAge() <= 0 || !labor.activeForWorker(household.id()).isEmpty()) continue;
                 boolean local = household.region().equals(offer.region());
                 long livingCost = multiply(household.dailyNeedMinor(), household.size());
+                long destinationRent = multiply(CityHousingSavedData.get(server).dailyRent(offer.region(),
+                        population.population(offer.region()), LogisticsInfrastructureSavedData.get(server)
+                                .count(offer.region(), "housing")), household.size());
+                long commuteCost = HousingEconomics.commuteCost(household.dailyNeedMinor(), household.size(),
+                        TradeRegion.distance(household.region(), offer.region()));
                 long migrationFriction = local ? 0L : LogisticsInfrastructureSavedData.get(server)
                         .migrationFriction(household.dailyNeedMinor(), household.size(), offer.region());
                 boolean willingToMove = !local && household.satisfaction() <= 40
-                        && offer.dailyWageMinor() >= add(livingCost, migrationFriction);
+                        && offer.dailyWageMinor() >= add(add(livingCost, destinationRent), add(migrationFriction, commuteCost));
                 if (!local && !willingToMove) continue;
                 LaborMarketService.ensureNpcProfile(server, household.id(), household.workingAge());
                 if (LaborMarketService.hireNpc(server, offer.id(), household.id())) {
