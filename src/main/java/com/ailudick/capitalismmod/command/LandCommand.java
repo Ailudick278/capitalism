@@ -547,7 +547,8 @@ public final class LandCommand {
         }
         long price = pending.price();
         String paymentKey = transferKey + ":buyer-payment";
-        if (!journal.has(paymentKey) && !alreadyTransferred && !EconomyHelper.tryPay(player, Currencies.CNY, price)) {
+        if (!journal.has(paymentKey) && !alreadyTransferred
+                && !EconomyHelper.tryPayWithReference(player, Currencies.CNY, price, paymentKey)) {
             source.sendFailure(Component.literal("余额不足，无法支付土地转让费：" + price));
             return 0;
         }
@@ -569,12 +570,15 @@ public final class LandCommand {
         }
         LandOperationLogSavedData.get(player.getServer()).record(player.level().getGameTime(), pending.from(), "土地转让给" + player.getUUID(),
                 claim.dimension(), claim.chunkX(), claim.chunkZ());
-        source.sendSuccess(() -> Component.literal("土地转让成功"), false);
         String payoutKey = transferKey + ":seller-payout";
         ServerPlayer oldOwner = player.getServer().getPlayerList().getPlayer(pending.from());
         if (!journal.has(payoutKey)) {
             MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
-            mailbox.creditMoneyOnce(pending.from(), Currencies.CNY.id(), price, payoutKey);
+            if (!mailbox.hasCreditSource(payoutKey)
+                    && !mailbox.creditMoneyOnce(pending.from(), Currencies.CNY.id(), price, payoutKey)) {
+                source.sendFailure(Component.literal("卖方收款暂未完成，转让将保留并自动重试"));
+                return 0;
+            }
             if (oldOwner != null) mailbox.redeemMoneyOnly(oldOwner);
             journal.record(payoutKey);
         }
@@ -583,6 +587,7 @@ public final class LandCommand {
                 "land-transfer:" + claim.id() + ":" + player.getUUID(), player.level().getGameTime());
         journal.record(completedKey);
         transfers.remove(player.getUUID());
+        source.sendSuccess(() -> Component.literal("土地转让成功"), false);
         if (oldOwner != null) oldOwner.displayClientMessage(Component.literal("土地已转让给 " + player.getName().getString()), false);
         return 1;
     }
