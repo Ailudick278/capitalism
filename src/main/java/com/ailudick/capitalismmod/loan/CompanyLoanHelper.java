@@ -36,7 +36,8 @@ public final class CompanyLoanHelper {
         }
         long newDebt = EconomyMath.add(existingDebt, amount);
         if (newDebt < 0L || newDebt > maximumDebt) return null;
-        long lookback = PerpetualCalendar.ticksForDays(90L);
+        long lookbackDays = 90L;
+        long lookback = PerpetualCalendar.ticksForDays(lookbackDays);
         CompanyCashFlowAssessment cashFlow = CompanyCashFlowAssessment.evaluate(
                 CompanyLedgerSavedData.get(server).entries(company.companyId()),
                 server.overworld().getGameTime(), lookback, existingDebt, amount);
@@ -44,7 +45,7 @@ public final class CompanyLoanHelper {
         CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
                 cashFlow.operatingCashFlow(), existingLoans,
                 amount, days, ratePercent / 100.0, cashFlow.hasOperatingHistory(),
-                Config.COMPANY_LOAN_MIN_COVERAGE_RATIO.get());
+                Config.COMPANY_LOAN_MIN_COVERAGE_RATIO.get(), lookbackDays);
         if (!debtService.approved()) return null;
         if (!CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), amount,
                 "loan_proceeds", "Company loan principal received")) return null;

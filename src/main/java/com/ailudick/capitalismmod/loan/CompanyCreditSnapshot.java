@@ -30,7 +30,7 @@ public record CompanyCreditSnapshot(long lookbackDays, long operatingCashFlow,
                 PerpetualCalendar.ticksForDays(days), inputs.existingDebt(), 0L);
         CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
                 cash.operatingCashFlow(), CompanyLoanSavedData.get(server).forCompany(company.companyId()),
-                0L, 1, 0.0, cash.hasOperatingHistory());
+                0L, 1, 0.0, cash.hasOperatingHistory(), 1.25, days);
         long capitalLimit = multiplySaturated(Math.max(0L, company.registeredCapital()),
                 Config.MAX_COMPANY_DEBT_MULTIPLE.get());
         long cashLimit = Math.max(0L, cash.maximumSupportedDebt());

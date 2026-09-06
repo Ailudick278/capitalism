@@ -50,4 +50,16 @@ class CompanyDebtServiceAssessmentTest {
         assertFalse(stricter.approved());
         assertTrue(stricter.coverageRatio() < 12.00);
     }
+
+    @Test
+    void annualizesCashFlowUsingTheActualLookbackPeriod() {
+        CompanyDebtServiceAssessment thirtyDays = CompanyDebtServiceAssessment.evaluate(
+                1_000L, List.of(), 0L, 365, 0.10, true, 1.25, 30L);
+        CompanyDebtServiceAssessment ninetyDays = CompanyDebtServiceAssessment.evaluate(
+                1_000L, List.of(), 0L, 365, 0.10, true, 1.25, 90L);
+
+        assertTrue(thirtyDays.annualOperatingCashFlow() > ninetyDays.annualOperatingCashFlow());
+        assertTrue(thirtyDays.annualOperatingCashFlow() > 11_000.0);
+        assertTrue(ninetyDays.annualOperatingCashFlow() < 5_000.0);
+    }
 }
