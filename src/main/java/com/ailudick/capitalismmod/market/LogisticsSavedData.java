@@ -135,8 +135,11 @@ public final class LogisticsSavedData extends SavedData {
         ListTag list = tag.getList("shipments", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag nbt = list.getCompound(i);
-            if (nbt.hasUUID("buyer") && nbt.getInt("quantity") > 0 && nbt.getLong("delivery") >= 0) {
-                data.shipments.add(new Shipment(nbt.getString("id"), nbt.getUUID("buyer"),
+            String id = nbt.getString("id");
+            if (nbt.hasUUID("buyer") && !id.isBlank() && nbt.getInt("quantity") > 0
+                    && nbt.getLong("delivery") >= 0
+                    && data.shipments.stream().noneMatch(existing -> id.equals(existing.id()))) {
+                data.shipments.add(new Shipment(id, nbt.getUUID("buyer"),
                         nbt.getString("item"), nbt.getInt("quantity"), nbt.getLong("delivery"),
                         nbt.getString("originRegion"), nbt.getString("destinationRegion"),
                         TransportMode.parse(nbt.getString("transport")), nbt.getBoolean("insured"),
