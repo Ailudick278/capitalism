@@ -38,7 +38,8 @@ public final class FinancialRiskSavedData extends SavedData {
         for (FinancialRiskSnapshot snapshot : snapshots) {
             CompoundTag e = new CompoundTag();
             e.putLong("day", snapshot.day()); e.putLong("company", snapshot.companyDebtMinor());
-            e.putLong("peer", snapshot.peerDebtMinor()); e.putLong("bonds", snapshot.bondLiabilityMinor());
+            e.putLong("peer", snapshot.peerDebtMinor()); e.putLong("bank", snapshot.bankDebtMinor());
+            e.putLong("bonds", snapshot.bondLiabilityMinor());
             e.putLong("overdue", snapshot.overdueDebtMinor()); e.putInt("overdueCount", snapshot.overdueLoanCount());
             e.putInt("overdueShareBps", snapshot.overdueShareBasisPoints()); list.add(e);
         }
@@ -52,7 +53,8 @@ public final class FinancialRiskSavedData extends SavedData {
             CompoundTag e = list.getCompound(i);
             data.snapshots.add(new FinancialRiskSnapshot(Math.max(0L, e.getLong("day")),
                     Math.max(0L, e.getLong("company")), Math.max(0L, e.getLong("peer")),
-                    Math.max(0L, e.getLong("bonds")), Math.max(0L, e.getLong("overdue")),
+                    Math.max(0L, e.getLong("bank")), Math.max(0L, e.getLong("bonds")),
+                    Math.max(0L, e.getLong("overdue")),
                     Math.max(0, e.getInt("overdueCount")), Math.max(0, Math.min(10000, e.getInt("overdueShareBps")))));
         }
         return data;

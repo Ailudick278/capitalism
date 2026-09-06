@@ -1,11 +1,11 @@
 package com.ailudick.capitalismmod.risk;
 
 /** One daily, base-currency-normalized view of financial-sector liabilities. */
-public record FinancialRiskSnapshot(long day, long companyDebtMinor, long peerDebtMinor,
-                                    long bondLiabilityMinor, long overdueDebtMinor,
+    public record FinancialRiskSnapshot(long day, long companyDebtMinor, long peerDebtMinor,
+                                    long bankDebtMinor, long bondLiabilityMinor, long overdueDebtMinor,
                                     int overdueLoanCount, int overdueShareBasisPoints) {
     public long totalDebtMinor() {
-        return add(add(companyDebtMinor, peerDebtMinor), bondLiabilityMinor);
+        return add(add(add(companyDebtMinor, peerDebtMinor), bankDebtMinor), bondLiabilityMinor);
     }
 
     private static long add(long left, long right) {

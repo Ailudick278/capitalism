@@ -1,6 +1,8 @@
 package com.ailudick.capitalismmod.risk;
 
 import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.bank.BankAccount;
+import com.ailudick.capitalismmod.bank.BankAccountHelper;
 import com.ailudick.capitalismmod.bond.BondHolding;
 import com.ailudick.capitalismmod.bond.BondSavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
@@ -11,6 +13,7 @@ import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoan;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 
 /** Calculates normalized financial exposure once per simulated day. */
 public final class FinancialRiskService {
@@ -20,7 +23,7 @@ public final class FinancialRiskService {
         FinancialRiskSavedData data = FinancialRiskSavedData.get(server);
         FinancialRiskSnapshot latest = data.latest();
         if (latest != null && latest.day() >= day) return latest;
-        long company = 0L, peer = 0L, bonds = 0L, overdue = 0L;
+        long company = 0L, peer = 0L, bank = 0L, bonds = 0L, overdue = 0L;
         int overdueCount = 0;
         for (CompanyLoan loan : CompanyLoanSavedData.get(server).loans()) {
             long liability = toBase(server, add(loan.principal(), loan.interestDue()), loan.currencyId());
@@ -32,15 +35,21 @@ public final class FinancialRiskService {
             peer = add(peer, liability);
             if (loan.isOverdue()) { overdue = add(overdue, liability); overdueCount++; }
         }
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) for (BankAccount account : BankAccountHelper.getAccounts(player).values()) {
+            long accountDebt = 0L;
+            for (var entry : account.debts().entrySet()) accountDebt = add(accountDebt, toBaseMinor(entry.getValue(), entry.getKey()));
+            bank = add(bank, accountDebt);
+            if (account.loanDaysRemaining() < 0 && accountDebt > 0L) { overdue = add(overdue, accountDebt); overdueCount++; }
+        }
         for (BondHolding holding : BondSavedData.get(server).holdings()) {
             long coupon = (long) Math.max(0.0, holding.faceValue() * holding.ratePerYear()
                     * holding.totalDays() / 365.0);
             bonds = add(bonds, toBase(server, add(holding.faceValue(), coupon), Currencies.USD.id()));
         }
-        long total = add(add(company, peer), bonds);
+        long total = add(add(add(company, peer), bank), bonds);
         int share = total <= 0L ? 0 : (int) (overdue > Long.MAX_VALUE / 10000L
                 ? 10000L : Math.min(10000L, overdue * 10000L / total));
-        FinancialRiskSnapshot snapshot = new FinancialRiskSnapshot(day, company, peer, bonds, overdue, overdueCount, share);
+        FinancialRiskSnapshot snapshot = new FinancialRiskSnapshot(day, company, peer, bank, bonds, overdue, overdueCount, share);
         data.record(snapshot);
         return snapshot;
     }
@@ -48,6 +57,11 @@ public final class FinancialRiskService {
     private static long toBase(MinecraftServer server, long major, String currencyId) {
         if (major <= 0L || !Currencies.exists(currencyId)) return 0L;
         long minor = Money.toMinorSaturated(major);
+        return ExchangeRates.convert(minor, Currencies.byId(currencyId), Config.defaultCurrency());
+    }
+
+    private static long toBaseMinor(long minor, String currencyId) {
+        if (minor <= 0L || !Currencies.exists(currencyId)) return 0L;
         return ExchangeRates.convert(minor, Currencies.byId(currencyId), Config.defaultCurrency());
     }
 

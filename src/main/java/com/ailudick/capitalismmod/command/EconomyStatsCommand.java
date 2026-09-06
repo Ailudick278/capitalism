@@ -111,6 +111,7 @@ public final class EconomyStatsCommand {
         if (risk != null) {
             source.sendSuccess(() -> Component.literal("financial risk day=" + risk.day()
                     + " totalDebtMinor=" + risk.totalDebtMinor()
+                    + " bankDebtMinor=" + risk.bankDebtMinor()
                     + " overdueDebtMinor=" + risk.overdueDebtMinor()
                     + " overdueLoans=" + risk.overdueLoanCount()
                     + " overdueShareBps=" + risk.overdueShareBasisPoints()
