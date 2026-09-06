@@ -251,6 +251,12 @@ public final class StockMarket {
             }
             String tradeSource = "stock-trade:" + orderId + ":" + sell.id()
                     + ":" + fill + ":" + gross;
+            StockOrder initiatingBuy = data.findOrder(orderId);
+            int buyQuantityBefore = initiatingBuy == null ? remaining : initiatingBuy.quantity();
+            StockTradeIntentSavedData.get(player.getServer()).add(new StockTradeIntentSavedData.Intent(
+                    tradeSource, stockId, orderId, sell.id(), player.getUUID(), UUID.fromString(sell.ownerId()),
+                    fill, gross, buyQuantityBefore, sell.quantity(), true,
+                    player.getServer().overworld().getGameTime()));
             FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
             long now = player.getServer().overworld().getGameTime();
             journal.markStarted(tradeSource, "stock", "shares", fill, now);
@@ -264,6 +270,7 @@ public final class StockMarket {
                 break;
             }
             data.addNetVolumeOnce(stockId, fill, tradeSource);
+            journal.markStarted(tradeSource, "stock", "order-update", fill, now);
             spent += gross;
             remaining -= fill;
             reduceOrRemove(data, sell, fill);
@@ -272,8 +279,10 @@ public final class StockMarket {
                 if (currentBuy.quantity() <= fill) data.removeOrder(orderId);
                 else data.replaceOrder(currentBuy.withQuantity(currentBuy.quantity() - fill));
             }
+            journal.markCompleted(tradeSource, "stock", "order-update", fill, now);
             NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, null, null,
                     fill, "usd", gross, "stock", duty(gross), stockId));
+            StockTradeIntentSavedData.get(player.getServer()).remove(tradeSource);
         }
 
         long reserved = EconomyMath.multiply(remaining, pricePerUnit);
@@ -346,6 +355,12 @@ public final class StockMarket {
             }
             String tradeSource = "stock-trade:" + orderId + ":" + buy.id()
                     + ":" + fill + ":" + gross;
+            StockOrder initiatingSell = data.findOrder(orderId);
+            int sellQuantityBefore = initiatingSell == null ? remaining : initiatingSell.quantity();
+            StockTradeIntentSavedData.get(player.getServer()).add(new StockTradeIntentSavedData.Intent(
+                    tradeSource, stockId, buy.id(), orderId, UUID.fromString(buy.ownerId()), player.getUUID(),
+                    fill, gross, buy.quantity(), sellQuantityBefore, false,
+                    player.getServer().overworld().getGameTime()));
             FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
             long now = player.getServer().overworld().getGameTime();
             journal.markStarted(tradeSource, "stock", "shares", fill, now);
@@ -359,6 +374,7 @@ public final class StockMarket {
                 break;
             }
             data.addNetVolumeOnce(stockId, -fill, tradeSource);
+            journal.markStarted(tradeSource, "stock", "order-update", fill, now);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
             StockOrder currentSell = data.findOrder(orderId);
@@ -366,8 +382,10 @@ public final class StockMarket {
                 if (currentSell.quantity() <= fill) data.removeOrder(orderId);
                 else data.replaceOrder(currentSell.withQuantity(currentSell.quantity() - fill));
             }
+            journal.markCompleted(tradeSource, "stock", "order-update", fill, now);
             NeoForge.EVENT_BUS.post(new TradeCompletedEvent(null, player, null,
                     fill, "usd", gross, "stock", duty(gross), stockId));
+            StockTradeIntentSavedData.get(player.getServer()).remove(tradeSource);
         }
 
         return true;
@@ -404,6 +422,57 @@ public final class StockMarket {
             recovered++;
         }
         return recovered;
+    }
+
+    /** Replays interrupted stock fills after share and order intents are recovered. */
+    public static int recoverPendingTrades(MinecraftServer server) {
+        if (server == null) return 0;
+        int recovered = 0;
+        StockTradeIntentSavedData intents = StockTradeIntentSavedData.get(server);
+        for (StockTradeIntentSavedData.Intent intent : intents.intents()) {
+            if (completeTradeIntent(server, intent)) {
+                intents.remove(intent.id());
+                recovered++;
+            }
+        }
+        return recovered;
+    }
+
+    private static boolean completeTradeIntent(MinecraftServer server, StockTradeIntentSavedData.Intent intent) {
+        EconomySavedData data = EconomySavedData.get(server);
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+        long now = server.overworld().getGameTime();
+        if (!journal.isCompleted(intent.id(), "shares")) {
+            String source = intent.id() + ":shares";
+            if (!data.hasShareCredit(source) && !data.addSharesOnce(intent.stockId(), intent.buyer(), intent.fill(), source)) return false;
+            journal.markCompleted(intent.id(), "stock", "shares", intent.fill(), now);
+        }
+        if (!journal.isCompleted(intent.id(), "tax")) {
+            settleStampDuty(server, intent.seller(), intent.gross(), intent.id());
+        }
+        if (!journal.isCompleted(intent.id(), "seller-payout")
+                && !payTo(server, intent.seller(), Money.toMinor(intent.gross() - duty(intent.gross())), intent.id())) return false;
+        if (!journal.isCompleted(intent.id(), "volume")) {
+            if (!data.hasNetVolumeSource(intent.id())) {
+                data.addNetVolumeOnce(intent.stockId(), intent.buyerInitiated() ? intent.fill() : -intent.fill(), intent.id());
+            }
+            journal.markCompleted(intent.id(), "stock", "volume", intent.fill(), now);
+        }
+        if (!journal.isCompleted(intent.id(), "order-update")) {
+            journal.markStarted(intent.id(), "stock", "order-update", intent.fill(), now);
+            if (!reconcileOrder(data, intent.buyOrderId(), intent.buyQuantityBefore(), intent.fill())
+                    || !reconcileOrder(data, intent.sellOrderId(), intent.sellQuantityBefore(), intent.fill())) return false;
+            journal.markCompleted(intent.id(), "stock", "order-update", intent.fill(), now);
+        }
+        return true;
+    }
+
+    private static boolean reconcileOrder(EconomySavedData data, String orderId, int before, int fill) {
+        StockOrder order = data.findOrder(orderId);
+        if (order == null || order.quantity() == before - fill) return true;
+        if (order.quantity() != before || before < fill) return false;
+        reduceOrRemove(data, order, fill);
+        return true;
     }
 
     /** Sell orders for {@code stockId} with ask ≤ {@code limit}, best (lowest) ask first. */
