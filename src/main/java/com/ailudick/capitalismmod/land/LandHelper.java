@@ -128,8 +128,9 @@ public final class LandHelper {
         if (!EconomyHelper.tryPayWithReference(player, Config.defaultCurrency(), price, paymentReference)) return false;
         long seed = Math.abs(((long) chunkX * 341873128712L) ^ ((long) chunkZ * 132897987541L));
         String[] resources = {"coal", "iron", "copper", "wheat", "wood"};
+        int resourceIndex = Math.floorMod(seed, resources.length);
         LandClaim claim = new LandClaim(id, dimension, chunkX, chunkZ,
-                player.getUUID(), "2301", "", List.of(), resources[(int) (seed % resources.length)],
+                player.getUUID(), "2301", "", List.of(), resources[resourceIndex],
                 100 + seed % 901, 0L, null, 0L, 0L, 0L, 0L, 0L, 0L);
         LandSavedData.get(player.getServer()).put(claim);
         LandOwnershipSavedData.get(player.getServer()).record(claim.id(), player.getUUID(),
@@ -208,7 +209,7 @@ public final class LandHelper {
 
     public static boolean lease(ServerPlayer player, int chunkX, int chunkZ,
                                 UUID targetUuid, long days, long rent) {
-        if (days <= 0 || rent < 0 || targetUuid.equals(player.getUUID())) return false;
+        if (days <= 0 || rent < 0 || targetUuid == null || targetUuid.equals(player.getUUID())) return false;
         String id = player.level().dimension().location() + ":" + chunkX + ":" + chunkZ;
         LandClaim claim = LandSavedData.get(player.getServer()).get(id);
         if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || isTaxFrozen(player, claim)
