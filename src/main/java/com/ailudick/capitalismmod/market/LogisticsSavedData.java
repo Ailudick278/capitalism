@@ -68,6 +68,16 @@ public final class LogisticsSavedData extends SavedData {
                 && shipments.stream().anyMatch(shipment -> shipment.id().startsWith(prefix));
     }
 
+    /** Sums the shipment quantities belonging to a deterministic dispatch prefix. */
+    public int quantityForIdPrefix(String prefix) {
+        if (prefix == null || prefix.isBlank()) return 0;
+        long total = shipments.stream()
+                .filter(shipment -> shipment.id().startsWith(prefix))
+                .mapToLong(Shipment::quantity)
+                .sum();
+        return (int) Math.min(Integer.MAX_VALUE, total);
+    }
+
     public void add(Shipment shipment) {
         if (shipment == null || shipment.id() == null || shipment.id().isBlank()
                 || shipment.buyer() == null || shipment.itemId() == null

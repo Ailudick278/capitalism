@@ -337,17 +337,21 @@ public final class SupplyMarket {
             Company supplierCompany = CompanyHelper.findCompany(server, supplierUuid, order.companyName());
             InventoryOwner resolvedOwner = supplierCompany == null ? supplierOwner
                     : InventoryOwner.company(supplierCompany.companyId());
-            int stock = warehouse.count(resolvedOwner, itemId);
-            if (supplierCompany != null) {
-                stock = CompanyQualityHoldSavedData.get(server)
-                        .availableUnits(supplierCompany.companyId(), itemId, stock);
+            String dispatchPrefix = deliveryKey + ":shipment:";
+            int existingDispatch = LogisticsSavedData.get(server).quantityForIdPrefix(dispatchPrefix);
+            boolean dispatchAlreadyCreated = existingDispatch > 0;
+            int deliver;
+            if (dispatchAlreadyCreated) {
+                deliver = Math.min(order.remaining(), existingDispatch);
+            } else {
+                int stock = warehouse.count(resolvedOwner, itemId);
+                if (supplierCompany != null) {
+                    stock = CompanyQualityHoldSavedData.get(server)
+                            .availableUnits(supplierCompany.companyId(), itemId, stock);
+                }
+                deliver = Math.min(order.remaining(), stock);
             }
-            int deliver = Math.min(order.remaining(), stock);
-            if (deliver <= 0) {
-                continue;
-            }
-            boolean dispatchAlreadyCreated = TradeRegion.distance(order.originRegion(), order.destinationRegion()) > 0
-                    && LogisticsSavedData.get(server).hasIdPrefix(deliveryKey + ":shipment:");
+            if (deliver <= 0) continue;
             // Do not create a delivery from a stale stock snapshot. Every
             // downstream side effect is conditional on the actual debit.
             if (!dispatchAlreadyCreated && !warehouse.consume(resolvedOwner, item, deliver)) {
