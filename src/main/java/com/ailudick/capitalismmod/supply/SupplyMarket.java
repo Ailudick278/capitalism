@@ -390,6 +390,7 @@ public final class SupplyMarket {
         if (server == null || shipmentId == null || shipmentId.isBlank() || buyerUuid == null
                 || supplyOrderId == null || supplyOrderId.isBlank() || supplierUuid == null || quantity <= 0) return;
         SupplySettlementSavedData settlements = SupplySettlementSavedData.get(server);
+        FinancialSettlementJournalSavedData financialJournal = FinancialSettlementJournalSavedData.get(server);
         if (settlements.hasTransportCompensation(shipmentId)) return;
 
         SupplyMarketSavedData data = SupplyMarketSavedData.get(server);
@@ -400,6 +401,8 @@ public final class SupplyMarket {
             long refund = EconomyMath.multiply(unitPrice, quantity);
             long refundMinor = refund < 0L ? -1L : Money.toMinor(refund);
             if (refundMinor < 0L) return;
+            financialJournal.markStarted(shipmentId, "supply", "loss-refund", refundMinor,
+                    server.overworld().getGameTime());
             boolean refundedToCompany = false;
             if (buyerCompanyId != null && !buyerCompanyId.isBlank()) {
                 Company company = CompanySavedData.get(server).get(buyerCompanyId);
@@ -411,7 +414,13 @@ public final class SupplyMarket {
                 MarketMailboxSavedData.get(server).creditMoneyOnce(buyerUuid, Currencies.USD.id(), refundMinor,
                         "supply-loss-refund:" + shipmentId);
             }
+            financialJournal.markCompleted(shipmentId, "supply", "loss-refund", refundMinor,
+                    server.overworld().getGameTime());
+            financialJournal.markStarted(shipmentId, "supply", "loss-escrow-refund", refundMinor,
+                    server.overworld().getGameTime());
             if (!SupplyEscrowSavedData.get(server).refundOnce(supplyOrderId, "loss:" + shipmentId, refundMinor)) return;
+            financialJournal.markCompleted(shipmentId, "supply", "loss-escrow-refund", refundMinor,
+                    server.overworld().getGameTime());
             SupplyOrderAuditService.record(server, supplyOrderId, "LOST", buyerUuid, supplierUuid,
                     itemId, quantity, EconomyMath.multiply(unitPrice, quantity), shipmentId);
             settlements.recordTransportCompensation(shipmentId);
@@ -422,6 +431,8 @@ public final class SupplyMarket {
         long refund = EconomyMath.multiply(order.unitPrice() > 0L ? order.unitPrice() : unitPrice, lost);
         long refundMinor = refund < 0L ? -1L : Money.toMinor(refund);
         if (lost <= 0 || refundMinor < 0L) return;
+        financialJournal.markStarted(shipmentId, "supply", "loss-refund", refundMinor,
+                server.overworld().getGameTime());
 
         boolean refundedToCompany = false;
         if (order.buyerCompanyId() != null && !order.buyerCompanyId().isBlank()) {
@@ -434,13 +445,23 @@ public final class SupplyMarket {
             MarketMailboxSavedData.get(server).creditMoneyOnce(buyerUuid, Currencies.USD.id(), refundMinor,
                     "supply-loss-refund:" + shipmentId);
         }
+        financialJournal.markCompleted(shipmentId, "supply", "loss-refund", refundMinor,
+                server.overworld().getGameTime());
+        financialJournal.markStarted(shipmentId, "supply", "loss-escrow-refund", refundMinor,
+                server.overworld().getGameTime());
         if (!SupplyEscrowSavedData.get(server).refundOnce(order.id(), "loss:" + shipmentId, refundMinor)) return;
+        financialJournal.markCompleted(shipmentId, "supply", "loss-escrow-refund", refundMinor,
+                server.overworld().getGameTime());
 
         long creditToReverse = SupplyOrderTaxCreditCalculator.proportional(order.inputCreditMinor(), lost,
                 Math.max(1, order.originalQuantity()));
         if (creditToReverse > 0L) {
+            financialJournal.markStarted(shipmentId, "supply", "loss-tax-credit-reversal", creditToReverse,
+                    server.overworld().getGameTime());
             TaxTransactionService.reverseInputCredit(server, order.buyerUuid(), Currencies.USD.id(),
                     creditToReverse, "supply_order:" + order.id(), server.overworld().getGameTime());
+            financialJournal.markCompleted(shipmentId, "supply", "loss-tax-credit-reversal", creditToReverse,
+                    server.overworld().getGameTime());
         }
         int newRemaining = order.remaining() - lost;
         String event = newRemaining <= 0 ? "LOST" : "PARTIAL_LOSS";
