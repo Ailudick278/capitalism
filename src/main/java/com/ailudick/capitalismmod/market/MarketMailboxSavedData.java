@@ -84,6 +84,19 @@ public final class MarketMailboxSavedData extends SavedData {
         return left + right;
     }
 
+    /** Redeems only money, leaving any queued item delivery untouched. */
+    public void redeemMoneyOnly(ServerPlayer player) {
+        if (player == null) return;
+        Map<String, Long> owedMoney = money.remove(player.getUUID());
+        if (owedMoney == null) return;
+        for (Map.Entry<String, Long> entry : owedMoney.entrySet()) {
+            if (Currencies.exists(entry.getKey())) {
+                EconomyHelper.giveMoney(player, Currencies.byId(entry.getKey()), entry.getValue());
+            }
+        }
+        setDirty();
+    }
+
     /** Hands over and clears everything owed to this player. */
     public void redeem(ServerPlayer player) {
         UUID id = player.getUUID();

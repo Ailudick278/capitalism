@@ -411,12 +411,14 @@ public final class SupplyMarket {
             return;
         }
         ServerPlayer supplier = server.getPlayerList().getPlayer(supplierUuid);
-        if (supplier != null) {
-            EconomyHelper.giveMoney(supplier, Currencies.USD, Money.toMinor(amount));
-        } else {
-            MarketMailboxSavedData.get(server).creditMoneyOnce(supplierUuid, "usd", Money.toMinor(amount),
-                    "supply-supplier-payment:" + sourceId);
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        long amountMinor = Money.toMinor(amount);
+        if (amountMinor <= 0L) {
+            return;
         }
+        mailbox.creditMoneyOnce(supplierUuid, "usd", amountMinor,
+                "supply-supplier-payment:" + sourceId);
+        if (supplier != null) mailbox.redeemMoneyOnly(supplier);
         settlements.recordSupplierPayment(sourceId);
     }
 
