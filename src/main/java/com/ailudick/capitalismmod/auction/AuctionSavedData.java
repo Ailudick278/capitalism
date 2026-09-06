@@ -38,6 +38,10 @@ public final class AuctionSavedData extends SavedData {
     }
 
     public void addAuction(Auction auction) {
+        if (auction == null || auction.id() == null || auction.id().isBlank()
+                || findAuction(auction.id()) != null) {
+            return;
+        }
         auctions.add(auction);
         setDirty();
     }
@@ -78,7 +82,12 @@ public final class AuctionSavedData extends SavedData {
         AuctionSavedData data = new AuctionSavedData();
         if (tag.contains("data")) {
             State.CODEC.parse(NbtOps.INSTANCE, tag.get("data")).result()
-                    .ifPresent(state -> data.auctions.addAll(state.auctions()));
+                    .ifPresent(state -> state.auctions().forEach(auction -> {
+                        if (auction != null && auction.id() != null && !auction.id().isBlank()
+                                && data.findAuction(auction.id()) == null) {
+                            data.auctions.add(auction);
+                        }
+                    }));
         }
         return data;
     }
