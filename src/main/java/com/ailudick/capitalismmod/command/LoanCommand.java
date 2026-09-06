@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.loan.PeerLoan;
+import com.ailudick.capitalismmod.loan.PeerLoanHelper;
 import com.ailudick.capitalismmod.loan.PeerLoanPaymentAllocation;
 import com.ailudick.capitalismmod.loan.PeerLoanPaymentSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
@@ -46,12 +47,12 @@ public class LoanCommand {
 
         dispatcher.register(Commands.literal("repay")
                 .then(Commands.argument("loanId", StringArgumentType.word())
-                        .executes(ctx -> repay(ctx.getSource().getPlayerOrException(),
-                                StringArgumentType.getString(ctx, "loanId"), null))
+                        .executes(ctx -> PeerLoanHelper.repay(ctx.getSource().getPlayerOrException(),
+                                StringArgumentType.getString(ctx, "loanId"), null) ? 1 : 0)
                         .then(Commands.argument("amount", LongArgumentType.longArg(1))
-                                .executes(ctx -> repay(ctx.getSource().getPlayerOrException(),
+                                .executes(ctx -> PeerLoanHelper.repay(ctx.getSource().getPlayerOrException(),
                                         StringArgumentType.getString(ctx, "loanId"),
-                                        LongArgumentType.getLong(ctx, "amount"))))));
+                                        LongArgumentType.getLong(ctx, "amount")) ? 1 : 0))));
 
         dispatcher.register(Commands.literal("loans").executes(ctx -> list(ctx.getSource().getPlayerOrException())));
         dispatcher.register(Commands.literal("loanhistory")
