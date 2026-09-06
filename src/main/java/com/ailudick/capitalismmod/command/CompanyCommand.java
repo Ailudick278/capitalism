@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.AcquisitionSavedData;
@@ -1134,18 +1135,22 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Company not found."));
             return 0;
         }
+        var payments = CompanyLoanPaymentSavedData.get(player.getServer()).forLoan(loanId);
         CompanyLoan loan = CompanyLoanSavedData.get(player.getServer()).find(loanId);
-        if (loan == null || !loan.companyId().equals(company.companyId())) {
+        boolean belongsToCompany = loan != null && loan.companyId().equals(company.companyId());
+        if (!belongsToCompany) {
+            belongsToCompany = payments.stream().anyMatch(payment -> payment.companyId().equals(company.companyId()));
+        }
+        if (!belongsToCompany) {
             source.sendFailure(Component.literal("Loan not found for this company."));
             return 0;
         }
-        var payments = CompanyLoanPaymentSavedData.get(player.getServer()).forLoan(loanId);
         if (payments.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No payment records for loan " + loanId), false);
             return 1;
         }
         payments.forEach(payment -> source.sendSuccess(() -> Component.literal(
-                payment.timestamp() + " | paid USD " + payment.total()
+                PerpetualCalendar.formatMinecraftTicks(payment.timestamp()) + " | paid USD " + payment.total()
                         + " | interest USD " + payment.interest()
                         + " | principal USD " + payment.principal()
                         + " | remaining principal USD " + payment.remainingPrincipal()), false));
