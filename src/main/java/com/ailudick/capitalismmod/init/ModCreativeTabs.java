@@ -108,6 +108,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.CRUDE_OIL.get());
                         output.accept(ModItems.NAPHTHA.get());
                         output.accept(ModItems.FUEL_OIL.get());
+                        output.accept(ModItems.BASE_OIL.get());
                         output.accept(ModItems.PLASTIC_PELLETS.get());
                         output.accept(ModItems.POLYETHYLENE_PELLETS.get());
                         output.accept(ModItems.POLYPROPYLENE_PELLETS.get());

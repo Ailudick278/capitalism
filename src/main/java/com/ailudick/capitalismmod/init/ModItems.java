@@ -236,6 +236,8 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> LPG = ITEMS.register("lpg",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BASE_OIL = ITEMS.register("base_oil",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> LUBRICANT = ITEMS.register("lubricant",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> ASPHALT = ITEMS.register("asphalt",
