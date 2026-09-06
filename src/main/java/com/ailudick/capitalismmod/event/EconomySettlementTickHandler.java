@@ -26,6 +26,7 @@ import com.ailudick.capitalismmod.government.GovernmentPublicBudgetService;
 import com.ailudick.capitalismmod.risk.FinancialRiskService;
 import com.ailudick.capitalismmod.risk.FinancialCrisisService;
 import com.ailudick.capitalismmod.bank.BankLiquidityService;
+import com.ailudick.capitalismmod.bank.BankCapitalService;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
@@ -141,6 +142,7 @@ public final class EconomySettlementTickHandler {
         journal.markStarted(settlementDay, "credit-and-securities", server.overworld().getGameTime());
         BondMarket.settleMaturity(server, settlementDay);
         BondMarket.recoverIssuances(server);
+        BankCapitalService.settleDaily(server, settlementDay);
         FinancialRiskService.settleDaily(server, settlementDay);
         BankLiquidityService.settleDaily(server, settlementDay);
         // Build the current-day liquidity snapshot before evaluating crisis

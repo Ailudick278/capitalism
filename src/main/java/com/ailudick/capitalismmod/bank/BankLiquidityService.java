@@ -16,6 +16,7 @@ public final class BankLiquidityService {
         BankLiquiditySavedData data = BankLiquiditySavedData.get(server);
         BankLiquiditySnapshot latest = data.latest();
         if (latest != null && latest.day() >= day) return latest;
+        BankCapitalSavedData capitalData = BankCapitalService.settleDaily(server, day);
         BankExposureSavedData exposure = BankExposureSavedData.get(server);
         for (var player : server.getPlayerList().getPlayers()) exposure.sync(player);
         long deposits = 0L, loans = 0L;
@@ -25,7 +26,8 @@ public final class BankLiquidityService {
         }
         long withdrawn = data.withdrawalsForAssessment(day);
         boolean pressure = BankLiquidityEconomics.solvencyStress(deposits, loans)
-                || BankLiquidityEconomics.withdrawalRunStress(deposits, withdrawn);
+                || BankLiquidityEconomics.withdrawalRunStress(deposits, withdrawn)
+                || BankCapitalEconomics.capitalStress(capitalData.capitalMinor(), loans);
         boolean limited = FinancialCrisisSavedData.get(server).active() || pressure;
         BankLiquiditySnapshot snapshot = new BankLiquiditySnapshot(day, deposits, loans, withdrawn, limited);
         data.record(snapshot); return snapshot;
@@ -50,6 +52,11 @@ public final class BankLiquidityService {
         var risk = FinancialRiskSavedData.get(server).latest();
         int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
         long capacity = BankLiquidityEconomics.capitalAdjustedLoanCapacity(snapshot.depositsMinor(), overdueShare);
+        long capital = BankCapitalService.settleDaily(server,
+                server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY).capitalMinor();
+        if (capital <= 0L) return false;
+        long capitalCapacity = BankCapitalEconomics.capitalBackedLoanCapacity(capital);
+        capacity = Math.min(capacity, capitalCapacity);
         return baseAmount > 0L && snapshot.loanDebtMinor() <= capacity
                 && baseAmount <= capacity - snapshot.loanDebtMinor();
     }
