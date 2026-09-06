@@ -187,7 +187,8 @@ public final class StockMarket {
                 long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
                 long minor = total > 0L ? Money.toMinor(total) : -1L;
                 if (minor > 0L) {
-                    MarketMailboxSavedData.get(server).creditMoney(owner, Currencies.USD.id(), minor);
+                    MarketMailboxSavedData.get(server).creditMoneyOnce(owner, Currencies.USD.id(), minor,
+                            "stock-order-expiry-refund:" + order.id());
                 }
             }
             settlements.record(order.id());
