@@ -105,10 +105,16 @@ public final class PopulationService {
                         TradeRegion.distance(household.region(), offer.region()));
                 long migrationFriction = local ? 0L : LogisticsInfrastructureSavedData.get(server)
                         .migrationFriction(household.dailyNeedMinor(), household.size(), offer.region());
+                int originServices = LogisticsInfrastructureSavedData.get(server)
+                        .publicServiceScore(household.region(), population.population(household.region()));
+                int destinationServices = LogisticsInfrastructureSavedData.get(server)
+                        .publicServiceScore(offer.region(), population.population(offer.region()));
+                boolean serviceImprovement = destinationServices >= originServices + 10;
                 long relocationCost = local ? 0L : HousingEconomics.migrationCost(household.dailyNeedMinor(),
                         household.size(), destinationRent / Math.max(1, household.size()), migrationFriction);
                 boolean willingToMove = !local && household.satisfaction() <= 40
-                        && offer.dailyWageMinor() >= add(add(livingCost, destinationRent), add(migrationFriction, commuteCost));
+                        && (serviceImprovement || offer.dailyWageMinor() >= add(add(livingCost, destinationRent),
+                        add(migrationFriction, commuteCost)));
                 if (!local && !willingToMove) continue;
                 if (!local && household.cashMinor() < relocationCost) continue;
                 LaborMarketService.ensureNpcProfile(server, household.id(), household.workingAge());
