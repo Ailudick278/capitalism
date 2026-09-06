@@ -267,6 +267,14 @@ public class Config {
             .comment("Minimum batch quality score required before company goods enter supply offers or automatic fulfillment.")
             .defineInRange("companyQualityReleaseThreshold", 80, 0, 100);
 
+    public static final ModConfigSpec.DoubleValue COMPANY_QUALITY_REWORK_COST_RATE = BUILDER
+            .comment("Rework cost as a fraction of the original production conversion cost; 0.20 = 20%.")
+            .defineInRange("companyQualityReworkCostRate", 0.20, 0.0, 1.0);
+
+    public static final ModConfigSpec.IntValue COMPANY_QUALITY_REWORK_SCORE_GAIN = BUILDER
+            .comment("Quality score points gained by one completed rework operation.")
+            .defineInRange("companyQualityReworkScoreGain", 10, 1, 60);
+
     // Futures margin rate (fraction of notional value required as margin). 0.10 = 10x leverage.
     public static final ModConfigSpec.DoubleValue FUTURES_MARGIN_RATE = BUILDER
             .comment("Futures margin rate (fraction of notional value required as margin). 0.10 = 10x leverage.")

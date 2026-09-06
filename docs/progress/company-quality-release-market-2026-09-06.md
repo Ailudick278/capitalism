@@ -10,6 +10,7 @@
 - `/company quality` 现在同时显示仓库总量、质检冻结量和可用量，便于核对库存与市场可交付数量。
 - 新增 `/company qualityrework <企业名> <批次ID>`：对处于 `rework` 状态的批次收取相当于原转换成本 20% 的返工费用，重新进入待检状态并提高 10 点检验分数；返工后仍需再次审核放行。
 - 返工后的分数改善会同步写入对应商品的加权质量台账，避免批次记录、质量报告和供货资格出现不一致。
+- 返工成本比例和质量提升值改为服务器配置项 `companyQualityReworkCostRate`、`companyQualityReworkScoreGain`，默认分别为 20% 和 10 分。
 
 ## 现实逻辑依据
 

@@ -311,10 +311,12 @@ public final class CompanyHelper {
         CompanyQualityControlSavedData.Inspection inspection = CompanyQualityControlSavedData.get(server)
                 .find(company.companyId(), batchId);
         if (batch == null || inspection == null || !"rework".equalsIgnoreCase(inspection.status())) return -1;
-        long reworkCost = Math.max(1L, batch.conversionCost() / 5L);
+        long reworkCost = Math.max(1L, (long) Math.ceil(batch.conversionCost()
+                * Config.COMPANY_QUALITY_REWORK_COST_RATE.get()));
         if (!debitTreasury(server, company.companyId(), Currencies.USD.id(), reworkCost,
                 "quality_rework", "Quality rework for batch " + batchId)) return -1;
-        int improvedScore = Math.min(100, batch.qualityScore() + 10);
+        int improvedScore = Math.min(100, batch.qualityScore()
+                + Config.COMPANY_QUALITY_REWORK_SCORE_GAIN.get());
         if (!CompanyQualityControlSavedData.get(server).reinspect(company.companyId(), batchId,
                 improvedScore, server.overworld().getGameTime())) return -1;
         int scoreDelta = Math.max(0, improvedScore - batch.qualityScore());
