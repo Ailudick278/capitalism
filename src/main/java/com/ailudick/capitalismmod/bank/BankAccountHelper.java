@@ -244,14 +244,20 @@ public final class BankAccountHelper {
             }
             String depositSource = "bank-deposit:" + player.getUUID() + ":" + accountId + ":"
                     + currency.id() + ":" + accountBalance + ":" + amount;
-            // The account update is persisted before the caller can retry after a
-            // network/UI timeout. Do not consume the same cash deposit twice.
+            BankCashDepositIntentSavedData intents = BankCashDepositIntentSavedData.get(player.getServer());
             if (account.hasTransactionReference(depositSource)) {
+                intents.remove(depositSource);
                 return true;
             }
+            intents.add(new BankCashDepositIntentSavedData.Intent(depositSource, player.getUUID(), accountId,
+                    currency.id(), amount, EconomyHelper.countItems(player, currency), false));
+            // The account update is persisted before the caller can retry after a
+            // network/UI timeout. Do not consume the same cash deposit twice.
             if (!EconomyHelper.consumeItemsWithChange(player, currency, amount)) {
+                intents.remove(depositSource);
                 return false;
             }
+            intents.markCashRemoved(depositSource);
             account = account.withBalance(currency.id(), newBalance)
                     .withTransaction(BankTransaction.now(player, "deposit", currency.id(), amount,
                             depositSource, "wallet"));
@@ -277,6 +283,47 @@ public final class BankAccountHelper {
 
         updateAccount(player, account);
         return true;
+    }
+
+    /** Recovers physical-cash deposits interrupted between inventory and account persistence. */
+    public static int recoverCashDeposits(ServerPlayer player) {
+        if (player == null || player.getServer() == null) return 0;
+        BankCashDepositIntentSavedData intents = BankCashDepositIntentSavedData.get(player.getServer());
+        int recovered = 0;
+        for (BankCashDepositIntentSavedData.Intent intent : intents.intents()) {
+            if (!player.getUUID().equals(intent.playerUuid())) continue;
+            BankAccount account = getAccount(player, intent.accountId());
+            Currency currency = Currencies.exists(intent.currencyId()) ? Currencies.byId(intent.currencyId()) : null;
+            if (account == null || currency == null) continue;
+            if (account.hasTransactionReference(intent.source())) {
+                intents.remove(intent.source());
+                recovered++;
+                continue;
+            }
+            long expectedAfter = intent.physicalBefore() >= intent.amount()
+                    ? intent.physicalBefore() - intent.amount() : -1L;
+            long current = EconomyHelper.countItems(player, currency);
+            if (!intent.cashRemoved()) {
+                if (current == intent.physicalBefore()) {
+                    if (!EconomyHelper.consumeItemsWithChange(player, currency, intent.amount())) continue;
+                    intents.markCashRemoved(intent.source());
+                } else if (current != expectedAfter) {
+                    // Another inventory change makes the crash outcome ambiguous.
+                    continue;
+                }
+            } else if (current != expectedAfter) {
+                continue;
+            }
+            long newBalance = safeAdd(account.getBalance(currency.id()), intent.amount());
+            if (newBalance == Long.MAX_VALUE && account.getBalance(currency.id()) != Long.MAX_VALUE) continue;
+            BankAccount updated = account.withBalance(currency.id(), newBalance)
+                    .withTransaction(BankTransaction.now(player, "deposit", currency.id(), intent.amount(),
+                            intent.source(), "wallet"));
+            updateAccount(player, updated);
+            intents.remove(intent.source());
+            recovered++;
+        }
+        return recovered;
     }
 
     /** Exchanges funds held by one selected bank account between two currencies. */
