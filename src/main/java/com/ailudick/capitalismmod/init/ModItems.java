@@ -322,6 +322,12 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> CHARGING_PORT = ITEMS.register("charging_port",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> KEYBOARD_MODULE = ITEMS.register("keyboard_module",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> STORAGE_MODULE = ITEMS.register("storage_module",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> WIRELESS_MODULE = ITEMS.register("wireless_module",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> BATTERY_CELL = ITEMS.register("battery_cell",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> LITHIUM_MINERAL = ITEMS.register("lithium_mineral",

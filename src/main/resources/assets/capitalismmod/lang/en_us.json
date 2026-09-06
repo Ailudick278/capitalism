@@ -412,4 +412,7 @@
   ,"item.capitalismmod.passive_components": "Passive Components"
   ,"item.capitalismmod.power_management_ic": "Power Management IC"
   ,"item.capitalismmod.display_driver": "Display Driver IC"
+  ,"item.capitalismmod.keyboard_module": "Keyboard Module"
+  ,"item.capitalismmod.storage_module": "Storage Module"
+  ,"item.capitalismmod.wireless_module": "Wireless Communication Module"
 }
