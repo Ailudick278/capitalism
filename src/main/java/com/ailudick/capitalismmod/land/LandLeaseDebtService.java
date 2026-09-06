@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.land;
 
 import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.server.MinecraftServer;
@@ -39,17 +40,19 @@ public final class LandLeaseDebtService {
         }
     }
 
-    private static void complete(MinecraftServer server, LandLeaseSettlementSavedData.Settlement settlement) {
+    private static boolean complete(MinecraftServer server, LandLeaseSettlementSavedData.Settlement settlement) {
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
         if (settlement.ownerAmount() > 0L) {
             String source = settlement.id() + ":owner";
-            mailbox.creditMoneyOnce(settlement.ownerUuid(), Config.defaultCurrencyId(), settlement.ownerAmount(), source);
+            if (!mailbox.hasCreditSource(source)
+                    && !mailbox.creditMoneyOnce(settlement.ownerUuid(), Config.defaultCurrencyId(), settlement.ownerAmount(), source)) return false;
             ServerPlayer owner = server.getPlayerList().getPlayer(settlement.ownerUuid());
             if (owner != null) mailbox.redeemMoneyOnly(owner);
         }
         if (settlement.tenantRefund() > 0L) {
             String source = settlement.id() + ":tenant";
-            mailbox.creditMoneyOnce(settlement.tenantUuid(), Config.defaultCurrencyId(), settlement.tenantRefund(), source);
+            if (!mailbox.hasCreditSource(source)
+                    && !mailbox.creditMoneyOnce(settlement.tenantUuid(), Config.defaultCurrencyId(), settlement.tenantRefund(), source)) return false;
             ServerPlayer tenant = server.getPlayerList().getPlayer(settlement.tenantUuid());
             if (tenant != null) mailbox.redeemMoneyOnly(tenant);
         }
@@ -59,6 +62,7 @@ public final class LandLeaseDebtService {
                     settlement.debtAmount(), settlement.createdAt()));
         }
         LandLeaseSettlementSavedData.get(server).complete(settlement.id());
+        return true;
     }
 
     private static String settlementId(LandClaim claim) {
@@ -70,14 +74,18 @@ public final class LandLeaseDebtService {
         MinecraftServer server = tenant.getServer();
         LandLeaseDebtSavedData data = LandLeaseDebtSavedData.get(server);
         for (LandLeaseDebtSavedData.Debt debt : data.forTenant(tenant.getUUID())) {
-            if (!EconomyHelper.tryPay(tenant, Config.defaultCurrency(), debt.amount())) {
+            String paymentSource = "land-rent-debt-payment:" + debt.id();
+            if (!EconomyLogSavedData.get(server).hasReference(tenant.getUUID(), paymentSource)
+                    && !EconomyHelper.tryPayWithReference(tenant, Config.defaultCurrency(), debt.amount(), paymentSource)) {
                 tenant.displayClientMessage(net.minecraft.network.chat.Component.literal(
                         "已结束租约的待缴租金：" + debt.amount()), true);
                 continue;
             }
             MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
-            mailbox.creditMoneyOnce(debt.ownerUuid(), Config.defaultCurrencyId(), debt.amount(),
-                    "land-rent-debt-payment:" + debt.id());
+            if (!mailbox.hasCreditSource(paymentSource)
+                    && !mailbox.creditMoneyOnce(debt.ownerUuid(), Config.defaultCurrencyId(), debt.amount(), paymentSource)) {
+                continue;
+            }
             ServerPlayer owner = server.getPlayerList().getPlayer(debt.ownerUuid());
             if (owner != null) mailbox.redeemMoneyOnly(owner);
             data.remove(debt.id());
