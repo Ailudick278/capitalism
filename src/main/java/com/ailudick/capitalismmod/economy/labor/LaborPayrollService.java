@@ -52,6 +52,8 @@ public final class LaborPayrollService {
                     mailbox.creditMoneyOnce(workerId, Currencies.USD.id(), paid, source);
                     ServerPlayer worker = server.getPlayerList().getPlayer(workerId);
                     if (worker != null) mailbox.redeemMoneyOnly(worker);
+                    PopulationSavedData.get(server).addCashOnce(workerId.toString(),
+                            ExchangeRates.convert(paid, Currencies.USD, Config.defaultCurrency()), source + ":household");
                 } catch (IllegalArgumentException npcWorker) {
                     PopulationSavedData.get(server).addCashOnce(employment.workerId(),
                             ExchangeRates.convert(paid, Currencies.USD, Config.defaultCurrency()), source);
