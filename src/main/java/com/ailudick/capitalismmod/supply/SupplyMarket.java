@@ -24,6 +24,7 @@ import com.ailudick.capitalismmod.market.TransportMode;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxType;
@@ -124,6 +125,10 @@ public final class SupplyMarket {
         String supplyOrderId = UUID.randomUUID().toString();
         String buyerCompanyId = buyerCompany == null ? "" : buyerCompany.companyId();
         String orderSource = "supply_order:" + supplyOrderId;
+        long settlementTime = buyer.getServer().overworld().getGameTime();
+        FinancialSettlementJournalSavedData financialJournal = FinancialSettlementJournalSavedData.get(buyer.getServer());
+        long totalMinor = Money.toMinorSaturated(total);
+        financialJournal.markStarted(supplyOrderId, "supply", "buyer-payment", totalMinor, settlementTime);
         SupplyOrderIntentSavedData intents = SupplyOrderIntentSavedData.get(buyer.getServer());
         intents.add(new SupplyOrderIntentSavedData.Intent(supplyOrderId, buyer.getUUID(), offer.ownerUuid(),
                 offer.companyName(), offer.itemId(), quantity, offer.region(),
@@ -141,6 +146,7 @@ public final class SupplyMarket {
             return false;
         }
         intents.markPaid(supplyOrderId);
+        financialJournal.markCompleted(supplyOrderId, "supply", "buyer-payment", totalMinor, settlementTime);
         // Persist the paid order before any inventory, logistics, or tax side
         // effect. If the server stops during fulfillment, the backorder
         // reconciler can continue from this complete snapshot.
@@ -149,9 +155,13 @@ public final class SupplyMarket {
                 TradeRegion.of(buyer.blockPosition()), offer.price(),
                 buyer.getServer().overworld().getGameTime(), buyerCompanyId, offer.qualityScore())
                 .withOriginalQuantity(quantity);
+        financialJournal.markStarted(supplyOrderId, "supply", "order-record", quantity, settlementTime);
         data.addOrder(paidOrder);
+        financialJournal.markCompleted(supplyOrderId, "supply", "order-record", quantity, settlementTime);
         intents.remove(supplyOrderId);
-        SupplyEscrowSavedData.get(buyer.getServer()).createOnce(supplyOrderId, Money.toMinorSaturated(total));
+        financialJournal.markStarted(supplyOrderId, "supply", "buyer-escrow", totalMinor, settlementTime);
+        SupplyEscrowSavedData.get(buyer.getServer()).createOnce(supplyOrderId, totalMinor);
+        financialJournal.markCompleted(supplyOrderId, "supply", "buyer-escrow", totalMinor, settlementTime);
         SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "CREATED", buyer.getUUID(),
                 offer.ownerUuid(), offer.itemId(), quantity, total);
         if (buyerCompany != null) {
@@ -291,11 +301,18 @@ public final class SupplyMarket {
                 if (!paid) continue;
                 intents.markPaid(intent.orderId());
             }
+            FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+            long recoveryTime = server.overworld().getGameTime();
+            journal.markCompleted(intent.orderId(), "supply", "buyer-payment", totalMinor, recoveryTime);
+            journal.markStarted(intent.orderId(), "supply", "order-record", intent.quantity(), recoveryTime);
             orders.addOrder(new PurchaseOrder(intent.orderId(), intent.buyerUuid(), intent.supplierUuid(),
                     intent.companyName(), intent.itemId(), intent.quantity(), intent.originRegion(),
                     intent.destinationRegion(), intent.unitPrice(), intent.createdAt(), intent.buyerCompanyId(),
                     intent.qualityScore()).withOriginalQuantity(intent.quantity()));
+            journal.markCompleted(intent.orderId(), "supply", "order-record", intent.quantity(), recoveryTime);
+            journal.markStarted(intent.orderId(), "supply", "buyer-escrow", totalMinor, recoveryTime);
             SupplyEscrowSavedData.get(server).createOnce(intent.orderId(), totalMinor);
+            journal.markCompleted(intent.orderId(), "supply", "buyer-escrow", totalMinor, recoveryTime);
             intents.remove(intent.orderId());
             recovered++;
             fulfill(server, InventoryOwner.player(intent.supplierUuid()), intent.supplierUuid(), intent.itemId());
