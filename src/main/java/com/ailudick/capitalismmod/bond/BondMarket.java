@@ -208,6 +208,17 @@ public final class BondMarket {
         return true;
     }
 
+    /** Buys back at most one outstanding holding for the automatic policy pass. */
+    public static boolean buyBackFirstAvailable(MinecraftServer server) {
+        BondSettlementSavedData settlements = BondSettlementSavedData.get(server);
+        BondHolding candidate = BondSavedData.get(server).holdings().stream()
+                .filter(holding -> holding.daysToMaturity() > 0 && !settlements.has(holding.id()))
+                .min(java.util.Comparator.comparingInt(BondHolding::daysToMaturity)
+                        .thenComparing(BondHolding::id))
+                .orElse(null);
+        return candidate != null && buyBackBond(server, candidate.id());
+    }
+
     /** Ticks bond maturities; pays out full face value plus coupon at maturity. */
     public static void settleMaturity(MinecraftServer server) {
         settleMaturity(server, server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY);

@@ -41,6 +41,7 @@
 /economicevent laborShock <eventId> <region> <demandBps> <days>
 /economicevent list
 /government openMarket buyBond <holdingId>
+/government policy openMarket <true|false>
 ```
 
 完整命令以游戏内 `/capitalism help` 为准。

@@ -23,6 +23,8 @@ public final class GovernmentPolicySavedData extends SavedData {
     private boolean automaticInflationPolicy;
     private int inflationTargetBps = 167;
     private long lastAutomaticInflationDay = -1L;
+    private boolean automaticOpenMarketPolicy;
+    private long lastAutomaticOpenMarketDay = -1L;
     private final List<Transaction> transactions = new ArrayList<>();
     private final List<TaxRevenue> taxRevenues = new ArrayList<>();
     private final List<RentRevenue> rentRevenues = new ArrayList<>();
@@ -49,6 +51,8 @@ public final class GovernmentPolicySavedData extends SavedData {
     public boolean automaticInflationPolicy() { return automaticInflationPolicy; }
     public int inflationTargetBps() { return inflationTargetBps; }
     public long lastAutomaticInflationDay() { return lastAutomaticInflationDay; }
+    public boolean automaticOpenMarketPolicy() { return automaticOpenMarketPolicy; }
+    public long lastAutomaticOpenMarketDay() { return lastAutomaticOpenMarketDay; }
     public List<Transaction> transactions() { return List.copyOf(transactions); }
     public List<TaxRevenue> taxRevenues() { return List.copyOf(taxRevenues); }
     public List<RentRevenue> rentRevenues() { return List.copyOf(rentRevenues); }
@@ -75,6 +79,21 @@ public final class GovernmentPolicySavedData extends SavedData {
     public boolean setInflationTargetBps(int target) {
         if (target < 0 || target > 2000) return false;
         inflationTargetBps = target; setDirty(); return true;
+    }
+
+    public boolean setAutomaticOpenMarketPolicy(boolean enabled) {
+        automaticOpenMarketPolicy = enabled; setDirty(); return true;
+    }
+
+    public boolean automaticOpenMarketDue(long day) {
+        return day >= 0L && day > lastAutomaticOpenMarketDay;
+    }
+
+    public void markAutomaticOpenMarketDay(long day) {
+        if (day > lastAutomaticOpenMarketDay) {
+            lastAutomaticOpenMarketDay = day;
+            setDirty();
+        }
     }
 
     public boolean adjustPolicyRate(int delta) {
@@ -161,6 +180,8 @@ public final class GovernmentPolicySavedData extends SavedData {
         tag.putBoolean("automaticInflationPolicy", automaticInflationPolicy);
         tag.putInt("inflationTargetBps", inflationTargetBps);
         tag.putLong("lastAutomaticInflationDay", lastAutomaticInflationDay);
+        tag.putBoolean("automaticOpenMarketPolicy", automaticOpenMarketPolicy);
+        tag.putLong("lastAutomaticOpenMarketDay", lastAutomaticOpenMarketDay);
         ListTag list = new ListTag();
         for (Transaction t : transactions) {
             CompoundTag e = new CompoundTag(); e.putString("id", t.id()); e.putLong("day", t.day());
@@ -209,6 +230,9 @@ public final class GovernmentPolicySavedData extends SavedData {
         }
         data.lastAutomaticInflationDay = tag.contains("lastAutomaticInflationDay")
                 ? tag.getLong("lastAutomaticInflationDay") : -1L;
+        data.automaticOpenMarketPolicy = tag.getBoolean("automaticOpenMarketPolicy");
+        data.lastAutomaticOpenMarketDay = tag.contains("lastAutomaticOpenMarketDay")
+                ? tag.getLong("lastAutomaticOpenMarketDay") : -1L;
         ListTag deposits = tag.getList("depositReceipts", Tag.TAG_COMPOUND);
         for (int i = 0; i < deposits.size(); i++) {
             String source = deposits.getCompound(i).getString("source");

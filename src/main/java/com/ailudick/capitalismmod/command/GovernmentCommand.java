@@ -32,7 +32,10 @@ public final class GovernmentCommand {
         var inflationTarget = Commands.argument("basisPoints", IntegerArgumentType.integer(0, 2000))
                 .executes(c -> inflationTarget(c.getSource(), IntegerArgumentType.getInteger(c, "basisPoints")));
         var inflation = Commands.literal("inflation").then(autoInflation).then(Commands.literal("target").then(inflationTarget));
-        root.then(Commands.literal("policy").requires(s -> s.hasPermission(2)).then(benefit).then(rate).then(regional).then(inflation));
+        var autoOpenMarket = Commands.argument("enabled", BoolArgumentType.bool())
+                .executes(c -> autoOpenMarket(c.getSource(), BoolArgumentType.getBool(c, "enabled")));
+        root.then(Commands.literal("policy").requires(s -> s.hasPermission(2)).then(benefit).then(rate).then(regional)
+                .then(inflation).then(Commands.literal("openMarket").then(autoOpenMarket)));
         var depositAmount = Commands.argument("amountMinor", IntegerArgumentType.integer(1, 2000000000))
                 .executes(c -> deposit(c.getSource(), IntegerArgumentType.getInteger(c, "amountMinor")));
         var deposit = Commands.literal("deposit").then(depositAmount);
@@ -55,6 +58,7 @@ public final class GovernmentCommand {
                 + " regionalSupportRate=" + data.regionalSupportRatePercent() + "%"
                 + " policyRateBps=" + data.policyRateBasisPoints()
                 + " autoInflation=" + data.automaticInflationPolicy()
+                + " autoOpenMarket=" + data.automaticOpenMarketPolicy()
                 + " inflationTargetBps=" + data.inflationTargetBps()
                 + " transfers=" + data.transactions().size()
                 + " taxRevenues=" + data.taxRevenues().size()), false);
@@ -86,6 +90,13 @@ public final class GovernmentCommand {
         GovernmentPolicySavedData data = GovernmentPolicySavedData.get(source.getServer());
         if (!data.setInflationTargetBps(target)) return 0;
         source.sendSuccess(() -> Component.literal("inflation target index set to " + target), true);
+        return 1;
+    }
+
+    private static int autoOpenMarket(CommandSourceStack source, boolean enabled) {
+        GovernmentPolicySavedData data = GovernmentPolicySavedData.get(source.getServer());
+        data.setAutomaticOpenMarketPolicy(enabled);
+        source.sendSuccess(() -> Component.literal("automatic open-market policy set to " + enabled), true);
         return 1;
     }
 

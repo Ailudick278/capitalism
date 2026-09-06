@@ -51,6 +51,14 @@ public final class InflationEconomics {
         return currentIndexBps > targetIndexBps ? 25 : currentIndexBps < targetIndexBps ? -25 : 0;
     }
 
+    /** Signals a bounded open-market purchase when observed inflation is below target. */
+    public static boolean openMarketPurchaseDue(int currentIndexBps, int previousIndexBps,
+                                                int targetInflationBps) {
+        if (currentIndexBps <= 0 || previousIndexBps <= 0 || targetInflationBps < 0) return false;
+        long observed = ((long) currentIndexBps - previousIndexBps) * 10000L / previousIndexBps;
+        return observed < targetInflationBps;
+    }
+
     public static boolean automaticAdjustmentDue(long day, long lastAdjustmentDay) {
         return day >= 0L && day > lastAdjustmentDay;
     }

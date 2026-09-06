@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
+import com.ailudick.capitalismmod.bond.BondMarket;
 import net.minecraft.server.MinecraftServer;
 
 /** Applies one idempotent fiscal-transfer pass per simulated day. */
@@ -13,6 +14,7 @@ public final class GovernmentPolicyService {
     public static int settleDaily(MinecraftServer server, long day) {
         GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
         applyAutomaticInflationPolicy(server, policy, day);
+        applyAutomaticOpenMarketPolicy(server, policy, day);
         long benefit = policy.dailyBenefitMinor();
         PopulationSavedData population = PopulationSavedData.get(server);
         stimulateHousing(server, population, policy, day);
@@ -47,6 +49,18 @@ public final class GovernmentPolicyService {
         int adjustment = InflationEconomics.policyRateAdjustment(snapshot.indexBps(), previous.indexBps(),
                 policy.inflationTargetBps());
         policy.adjustPolicyRateOnce(day, adjustment);
+    }
+
+    private static void applyAutomaticOpenMarketPolicy(MinecraftServer server,
+                                                        GovernmentPolicySavedData policy, long day) {
+        if (!policy.automaticOpenMarketPolicy() || !policy.automaticOpenMarketDue(day)) return;
+        InflationSavedData inflation = InflationSavedData.get(server);
+        InflationSavedData.Snapshot snapshot = inflation.atOrBefore(day - 1L);
+        InflationSavedData.Snapshot previous = inflation.atOrBefore(day - 31L);
+        if (snapshot == null || previous == null
+                || !InflationEconomics.openMarketPurchaseDue(snapshot.indexBps(), previous.indexBps(),
+                policy.inflationTargetBps())) return;
+        if (BondMarket.buyBackFirstAvailable(server)) policy.markAutomaticOpenMarketDay(day);
     }
 
     private static void stimulateHousing(MinecraftServer server, PopulationSavedData population,

@@ -26,5 +26,7 @@ class InflationEconomicsTest {
         assertEquals(0, InflationEconomics.policyRateAdjustment(10167, 10000, 167));
         assertEquals(true, InflationEconomics.automaticAdjustmentDue(10, 9));
         assertEquals(false, InflationEconomics.automaticAdjustmentDue(10, 10));
+        assertEquals(true, InflationEconomics.openMarketPurchaseDue(10000, 10000, 167));
+        assertEquals(false, InflationEconomics.openMarketPurchaseDue(10167, 10000, 167));
     }
 }
