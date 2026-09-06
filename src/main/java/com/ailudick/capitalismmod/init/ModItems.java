@@ -364,6 +364,10 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> WIRELESS_ROUTER = ITEMS.register("wireless_router",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> POWER_BANK = ITEMS.register("power_bank",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SMART_SPEAKER = ITEMS.register("smart_speaker",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> REFURBISHED_SMARTPHONE = ITEMS.register("refurbished_smartphone",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> REFURBISHED_TELEVISION = ITEMS.register("refurbished_television",

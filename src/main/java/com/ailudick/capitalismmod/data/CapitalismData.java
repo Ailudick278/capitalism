@@ -451,6 +451,8 @@ public final class CapitalismData {
                 ,new CommodityJson("capitalismmod:television", 820)
                 ,new CommodityJson("capitalismmod:laptop", 1150)
                 ,new CommodityJson("capitalismmod:wireless_router", 420)
+                ,new CommodityJson("capitalismmod:power_bank", 360)
+                ,new CommodityJson("capitalismmod:smart_speaker", 480)
                 ,new CommodityJson("capitalismmod:refurbished_smartphone", 390)
                 ,new CommodityJson("capitalismmod:refurbished_television", 490)
                 ,new CommodityJson("capitalismmod:refurbished_laptop", 690)
@@ -632,6 +634,8 @@ public final class CapitalismData {
                         new RecipeJson("television", Map.of("capitalismmod:display_panel", 1, "capitalismmod:packaged_chip", 1, "capitalismmod:circuit_board", 1, "capitalismmod:speaker_module", 1, "capitalismmod:abs_resin", 1, "capitalismmod:display_driver", 1), Map.of("capitalismmod:television", 1), 980, "electronics_assembly", 5, 8, 16),
                         new RecipeJson("laptop", Map.of("capitalismmod:display_panel", 1, "capitalismmod:packaged_chip", 2, "capitalismmod:circuit_board", 1, "capitalismmod:battery", 1, "capitalismmod:abs_resin", 1, "capitalismmod:power_management_ic", 1, "capitalismmod:display_driver", 1, "capitalismmod:keyboard_module", 1, "capitalismmod:storage_module", 1), Map.of("capitalismmod:laptop", 1), 1560, "electronics_assembly", 6, 10, 20),
                         new RecipeJson("wireless_router", Map.of("capitalismmod:circuit_board", 1, "capitalismmod:packaged_chip", 1, "capitalismmod:power_adapter", 1, "capitalismmod:abs_resin", 1, "capitalismmod:wireless_module", 1), Map.of("capitalismmod:wireless_router", 1), 420, "electronics_assembly", 4, 7, 14),
+                        new RecipeJson("power_bank", Map.of("capitalismmod:battery_pack", 1, "capitalismmod:charging_port", 1, "capitalismmod:power_management_ic", 1, "capitalismmod:abs_resin", 1), Map.of("capitalismmod:power_bank", 1), 360, "electronics_assembly", 4, 7, 14),
+                        new RecipeJson("smart_speaker", Map.of("capitalismmod:wireless_module", 1, "capitalismmod:speaker_module", 1, "capitalismmod:microphone_module", 1, "capitalismmod:packaged_chip", 1, "capitalismmod:abs_resin", 1), Map.of("capitalismmod:smart_speaker", 1), 480, "electronics_assembly", 4, 7, 14),
                         new RecipeJson("smartphone_recycling", Map.of("capitalismmod:smartphone", 1), Map.of("capitalismmod:copper_wire", 2, "capitalismmod:plastic_pellets", 1), 190, "electronics_recycler", 3, 6, 12),
                         new RecipeJson("television_recycling", Map.of("capitalismmod:television", 1), Map.of("capitalismmod:copper_wire", 3, "capitalismmod:plastic_pellets", 2), 260, "electronics_recycler", 4, 7, 14),
                         new RecipeJson("laptop_recycling", Map.of("capitalismmod:laptop", 1), Map.of("capitalismmod:copper_wire", 3, "capitalismmod:plastic_pellets", 2), 300, "electronics_recycler", 4, 8, 15),
