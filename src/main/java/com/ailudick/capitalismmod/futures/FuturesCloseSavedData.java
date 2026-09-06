@@ -8,6 +8,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /** Durable idempotency ledger for manually closed futures positions. */
@@ -17,6 +19,7 @@ public final class FuturesCloseSavedData extends SavedData {
     private final Set<String> closed = new HashSet<>();
     private final Set<String> marginCredited = new HashSet<>();
     private final Set<String> volumeAdjusted = new HashSet<>();
+    private final Map<String, Long> marginCreditStarts = new HashMap<>();
 
     private FuturesCloseSavedData() {
     }
@@ -42,6 +45,24 @@ public final class FuturesCloseSavedData extends SavedData {
         recordPhase(marginCredited, positionId);
     }
 
+    /** Persists the margin balance before applying a close settlement. */
+    public boolean recordMarginCreditStart(String positionId, long balanceBefore) {
+        if (positionId == null || positionId.isBlank() || balanceBefore < 0L
+                || marginCreditStarts.containsKey(positionId)) return false;
+        marginCreditStarts.put(positionId, balanceBefore);
+        trim(marginCreditStarts);
+        setDirty();
+        return true;
+    }
+
+    public Long marginCreditStart(String positionId) {
+        return positionId == null || positionId.isBlank() ? null : marginCreditStarts.get(positionId);
+    }
+
+    public void clearMarginCreditStart(String positionId) {
+        if (positionId != null && marginCreditStarts.remove(positionId) != null) setDirty();
+    }
+
     public void recordVolumeAdjustment(String positionId) {
         recordPhase(volumeAdjusted, positionId);
     }
@@ -56,6 +77,10 @@ public final class FuturesCloseSavedData extends SavedData {
         setDirty();
     }
 
+    private static void trim(Map<String, Long> values) {
+        while (values.size() > MAX_RECORDS) values.remove(values.keySet().iterator().next());
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag list = new ListTag();
@@ -67,6 +92,9 @@ public final class FuturesCloseSavedData extends SavedData {
         tag.put("closed", list);
         putPhase(tag, "marginCredited", marginCredited);
         putPhase(tag, "volumeAdjusted", volumeAdjusted);
+        CompoundTag starts = new CompoundTag();
+        marginCreditStarts.forEach(starts::putLong);
+        tag.put("marginCreditStarts", starts);
         return tag;
     }
 
@@ -85,9 +113,17 @@ public final class FuturesCloseSavedData extends SavedData {
         }
         loadPhase(data.marginCredited, tag.getList("marginCredited", Tag.TAG_COMPOUND));
         loadPhase(data.volumeAdjusted, tag.getList("volumeAdjusted", Tag.TAG_COMPOUND));
+        if (tag.contains("marginCreditStarts", Tag.TAG_COMPOUND)) {
+            CompoundTag starts = tag.getCompound("marginCreditStarts");
+            for (String key : starts.getAllKeys()) {
+                long balance = starts.getLong(key);
+                if (!key.isBlank() && balance >= 0L) data.marginCreditStarts.put(key, balance);
+            }
+        }
         while (data.closed.size() > MAX_RECORDS) data.closed.remove(data.closed.iterator().next());
         while (data.marginCredited.size() > MAX_RECORDS) data.marginCredited.remove(data.marginCredited.iterator().next());
         while (data.volumeAdjusted.size() > MAX_RECORDS) data.volumeAdjusted.remove(data.volumeAdjusted.iterator().next());
+        trim(data.marginCreditStarts);
         return data;
     }
 

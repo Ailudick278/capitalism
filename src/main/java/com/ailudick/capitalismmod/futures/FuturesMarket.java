@@ -162,8 +162,24 @@ public final class FuturesMarket {
         long price = data.price(position.itemId());
         long pnl = pnl(position, price);
         if (!closes.hasMarginCredit(positionId)) {
-            data.addMarginBalance(player.getUUID(), safeAdd(position.margin(), pnl));
+            long credit = Math.max(0L, safeAdd(position.margin(), pnl));
+            long balanceBefore = data.marginBalance(player.getUUID());
+            Long start = closes.marginCreditStart(positionId);
+            if (start == null) {
+                closes.recordMarginCreditStart(positionId, balanceBefore);
+                start = closes.marginCreditStart(positionId);
+            }
+            if (start == null) return false;
+            long expectedAfter = safeAdd(start, credit);
+            if (balanceBefore == start) {
+                data.addMarginBalance(player.getUUID(), credit);
+            } else if (balanceBefore != expectedAfter) {
+                return false;
+            }
             closes.recordMarginCredit(positionId);
+            closes.clearMarginCreditStart(positionId);
+        } else {
+            closes.clearMarginCreditStart(positionId);
         }
         if (!closes.hasVolumeAdjustment(positionId)) {
             data.addNetVolume(position.itemId(), position.longSide() ? -position.quantity() : position.quantity());
