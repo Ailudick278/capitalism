@@ -1142,30 +1142,41 @@ public final class CompanyHelper {
         }
         if (company.treasuryOf(Currencies.USD.id()) < total || Money.toMinor(total) <= 0L) return false;
 
+        long now = server.overworld().getGameTime();
+        String declaration = company.companyId() + ":dividend:" + now + ":" + amountPerShare + ":" + total;
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+        journal.markStarted(declaration, "dividend", "treasury-debit", Money.toMinorSaturated(total), now);
         Map<String, Long> treasury = new HashMap<>(company.treasury());
         long remaining = company.treasuryOf(Currencies.USD.id()) - total;
         treasury.put(Currencies.USD.id(), remaining);
         CompanySavedData.get(server).put(company.withTreasury(treasury));
-        long now = server.overworld().getGameTime();
         CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
                 company.companyId(), now, "dividend_distribution", Currencies.USD.id(),
                 -total, remaining, "Dividend declared at USD " + amountPerShare + " per share"));
+        journal.markCompleted(declaration, "dividend", "treasury-debit", Money.toMinorSaturated(total), now);
 
         // The declaration identity must be deterministic: the treasury debit above
         // is the batch boundary, and every shareholder payout can be retried from
         // the same durable receipt after a server interruption.
-        String declaration = company.companyId() + ":dividend:" + now + ":" + amountPerShare + ":" + total;
         for (Map.Entry<UUID, Long> payout : payouts.entrySet()) {
             long minor = Money.toMinor(payout.getValue());
             String source = declaration + ":" + payout.getKey();
+            if (!journal.isCompleted(source, "payout")) {
+                journal.markStarted(source, "dividend", "payout", minor, now);
+            }
             DividendSettlementSavedData.get(server).append(new DividendSettlementSavedData.Payout(
                     source, company.companyId(), payout.getKey(), Currencies.USD.id(), minor, now));
             MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
             mailbox.creditMoneyOnce(payout.getKey(), Currencies.USD.id(), minor, source);
             ServerPlayer online = server.getPlayerList().getPlayer(payout.getKey());
             if (online != null) mailbox.redeemMoneyOnly(online);
-            TaxTransactionService.assess(server, TaxType.DIVIDEND, payout.getKey(),
-                    Currencies.USD.id(), minor, source, now);
+            journal.markCompleted(source, "dividend", "payout", minor, now);
+            if (!journal.isCompleted(source, "tax")) {
+                journal.markStarted(source, "dividend", "tax", minor, now);
+                TaxTransactionService.assess(server, TaxType.DIVIDEND, payout.getKey(),
+                        Currencies.USD.id(), minor, source, now);
+                journal.markCompleted(source, "dividend", "tax", minor, now);
+            }
         }
         return true;
     }
@@ -1181,8 +1192,17 @@ public final class CompanyHelper {
             if (!credited) continue;
             ServerPlayer online = server.getPlayerList().getPlayer(payout.recipient());
             if (online != null) mailbox.redeemMoneyOnly(online);
-            TaxTransactionService.assess(server, TaxType.DIVIDEND, payout.recipient(), payout.currencyId(),
-                    payout.amountMinor(), payout.source(), payout.gameTime());
+            FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+            if (!journal.isCompleted(payout.source(), "payout")) {
+                journal.markStarted(payout.source(), "dividend", "payout", payout.amountMinor(), payout.gameTime());
+                journal.markCompleted(payout.source(), "dividend", "payout", payout.amountMinor(), payout.gameTime());
+            }
+            if (!journal.isCompleted(payout.source(), "tax")) {
+                journal.markStarted(payout.source(), "dividend", "tax", payout.amountMinor(), payout.gameTime());
+                TaxTransactionService.assess(server, TaxType.DIVIDEND, payout.recipient(), payout.currencyId(),
+                        payout.amountMinor(), payout.source(), payout.gameTime());
+                journal.markCompleted(payout.source(), "dividend", "tax", payout.amountMinor(), payout.gameTime());
+            }
             recovered++;
         }
         return recovered;
