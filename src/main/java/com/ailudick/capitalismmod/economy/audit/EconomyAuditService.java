@@ -255,6 +255,15 @@ public final class EconomyAuditService {
             if (offer.region().isBlank()) issues.add("job offer has blank region " + offer.id());
         }
         for (var entry : labor.employments()) { var account = LaborPayrollSavedData.get(server).account(entry.id()); if (account.unpaid() < 0L) issues.add("payroll " + entry.id() + " negative arrears"); }
+        Set<String> employmentIds = labor.employments().stream().map(EmploymentRecord::id).collect(java.util.stream.Collectors.toSet());
+        for (var payroll : LaborPayrollSavedData.get(server).accounts().entrySet()) {
+            if (payroll.getKey().isBlank() || payroll.getValue().unpaid() < 0L
+                    || payroll.getValue().lastSettlementDay() < -1L) {
+                issues.add("payroll account invalid " + payroll.getKey());
+            } else if (!employmentIds.contains(payroll.getKey()) && payroll.getValue().unpaid() > 0L) {
+                issues.add("payroll claim has no employment " + payroll.getKey());
+            }
+        }
         EconomicContractSavedData contracts = EconomicContractSavedData.get(server);
         for (var contract : contracts.contracts()) {
             if (contract.agreedQuantity() > 0L && contract.fulfilledQuantity() > contract.agreedQuantity()) {
