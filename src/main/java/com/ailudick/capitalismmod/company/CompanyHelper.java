@@ -1132,6 +1132,8 @@ public final class CompanyHelper {
         for (Map.Entry<UUID, Long> payout : payouts.entrySet()) {
             long minor = Money.toMinor(payout.getValue());
             String source = declaration + ":" + payout.getKey();
+            DividendSettlementSavedData.get(server).append(new DividendSettlementSavedData.Payout(
+                    source, company.companyId(), payout.getKey(), Currencies.USD.id(), minor, now));
             MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
             mailbox.creditMoneyOnce(payout.getKey(), Currencies.USD.id(), minor, source);
             ServerPlayer online = server.getPlayerList().getPlayer(payout.getKey());
@@ -1140,6 +1142,24 @@ public final class CompanyHelper {
                     Currencies.USD.id(), minor, source, now);
         }
         return true;
+    }
+
+    /** Replays persisted dividend payout instructions after an interrupted settlement. */
+    public static int recoverDividendPayouts(MinecraftServer server) {
+        int recovered = 0;
+        DividendSettlementSavedData data = DividendSettlementSavedData.get(server);
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        for (DividendSettlementSavedData.Payout payout : data.payouts()) {
+            boolean credited = mailbox.hasCreditSource(payout.source())
+                    || mailbox.creditMoneyOnce(payout.recipient(), payout.currencyId(), payout.amountMinor(), payout.source());
+            if (!credited) continue;
+            ServerPlayer online = server.getPlayerList().getPlayer(payout.recipient());
+            if (online != null) mailbox.redeemMoneyOnly(online);
+            TaxTransactionService.assess(server, TaxType.DIVIDEND, payout.recipient(), payout.currencyId(),
+                    payout.amountMinor(), payout.source(), payout.gameTime());
+            recovered++;
+        }
+        return recovered;
     }
 
     /** Withdraws {@code amount} of {@code currencyId} from a company's treasury to the founder. */
