@@ -513,6 +513,7 @@ public final class SupplyMarket {
             return;
         }
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        FinancialSettlementJournalSavedData financialJournal = FinancialSettlementJournalSavedData.get(server);
         for (PurchaseOrder order : new ArrayList<>(data.orders())) {
             if (!order.supplierUuid().equals(supplierUuid) || !order.itemId().equals(itemId)) {
                 continue;
@@ -550,19 +551,24 @@ public final class SupplyMarket {
                 deliver = Math.min(order.remaining(), stock);
             }
             if (deliver <= 0) continue;
+            long settlementTime = server.overworld().getGameTime();
+            financialJournal.markStarted(deliveryKey, "supply", "inventory-debit", deliver, settlementTime);
             // Do not create a delivery from a stale stock snapshot. Every
             // downstream side effect is conditional on the actual debit.
             if (!dispatchAlreadyCreated && !warehouse.consume(resolvedOwner, item, deliver)) {
                 continue;
             }
+            financialJournal.markCompleted(deliveryKey, "supply", "inventory-debit", deliver, settlementTime);
             if (supplierCompany != null) {
                 CompanyHelper.recordInventorySale(server, supplierCompany.companyId(),
                         order.itemId(), deliver, order.id() + ":delivery:" + order.remaining());
             }
             String deliveryType = TradeRegion.distance(order.originRegion(), order.destinationRegion()) == 0
                     ? "DELIVERED" : "DISPATCHED";
+            financialJournal.markStarted(deliveryKey, "supply", "goods-dispatch", deliver, settlementTime);
             deliverOrShip(server, order.buyerUuid(), item, deliver, order.originRegion(), order.destinationRegion(),
                     order.id(), order.buyerCompanyId(), order.unitPrice(), order.supplierUuid(), deliveryKey);
+            financialJournal.markCompleted(deliveryKey, "supply", "goods-dispatch", deliver, settlementTime);
             if (!order.buyerCompanyId().isBlank()) {
                 CompanyInventoryCostSavedData.get(server).addInboundOnce(order.buyerCompanyId(), order.itemId(),
                         deliver, EconomyMath.multiply(order.unitPrice(), deliver), deliveryKey);
@@ -571,9 +577,17 @@ public final class SupplyMarket {
             // Buyer funds for a backorder are held until this portion is
             // dispatched. The undelivered remainder remains refundable.
             long deliveredAmount = EconomyMath.multiply(order.unitPrice(), deliver);
+            financialJournal.markStarted(deliveryKey, "supply", "supplier-payout",
+                    Money.toMinorSaturated(deliveredAmount), settlementTime);
             if (!paySupplier(server, order.supplierUuid(), order.companyName(), deliveredAmount, deliveryKey)) continue;
+            financialJournal.markCompleted(deliveryKey, "supply", "supplier-payout",
+                    Money.toMinorSaturated(deliveredAmount), settlementTime);
+            financialJournal.markStarted(deliveryKey, "supply", "escrow-release",
+                    Money.toMinorSaturated(deliveredAmount), settlementTime);
             SupplyEscrowSavedData.get(server).releaseOnce(order.id(), deliveryKey,
                     Money.toMinorSaturated(deliveredAmount));
+            financialJournal.markCompleted(deliveryKey, "supply", "escrow-release",
+                    Money.toMinorSaturated(deliveredAmount), settlementTime);
             deliveryJournal.record(new SupplyDeliverySavedData.Delivery(deliveryKey, order.id(), deliver,
                     newRemaining));
             SupplyOrderAuditService.record(server, order, deliveryType, deliver,
