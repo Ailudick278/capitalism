@@ -888,7 +888,8 @@ public final class CompanyHelper {
         com.ailudick.capitalismmod.market.InventoryOwner owner =
                 com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
         CommoditySavedData commodityData = CommoditySavedData.get(server);
-        for (Map.Entry<String, Integer> output : CompanyEconomy.outputs(company).entrySet()) {
+        Map<String, Integer> outputs = recipe.outputs();
+        for (Map.Entry<String, Integer> output : outputs.entrySet()) {
             Item item = parseItem(output.getKey());
             if (item == null || output.getValue() <= 0) {
                 continue;
@@ -905,9 +906,9 @@ public final class CompanyHelper {
         // Cost layers must exist before fulfillment consumes any newly produced
         // stock; otherwise COGS falls back to the market price and the full
         // conversion cost remains incorrectly capitalized in inventory.
-        addProducedInventoryCosts(server, company.companyId(), CompanyEconomy.outputs(company), conversionCost);
+        addProducedInventoryCosts(server, company.companyId(), outputs, conversionCost);
         if (qualityScore >= Config.COMPANY_QUALITY_RELEASE_THRESHOLD.get()) {
-            for (String itemId : CompanyEconomy.outputs(company).keySet()) {
+            for (String itemId : outputs.keySet()) {
                 SupplyMarket.fulfill(server,
                         com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId()),
                         company.ownerUuid(), itemId);
