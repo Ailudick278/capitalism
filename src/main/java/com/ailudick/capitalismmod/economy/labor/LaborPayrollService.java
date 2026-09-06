@@ -27,7 +27,12 @@ public final class LaborPayrollService {
         for (EmploymentRecord employment : labor.employments()) {
             if (!employment.active() || payroll.account(employment.id()).lastSettlementDay() >= day) continue;
             Company company = CompanySavedData.get(server).get(employment.employerId());
-            if (company == null) continue;
+            if (company == null) {
+                if (labor.endEmployment(employment.id(), server.overworld().getGameTime())) {
+                    EconomicContractBridge.employmentEnded(server, employment.id(), server.overworld().getGameTime());
+                }
+                continue;
+            }
             if (!CompanyLifecycleService.canOperate(server, company.companyId())) {
                 if (labor.endEmployment(employment.id(), server.overworld().getGameTime())) {
                     EconomicContractBridge.employmentEnded(server, employment.id(), server.overworld().getGameTime());
