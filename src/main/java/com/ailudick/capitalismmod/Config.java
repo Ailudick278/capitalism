@@ -162,6 +162,14 @@ public class Config {
             .comment("Minimum annual debt-service coverage ratio for companies with operating history; 1.25 means 125%.")
             .defineInRange("companyLoanMinCoverageRatio", 1.25, 0.0, 10.0);
 
+    public static final ModConfigSpec.IntValue COMPANY_LOAN_INVENTORY_HAIRCUT_PERCENT = BUILDER
+            .comment("Percentage of eligible company inventory value accepted as collateral after quality restrictions.")
+            .defineInRange("companyLoanInventoryHaircutPercent", 50, 0, 100);
+
+    public static final ModConfigSpec.IntValue COMPANY_LOAN_EQUIPMENT_HAIRCUT_PERCENT = BUILDER
+            .comment("Percentage of company equipment value accepted as collateral after condition assessment.")
+            .defineInRange("companyLoanEquipmentHaircutPercent", 60, 0, 100);
+
     public static final ModConfigSpec.IntValue MAX_COMPANY_LOAN_TERM_DAYS = BUILDER
             .comment("Maximum term of a company loan in Minecraft days.")
             .defineInRange("maxCompanyLoanTermDays", 3650, 1, 3650);

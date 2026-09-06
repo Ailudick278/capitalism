@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.loan;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyFinancialSnapshot;
 import com.ailudick.capitalismmod.company.CompanyQualityHoldSavedData;
+import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
@@ -15,15 +16,12 @@ public record CompanyCollateralAssessment(long inventoryValue, long restrictedIn
                                           long eligibleInventory, long eligibleEquipment,
                                           long eligibleCollateral, long existingDebt,
                                           long indicativeHeadroom) {
-    private static final long INVENTORY_HAIRCUT_PERCENT = 50L;
-    private static final long EQUIPMENT_HAIRCUT_PERCENT = 60L;
-
     public static CompanyCollateralAssessment from(MinecraftServer server, Company company) {
         CompanyFinancialSnapshot snapshot = CompanyFinancialSnapshot.from(server, company);
         long restricted = restrictedInventoryValue(server, company);
         long usableInventory = Math.max(0L, snapshot.inventory() - Math.min(snapshot.inventory(), restricted));
-        long eligibleInventory = percentage(usableInventory, INVENTORY_HAIRCUT_PERCENT);
-        long eligibleEquipment = percentage(snapshot.equipment(), EQUIPMENT_HAIRCUT_PERCENT);
+        long eligibleInventory = percentage(usableInventory, Config.COMPANY_LOAN_INVENTORY_HAIRCUT_PERCENT.get());
+        long eligibleEquipment = percentage(snapshot.equipment(), Config.COMPANY_LOAN_EQUIPMENT_HAIRCUT_PERCENT.get());
         long eligible = add(eligibleInventory, eligibleEquipment);
         long debt = Math.max(0L, snapshot.loanLiabilities());
         long headroom = Math.max(0L, eligible - debt);
