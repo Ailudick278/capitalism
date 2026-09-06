@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.bank.BankAccount;
 import com.ailudick.capitalismmod.bank.BankAccountHelper;
 import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.bond.BondHolding;
+import com.ailudick.capitalismmod.bond.BondEconomics;
 import com.ailudick.capitalismmod.bond.BondSavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
@@ -44,8 +45,7 @@ public final class FinancialRiskService {
             overdueCount += value.overdueAccounts();
         }
         for (BondHolding holding : BondSavedData.get(server).holdings()) {
-            long coupon = (long) Math.max(0.0, holding.faceValue() * holding.ratePerYear()
-                    * holding.totalDays() / 365.0);
+            long coupon = BondEconomics.maturityCoupon(holding.faceValue(), holding.ratePerYear(), holding.totalDays());
             bonds = add(bonds, toBase(server, add(holding.faceValue(), coupon), Currencies.USD.id()));
         }
         long total = add(add(add(company, peer), bank), bonds);
