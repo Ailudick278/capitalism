@@ -70,7 +70,7 @@ public final class PopulationService {
             long totalNeed = add(livingNeed, rentDue);
             int spendingWelfare = totalNeed <= 0L ? 100 : (int) Math.max(0L, Math.min(100L, totalSpent * 100L / totalNeed));
             int serviceWelfare = LogisticsInfrastructureSavedData.get(server)
-                    .publicServiceScore(household.region(), population.population(household.region()));
+                    .publicServiceScore(server, household.region(), population.population(household.region()));
             int welfare = spendingWelfare * 70 / 100 + serviceWelfare * 30 / 100;
             int clinicCoverage = population.population(household.region()) <= 0 ? 100
                     : Math.min(100, LogisticsInfrastructureSavedData.get(server).count(household.region(), "clinic")
@@ -106,9 +106,9 @@ public final class PopulationService {
                 long migrationFriction = local ? 0L : LogisticsInfrastructureSavedData.get(server)
                         .migrationFriction(household.dailyNeedMinor(), household.size(), offer.region());
                 int originServices = LogisticsInfrastructureSavedData.get(server)
-                        .publicServiceScore(household.region(), population.population(household.region()));
+                        .publicServiceScore(server, household.region(), population.population(household.region()));
                 int destinationServices = LogisticsInfrastructureSavedData.get(server)
-                        .publicServiceScore(offer.region(), population.population(offer.region()));
+                        .publicServiceScore(server, offer.region(), population.population(offer.region()));
                 long relocationCost = local ? 0L : HousingEconomics.migrationCost(household.dailyNeedMinor(),
                         household.size(), destinationRent / Math.max(1, household.size()), migrationFriction);
                 boolean willingToMove = !local && MigrationEconomics.willingToMove(household.satisfaction(),

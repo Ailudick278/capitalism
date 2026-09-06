@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.market;
 
 import com.ailudick.capitalismmod.population.MigrationEconomics;
 import com.ailudick.capitalismmod.population.PublicServiceEconomics;
+import com.ailudick.capitalismmod.government.PublicConstructionInspectionSavedData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderLookup;
@@ -91,6 +92,15 @@ public final class LogisticsInfrastructureSavedData extends SavedData {
     public int publicServiceScore(String region, int residents) {
         return PublicServiceEconomics.score(residents, count(region, "housing"),
                 count(region, "school"), count(region, "clinic"));
+    }
+
+    /** Service score using construction inspection failures as temporary lost capacity. */
+    public int publicServiceScore(MinecraftServer server, String region, int residents) {
+        PublicConstructionInspectionSavedData inspections = PublicConstructionInspectionSavedData.get(server);
+        return PublicServiceEconomics.score(residents,
+                inspections.effectiveUnits(server, region, "housing", count(region, "housing")),
+                inspections.effectiveUnits(server, region, "school", count(region, "school")),
+                inspections.effectiveUnits(server, region, "clinic", count(region, "clinic")));
     }
 
     public int capacityBonus(String origin, String destination, TransportMode mode) {

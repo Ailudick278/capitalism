@@ -80,7 +80,7 @@ public final class CityCommand {
     private static int info(CommandSourceStack source, String region) {
         LogisticsInfrastructureSavedData infrastructure = LogisticsInfrastructureSavedData.get(source.getServer());
         int residents = PopulationSavedData.get(source.getServer()).population(region);
-        int score = infrastructure.publicServiceScore(region, residents);
+        int score = infrastructure.publicServiceScore(source.getServer(), region, residents);
         long rent = CityHousingSavedData.get(source.getServer()).dailyRent(region, residents,
                 infrastructure.count(region, "housing"));
         HousingLeaseSavedData leases = HousingLeaseSavedData.get(source.getServer());

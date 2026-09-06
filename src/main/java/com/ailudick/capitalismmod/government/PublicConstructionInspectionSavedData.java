@@ -32,6 +32,17 @@ public final class PublicConstructionInspectionSavedData extends SavedData {
         return inspections.stream().filter(i -> "REWORK_REQUIRED".equals(i.status()) && i.day() < day).toList();
     }
 
+    /** Reduces effective regional capacity for units that failed inspection and await rework. */
+    public int effectiveUnits(MinecraftServer server, String region, String facility, int rawUnits) {
+        if (rawUnits <= 0) return 0;
+        var projects = PublicConstructionSavedData.get(server).projects();
+        long failed = projects.stream().filter(p -> p.region().equals(region) && p.facility().equals(facility))
+                .flatMap(p -> inspections.stream().filter(i -> i.projectId().equals(p.id())
+                        && "REWORK_REQUIRED".equals(i.status())))
+                .count();
+        return (int) Math.max(0L, rawUnits - Math.min((long) rawUnits, failed));
+    }
+
     public boolean markReworkCompleted(String projectId, int unit, long day) {
         for (int i = 0; i < inspections.size(); i++) {
             Inspection current = inspections.get(i);

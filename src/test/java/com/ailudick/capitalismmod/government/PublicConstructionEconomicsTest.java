@@ -49,4 +49,10 @@ class PublicConstructionEconomicsTest {
         assertEquals(75_000L, PublicConstructionEconomics.reworkCost(300_000L));
         assertEquals(0L, PublicConstructionEconomics.reworkCost(0L));
     }
+
+    @Test
+    void failedInspectionQualityIsBelowAcceptanceThreshold() {
+        assertTrue(PublicConstructionEconomics.qualityScore(10, 1) < 50);
+        assertTrue(PublicConstructionEconomics.qualityScore(50, 1) >= 50);
+    }
 }

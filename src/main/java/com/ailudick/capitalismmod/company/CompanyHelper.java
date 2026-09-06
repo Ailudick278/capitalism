@@ -1050,7 +1050,7 @@ public final class CompanyHelper {
             String region = TradeRegion.of(new net.minecraft.core.BlockPos(operatingSite.chunkX() * 16, 0,
                     operatingSite.chunkZ() * 16));
             int population = PopulationSavedData.get(server).population(region);
-            int services = LogisticsInfrastructureSavedData.get(server).publicServiceScore(region, population);
+            int services = LogisticsInfrastructureSavedData.get(server).publicServiceScore(server, region, population);
             quality = quality * (70 + Math.max(0, Math.min(100, services)) * 30 / 100) / 100;
         }
         return Math.max(0, Math.min(100, quality));
