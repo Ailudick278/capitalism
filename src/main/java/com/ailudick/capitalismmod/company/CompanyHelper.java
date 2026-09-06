@@ -21,6 +21,7 @@ import com.ailudick.capitalismmod.tax.CorporateTaxPeriodSavedData;
 import com.ailudick.capitalismmod.tax.CorporateTaxAnnualSavedData;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.tax.TaxExpenseService;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
@@ -1428,8 +1429,14 @@ public final class CompanyHelper {
             return false;
         }
         long total = EconomyMath.multiply(offer.pricePerShare(), offer.quantity());
+        long now = buyer.getServer().overworld().getGameTime();
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(buyer.getServer());
+        String transactionId = "public-takeover:" + offer.id();
         String transferSource = "public-takeover:" + offer.id() + ":shares";
         String paymentReference = "public-takeover:" + offer.id() + ":buyer-payment";
+        if (!journal.isCompleted(transactionId, "payment")) {
+            journal.markStarted(transactionId, "public-takeover", "payment", Money.toMinorSaturated(total), now);
+        }
         boolean alreadyDebited = EconomyLogSavedData.get(buyer.getServer())
                 .hasReference(buyer.getUUID(), paymentReference);
         if (total < 0 || (!data.hasShareTransfer(transferSource) && !alreadyDebited
@@ -1437,17 +1444,29 @@ public final class CompanyHelper {
                 Money.toMinor(total), paymentReference))) {
             return false;
         }
+        journal.markCompleted(transactionId, "public-takeover", "payment", Money.toMinorSaturated(total), now);
+        if (!journal.isCompleted(transactionId, "shares")) {
+            journal.markStarted(transactionId, "public-takeover", "shares", offer.quantity(), now);
+        }
         if (!data.hasShareTransfer(transferSource)
                 && !data.transferSharesOnce(offer.stockId(), seller.getUUID(), buyer.getUUID(), offer.quantity(), transferSource)) {
             return false;
         }
+        journal.markCompleted(transactionId, "public-takeover", "shares", offer.quantity(), now);
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(buyer.getServer());
         String payoutSource = "public-takeover:" + offer.id() + ":payout";
+        if (!journal.isCompleted(transactionId, "seller-payout")) {
+            journal.markStarted(transactionId, "public-takeover", "seller-payout", Money.toMinorSaturated(total), now);
+        }
         mailbox.creditMoneyOnce(seller.getUUID(), Currencies.USD.id(), Money.toMinor(total), payoutSource);
         mailbox.redeemMoneyOnly(seller);
-        TaxTransactionService.assess(buyer.getServer(), TaxType.CAPITAL_GAINS, seller.getUUID(), Currencies.USD.id(),
-                Money.toMinorSaturated(total), "public-takeover:" + offer.id(),
-                buyer.getServer().overworld().getGameTime());
+        journal.markCompleted(transactionId, "public-takeover", "seller-payout", Money.toMinorSaturated(total), now);
+        if (!journal.isCompleted(transactionId, "tax")) {
+            journal.markStarted(transactionId, "public-takeover", "tax", Money.toMinorSaturated(total), now);
+            TaxTransactionService.assess(buyer.getServer(), TaxType.CAPITAL_GAINS, seller.getUUID(), Currencies.USD.id(),
+                    Money.toMinorSaturated(total), transactionId, now);
+            journal.markCompleted(transactionId, "public-takeover", "tax", Money.toMinorSaturated(total), now);
+        }
         return true;
     }
 
