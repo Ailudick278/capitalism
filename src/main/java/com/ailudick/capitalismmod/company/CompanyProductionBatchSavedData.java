@@ -101,6 +101,15 @@ public final class CompanyProductionBatchSavedData extends SavedData {
         return null;
     }
 
+    /** Finds a batch by its globally unique audit ID, including after a retry. */
+    public Batch findById(String batchId) {
+        if (batchId == null || batchId.isBlank()) return null;
+        for (int i = batches.size() - 1; i >= 0; i--) {
+            if (batchId.equals(batches.get(i).id())) return batches.get(i);
+        }
+        return null;
+    }
+
     public void mergeCompany(String sourceId, String targetId) {
         if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
         boolean changed = false;

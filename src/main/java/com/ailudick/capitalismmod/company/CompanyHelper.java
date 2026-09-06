@@ -437,6 +437,11 @@ public final class CompanyHelper {
         if (server == null || company == null || company.registeredCapital() <= 0) {
             return ProductionCycleResult.failure("invalid_company");
         }
+        String stableBatchId = ProductionCycleIdentity.batchId(cycleKey);
+        if (!stableBatchId.isBlank()
+                && CompanyProductionBatchSavedData.get(server).findById(stableBatchId) != null) {
+            return ProductionCycleResult.completed();
+        }
         if (!CompanyLifecycleService.canOperate(server, company.companyId())) return ProductionCycleResult.failure("company_inactive");
         // Unpaid wages are a persistent labor liability. Employees do not
         // continue producing new batches while the liability is outstanding.
@@ -549,7 +554,7 @@ public final class CompanyHelper {
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
         if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return ProductionCycleResult.failure("oil_reservation");
         int qualityScore = productionQuality(server, company, machine);
-        produceOutputs(server, company, recipe, conversionCost, qualityScore, operatingSite, cycleKey);
+        produceOutputs(server, company, recipe, conversionCost, qualityScore, operatingSite, cycleKey, stableBatchId);
         if (serviceCycle) {
             CompanyServiceDeliverySavedData.get(server).append(
                     new CompanyServiceDeliverySavedData.ServiceDelivery(
@@ -874,7 +879,8 @@ public final class CompanyHelper {
     /** Deposits outputs, records their conversion cost, then fulfills backorders. */
     private static void produceOutputs(MinecraftServer server, Company company, ProductionRecipe recipe,
                                        long conversionCost, int qualityScore,
-                                       CompanySiteSavedData.Site operatingSite, String cycleKey) {
+                                       CompanySiteSavedData.Site operatingSite, String cycleKey,
+                                       String stableBatchId) {
         if (server == null) {
             return;
         }
@@ -910,7 +916,7 @@ public final class CompanyHelper {
         CompanyProductionBatchSavedData.Batch batch = CompanyProductionBatchSavedData.newBatch(
                 company, recipe, conversionCost, qualityScore, recipe.workersPerCycle(),
                 server.overworld().getGameTime(), operatingSite,
-                ProductionCycleIdentity.batchId(cycleKey));
+                stableBatchId);
         CompanyProductionBatchSavedData.get(server).record(batch);
         CompanyQualityControlSavedData.get(server).screen(batch, batch.createdAt());
         CompanyQualityHoldSavedData.get(server).hold(batch);
