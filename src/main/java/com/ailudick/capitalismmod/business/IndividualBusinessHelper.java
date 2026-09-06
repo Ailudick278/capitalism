@@ -265,7 +265,7 @@ public final class IndividualBusinessHelper {
             if (buyerId == null || !population.chargeCashOnce(buyerId, paymentMinor, buyerSource)) return false;
         }
         if (!BusinessOrderEscrowSavedData.get(player.getServer())
-                .createOnce(order.id(), batchId, buyerId, paymentMinor)) return false;
+                .createOnce(order.id(), batchId, buyerId, deliveryQuantity, paymentMinor)) return false;
         if (!goodsConsumed && !warehouse.consumeOnce(InventoryOwner.player(player.getUUID()), item, deliveryQuantity, goodsSource)) return false;
         long feeMajor = Math.max(0L, Math.min(payment,
                 Math.round(payment * Config.BUSINESS_ORDER_FEE_RATE.get())));

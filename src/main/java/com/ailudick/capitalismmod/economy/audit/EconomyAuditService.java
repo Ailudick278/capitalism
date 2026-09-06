@@ -58,6 +58,9 @@ import com.ailudick.capitalismmod.auction.AuctionBidSavedData;
 import com.ailudick.capitalismmod.auction.AuctionSettlementAuditRules;
 import com.ailudick.capitalismmod.supply.SupplySettlementAuditRules;
 import com.ailudick.capitalismmod.business.BusinessEscrowAuditRules;
+import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.currency.ExchangeRates;
+import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.currency.Currencies;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -494,15 +497,29 @@ public final class EconomyAuditService {
             var order = businessOrders.get(escrow.orderId());
             if (order == null) {
                 issues.add("business order escrow has no order " + escrow.orderId());
-            } else if (!BusinessEscrowAuditRules.validBatch(escrow.batchId(), order.quantity())) {
+            } else if (!BusinessEscrowAuditRules.validBatch(escrow.batchId(), order.quantity(), escrow.quantity())) {
                 issues.add("business order escrow batch invalid " + escrow.orderId() + "/" + escrow.batchId());
-            } else if (population.find(escrow.buyerId()) == null) {
-                issues.add("business order escrow has no buyer household " + escrow.orderId() + "/" + escrow.batchId());
-            } else if ("completed".equals(order.status()) && escrow.heldMinor() != 0L) {
-                issues.add("completed business order still has held escrow " + escrow.orderId() + "/" + escrow.batchId());
-            } else if (("cancelled".equals(order.status()) || "expired".equals(order.status()))
-                    && escrow.heldMinor() != 0L) {
-                issues.add("closed business order still has held escrow " + escrow.orderId() + "/" + escrow.batchId());
+            } else {
+                if (escrow.quantity() > 0) {
+                    long paymentMajor = safeMultiply(escrow.quantity(), order.unitPrice());
+                    long expectedMinor = paymentMajor < 0L ? Long.MIN_VALUE
+                            : ExchangeRates.convert(Money.toMinorSaturated(paymentMajor),
+                            com.ailudick.capitalismmod.currency.Currencies.USD, Config.defaultCurrency());
+                    if (expectedMinor != escrow.originalMinor()) {
+                        issues.add("business order escrow amount differs from quantity "
+                                + escrow.orderId() + "/" + escrow.batchId());
+                    }
+                }
+                if (population.find(escrow.buyerId()) == null) {
+                    issues.add("business order escrow has no buyer household " + escrow.orderId() + "/" + escrow.batchId());
+                }
+                if ("completed".equals(order.status()) && escrow.heldMinor() != 0L) {
+                    issues.add("completed business order still has held escrow " + escrow.orderId() + "/" + escrow.batchId());
+                }
+                if (("cancelled".equals(order.status()) || "expired".equals(order.status()))
+                        && escrow.heldMinor() != 0L) {
+                    issues.add("closed business order still has held escrow " + escrow.orderId() + "/" + escrow.batchId());
+                }
             }
         }
         LaborMarketSavedData labor = LaborMarketSavedData.get(server);

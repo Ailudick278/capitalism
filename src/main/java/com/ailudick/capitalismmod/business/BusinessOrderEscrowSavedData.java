@@ -16,7 +16,7 @@ public final class BusinessOrderEscrowSavedData extends SavedData {
     private static final int MAX_ESCROWS = 16384;
     private final List<Escrow> escrows = new ArrayList<>();
 
-    public record Escrow(String orderId, String batchId, String buyerId, long originalMinor,
+    public record Escrow(String orderId, String batchId, String buyerId, int quantity, long originalMinor,
                          long heldMinor, long releasedMinor, long refundedMinor) {}
 
     private BusinessOrderEscrowSavedData() {}
@@ -34,13 +34,18 @@ public final class BusinessOrderEscrowSavedData extends SavedData {
     public List<Escrow> escrows() { return List.copyOf(escrows); }
 
     public boolean createOnce(String orderId, String batchId, String buyerId, long amountMinor) {
+        return createOnce(orderId, batchId, buyerId, 0, amountMinor);
+    }
+
+    public boolean createOnce(String orderId, String batchId, String buyerId, int quantity, long amountMinor) {
         if (orderId == null || orderId.isBlank() || batchId == null || batchId.isBlank()
-                || buyerId == null || buyerId.isBlank() || amountMinor <= 0L) return false;
+                || buyerId == null || buyerId.isBlank() || quantity < 0 || amountMinor <= 0L) return false;
         Escrow existing = find(orderId, batchId);
         if (existing != null) {
-            return existing.buyerId().equals(buyerId) && existing.originalMinor() == amountMinor;
+            return existing.buyerId().equals(buyerId) && existing.originalMinor() == amountMinor
+                    && (existing.quantity() == 0 || quantity == 0 || existing.quantity() == quantity);
         }
-        escrows.add(new Escrow(orderId, batchId, buyerId, amountMinor, amountMinor, 0L, 0L));
+        escrows.add(new Escrow(orderId, batchId, buyerId, quantity, amountMinor, amountMinor, 0L, 0L));
         while (escrows.size() > MAX_ESCROWS) escrows.remove(0);
         setDirty();
         return true;
@@ -62,9 +67,9 @@ public final class BusinessOrderEscrowSavedData extends SavedData {
         if (!release && current.refundedMinor() >= amountMinor) return true;
         if (amountMinor > current.heldMinor()) return false;
         Escrow next = release
-                ? new Escrow(current.orderId(), current.batchId(), current.buyerId(), current.originalMinor(),
+                ? new Escrow(current.orderId(), current.batchId(), current.buyerId(), current.quantity(), current.originalMinor(),
                 current.heldMinor() - amountMinor, add(current.releasedMinor(), amountMinor), current.refundedMinor())
-                : new Escrow(current.orderId(), current.batchId(), current.buyerId(), current.originalMinor(),
+                : new Escrow(current.orderId(), current.batchId(), current.buyerId(), current.quantity(), current.originalMinor(),
                 current.heldMinor() - amountMinor, current.releasedMinor(), add(current.refundedMinor(), amountMinor));
         escrows.set(escrows.indexOf(current), next);
         setDirty();
@@ -76,6 +81,7 @@ public final class BusinessOrderEscrowSavedData extends SavedData {
         for (Escrow e : escrows) {
             CompoundTag n = new CompoundTag();
             n.putString("order", e.orderId()); n.putString("batch", e.batchId()); n.putString("buyer", e.buyerId());
+            n.putInt("quantity", e.quantity());
             n.putLong("original", e.originalMinor()); n.putLong("held", e.heldMinor());
             n.putLong("released", e.releasedMinor()); n.putLong("refunded", e.refundedMinor());
             list.add(n);
@@ -92,7 +98,7 @@ public final class BusinessOrderEscrowSavedData extends SavedData {
             if (!n.getString("order").isBlank() && !n.getString("batch").isBlank()
                     && !n.getString("buyer").isBlank() && n.getLong("original") > 0L) {
                 data.escrows.add(new Escrow(n.getString("order"), n.getString("batch"), n.getString("buyer"),
-                        n.getLong("original"), Math.max(0L, n.getLong("held")),
+                        Math.max(0, n.getInt("quantity")), n.getLong("original"), Math.max(0L, n.getLong("held")),
                         Math.max(0L, n.getLong("released")), Math.max(0L, n.getLong("refunded"))));
             }
         }
