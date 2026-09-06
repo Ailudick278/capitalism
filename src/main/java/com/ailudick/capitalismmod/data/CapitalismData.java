@@ -260,6 +260,7 @@ public final class CapitalismData {
                 for (RecipeJson recipe : configured) {
                     upgradeLegacyPolymerRecipe(recipe);
                     upgradeLegacyDisplayRecipe(recipe);
+                    upgradeLegacySemiconductorRecipe(recipe);
                 }
                 Set<String> configuredIds = new java.util.HashSet<>();
                 for (RecipeJson recipe : configured) {
@@ -320,6 +321,28 @@ public final class CapitalismData {
             recipe.inputs = new HashMap<>(DisplayRecipeMigration.upgradedInputs());
             recipe.income = 390;
             recipe.machine_type = "electronics_assembly";
+            recipe.workers_per_cycle = 4;
+            recipe.energy_cost = 8;
+            recipe.maintenance_cost = 15;
+        }
+    }
+
+    /** Upgrade the original one-step wafer recipes without touching custom recipes. */
+    private static void upgradeLegacySemiconductorRecipe(RecipeJson recipe) {
+        if (recipe == null || recipe.inputs == null || recipe.outputs == null) return;
+        if (SemiconductorRecipeMigration.isLegacyChipPackaging(
+                recipe.id, recipe.inputs, recipe.outputs)) {
+            recipe.inputs = new HashMap<>(SemiconductorRecipeMigration.upgradedChipInputs());
+            recipe.income = 360;
+            recipe.machine_type = "chip_packaging_line";
+            recipe.workers_per_cycle = 4;
+            recipe.energy_cost = 8;
+            recipe.maintenance_cost = 15;
+        } else if (SemiconductorRecipeMigration.isLegacyCircuitBoard(
+                recipe.id, recipe.inputs, recipe.outputs)) {
+            recipe.inputs = new HashMap<>(SemiconductorRecipeMigration.upgradedBoardInputs());
+            recipe.income = 390;
+            recipe.machine_type = "pcb_assembly_line";
             recipe.workers_per_cycle = 4;
             recipe.energy_cost = 8;
             recipe.maintenance_cost = 15;
