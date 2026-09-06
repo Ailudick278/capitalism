@@ -162,6 +162,10 @@ public class Config {
             .comment("Minimum annual debt-service coverage ratio for companies with operating history; 1.25 means 125%.")
             .defineInRange("companyLoanMinCoverageRatio", 1.25, 0.0, 10.0);
 
+    public static final ModConfigSpec.IntValue MAX_COMPANY_LOAN_TERM_DAYS = BUILDER
+            .comment("Maximum term of a company loan in Minecraft days.")
+            .defineInRange("maxCompanyLoanTermDays", 3650, 1, 3650);
+
     public static final ModConfigSpec.DoubleValue COMPANY_EMPLOYER_PAYROLL_RATE = BUILDER
             .comment("Employer labor-cost contribution applied to gross daily wages; 0.10 = 10%, set 0 to disable.")
             .defineInRange("companyEmployerPayrollRate", 0.10, 0.0, 1.0);

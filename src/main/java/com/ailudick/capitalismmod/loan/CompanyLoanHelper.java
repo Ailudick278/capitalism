@@ -22,7 +22,8 @@ public final class CompanyLoanHelper {
     public static String borrow(Player player, String companyName, long amount, int days, double ratePercent) {
         MinecraftServer server = player.getServer();
         Company company = CompanyHelper.getCompany(player, companyName);
-        if (server == null || company == null || amount <= 0L || days <= 0 || days > 3650
+        if (server == null || company == null || amount <= 0L || days <= 0
+                || days > Config.MAX_COMPANY_LOAN_TERM_DAYS.get()
                 || !Double.isFinite(ratePercent) || ratePercent < 0.0 || ratePercent > 100.0) return null;
         long maximumDebt = EconomyMath.multiply(company.registeredCapital(), Config.MAX_COMPANY_DEBT_MULTIPLE.get());
         if (maximumDebt < 0L) return null;

@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.command;
 
+import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.AcquisitionSavedData;
@@ -198,7 +199,8 @@ public class CompanyCommand {
         root.then(Commands.literal("borrow")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .then(Commands.argument("amount", LongArgumentType.longArg(1))
-                                .then(Commands.argument("days", IntegerArgumentType.integer(1, 3650))
+                                .then(Commands.argument("days", IntegerArgumentType.integer(1,
+                                        Config.MAX_COMPANY_LOAN_TERM_DAYS.get()))
                                         .then(Commands.argument("rate", DoubleArgumentType.doubleArg(0.0, 100.0))
                                                 .executes(ctx -> borrow(ctx.getSource(),
                                                         StringArgumentType.getString(ctx, "name"),
