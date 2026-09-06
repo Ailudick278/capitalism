@@ -190,6 +190,11 @@ public final class FuturesMarket {
         // Forced liquidation: positions whose account is out of margin are closed.
         for (Position position : new ArrayList<>(data.positions())) {
             if (data.marginBalance(position.playerId()) <= 0) {
+                if (!data.recordSettlementOnce("futures-liquidation:" + position.id() + ":volume")) {
+                    data.removePosition(position.id());
+                    continue;
+                }
+                data.addNetVolume(position.itemId(), position.longSide() ? -position.quantity() : position.quantity());
                 data.removePosition(position.id());
             }
         }
