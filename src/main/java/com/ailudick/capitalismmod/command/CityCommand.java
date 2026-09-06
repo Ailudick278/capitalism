@@ -37,13 +37,16 @@ public final class CityCommand {
                                         StringArgumentType.getString(c, "type"), -IntegerArgumentType.getInteger(c, "count"))))));
         var facility = Commands.literal("facility").requires(source -> source.hasPermission(2))
                 .then(add).then(remove);
+        var projectCount = Commands.argument("count", IntegerArgumentType.integer(1, 1000000))
+                .executes(c -> startProject(c.getSource(), StringArgumentType.getString(c, "region"),
+                        StringArgumentType.getString(c, "type"), IntegerArgumentType.getInteger(c, "count"), ""))
+                .then(Commands.argument("contractor", StringArgumentType.word())
+                        .executes(c -> startProject(c.getSource(), StringArgumentType.getString(c, "region"),
+                                StringArgumentType.getString(c, "type"), IntegerArgumentType.getInteger(c, "count"),
+                                StringArgumentType.getString(c, "contractor"))));
         var projectStart = Commands.literal("start")
                 .then(Commands.argument("region", StringArgumentType.word())
-                        .then(Commands.argument("type", StringArgumentType.word())
-                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000000))
-                                        .executes(c -> startProject(c.getSource(), StringArgumentType.getString(c, "region"),
-                                                StringArgumentType.getString(c, "type"),
-                                                IntegerArgumentType.getInteger(c, "count"))))));
+                        .then(Commands.argument("type", StringArgumentType.word()).then(projectCount)));
         var project = Commands.literal("project").requires(source -> source.hasPermission(2)).then(projectStart);
         var rentAmount = Commands.argument("dailyRentMinor", IntegerArgumentType.integer(0, 1000000000))
                 .executes(c -> setRent(c.getSource(), StringArgumentType.getString(c, "region"),
@@ -101,7 +104,7 @@ public final class CityCommand {
         return Math.abs(delta);
     }
 
-    private static int startProject(CommandSourceStack source, String region, String type, int count) {
+    private static int startProject(CommandSourceStack source, String region, String type, int count, String contractor) {
         if (!PublicConstructionEconomics.validFacility(type)) {
             source.sendFailure(Component.literal("Invalid construction type."));
             return 0;
@@ -109,13 +112,21 @@ public final class CityCommand {
         PublicConstructionSavedData data = PublicConstructionSavedData.get(source.getServer());
         long day = source.getServer().overworld().getGameTime() / 24000L;
         String id = "city-project:" + day + ":" + region + ":" + type + ":" + data.projects().size();
-        if (data.start(id, region, type, count, day) == null) {
+        if (!contractor.isBlank()) {
+            var company = CompanySavedData.get(source.getServer()).get(contractor);
+            if (company == null || !"construction".equals(company.type())) {
+                source.sendFailure(Component.literal("Contractor must be an existing construction company."));
+                return 0;
+            }
+        }
+        if (data.start(id, region, type, count, contractor, day) == null) {
             source.sendFailure(Component.literal("Unable to create construction project."));
             return 0;
         }
         source.sendSuccess(() -> Component.literal("city project started id=" + id + " region=" + region
                 + " type=" + type + " units=" + count + " unitCostMinor="
-                + PublicConstructionEconomics.unitCost(type)), true);
+                + PublicConstructionEconomics.unitCost(type) + " contractor="
+                + (contractor.isBlank() ? "government-direct" : contractor)), true);
         return count;
     }
 
