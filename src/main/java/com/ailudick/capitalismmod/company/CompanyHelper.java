@@ -1125,17 +1125,19 @@ public final class CompanyHelper {
                 company.companyId(), now, "dividend_distribution", Currencies.USD.id(),
                 -total, remaining, "Dividend declared at USD " + amountPerShare + " per share"));
 
-        String declaration = company.companyId() + ":dividend:" + UUID.randomUUID();
+        // The declaration identity must be deterministic: the treasury debit above
+        // is the batch boundary, and every shareholder payout can be retried from
+        // the same durable receipt after a server interruption.
+        String declaration = company.companyId() + ":dividend:" + now + ":" + amountPerShare + ":" + total;
         for (Map.Entry<UUID, Long> payout : payouts.entrySet()) {
             long minor = Money.toMinor(payout.getValue());
+            String source = declaration + ":" + payout.getKey();
+            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+            mailbox.creditMoneyOnce(payout.getKey(), Currencies.USD.id(), minor, source);
             ServerPlayer online = server.getPlayerList().getPlayer(payout.getKey());
-            if (online != null) {
-                EconomyHelper.giveMoney(online, Currencies.USD, minor);
-            } else {
-                MarketMailboxSavedData.get(server).creditMoney(payout.getKey(), Currencies.USD.id(), minor);
-            }
+            if (online != null) mailbox.redeemMoneyOnly(online);
             TaxTransactionService.assess(server, TaxType.DIVIDEND, payout.getKey(),
-                    Currencies.USD.id(), minor, declaration + ":" + payout.getKey(), now);
+                    Currencies.USD.id(), minor, source, now);
         }
         return true;
     }
