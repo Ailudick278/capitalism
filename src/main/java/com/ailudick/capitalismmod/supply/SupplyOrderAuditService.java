@@ -16,7 +16,8 @@ public final class SupplyOrderAuditService {
         if (events.isEmpty()) return "UNKNOWN";
         if (events.stream().anyMatch(event -> "LOST".equals(event.type()))) return "LOST";
         if (events.stream().anyMatch(event -> "CANCELLED_REFUND".equals(event.type()))) return "CANCELLED";
-        if (events.stream().anyMatch(event -> event.type().startsWith("EXPIRED_REFUND"))) return "REFUNDED";
+        if (events.stream().anyMatch(event -> event.type().startsWith("EXPIRED_REFUND")
+                || event.type().startsWith("INTENT_EXPIRED_REFUND"))) return "REFUNDED";
 
         long ordered = events.stream().filter(event -> "CREATED".equals(event.type()))
                 .mapToLong(SupplyOrderAuditSavedData.Event::quantity).max().orElse(0L);
