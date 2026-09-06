@@ -198,6 +198,8 @@ public final class EconomySettlementTickHandler {
         }
         if (!journal.isCompleted(settlementDay, "markets-and-close")) {
             journal.markStarted(settlementDay, "markets-and-close", server.overworld().getGameTime());
+            AuctionMarket.recoverListingIntents(server);
+            AuctionMarket.settleExpired(server);
             FuturesMarket.settleDay(server, settlementDay);
         CommodityMarket.expireOrders(server, server.overworld().getGameTime());
         StockMarket.expireOrders(server, server.overworld().getGameTime());
