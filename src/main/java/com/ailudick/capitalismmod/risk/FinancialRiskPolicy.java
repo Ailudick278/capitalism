@@ -12,7 +12,12 @@ public final class FinancialRiskPolicy {
 
     /** New company credit is frozen only in a severe, system-wide delinquency state. */
     public static boolean newCompanyCreditAllowed(int overdueShareBasisPoints) {
-        return overdueShareBasisPoints < 6000;
+        return newCompanyCreditAllowed(overdueShareBasisPoints, false);
+    }
+
+    /** Systemic liquidity crises suspend new company credit even before delinquency reaches 60%. */
+    public static boolean newCompanyCreditAllowed(int overdueShareBasisPoints, boolean crisisActive) {
+        return !crisisActive && overdueShareBasisPoints < 6000;
     }
 
     /** Bank credit is tightened once delinquency becomes material, and frozen at severe stress. */
