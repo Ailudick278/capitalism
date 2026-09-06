@@ -52,6 +52,11 @@ public final class EconomicSettlementJournalSavedData extends SavedData {
 
     public List<Entry> entries() { return List.copyOf(entries.values()); }
 
+    /** Returns daily phases that started but did not reach a durable completion marker. */
+    public List<Entry> pendingEntries() {
+        return entries.values().stream().filter(entry -> "started".equals(entry.status())).toList();
+    }
+
     private void put(Entry entry) {
         if (entry == null || entry.phase() == null || entry.phase().isBlank()) return;
         Entry previous = entries.get(key(entry.day(), entry.phase()));

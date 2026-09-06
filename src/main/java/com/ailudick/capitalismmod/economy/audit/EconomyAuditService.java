@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.economy.labor.EmploymentRecord;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborPayrollSavedData;
 import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
+import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
@@ -38,6 +39,9 @@ public final class EconomyAuditService {
         financialJournal.pendingEntries().stream().limit(100)
                 .forEach(entry -> issues.add("pending financial settlement "
                         + entry.transactionId() + "/" + entry.instrument() + "/" + entry.phase()));
+        EconomicSettlementJournalSavedData.get(server).pendingEntries().stream().limit(100)
+                .forEach(entry -> issues.add("pending daily settlement "
+                        + entry.day() + "/" + entry.phase()));
         CompanySavedData companies = CompanySavedData.get(server);
         CompanyLedgerSavedData ledgers = CompanyLedgerSavedData.get(server);
         for (Company company : companies.companies().values()) {
