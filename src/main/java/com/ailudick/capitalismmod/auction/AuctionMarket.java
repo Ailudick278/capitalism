@@ -85,12 +85,15 @@ public final class AuctionMarket {
                 EconomyHelper.giveMoney(player, Currencies.USD, bidMinor);
                 return false;
             }
-            ServerPlayer prev = player.getServer().getPlayerList().getPlayer(prevBidder);
-            if (prev != null) {
-                EconomyHelper.giveMoney(prev, Currencies.USD, previousBidMinor);
-            } else {
-                MarketMailboxSavedData.get(player.getServer()).creditMoney(prevBidder, "usd", previousBidMinor);
+            String refundSource = "auction-outbid:" + auction.id() + ":" + prevBidder
+                    + ":" + previousBidMinor;
+            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+            if (!mailbox.creditMoneyOnce(prevBidder, Currencies.USD.id(), previousBidMinor, refundSource)) {
+                // A previous attempt already recorded this refund. Redeeming the
+                // mailbox below is still safe and lets an online bidder receive it.
             }
+            ServerPlayer prev = player.getServer().getPlayerList().getPlayer(prevBidder);
+            if (prev != null) mailbox.redeemMoneyOnly(prev);
         }
         bidJournal.record(new AuctionBidSavedData.Bid(auctionId, player.getUUID(), amount));
         data.replaceAuction(auction.withBid(amount, player.getStringUUID()));
