@@ -99,6 +99,18 @@ public final class TaxRefundService {
         return true;
     }
 
+    /** Retries only interrupted refund settlements; ordinary pending requests remain manual. */
+    public static int recoverUnfinished(MinecraftServer server) {
+        int recovered = 0;
+        for (TaxRefundSavedData.Request request : TaxRefundSavedData.get(server).all()) {
+            if ((request.status().equals("PROCESSING") || request.status().equals("CREDIT_CONSUMED"))
+                    && approve(server, request.id(), "SYSTEM_RECOVERY")) {
+                recovered++;
+            }
+        }
+        return recovered;
+    }
+
     private static boolean failReview(TaxRefundSavedData data, TaxRefundSavedData.Request request,
                                       MinecraftServer server, String reason) {
         data.replace(new TaxRefundSavedData.Request(request.id(), request.taxpayerUuid(), request.currencyId(), request.amount(),

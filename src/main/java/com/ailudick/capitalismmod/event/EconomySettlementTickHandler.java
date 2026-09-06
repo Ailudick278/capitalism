@@ -11,6 +11,7 @@ import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanNotificationService;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
+import com.ailudick.capitalismmod.tax.TaxRefundService;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
@@ -84,6 +85,7 @@ public final class EconomySettlementTickHandler {
         loans.setDirty();
 
         CompanyPayrollService.settleDaily(server, settlementDay);
+        TaxRefundService.recoverUnfinished(server);
 
         CompanyLoanSavedData companyLoans = CompanyLoanSavedData.get(server);
         CompanySavedData companies = CompanySavedData.get(server);
