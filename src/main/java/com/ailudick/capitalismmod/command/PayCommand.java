@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -31,11 +32,16 @@ public class PayCommand {
                                                 return 0;
                                             }
                                             Currency currency = Currencies.byId(currencyId);
-                                            if (!EconomyHelper.tryPay(sender, currency, Money.toMinor(amount))) {
+                                            long amountMinor = Money.toMinor(amount);
+                                            String transferSource = "player-pay:" + sender.getUUID() + ":" + target.getUUID()
+                                                    + ":" + currency.id() + ":" + amountMinor + ":" + sender.level().getGameTime();
+                                            if (!EconomyHelper.tryPayWithReference(sender, currency, amountMinor, transferSource + ":payment")) {
                                                 ctx.getSource().sendFailure(Component.translatable("command.capitalismmod.insufficient"));
                                                 return 0;
                                             }
-                                            EconomyHelper.giveMoney(target, currency, Money.toMinor(amount));
+                                            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(sender.getServer());
+                                            mailbox.creditTransferOnce(target.getUUID(), currency.id(), amountMinor, transferSource + ":delivery");
+                                            mailbox.redeemTransferOnly(target);
 
                                             sender.sendSystemMessage(Component.translatable("command.capitalismmod.pay_success",
                                                     amount, Component.translatable(currency.nameKey()), target.getDisplayName()));
