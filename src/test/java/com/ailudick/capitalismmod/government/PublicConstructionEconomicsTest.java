@@ -28,4 +28,11 @@ class PublicConstructionEconomicsTest {
                 > PublicConstructionEconomics.materials("housing").get("minecraft:stone"));
         assertTrue(PublicConstructionEconomics.materials("clinic").containsKey("minecraft:iron_ingot"));
     }
+
+    @Test
+    void onlyConstructionRolesProvideBuildingCapacity() {
+        assertTrue(PublicConstructionEconomics.isConstructionRole("construction"));
+        assertTrue(PublicConstructionEconomics.isConstructionRole("建筑工"));
+        assertFalse(PublicConstructionEconomics.isConstructionRole("transport"));
+    }
 }

@@ -27,4 +27,10 @@ public final class PublicConstructionEconomics {
             default -> Map.of();
         };
     }
+
+    public static boolean isConstructionRole(String role) {
+        if (role == null) return false;
+        String normalized = role.trim().toLowerCase(java.util.Locale.ROOT);
+        return normalized.equals("construction") || normalized.equals("builder") || role.contains("建筑");
+    }
 }

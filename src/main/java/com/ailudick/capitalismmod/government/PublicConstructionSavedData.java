@@ -70,9 +70,13 @@ public final class PublicConstructionSavedData extends SavedData {
                 contractor = CompanySavedData.get(server).get(project.contractorCompanyId());
                 if (contractor == null || !"construction".equals(contractor.type())
                         || !CompanyLifecycleService.canOperate(server, contractor.companyId())) continue;
-                int legacyWorkers = CompanyLaborSavedData.get(server).activeWorkers(contractor.companyId());
-                int marketWorkers = LaborMarketSavedData.get(server).activeWorkers(contractor.companyId());
-                if (legacyWorkers + marketWorkers <= 0) continue;
+                long legacyWorkers = CompanyLaborSavedData.get(server).contracts(contractor.companyId()).stream()
+                        .filter(CompanyLaborSavedData.WorkerContract::active)
+                        .filter(worker -> PublicConstructionEconomics.isConstructionRole(worker.role()))
+                        .mapToLong(CompanyLaborSavedData.WorkerContract::count).sum();
+                long marketWorkers = LaborMarketSavedData.get(server).activeForEmployer(contractor.companyId()).stream()
+                        .filter(worker -> PublicConstructionEconomics.isConstructionRole(worker.role())).count();
+                if (legacyWorkers + marketWorkers <= 0L) continue;
                 if (policy.treasuryMinor() < cost) continue;
                 InventoryOwner owner = InventoryOwner.company(contractor.companyId());
                 if (!WarehouseSavedData.get(server).canConsumeBatch(owner,
