@@ -7,6 +7,7 @@ import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
+import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
@@ -16,8 +17,6 @@ import java.util.UUID;
 
 /** Company financing operations. Principal is a liability, never operating revenue. */
 public final class CompanyLoanHelper {
-    private static final long MAX_DEBT_MULTIPLE_OF_CAPITAL = 5L;
-
     private CompanyLoanHelper() {}
 
     public static String borrow(Player player, String companyName, long amount, int days, double ratePercent) {
@@ -25,7 +24,7 @@ public final class CompanyLoanHelper {
         Company company = CompanyHelper.getCompany(player, companyName);
         if (server == null || company == null || amount <= 0L || days <= 0 || days > 3650
                 || !Double.isFinite(ratePercent) || ratePercent < 0.0 || ratePercent > 100.0) return null;
-        long maximumDebt = EconomyMath.multiply(company.registeredCapital(), MAX_DEBT_MULTIPLE_OF_CAPITAL);
+        long maximumDebt = EconomyMath.multiply(company.registeredCapital(), Config.MAX_COMPANY_DEBT_MULTIPLE.get());
         if (maximumDebt < 0L) return null;
         List<CompanyLoan> existingLoans = CompanyLoanSavedData.get(server).forCompany(company.companyId());
         if (CompanyDebtServiceAssessment.hasOverdueLoan(existingLoans)) return null;

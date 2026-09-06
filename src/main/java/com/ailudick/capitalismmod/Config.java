@@ -154,6 +154,10 @@ public class Config {
             .comment("Fixed company overhead in USD per production batch; 0 disables it.")
             .defineInRange("companyFixedOverheadPerCycle", 1L, 0L, Long.MAX_VALUE);
 
+    public static final ModConfigSpec.LongValue MAX_COMPANY_DEBT_MULTIPLE = BUILDER
+            .comment("Maximum company loan principal as a multiple of registered capital; 5 means 5x.")
+            .defineInRange("maxCompanyDebtMultiple", 5L, 0L, 100L);
+
     public static final ModConfigSpec.DoubleValue COMPANY_EMPLOYER_PAYROLL_RATE = BUILDER
             .comment("Employer labor-cost contribution applied to gross daily wages; 0.10 = 10%, set 0 to disable.")
             .defineInRange("companyEmployerPayrollRate", 0.10, 0.0, 1.0);
