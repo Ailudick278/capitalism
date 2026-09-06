@@ -35,11 +35,20 @@ public final class InflationEconomics {
         return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, Math.round(index)));
     }
 
-    /** One-day bounded Taylor-style response: 25 bps toward the price-level target. */
-    public static int policyRateAdjustment(int currentIndexBps, int targetIndexBps) {
-        if (currentIndexBps > targetIndexBps) return 25;
-        if (currentIndexBps < targetIndexBps) return -25;
+    /** One-day bounded response to the observed lookback inflation rate. */
+    public static int policyRateAdjustment(int currentIndexBps, int previousIndexBps,
+                                           int targetInflationBps) {
+        if (currentIndexBps <= 0 || previousIndexBps <= 0) return 0;
+        long delta = (long) currentIndexBps - previousIndexBps;
+        long observed = delta * 10000L / previousIndexBps;
+        if (observed > targetInflationBps) return 25;
+        if (observed < targetInflationBps) return -25;
         return 0;
+    }
+
+    /** Compatibility overload for callers that used the old price-level rule. */
+    public static int policyRateAdjustment(int currentIndexBps, int targetIndexBps) {
+        return currentIndexBps > targetIndexBps ? 25 : currentIndexBps < targetIndexBps ? -25 : 0;
     }
 
     public static boolean automaticAdjustmentDue(long day, long lastAdjustmentDay) {

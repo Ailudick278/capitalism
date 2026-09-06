@@ -28,8 +28,8 @@ public final class GovernmentCommand {
         var rate = Commands.literal("rate").then(rateAmount);
         var autoInflation = Commands.argument("enabled", BoolArgumentType.bool())
                 .executes(c -> autoInflation(c.getSource(), BoolArgumentType.getBool(c, "enabled")));
-        var inflationTarget = Commands.argument("indexBps", IntegerArgumentType.integer(9000, 12000))
-                .executes(c -> inflationTarget(c.getSource(), IntegerArgumentType.getInteger(c, "indexBps")));
+        var inflationTarget = Commands.argument("basisPoints", IntegerArgumentType.integer(0, 2000))
+                .executes(c -> inflationTarget(c.getSource(), IntegerArgumentType.getInteger(c, "basisPoints")));
         var inflation = Commands.literal("inflation").then(autoInflation).then(Commands.literal("target").then(inflationTarget));
         root.then(Commands.literal("policy").requires(s -> s.hasPermission(2)).then(benefit).then(rate).then(regional).then(inflation));
         var depositAmount = Commands.argument("amountMinor", IntegerArgumentType.integer(1, 2000000000))
@@ -50,7 +50,7 @@ public final class GovernmentCommand {
                 + " regionalSupportRate=" + data.regionalSupportRatePercent() + "%"
                 + " policyRateBps=" + data.policyRateBasisPoints()
                 + " autoInflation=" + data.automaticInflationPolicy()
-                + " inflationTargetIndexBps=" + data.inflationTargetIndexBps()
+                + " inflationTargetBps=" + data.inflationTargetBps()
                 + " transfers=" + data.transactions().size()
                 + " taxRevenues=" + data.taxRevenues().size()), false);
         return 1;
@@ -79,7 +79,7 @@ public final class GovernmentCommand {
 
     private static int inflationTarget(CommandSourceStack source, int target) {
         GovernmentPolicySavedData data = GovernmentPolicySavedData.get(source.getServer());
-        if (!data.setInflationTargetIndexBps(target)) return 0;
+        if (!data.setInflationTargetBps(target)) return 0;
         source.sendSuccess(() -> Component.literal("inflation target index set to " + target), true);
         return 1;
     }

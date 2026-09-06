@@ -37,10 +37,12 @@ public final class GovernmentPolicyService {
     private static void applyAutomaticInflationPolicy(MinecraftServer server,
                                                        GovernmentPolicySavedData policy, long day) {
         if (!policy.automaticInflationPolicy()) return;
-        InflationSavedData.Snapshot snapshot = InflationSavedData.get(server).atOrBefore(day - 1L);
-        if (snapshot == null) return;
-        int adjustment = InflationEconomics.policyRateAdjustment(snapshot.indexBps(),
-                policy.inflationTargetIndexBps());
+        InflationSavedData inflation = InflationSavedData.get(server);
+        InflationSavedData.Snapshot snapshot = inflation.atOrBefore(day - 1L);
+        InflationSavedData.Snapshot previous = inflation.atOrBefore(day - 31L);
+        if (snapshot == null || previous == null) return;
+        int adjustment = InflationEconomics.policyRateAdjustment(snapshot.indexBps(), previous.indexBps(),
+                policy.inflationTargetBps());
         policy.adjustPolicyRateOnce(day, adjustment);
     }
 
