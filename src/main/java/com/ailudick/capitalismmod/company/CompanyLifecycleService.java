@@ -17,6 +17,7 @@ import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketService;
+import com.ailudick.capitalismmod.economy.labor.LaborPayrollService;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -113,6 +114,8 @@ public final class CompanyLifecycleService {
         Company current = CompanySavedData.get(server).get(company.companyId());
         if (current == null) return false;
         CompanyPayrollService.payOutstanding(server, current);
+        Company afterPayroll = CompanySavedData.get(server).get(company.companyId());
+        if (afterPayroll != null) LaborPayrollService.payOutstandingForCompany(server, afterPayroll);
         current = CompanySavedData.get(server).get(company.companyId());
         if (current == null || CompanyPayrollSavedData.get(server).unpaid(company.companyId()) > 0L) return false;
         TaxSubject subject = new TaxSubject(TaxType.CORPORATE_INCOME, current.companyId(), current.ownerUuid());

@@ -82,8 +82,63 @@ public final class LaborPayrollService {
         }
     }
 
+    /** Pays as much of each employee's recorded wage claim as liquidation assets allow. */
+    public static long payOutstandingForCompany(MinecraftServer server, Company company) {
+        if (server == null || company == null) return 0L;
+        LaborMarketSavedData labor = LaborMarketSavedData.get(server);
+        LaborPayrollSavedData payroll = LaborPayrollSavedData.get(server);
+        long paidTotal = 0L;
+        for (EmploymentRecord employment : labor.employments()) {
+            if (!company.companyId().equals(employment.employerId())) continue;
+            long unpaid = payroll.account(employment.id()).unpaid();
+            if (unpaid <= 0L) continue;
+            long available = Math.max(0L, company.treasuryOf(Currencies.USD.id()));
+            long availableMinor = available >= Long.MAX_VALUE / Money.MINOR_UNITS_PER_UNIT
+                    ? Long.MAX_VALUE : available * Money.MINOR_UNITS_PER_UNIT;
+            long amountMinor = Math.min(unpaid, availableMinor);
+            long amountMajor = amountMinor / Money.MINOR_UNITS_PER_UNIT;
+            if (amountMajor <= 0L) continue;
+            amountMinor = amountMajor * Money.MINOR_UNITS_PER_UNIT;
+            long householdAmount = ExchangeRates.convert(amountMinor, Currencies.USD, Config.defaultCurrency());
+            String source = "liquidation-labor-payroll:" + employment.id() + ":" + unpaid;
+            boolean debited = CompanyLedgerSavedData.get(server).entries(company.companyId()).stream()
+                    .anyMatch(entry -> entry.description() != null
+                            && entry.description().contains("[source=" + source + "]"));
+            if (!debited && !CompanyHelper.debitTreasuryNonOperatingOnce(server, company.companyId(),
+                    Currencies.USD.id(), amountMajor, "liquidation_labor_payroll",
+                    "Liquidation employee wage claim", source)) continue;
+            boolean delivered = false;
+            try {
+                java.util.UUID worker = java.util.UUID.fromString(employment.workerId());
+                MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+                String payout = "liquidation-labor-payout:" + employment.id() + ":" + unpaid;
+                delivered = mailbox.hasCreditSource(payout)
+                        || mailbox.creditMoneyOnce(worker, Currencies.USD.id(), amountMinor, payout);
+                PopulationSavedData population = PopulationSavedData.get(server);
+                delivered = delivered && (population.hasCreditedSource(payout + ":household")
+                        || population.addCashOnce(worker.toString(), householdAmount, payout + ":household"));
+            } catch (IllegalArgumentException npcWorker) {
+                String payout = "liquidation-labor-payout:" + employment.id() + ":" + unpaid;
+                PopulationSavedData population = PopulationSavedData.get(server);
+                delivered = population.hasCreditedSource(payout)
+                        || population.addCashOnce(employment.workerId(), householdAmount, payout);
+            }
+            if (delivered) {
+                payroll.settle(employment.id(), server.overworld().getGameTime() / 24000L,
+                        unpaid - amountMinor);
+                paidTotal = add(paidTotal, amountMinor);
+            }
+        }
+        return paidTotal;
+    }
+
     private static long toMinor(long major) {
         return major <= 0L ? 0L : major >= Long.MAX_VALUE / Money.MINOR_UNITS_PER_UNIT
                 ? Long.MAX_VALUE : major * Money.MINOR_UNITS_PER_UNIT;
+    }
+
+    private static long add(long left, long right) {
+        try { return Math.addExact(left, right); }
+        catch (ArithmeticException ignored) { return Long.MAX_VALUE; }
     }
 }
