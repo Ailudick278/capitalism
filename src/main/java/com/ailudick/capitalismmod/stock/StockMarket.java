@@ -324,7 +324,8 @@ public final class StockMarket {
         String orderId = UUID.randomUUID().toString();
         StockSellIntentSavedData intents = StockSellIntentSavedData.get(player.getServer());
         intents.add(new StockSellIntentSavedData.Intent(orderId, player.getUUID(), stockId, quantity,
-                pricePerUnit, player.getServer().overworld().getGameTime(), false));
+                pricePerUnit, player.getServer().overworld().getGameTime(),
+                data.holdings(stockId, player.getUUID()), false));
         data.addShares(stockId, player.getUUID(), -quantity);
         intents.markSharesEscrowed(orderId);
         long orderTime = player.getServer().overworld().getGameTime();
@@ -387,8 +388,14 @@ public final class StockMarket {
             ServerPlayer seller = server.getPlayerList().getPlayer(intent.sellerUuid());
             if (seller == null) continue;
             if (!intent.sharesEscrowed()) {
-                if (data.holdings(intent.stockId(), seller.getUUID()) < intent.quantity()) continue;
-                data.addShares(intent.stockId(), seller.getUUID(), -intent.quantity());
+                long currentHoldings = data.holdings(intent.stockId(), seller.getUUID());
+                long expectedAfter = intent.holdingsBefore() >= intent.quantity()
+                        ? intent.holdingsBefore() - intent.quantity() : -1L;
+                if (currentHoldings == intent.holdingsBefore()) {
+                    data.addShares(intent.stockId(), seller.getUUID(), -intent.quantity());
+                } else if (currentHoldings != expectedAfter) {
+                    continue;
+                }
                 intents.markSharesEscrowed(intent.orderId());
             }
             data.addOrder(new StockOrder(intent.orderId(), intent.sellerUuid().toString(), intent.stockId(),

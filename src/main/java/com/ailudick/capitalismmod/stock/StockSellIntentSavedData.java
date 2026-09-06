@@ -18,15 +18,16 @@ public final class StockSellIntentSavedData extends SavedData {
     private final List<Intent> intents = new ArrayList<>();
 
     public record Intent(String orderId, UUID sellerUuid, String stockId, int quantity,
-                         long pricePerUnit, long createdAt, boolean sharesEscrowed) {
+                         long pricePerUnit, long createdAt, long holdingsBefore, boolean sharesEscrowed) {
         public Intent {
             orderId = orderId == null ? "" : orderId;
             stockId = stockId == null ? "" : stockId;
             quantity = Math.max(0, quantity);
             pricePerUnit = Math.max(0L, pricePerUnit);
+            holdingsBefore = Math.max(0L, holdingsBefore);
         }
         public Intent withSharesEscrowed(boolean value) {
-            return new Intent(orderId, sellerUuid, stockId, quantity, pricePerUnit, createdAt, value);
+            return new Intent(orderId, sellerUuid, stockId, quantity, pricePerUnit, createdAt, holdingsBefore, value);
         }
     }
 
@@ -70,6 +71,7 @@ public final class StockSellIntentSavedData extends SavedData {
             value.putInt("quantity", intent.quantity());
             value.putLong("pricePerUnit", intent.pricePerUnit());
             value.putLong("createdAt", intent.createdAt());
+            value.putLong("holdingsBefore", intent.holdingsBefore());
             value.putBoolean("sharesEscrowed", intent.sharesEscrowed());
             list.add(value);
         }
@@ -86,7 +88,7 @@ public final class StockSellIntentSavedData extends SavedData {
                     || value.getLong("pricePerUnit") <= 0L) continue;
             data.intents.add(new Intent(value.getString("orderId"), value.getUUID("seller"),
                     value.getString("stockId"), value.getInt("quantity"), value.getLong("pricePerUnit"),
-                    value.getLong("createdAt"), value.getBoolean("sharesEscrowed")));
+                    value.getLong("createdAt"), value.getLong("holdingsBefore"), value.getBoolean("sharesEscrowed")));
         }
         return data;
     }
