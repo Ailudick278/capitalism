@@ -636,11 +636,13 @@ public final class SupplyMarket {
         if (amountMinor <= 0L) {
             return false;
         }
-        boolean credited = mailbox.creditMoneyOnce(supplierUuid, "usd", amountMinor,
-                "supply-supplier-payment:" + sourceId);
-        if (credited && supplier != null) mailbox.redeemMoneyOnly(supplier);
+        String mailboxSource = "supply-supplier-payment:" + sourceId;
+        boolean credited = mailbox.hasCreditSource(mailboxSource)
+                || mailbox.creditMoneyOnce(supplierUuid, "usd", amountMinor, mailboxSource);
+        if (!credited) return false;
+        if (supplier != null) mailbox.redeemMoneyOnly(supplier);
         settlements.recordSupplierPayment(sourceId);
-        return credited;
+        return true;
     }
 
     private static void deliverOrShip(MinecraftServer server, UUID buyer, Item item, int quantity,
