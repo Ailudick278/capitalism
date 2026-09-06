@@ -143,10 +143,18 @@ public final class CompanyProductionBatchSavedData extends SavedData {
     public static Batch newBatch(Company company, ProductionRecipe recipe, long conversionCost,
                                  int qualityScore, int workers, long createdAt,
                                  CompanySiteSavedData.Site site) {
+        return newBatch(company, recipe, conversionCost, qualityScore, workers, createdAt, site, null);
+    }
+
+    /** Creates a batch with a stable audit ID when the caller has a durable cycle key. */
+    public static Batch newBatch(Company company, ProductionRecipe recipe, long conversionCost,
+                                 int qualityScore, int workers, long createdAt,
+                                 CompanySiteSavedData.Site site, String stableId) {
         String dimension = site == null ? "" : site.dimension();
         int chunkX = site == null ? 0 : site.chunkX();
         int chunkZ = site == null ? 0 : site.chunkZ();
-        return new Batch(UUID.randomUUID().toString(), company.companyId(), recipe.id(), recipe.machineType(),
+        String id = stableId == null || stableId.isBlank() ? UUID.randomUUID().toString() : stableId;
+        return new Batch(id, company.companyId(), recipe.id(), recipe.machineType(),
                 recipe.inputs(), recipe.outputs(), conversionCost, qualityScore, workers, createdAt,
                 dimension, chunkX, chunkZ);
     }

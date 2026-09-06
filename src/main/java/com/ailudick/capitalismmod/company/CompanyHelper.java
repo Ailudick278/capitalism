@@ -549,7 +549,7 @@ public final class CompanyHelper {
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
         if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return ProductionCycleResult.failure("oil_reservation");
         int qualityScore = productionQuality(server, company, machine);
-        produceOutputs(server, company, recipe, conversionCost, qualityScore, operatingSite);
+        produceOutputs(server, company, recipe, conversionCost, qualityScore, operatingSite, cycleKey);
         if (serviceCycle) {
             CompanyServiceDeliverySavedData.get(server).append(
                     new CompanyServiceDeliverySavedData.ServiceDelivery(
@@ -874,7 +874,7 @@ public final class CompanyHelper {
     /** Deposits outputs, records their conversion cost, then fulfills backorders. */
     private static void produceOutputs(MinecraftServer server, Company company, ProductionRecipe recipe,
                                        long conversionCost, int qualityScore,
-                                       CompanySiteSavedData.Site operatingSite) {
+                                       CompanySiteSavedData.Site operatingSite, String cycleKey) {
         if (server == null) {
             return;
         }
@@ -909,7 +909,8 @@ public final class CompanyHelper {
         }
         CompanyProductionBatchSavedData.Batch batch = CompanyProductionBatchSavedData.newBatch(
                 company, recipe, conversionCost, qualityScore, recipe.workersPerCycle(),
-                server.overworld().getGameTime(), operatingSite);
+                server.overworld().getGameTime(), operatingSite,
+                cycleKey == null || cycleKey.isBlank() ? null : "production:" + cycleKey);
         CompanyProductionBatchSavedData.get(server).record(batch);
         CompanyQualityControlSavedData.get(server).screen(batch, batch.createdAt());
         CompanyQualityHoldSavedData.get(server).hold(batch);
