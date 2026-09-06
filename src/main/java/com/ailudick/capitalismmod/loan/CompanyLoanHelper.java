@@ -17,7 +17,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.List;
-import java.util.UUID;
 
 /** Company financing operations. Principal is a liability, never operating revenue. */
 public final class CompanyLoanHelper {
@@ -58,11 +57,16 @@ public final class CompanyLoanHelper {
                 amount, days, effectiveRate, cashFlow.hasOperatingHistory(),
                 Config.COMPANY_LOAN_MIN_COVERAGE_RATIO.get(), lookbackDays);
         if (!debtService.approved()) return null;
-        if (!CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), amount,
-                "loan_proceeds", "Company loan principal received")) return null;
-        String id = UUID.randomUUID().toString();
-        CompanyLoanSavedData.get(server).add(new CompanyLoan(id, company.companyId(),
-                Currencies.USD.id(), amount, effectiveRate, days, days, 0L));
+        String source = "company-loan:" + company.companyId() + ":" + existingDebt + ":" + amount
+                + ":" + days + ":" + Double.doubleToLongBits(effectiveRate);
+        if (!CompanyHelper.creditTreasuryNonOperatingOnce(server, company.companyId(), Currencies.USD.id(), amount,
+                "loan_proceeds", "Company loan principal received", source)) return null;
+        String id = source;
+        CompanyLoanSavedData loanData = CompanyLoanSavedData.get(server);
+        if (loanData.find(id) == null) {
+            loanData.add(new CompanyLoan(id, company.companyId(),
+                    Currencies.USD.id(), amount, effectiveRate, days, days, 0L));
+        }
         return id;
     }
 
