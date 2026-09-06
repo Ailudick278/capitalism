@@ -17,6 +17,8 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
     private final Map<String, Entry> entries = new HashMap<>();
     private final Map<String, Settlement> settlements = new HashMap<>();
     private final Map<String, Long> prepaid = new HashMap<>();
+    /** Accumulated corporate tax losses that may offset future profitable years. */
+    private final Map<String, Long> lossCarryforward = new HashMap<>();
     public record Entry(String companyId, String currencyId, long revenue, long expenses, long yearStart, long yearEnd) {
         public Entry(String companyId, String currencyId, long revenue, long yearStart, long yearEnd) {
             this(companyId, currencyId, revenue, 0L, yearStart, yearEnd);
@@ -64,6 +66,17 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
         return prepaid.getOrDefault(companyId + ":" + yearEnd, 0L);
     }
 
+    public long lossCarryforwardFor(String companyId) {
+        return lossCarryforward.getOrDefault(companyId, 0L);
+    }
+
+    public void setLossCarryforward(String companyId, long amount) {
+        if (companyId == null || companyId.isBlank()) return;
+        if (amount <= 0L) lossCarryforward.remove(companyId);
+        else lossCarryforward.put(companyId, amount);
+        setDirty();
+    }
+
     public List<Entry> due(long now) {
         return new ArrayList<>(entries.values().stream().filter(entry -> entry.yearEnd() <= now
                 && !settlements.containsKey(entry.companyId() + ":" + entry.yearEnd())).toList());
@@ -101,6 +114,14 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
         ListTag prepaidList = new ListTag();
         prepaid.forEach((key, amount) -> { CompoundTag value = new CompoundTag(); value.putString("key", key); value.putLong("amount", amount); prepaidList.add(value); });
         tag.put("prepaid", prepaidList);
+        ListTag lossList = new ListTag();
+        lossCarryforward.forEach((companyId, amount) -> {
+            CompoundTag value = new CompoundTag();
+            value.putString("companyId", companyId);
+            value.putLong("amount", amount);
+            lossList.add(value);
+        });
+        tag.put("lossCarryforward", lossList);
         return tag;
     }
 
@@ -125,6 +146,13 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
         for (int i = 0; i < prepaid.size(); i++) {
             CompoundTag value = prepaid.getCompound(i);
             if (!value.getString("key").isBlank() && value.getLong("amount") > 0L) data.prepaid.put(value.getString("key"), value.getLong("amount"));
+        }
+        ListTag losses = tag.getList("lossCarryforward", 10);
+        for (int i = 0; i < losses.size(); i++) {
+            CompoundTag value = losses.getCompound(i);
+            if (!value.getString("companyId").isBlank() && value.getLong("amount") > 0L) {
+                data.lossCarryforward.put(value.getString("companyId"), value.getLong("amount"));
+            }
         }
         return data;
     }

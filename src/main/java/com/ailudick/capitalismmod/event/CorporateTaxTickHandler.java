@@ -75,10 +75,15 @@ public final class CorporateTaxTickHandler {
         for (var entry : annual.due(now)) {
             Company company = CompanySavedData.get(server).get(entry.companyId());
             if (company == null) continue;
-            long profit = Math.max(0L, entry.revenue() - Math.min(entry.revenue(), entry.expenses()));
+            long profit = Math.max(0L, entry.revenue() - entry.expenses());
+            long loss = Math.max(0L, entry.expenses() - entry.revenue());
+            long priorLoss = annual.lossCarryforwardFor(entry.companyId());
+            long lossUsed = Math.min(priorLoss, profit);
+            long taxableProfit = profit - lossUsed;
+            long remainingLoss = addSaturated(loss, priorLoss - lossUsed);
             long annualTax = Money.toMinorSaturated(Math.max(0L,
                     TaxRuleService.taxMinor(server, TaxType.CORPORATE_INCOME,
-                            Money.toMinorSaturated(profit), now)));
+                            Money.toMinorSaturated(taxableProfit), now)));
             long prepaid = annual.prepaidFor(entry.companyId(), entry.yearEnd());
             long balance = annualTax - prepaid;
             long credit = balance < 0L ? -balance : 0L;
@@ -94,7 +99,7 @@ public final class CorporateTaxTickHandler {
                 TaxPeriod period = new TaxPeriod(entry.yearStart(), entry.yearEnd(), entry.yearEnd(),
                         entry.yearEnd() + 15L * TICKS_PER_DAY);
                 TaxService.createPeriodicBill(server,
-                        subject, entry.currencyId(), balance, period, Money.toMinorSaturated(profit),
+                        subject, entry.currencyId(), balance, period, Money.toMinorSaturated(taxableProfit),
                         TaxRuleService.rateBasisPoints(server, TaxType.CORPORATE_INCOME, now),
                         source);
             }
@@ -102,6 +107,7 @@ public final class CorporateTaxTickHandler {
                     entry.yearStart(), entry.yearEnd(), now);
             annual.settle(entry, new CorporateTaxAnnualSavedData.Settlement(entry.companyId(), entry.yearEnd(),
                     annualTax, prepaid, Math.max(0L, balance), credit, now));
+            annual.setLossCarryforward(entry.companyId(), remainingLoss);
         }
     }
 
