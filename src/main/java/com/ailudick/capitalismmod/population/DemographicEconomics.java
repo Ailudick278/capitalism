@@ -6,11 +6,24 @@ public final class DemographicEconomics {
     private DemographicEconomics() {}
 
     public static int annualBirthRatePerThousand(int satisfaction) {
-        return 8 + Math.max(0, Math.min(100, satisfaction)) / 25;
+        return annualBirthRatePerThousand(satisfaction, 30);
+    }
+
+    public static int annualBirthRatePerThousand(int satisfaction, int averageAge) {
+        int rate = 8 + Math.max(0, Math.min(100, satisfaction)) / 25;
+        if (averageAge >= 20 && averageAge <= 40) rate += 4;
+        else if (averageAge > 50) rate = Math.max(1, rate - 4);
+        return rate;
     }
 
     public static int annualDeathRatePerThousand(int health) {
-        return Math.max(2, 12 - Math.max(0, Math.min(100, health)) / 20);
+        return annualDeathRatePerThousand(health, 30);
+    }
+
+    public static int annualDeathRatePerThousand(int health, int averageAge) {
+        int rate = Math.max(2, 12 - Math.max(0, Math.min(100, health)) / 20);
+        if (averageAge > 60) rate += Math.min(80, (averageAge - 60) / 5 * 8);
+        return rate;
     }
 
     public static boolean eventFor(String householdId, long day, int ratePerThousand, int population) {

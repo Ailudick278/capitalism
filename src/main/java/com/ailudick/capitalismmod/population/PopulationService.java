@@ -55,7 +55,8 @@ public final class PopulationService {
             boolean employed = !labor.activeForWorker(household.id()).isEmpty();
             Household settled = household.withSettlement(day, result.remainingCash(), welfare, household.region())
                     .withEmploymentState(employed)
-                    .withHumanCapital(health, education);
+                    .withHumanCapital(health, education)
+                    .withAging(day);
             population.upsert(settled);
             LaborProfile profile = labor.profile(household.id());
             if (profile != null) labor.registerProfile(profile.withHealthAndEducation(health, education));
@@ -98,12 +99,14 @@ public final class PopulationService {
     private static void evolveNpc(PopulationSavedData population, Household household, long day) {
         if (!isNpc(household.id()) || day < 0L) return;
         if (DemographicEconomics.eventFor(household.id() + ":birth", day,
-                DemographicEconomics.annualBirthRatePerThousand(household.satisfaction()), household.size())) {
-            population.upsert(household.withDemographics(household.size() + 1, household.workingAge()));
+                DemographicEconomics.annualBirthRatePerThousand(household.satisfaction(), household.averageAge()), household.size())) {
+            int nextAge = household.size() <= 0 ? household.averageAge()
+                    : (household.averageAge() * household.size()) / (household.size() + 1);
+            population.upsert(household.withDemographics(household.size() + 1, household.workingAge(), nextAge));
             return;
         }
         if (household.size() > 1 && DemographicEconomics.eventFor(household.id() + ":death", day,
-                DemographicEconomics.annualDeathRatePerThousand(household.health()), household.size())) {
+                DemographicEconomics.annualDeathRatePerThousand(household.health(), household.averageAge()), household.size())) {
             population.upsert(household.withDemographics(household.size() - 1,
                     household.workingAge() > 0 ? household.workingAge() - 1 : household.workingAge()));
         }
