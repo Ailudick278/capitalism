@@ -5,7 +5,7 @@ import net.minecraft.server.MinecraftServer;
 
 /** Pays daily upkeep for public facilities and depreciates them when funding is unavailable. */
 public final class GovernmentPublicBudgetService {
-    private static final String[] FACILITIES = {"housing", "school", "clinic"};
+    private static final String[] FACILITIES = {"housing", "clinic", "school"};
 
     private GovernmentPublicBudgetService() {}
 
@@ -23,7 +23,10 @@ public final class GovernmentPublicBudgetService {
                     // A repeated settlement observes the existing receipt; it
                     // must not interpret the idempotency hit as a budget failure.
                     maintained++;
-                } else if (policy.spend("public-service:" + region, day, cost, transactionId)) {
+                } else if (policy.treasuryMinor() >= cost
+                        && (PublicBudgetEconomics.priority(facility) >= 90
+                        || policy.treasuryMinor() - cost >= policy.dailyBenefitMinor())
+                        && policy.spend("public-service:" + region, day, cost, transactionId)) {
                     maintained++;
                 } else {
                     // One unit fails per day, keeping fiscal stress visible without deleting a city at once.

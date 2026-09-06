@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.government;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PublicBudgetEconomicsTest {
     @Test
@@ -20,5 +21,12 @@ class PublicBudgetEconomicsTest {
                 PublicBudgetEconomics.dailyMaintenance("housing", Integer.MAX_VALUE));
         assertEquals(0L, PublicBudgetEconomics.dailyMaintenance(null, Integer.MAX_VALUE));
         assertEquals(0L, PublicBudgetEconomics.dailyMaintenance("clinic", -1));
+    }
+
+    @Test
+    void essentialServicesHaveExplicitFiscalPriority() {
+        assertTrue(PublicBudgetEconomics.priority("housing") > PublicBudgetEconomics.priority("clinic"));
+        assertTrue(PublicBudgetEconomics.priority("clinic") > PublicBudgetEconomics.priority("school"));
+        assertEquals(0, PublicBudgetEconomics.priority("port"));
     }
 }

@@ -16,4 +16,14 @@ public final class PublicBudgetEconomics {
         if (count > Long.MAX_VALUE / perUnit) return Long.MAX_VALUE;
         return perUnit * count;
     }
+
+    /** Higher priority services are maintained first during fiscal stress. */
+    public static int priority(String facility) {
+        return switch (facility) {
+            case "housing" -> 100;
+            case "clinic" -> 90;
+            case "school" -> 80;
+            default -> 0;
+        };
+    }
 }
