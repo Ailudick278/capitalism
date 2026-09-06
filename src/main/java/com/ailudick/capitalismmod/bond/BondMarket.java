@@ -8,6 +8,8 @@ import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
+import com.ailudick.capitalismmod.government.MonetaryPolicyEconomics;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -36,7 +38,14 @@ public final class BondMarket {
             return false;
         }
         BondSavedData data = BondSavedData.get(player.getServer());
-        double rate = Config.BOND_RATE_PER_YEAR.get();
+        long treasuryProceeds = com.ailudick.capitalismmod.currency.ExchangeRates.convert(
+                totalMinor, Currencies.USD, Config.defaultCurrency());
+        if (!GovernmentPolicySavedData.get(player.getServer()).deposit(treasuryProceeds)) {
+            EconomyHelper.giveMoney(player, Currencies.USD, totalMinor);
+            return false;
+        }
+        double rate = MonetaryPolicyEconomics.adjustedAnnualRate(Config.BOND_RATE_PER_YEAR.get(),
+                GovernmentPolicySavedData.get(player.getServer()).policyRateBasisPoints());
         int days = Config.BOND_MATURITY_DAYS.get();
         for (int i = 0; i < count; i++) {
             data.addHolding(new BondHolding(UUID.randomUUID().toString(), player.getUUID(), faceValue, rate, days, days));
