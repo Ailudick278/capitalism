@@ -72,11 +72,22 @@ public final class FuturesMarket {
             return false;
         }
         FuturesSavedData data = FuturesSavedData.get(player.getServer());
-        if (data.marginBalance(player.getUUID()) < amount) {
+        long balanceBefore = data.marginBalance(player.getUUID());
+        if (balanceBefore < amount) {
             return false;
         }
-        data.addMarginBalance(player.getUUID(), -amount);
-        EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(amount));
+        String source = "futures-margin-withdraw:" + player.getUUID() + ":" + balanceBefore + ":" + amount;
+        String recoveredSource = "futures-margin-withdraw:" + player.getUUID() + ":" + (balanceBefore + amount) + ":" + amount;
+        boolean alreadyWithdrawn = data.hasMarginWithdrawal(recoveredSource);
+        if (!alreadyWithdrawn) {
+            data.addMarginBalance(player.getUUID(), -amount);
+            data.recordMarginWithdrawal(source);
+        } else {
+            source = recoveredSource;
+        }
+        var mailbox = com.ailudick.capitalismmod.market.MarketMailboxSavedData.get(player.getServer());
+        mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(amount), source);
+        mailbox.redeemMoneyOnly(player);
         return true;
     }
 
