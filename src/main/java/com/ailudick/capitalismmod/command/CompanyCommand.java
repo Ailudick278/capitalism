@@ -1467,6 +1467,10 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Offer not found or you are not the seller."));
             return 0;
         }
+        if (offer.buyerPaid()) {
+            source.sendFailure(Component.literal("This offer has already been paid and cannot be rejected."));
+            return 0;
+        }
         data.remove(id);
         source.sendSuccess(() -> Component.literal("Acquisition offer rejected."), false);
         return 1;

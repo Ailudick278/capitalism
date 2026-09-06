@@ -1249,11 +1249,14 @@ public final class CompanyHelper {
         String payoutSource = "company-acquisition:" + offer.id() + ":seller-payout";
         String debitReference = "company-acquisition:" + offer.id() + ":buyer-payment";
         boolean alreadyDebited = EconomyLogSavedData.get(buyer.getServer())
-                .hasReference(buyer.getUUID(), debitReference);
+                .hasReference(buyer.getUUID(), debitReference) || offer.buyerPaid();
         if (!alreadyTransferred && !alreadyDebited
                 && !EconomyHelper.tryPayWithReference(buyer, Currencies.USD,
                 Money.toMinor(offer.price()), debitReference)) {
             return false;
+        }
+        if (!alreadyTransferred && !offer.buyerPaid()) {
+            AcquisitionSavedData.get(buyer.getServer()).markBuyerPaid(offer.id());
         }
         if (!alreadyTransferred) {
             removeCompany(seller, company.name());

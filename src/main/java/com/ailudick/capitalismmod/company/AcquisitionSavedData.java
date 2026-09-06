@@ -17,7 +17,11 @@ public final class AcquisitionSavedData extends SavedData {
     private static final String ID = "capitalismmod_acquisitions";
     private final List<Offer> offers = new ArrayList<>();
 
-    public record Offer(String id, UUID buyerUuid, UUID sellerUuid, String companyName, long price, long createdTick) {
+    public record Offer(String id, UUID buyerUuid, UUID sellerUuid, String companyName, long price,
+                        long createdTick, boolean buyerPaid) {
+        public Offer(String id, UUID buyerUuid, UUID sellerUuid, String companyName, long price, long createdTick) {
+            this(id, buyerUuid, sellerUuid, companyName, price, createdTick, false);
+        }
         private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
         public static final Codec<Offer> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("id").forGetter(Offer::id),
@@ -25,7 +29,8 @@ public final class AcquisitionSavedData extends SavedData {
                 UUID_CODEC.fieldOf("sellerUuid").forGetter(Offer::sellerUuid),
                 Codec.STRING.fieldOf("companyName").forGetter(Offer::companyName),
                 Codec.LONG.fieldOf("price").forGetter(Offer::price),
-                Codec.LONG.fieldOf("createdTick").forGetter(Offer::createdTick)
+                Codec.LONG.fieldOf("createdTick").forGetter(Offer::createdTick),
+                Codec.BOOL.optionalFieldOf("buyerPaid", false).forGetter(Offer::buyerPaid)
         ).apply(instance, Offer::new));
     }
 
@@ -67,6 +72,19 @@ public final class AcquisitionSavedData extends SavedData {
         if (offers.removeIf(offer -> offer.id().equals(id))) {
             setDirty();
         }
+    }
+
+    public boolean markBuyerPaid(String id) {
+        for (int i = 0; i < offers.size(); i++) {
+            Offer offer = offers.get(i);
+            if (offer.id().equals(id) && !offer.buyerPaid()) {
+                offers.set(i, new Offer(offer.id(), offer.buyerUuid(), offer.sellerUuid(), offer.companyName(),
+                        offer.price(), offer.createdTick(), true));
+                setDirty();
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
