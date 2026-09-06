@@ -68,7 +68,9 @@ public final class AuctionMarket {
             return true;
         }
         long bidMinor = Money.toMinor(amount);
-        if (bidMinor <= 0L || !EconomyHelper.tryPay(player, Currencies.USD, bidMinor)) {
+        String paymentReference = "auction-bid:" + auction.id() + ":" + player.getUUID() + ":" + amount;
+        if (bidMinor <= 0L || !EconomyHelper.tryPayWithReference(player, Currencies.USD, bidMinor,
+                paymentReference)) {
             return false;
         }
         if (!auction.currentBidder().isEmpty()) {
