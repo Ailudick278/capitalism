@@ -49,7 +49,7 @@ public final class BankLiquidityService {
         long baseAmount = toBase(amount, currencyId);
         var risk = FinancialRiskSavedData.get(server).latest();
         int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
-        long capacity = BankLiquidityEconomics.riskAdjustedLoanCapacity(snapshot.depositsMinor(), overdueShare);
+        long capacity = BankLiquidityEconomics.capitalAdjustedLoanCapacity(snapshot.depositsMinor(), overdueShare);
         return baseAmount > 0L && snapshot.loanDebtMinor() <= capacity
                 && baseAmount <= capacity - snapshot.loanDebtMinor();
     }

@@ -23,6 +23,16 @@ public final class BankLiquidityEconomics {
         return (base / 10000L) * scale + (base % 10000L) * scale / 10000L;
     }
 
+    /**
+     * Crisis lending capacity after reserving a minimum 8% capital buffer.
+     * The buffer is applied to the already risk-adjusted capacity because this
+     * version of the simulation has no separate bank-equity account yet.
+     */
+    public static long capitalAdjustedLoanCapacity(long depositsMinor, int overdueShareBasisPoints) {
+        long riskAdjusted = riskAdjustedLoanCapacity(depositsMinor, overdueShareBasisPoints);
+        return (riskAdjusted / 10000L) * 9200L + (riskAdjusted % 10000L) * 9200L / 10000L;
+    }
+
     /** Returns whether bank loans exceed 120% of deposits, a severe balance-sheet stress signal. */
     public static boolean solvencyStress(long depositsMinor, long loansMinor) {
         if (loansMinor <= 0L) return false;
