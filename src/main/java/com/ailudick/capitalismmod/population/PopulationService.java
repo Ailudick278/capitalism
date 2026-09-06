@@ -59,6 +59,7 @@ public final class PopulationService {
             population.upsert(settled);
             LaborProfile profile = labor.profile(household.id());
             if (profile != null) labor.registerProfile(profile.withHealthAndEducation(health, education));
+            evolveNpc(population, settled, day);
         }
     }
     public static int matchResidents(MinecraftServer server, long now) {
@@ -94,6 +95,19 @@ public final class PopulationService {
         return created;
     }
     private static boolean isNpc(String id) { return id != null && id.startsWith("npc-"); }
+    private static void evolveNpc(PopulationSavedData population, Household household, long day) {
+        if (!isNpc(household.id()) || day < 0L) return;
+        if (DemographicEconomics.eventFor(household.id() + ":birth", day,
+                DemographicEconomics.annualBirthRatePerThousand(household.satisfaction()), household.size())) {
+            population.upsert(household.withDemographics(household.size() + 1, household.workingAge()));
+            return;
+        }
+        if (household.size() > 1 && DemographicEconomics.eventFor(household.id() + ":death", day,
+                DemographicEconomics.annualDeathRatePerThousand(household.health()), household.size())) {
+            population.upsert(household.withDemographics(household.size() - 1,
+                    household.workingAge() > 0 ? household.workingAge() - 1 : household.workingAge()));
+        }
+    }
     private static ConsumptionResult consume(MinecraftServer server, Household household, long cash, long need, long day) {
         if (cash <= 0L || need <= 0L) return new ConsumptionResult(cash, 0L);
         long remaining = cash; long spent = 0L;

@@ -52,4 +52,10 @@ public record Household(String id, String region, int size, int workingAge,
         return new Household(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
                 lastSettlementDay, lastMigrationDay, health, education, days, worked);
     }
+    public Household withDemographics(int nextSize, int nextWorkingAge) {
+        int safeSize = Math.max(1, nextSize);
+        return new Household(id, region, safeSize, Math.max(0, Math.min(safeSize, nextWorkingAge)), cashMinor,
+                dailyNeedMinor, satisfaction, lastSettlementDay, lastMigrationDay, health, education,
+                unemploymentDays, employmentDays);
+    }
 }

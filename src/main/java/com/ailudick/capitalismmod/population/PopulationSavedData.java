@@ -26,6 +26,7 @@ public final class PopulationSavedData extends SavedData {
     public boolean addCash(String id, long amount) { Household h = find(id); if (h == null || amount <= 0L) return false; upsert(h.withCash(add(h.cashMinor(), amount))); return true; }
     public boolean addCashOnce(String id, long amount, String source) { if (source == null || source.isBlank() || creditedSources.contains(source)) return false; if (!addCash(id, amount)) return false; creditedSources.add(source); while (creditedSources.size() > 8192) creditedSources.remove(creditedSources.iterator().next()); setDirty(); return true; }
     public boolean move(String id, String region, long day) { Household h = find(id); if (h == null || region == null || region.isBlank() || h.region().equals(region)) return false; upsert(h.withRegion(region, day)); return true; }
+    public boolean remove(String id) { if (id == null || id.isBlank()) return false; boolean removed = households.removeIf(h -> h.id().equals(id)); if (removed) setDirty(); return removed; }
     public int population(String region) { return households.stream().filter(h -> h.region().equals(region)).mapToInt(Household::size).sum(); }
     public long dailyDemand(String region) { return households.stream().filter(h -> h.region().equals(region)).mapToLong(h -> h.dailyNeedMinor() * (long) h.size()).reduce(0L, PopulationSavedData::add); }
     /** Returns simulated daily unit demand for essential commodities at a major-unit price. */
