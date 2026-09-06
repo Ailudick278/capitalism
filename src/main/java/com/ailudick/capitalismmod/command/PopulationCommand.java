@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -26,7 +27,16 @@ public final class PopulationCommand {
         int households = (int) data.households().stream().filter(h -> h.region().equals(region)).count();
         int population = data.population(region);
         long demand = data.dailyDemand(region);
-        source.sendSuccess(() -> Component.literal("population region=" + region + " households=" + households + " residents=" + population + " dailyNeedMinor=" + demand), false);
+        long ageTotal = data.households().stream().filter(h -> h.region().equals(region))
+                .mapToLong(h -> h.averageAge() * (long) h.size()).sum();
+        int averageAge = population <= 0 ? 0 : (int) (ageTotal / population);
+        int unemployed = data.households().stream().filter(h -> h.region().equals(region)
+                && h.unemploymentDays() > 0).mapToInt(h -> h.size()).sum();
+        int employed = (int) data.households().stream().filter(h -> h.region().equals(region)
+                && !LaborMarketSavedData.get(source.getServer()).activeForWorker(h.id()).isEmpty()).count();
+        source.sendSuccess(() -> Component.literal("population region=" + region + " households=" + households
+                + " residents=" + population + " averageAge=" + averageAge + " employedHouseholds=" + employed
+                + " unemployedResidents=" + unemployed + " dailyNeedMinor=" + demand), false);
         return households;
     }
     private static int seed(CommandSourceStack source, String region, int count) {
