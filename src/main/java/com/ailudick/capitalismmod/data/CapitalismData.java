@@ -257,6 +257,9 @@ public final class CapitalismData {
                 }
                 List<RecipeJson> configured = j.recipes == null
                         ? new ArrayList<>() : new ArrayList<>(j.recipes);
+                for (RecipeJson recipe : configured) {
+                    upgradeLegacyPolymerRecipe(recipe);
+                }
                 Set<String> configuredIds = new java.util.HashSet<>();
                 for (RecipeJson recipe : configured) {
                     if (recipe != null && recipe.id != null) configuredIds.add(recipe.id);
@@ -296,6 +299,21 @@ public final class CapitalismData {
         } catch (Exception e) {
             CapitalismMod.LOGGER.warn("Invalid item id in config: {}", id);
             return null;
+        }
+    }
+
+    /**
+     * Corrects the first-generation polymer recipes without overwriting a
+     * server owner's deliberately customized recipe outputs.
+     */
+    private static void upgradeLegacyPolymerRecipe(RecipeJson recipe) {
+        if (recipe == null || recipe.id == null || recipe.outputs == null) return;
+        if ("polyethylene_pellets".equals(recipe.id)
+                && Map.of("capitalismmod:plastic_pellets", 3).equals(recipe.outputs)) {
+            recipe.outputs = new HashMap<>(Map.of("capitalismmod:polyethylene_pellets", 3));
+        } else if ("polypropylene_pellets".equals(recipe.id)
+                && Map.of("capitalismmod:plastic_pellets", 3).equals(recipe.outputs)) {
+            recipe.outputs = new HashMap<>(Map.of("capitalismmod:polypropylene_pellets", 3));
         }
     }
 
@@ -512,8 +530,8 @@ public final class CapitalismData {
                                 "capitalismmod:lpg", 1, "capitalismmod:base_oil", 1,
                                 "capitalismmod:asphalt", 1), 130, "oil_refinery", 4, 8, 14),
                         new RecipeJson("steam_cracking", Map.of("capitalismmod:naphtha", 1), Map.of("capitalismmod:ethylene", 1, "capitalismmod:propylene", 1), 115, "steam_cracker", 3, 7, 12),
-                        new RecipeJson("polyethylene_pellets", Map.of("capitalismmod:ethylene", 1), Map.of("capitalismmod:plastic_pellets", 3), 78, "polymer_reactor", 2, 4, 7),
-                        new RecipeJson("polypropylene_pellets", Map.of("capitalismmod:propylene", 1), Map.of("capitalismmod:plastic_pellets", 3), 82, "polymer_reactor", 2, 4, 7),
+                        new RecipeJson("polyethylene_pellets", Map.of("capitalismmod:ethylene", 1), Map.of("capitalismmod:polyethylene_pellets", 3), 78, "polymer_reactor", 2, 4, 7),
+                        new RecipeJson("polypropylene_pellets", Map.of("capitalismmod:propylene", 1), Map.of("capitalismmod:polypropylene_pellets", 3), 82, "polymer_reactor", 2, 4, 7),
                         new RecipeJson("polyethylene_grade", Map.of("capitalismmod:ethylene", 1), Map.of("capitalismmod:polyethylene_pellets", 3), 82, "polymer_reactor", 2, 4, 7),
                         new RecipeJson("polypropylene_grade", Map.of("capitalismmod:propylene", 1), Map.of("capitalismmod:polypropylene_pellets", 3), 86, "polymer_reactor", 2, 4, 7),
                         new RecipeJson("synthetic_rubber", Map.of("capitalismmod:propylene", 1, "capitalismmod:naphtha", 1), Map.of("capitalismmod:synthetic_rubber", 2), 105, "polymer_reactor", 3, 5, 9),
