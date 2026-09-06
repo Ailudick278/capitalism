@@ -55,6 +55,7 @@ import com.ailudick.capitalismmod.auction.AuctionSavedData;
 import com.ailudick.capitalismmod.auction.AuctionSettlementSavedData;
 import com.ailudick.capitalismmod.auction.AuctionListingIntentSavedData;
 import com.ailudick.capitalismmod.auction.AuctionBidSavedData;
+import com.ailudick.capitalismmod.auction.AuctionSettlementAuditRules;
 import com.ailudick.capitalismmod.currency.Currencies;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -304,6 +305,23 @@ public final class EconomyAuditService {
                     intent.quantity(), intent.startingPrice(), intent.endTick(), intent.warehouseBefore())
                     || !validItemId(intent.itemId())) {
                 issues.add("auction listing intent invalid " + intent.auctionId());
+            }
+        }
+        Map<String, Set<String>> auctionJournalPhases = new HashMap<>();
+        for (var entry : financialJournal.entries()) {
+            if (!"auction".equals(entry.instrument()) || !entry.transactionId().startsWith("auction:")
+                    || !"completed".equals(entry.status())) continue;
+            auctionJournalPhases.computeIfAbsent(entry.transactionId().substring("auction:".length()),
+                    ignored -> new HashSet<>()).add(entry.phase());
+        }
+        for (var entry : auctionJournalPhases.entrySet()) {
+            String auctionId = entry.getKey();
+            boolean active = auctions.findAuction(auctionId) != null;
+            boolean settled = AuctionSettlementSavedData.get(server).has(auctionId);
+            if (!active && !settled) {
+                issues.add("auction journal has no active or settled record " + auctionId);
+            } else if (settled && !AuctionSettlementAuditRules.hasCompleteOutcome(entry.getValue())) {
+                issues.add("settled auction journal missing terminal phase " + auctionId);
             }
         }
         GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);
