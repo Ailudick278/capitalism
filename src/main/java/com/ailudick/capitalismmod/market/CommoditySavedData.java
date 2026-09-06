@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * World-persisted state for the commodity exchange: the limit order book, current
@@ -31,6 +33,7 @@ public final class CommoditySavedData extends SavedData {
     private final Map<String, List<Candle>> history = new HashMap<>();
     private final Map<String, Long> supply = new HashMap<>();
     private final Map<String, Long> prevClose = new HashMap<>();
+    private final Set<String> netVolumeSources = new HashSet<>();
 
     private record State(
             List<MarketOrder> orders,
@@ -38,14 +41,16 @@ public final class CommoditySavedData extends SavedData {
             Map<String, Long> netVolume,
             Map<String, List<Candle>> history,
             Map<String, Long> supply,
-            Map<String, Long> prevClose) {
+            Map<String, Long> prevClose,
+            List<String> netVolumeSources) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 MarketOrder.CODEC.listOf().fieldOf("orders").forGetter(State::orders),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prices").forGetter(State::prices),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("netVolume").forGetter(State::netVolume),
                 Codec.unboundedMap(Codec.STRING, Candle.CODEC.listOf()).fieldOf("history").forGetter(State::history),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("supply").forGetter(State::supply),
-                Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prevClose").forGetter(State::prevClose)
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prevClose").forGetter(State::prevClose),
+                Codec.STRING.listOf().optionalFieldOf("netVolumeSources", List.of()).forGetter(State::netVolumeSources)
         ).apply(instance, State::new));
     }
 
@@ -112,6 +117,13 @@ public final class CommoditySavedData extends SavedData {
     public void addNetVolume(String itemId, long delta) {
         netVolume.merge(itemId, delta, Long::sum);
         setDirty();
+    }
+    public boolean addNetVolumeOnce(String itemId, long delta, String source) {
+        if (itemId == null || itemId.isBlank() || source == null || source.isBlank() || !netVolumeSources.add(source)) return false;
+        addNetVolume(itemId, delta);
+        while (netVolumeSources.size() > 32768) netVolumeSources.remove(netVolumeSources.iterator().next());
+        setDirty();
+        return true;
     }
 
     public void resetNetVolume(String itemId) {
@@ -186,7 +198,7 @@ public final class CommoditySavedData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new ArrayList<>(orders), new HashMap<>(prices), new HashMap<>(netVolume),
-                new HashMap<>(history), new HashMap<>(supply), new HashMap<>(prevClose));
+                new HashMap<>(history), new HashMap<>(supply), new HashMap<>(prevClose), new ArrayList<>(netVolumeSources));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -201,6 +213,7 @@ public final class CommoditySavedData extends SavedData {
                 state.history().forEach((k, v) -> data.history.put(k, new ArrayList<>(v)));
                 data.supply.putAll(state.supply());
                 data.prevClose.putAll(state.prevClose());
+                data.netVolumeSources.addAll(state.netVolumeSources());
                 for (MarketOrder order : state.orders()) {
                     // Drop orders whose commodity no longer resolves (config changed).
                     if (!order.commodity().is(Items.AIR)) {
