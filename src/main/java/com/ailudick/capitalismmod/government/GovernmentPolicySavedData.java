@@ -16,6 +16,7 @@ public final class GovernmentPolicySavedData extends SavedData {
     private static final int MAX_TRANSACTIONS = 8192;
     private long treasuryMinor;
     private long dailyBenefitMinor;
+    private int policyRateBasisPoints;
     private final List<Transaction> transactions = new ArrayList<>();
     private final List<TaxRevenue> taxRevenues = new ArrayList<>();
 
@@ -33,12 +34,18 @@ public final class GovernmentPolicySavedData extends SavedData {
 
     public long treasuryMinor() { return treasuryMinor; }
     public long dailyBenefitMinor() { return dailyBenefitMinor; }
+    public int policyRateBasisPoints() { return policyRateBasisPoints; }
     public List<Transaction> transactions() { return List.copyOf(transactions); }
     public List<TaxRevenue> taxRevenues() { return List.copyOf(taxRevenues); }
 
     public boolean setDailyBenefit(long amount) {
         if (amount < 0L || amount > 1_000_000_000L) return false;
         dailyBenefitMinor = amount; setDirty(); return true;
+    }
+
+    public boolean setPolicyRateBasisPoints(int basisPoints) {
+        if (basisPoints < -10000 || basisPoints > 20000) return false;
+        policyRateBasisPoints = basisPoints; setDirty(); return true;
     }
 
     public boolean deposit(long amount) {
@@ -74,6 +81,7 @@ public final class GovernmentPolicySavedData extends SavedData {
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putLong("treasury", treasuryMinor); tag.putLong("benefit", dailyBenefitMinor);
+        tag.putInt("policyRateBps", policyRateBasisPoints);
         ListTag list = new ListTag();
         for (Transaction t : transactions) {
             CompoundTag e = new CompoundTag(); e.putString("id", t.id()); e.putLong("day", t.day());
@@ -96,6 +104,7 @@ public final class GovernmentPolicySavedData extends SavedData {
         GovernmentPolicySavedData data = new GovernmentPolicySavedData();
         data.treasuryMinor = Math.max(0L, tag.getLong("treasury"));
         data.dailyBenefitMinor = Math.max(0L, tag.getLong("benefit"));
+        data.policyRateBasisPoints = Math.max(-10000, Math.min(20000, tag.getInt("policyRateBps")));
         ListTag list = tag.getList("transactions", Tag.TAG_COMPOUND);
         for (int i = Math.max(0, list.size() - MAX_TRANSACTIONS); i < list.size(); i++) {
             CompoundTag e = list.getCompound(i);

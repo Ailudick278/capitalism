@@ -7,6 +7,8 @@ import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.ExchangeRateProvider;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.economy.EconomyTransferSavedData;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
+import com.ailudick.capitalismmod.government.MonetaryPolicyEconomics;
 import com.ailudick.capitalismmod.event.AccountOpenedEvent;
 import com.ailudick.capitalismmod.event.LoanTakenEvent;
 import com.ailudick.capitalismmod.init.ModAttachments;
@@ -83,8 +85,9 @@ public final class BankAccountHelper {
         if (lastSettlementDay >= settlementDay) {
             return;
         }
-        double depositRate = Config.DEPOSIT_RATE_PER_YEAR.get() / 365.0;
-        double loanRate = Config.LOAN_RATE_PER_YEAR.get() / 365.0;
+        int policyRateBps = GovernmentPolicySavedData.get(player.getServer()).policyRateBasisPoints();
+        double depositRate = MonetaryPolicyEconomics.adjustedAnnualRate(Config.DEPOSIT_RATE_PER_YEAR.get(), policyRateBps) / 365.0;
+        double loanRate = MonetaryPolicyEconomics.adjustedAnnualRate(Config.LOAN_RATE_PER_YEAR.get(), policyRateBps) / 365.0;
         Map<String, BankAccount> accounts = getAccounts(player);
         if (accounts.isEmpty()) {
             player.setData(ModAttachments.LAST_BANK_SETTLEMENT_DAY, settlementDay);

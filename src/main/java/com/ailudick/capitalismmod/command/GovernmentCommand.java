@@ -17,7 +17,10 @@ public final class GovernmentCommand {
         var benefitAmount = Commands.argument("dailyMinor", IntegerArgumentType.integer(0, 1000000000))
                 .executes(c -> benefit(c.getSource(), IntegerArgumentType.getInteger(c, "dailyMinor")));
         var benefit = Commands.literal("benefit").then(benefitAmount);
-        root.then(Commands.literal("policy").requires(s -> s.hasPermission(2)).then(benefit));
+        var rateAmount = Commands.argument("basisPoints", IntegerArgumentType.integer(-10000, 20000))
+                .executes(c -> rate(c.getSource(), IntegerArgumentType.getInteger(c, "basisPoints")));
+        var rate = Commands.literal("rate").then(rateAmount);
+        root.then(Commands.literal("policy").requires(s -> s.hasPermission(2)).then(benefit).then(rate));
         var depositAmount = Commands.argument("amountMinor", IntegerArgumentType.integer(1, 2000000000))
                 .executes(c -> deposit(c.getSource(), IntegerArgumentType.getInteger(c, "amountMinor")));
         var deposit = Commands.literal("deposit").then(depositAmount);
@@ -29,6 +32,7 @@ public final class GovernmentCommand {
         GovernmentPolicySavedData data = GovernmentPolicySavedData.get(source.getServer());
         source.sendSuccess(() -> Component.literal("government treasuryMinor=" + data.treasuryMinor()
                 + " dailyBenefitMinor=" + data.dailyBenefitMinor()
+                + " policyRateBps=" + data.policyRateBasisPoints()
                 + " transfers=" + data.transactions().size()
                 + " taxRevenues=" + data.taxRevenues().size()), false);
         return 1;
@@ -38,6 +42,13 @@ public final class GovernmentCommand {
         GovernmentPolicySavedData data = GovernmentPolicySavedData.get(source.getServer());
         if (!data.setDailyBenefit(amount)) return 0;
         source.sendSuccess(() -> Component.literal("government daily benefit set to " + amount + " minor units"), true);
+        return 1;
+    }
+
+    private static int rate(CommandSourceStack source, int basisPoints) {
+        GovernmentPolicySavedData data = GovernmentPolicySavedData.get(source.getServer());
+        if (!data.setPolicyRateBasisPoints(basisPoints)) return 0;
+        source.sendSuccess(() -> Component.literal("government policy rate set to " + basisPoints + " basis points"), true);
         return 1;
     }
 
