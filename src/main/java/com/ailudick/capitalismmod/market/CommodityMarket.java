@@ -369,8 +369,8 @@ public final class CommodityMarket {
             long householdDemand = PopulationSavedData.get(server).demandUnits(id, oldPrice);
             supply = householdDemand >= supply ? -Math.min(1_000_000L, householdDemand - supply) : supply - householdDemand;
             long newPrice = CommodityPriceEconomics.nextPrice(oldPrice, fundamental, netVolume, supply);
-            newPrice = applyShock(newPrice, EconomicEventService.commodityPriceShockBps(server, id,
-                    server.overworld().getGameTime()));
+            newPrice = CommodityPriceEconomics.applyBasisPointShock(newPrice,
+                    EconomicEventService.commodityPriceShockBps(server, id, server.overworld().getGameTime()));
             newPrice = applyPriceLimit(data, id, newPrice);
             data.putPrice(id, newPrice);
             data.resetNetVolume(id);
@@ -380,13 +380,6 @@ public final class CommodityMarket {
         data.setDirty();
     }
 
-    private static long applyShock(long price, int shockBps) {
-        if (price <= 0L || shockBps == 0) return Math.max(1L, price);
-        long delta = price * (long) shockBps / 10000L;
-        if (shockBps > 0 && delta > Long.MAX_VALUE - price) return Long.MAX_VALUE;
-        if (shockBps < 0 && delta < -price) return 1L;
-        return Math.max(1L, price + delta);
-    }
 
     /** Rolls the trading day: the previous close becomes the current price for every commodity. */
     public static void closeDay(MinecraftServer server) {

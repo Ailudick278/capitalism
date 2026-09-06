@@ -23,4 +23,12 @@ public final class CommodityPriceEconomics {
         }
         return Math.max(1L, candidate);
     }
+
+    public static long applyBasisPointShock(long price, int shockBps) {
+        if (price <= 0L || shockBps == 0) return Math.max(1L, price);
+        long delta = price * (long) shockBps / 10000L;
+        if (shockBps > 0 && delta > Long.MAX_VALUE - price) return Long.MAX_VALUE;
+        if (shockBps < 0 && delta < -price) return 1L;
+        return Math.max(1L, price + delta);
+    }
 }
