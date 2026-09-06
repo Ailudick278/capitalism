@@ -52,6 +52,9 @@ public final class PopulationService {
                 } else if (CompanySavedData.get(server).get(landlord) != null) {
                     CompanyHelper.creditTreasuryNonOperatingOnce(server, landlord, Config.defaultCurrency().id(), rent.rentPaidMinor(),
                             "housing_rent", "Household housing rent", rent.id());
+                } else if (landlord.startsWith("player:") && validUuid(landlord.substring("player:".length()))) {
+                    PrivateLandlordSavedData.get(server).creditOnce(rent.id(), day,
+                            landlord.substring("player:".length()), rent.rentPaidMinor());
                 } else {
                     // A deleted landlord must not make household funds disappear.
                     com.ailudick.capitalismmod.government.GovernmentPolicySavedData.get(server)
@@ -126,6 +129,7 @@ public final class PopulationService {
         return created;
     }
     private static boolean isNpc(String id) { return id != null && id.startsWith("npc-"); }
+    private static boolean validUuid(String value) { try { java.util.UUID.fromString(value); return true; } catch (IllegalArgumentException e) { return false; } }
     private static void evolveNpc(PopulationSavedData population, Household household, long day) {
         if (!isNpc(household.id()) || day < 0L) return;
         if (DemographicEconomics.eventFor(household.id() + ":birth", day,

@@ -4,9 +4,11 @@ import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.CityHousingSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
+import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -38,15 +40,19 @@ public final class CityCommand {
                         IntegerArgumentType.getInteger(c, "dailyRentMinor")));
         var rentRegion = Commands.argument("region", StringArgumentType.word()).then(rentAmount);
         var rentSet = Commands.literal("set").then(rentRegion);
-        var landlord = Commands.literal("landlord").then(Commands.argument("region", StringArgumentType.word())
+        var landlordRoute = Commands.literal("landlord").then(Commands.argument("region", StringArgumentType.word())
                 .then(Commands.argument("landlordId", StringArgumentType.word())
                         .executes(c -> setLandlord(c.getSource(), StringArgumentType.getString(c, "region"),
                                 StringArgumentType.getString(c, "landlordId")))));
-        var rent = Commands.literal("rent").requires(source -> source.hasPermission(2)).then(rentSet).then(landlord);
+        var rent = Commands.literal("rent").requires(source -> source.hasPermission(2)).then(rentSet).then(landlordRoute);
+        var landlordWithdraw = Commands.literal("withdraw")
+                .then(Commands.argument("amountMinor", LongArgumentType.longArg(1))
+                        .executes(c -> withdrawLandlord(c.getSource(), LongArgumentType.getLong(c, "amountMinor"))));
+        var landlord = Commands.literal("landlord").then(landlordWithdraw);
         var terminateHousing = Commands.literal("terminate").then(Commands.argument("household", StringArgumentType.word())
                 .executes(c -> terminateHousing(c.getSource(), StringArgumentType.getString(c, "household"))));
         var housing = Commands.literal("housing").requires(source -> source.hasPermission(2)).then(terminateHousing);
-        dispatcher.register(Commands.literal("city").then(info).then(facility).then(rent).then(housing));
+        dispatcher.register(Commands.literal("city").then(info).then(facility).then(rent).then(housing).then(landlord));
     }
 
     private static int info(CommandSourceStack source, String region) {
@@ -92,7 +98,8 @@ public final class CityCommand {
     }
 
     private static int setLandlord(CommandSourceStack source, String region, String landlordId) {
-        if (!"government".equals(landlordId) && CompanySavedData.get(source.getServer()).get(landlordId) == null) {
+        boolean playerLandlord = landlordId.startsWith("player:") && validUuid(landlordId.substring("player:".length()));
+        if (!"government".equals(landlordId) && !playerLandlord && CompanySavedData.get(source.getServer()).get(landlordId) == null) {
             source.sendFailure(Component.literal("Landlord must be government or an existing company ID.")); return 0;
         }
         if (!CityHousingSavedData.get(source.getServer()).setLandlord(region, landlordId)) {
@@ -102,6 +109,20 @@ public final class CityCommand {
                 + " landlord=" + landlordId), true);
         return 1;
     }
+
+    private static int withdrawLandlord(CommandSourceStack source, long amount) {
+        try {
+            if (!PrivateLandlordSavedData.get(source.getServer()).withdraw(source.getPlayerOrException(), amount)) {
+                source.sendFailure(Component.literal("Private landlord receivable balance is insufficient.")); return 0;
+            }
+        } catch (Exception e) {
+            source.sendFailure(Component.literal("Only a player can withdraw private landlord income.")); return 0;
+        }
+        source.sendSuccess(() -> Component.literal("private landlord income withdrawn minor=" + amount), false);
+        return 1;
+    }
+
+    private static boolean validUuid(String value) { try { java.util.UUID.fromString(value); return true; } catch (IllegalArgumentException e) { return false; } }
 
     private static int terminateHousing(CommandSourceStack source, String householdId) {
         PopulationSavedData population = PopulationSavedData.get(source.getServer());

@@ -10,6 +10,7 @@ import com.ailudick.capitalismmod.economy.labor.LaborPayrollSavedData;
 import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
+import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -45,6 +46,15 @@ public final class EconomyAuditService {
                     || lease.depositHeldMinor() > lease.depositDueMinor() || lease.missedDays() < 0
                     || lease.missedDays() > 10000) issues.add("housing lease " + lease.householdId() + " invalid balance or status");
         }
+        PrivateLandlordSavedData landlords = PrivateLandlordSavedData.get(server);
+        landlords.balances().forEach((owner, balance) -> {
+            try { java.util.UUID.fromString(owner); } catch (IllegalArgumentException e) { issues.add("private landlord invalid owner " + owner); }
+            if (balance == null || balance < 0L) issues.add("private landlord negative receivable " + owner);
+        });
+        for (var receipt : landlords.receipts()) if (receipt.amount() <= 0L || receipt.balanceAfter() < 0L)
+            issues.add("private landlord invalid receipt " + receipt.id());
+        for (var withdrawal : landlords.withdrawals()) if (withdrawal.amount() <= 0L || withdrawal.balanceAfter() < 0L)
+            issues.add("private landlord invalid withdrawal " + withdrawal.id());
         LaborMarketSavedData labor = LaborMarketSavedData.get(server);
         for (EmploymentRecord employment : labor.employments()) if (employment.dailyWageMinor() < 0L || employment.workerId().isBlank() || employment.employerId().isBlank()) issues.add("employment " + employment.id() + " invalid participant or wage");
         for (var entry : labor.offers()) if (entry.vacancies() < 0 || entry.dailyWageMinor() <= 0L) issues.add("job offer " + entry.id() + " invalid vacancy or wage");

@@ -44,6 +44,7 @@
 /population merge <source> <target> 管理员合并同区域 NPC 家庭
 /city housing terminate <household> 管理员终止达到条件的住房租约
 /city rent landlord <region> <companyId|government> 设置区域收租主体
+/city landlord withdraw <amountMinor> 提取私人房东应收租金
 /economy-audit                   管理员检查经济账本一致性
 ```
 
