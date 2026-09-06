@@ -7,11 +7,13 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.business.BusinessOrder;
+import com.ailudick.capitalismmod.supply.SupplyOrderAuditSavedData;
 import com.ailudick.capitalismmod.economy.labor.EmploymentRecord;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.UUID;
+import java.util.LinkedHashMap;
 
 /** Mirrors the existing freight domain lifecycle into the generic contract index. */
 public final class EconomicContractBridge {
@@ -149,6 +151,49 @@ public final class EconomicContractBridge {
                     generic.transition(current.id(), ContractStatus.ACTIVE, now);
                 }
                 generic.transition(current.id(), next, now);
+            }
+        }
+    }
+
+    /** Rebuilds supply-contract status from the durable domain event stream. */
+    public static void syncSupply(MinecraftServer server) {
+        if (server == null) return;
+        EconomicContractSavedData generic = EconomicContractSavedData.get(server);
+        LinkedHashMap<String, SupplyOrderAuditSavedData.Event> created = new LinkedHashMap<>();
+        for (SupplyOrderAuditSavedData.Event event : SupplyOrderAuditSavedData.get(server).events()) {
+            if ("CREATED".equals(event.type())) created.putIfAbsent(event.orderId(), event);
+        }
+        for (var entry : created.entrySet()) {
+            String orderId = entry.getKey();
+            SupplyOrderAuditSavedData.Event first = entry.getValue();
+            if (generic.find(orderId) == null) {
+                supplyCreated(server, orderId, first.buyerUuid(), first.supplierUuid(), first.itemId(),
+                        first.quantity(), first.amount(), first.occurredAt());
+            }
+            EconomicContract current = generic.find(orderId);
+            if (current == null) continue;
+            var events = SupplyOrderAuditSavedData.get(server).forOrder(orderId);
+            String status = com.ailudick.capitalismmod.supply.SupplyOrderAuditService.currentStatus(server, orderId);
+            if ("RECEIVED".equals(status)) {
+                if (current.status() == ContractStatus.OFFERED) generic.transition(orderId, ContractStatus.ACTIVE, first.occurredAt());
+                current = generic.find(orderId);
+                long delivered = events.stream().filter(e -> "DELIVERED".equals(e.type()))
+                        .mapToLong(SupplyOrderAuditSavedData.Event::quantity).sum();
+                long delta = Math.max(0L, delivered - (current == null ? 0L : current.fulfilledQuantity()));
+                if (delta > 0L) generic.fulfill(orderId, delta);
+                current = generic.find(orderId);
+                if (current != null && current.status() == ContractStatus.ACTIVE
+                        && current.agreedQuantity() > 0L && current.fulfilledQuantity() >= current.agreedQuantity()) {
+                    generic.transition(orderId, ContractStatus.COMPLETED, server.overworld().getGameTime());
+                }
+            } else if ("LOST".equals(status)) {
+                if (current.status() == ContractStatus.OFFERED || current.status() == ContractStatus.ACTIVE) generic.transition(orderId, ContractStatus.BREACHED, server.overworld().getGameTime());
+            } else if ("CANCELLED".equals(status)) {
+                if (current.status() == ContractStatus.OFFERED || current.status() == ContractStatus.ACTIVE) generic.transition(orderId, ContractStatus.CANCELLED, server.overworld().getGameTime());
+            } else if ("REFUNDED".equals(status)) {
+                if (current.status() == ContractStatus.OFFERED || current.status() == ContractStatus.ACTIVE) generic.transition(orderId, ContractStatus.EXPIRED, server.overworld().getGameTime());
+            } else if (!"PLACED".equals(status) && current.status() == ContractStatus.OFFERED) {
+                generic.transition(orderId, ContractStatus.ACTIVE, server.overworld().getGameTime());
             }
         }
     }

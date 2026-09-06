@@ -107,6 +107,7 @@ public final class EconomySettlementTickHandler {
     private static void settleOneDay(net.minecraft.server.MinecraftServer server, long settlementDay) {
         EconomicSettlementJournalSavedData journal = EconomicSettlementJournalSavedData.get(server);
         if (journal.isDayComplete(settlementDay)) return;
+        EconomicContractBridge.syncSupply(server);
         EconomicContractSavedData.get(server).settleOverdue(server.overworld().getGameTime());
         IndividualBusinessHelper.expireUndeliveredOrders(server, server.overworld().getGameTime());
         SupplyMarket.recoverPendingOrderIntents(server);
