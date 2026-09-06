@@ -20,6 +20,8 @@ public final class BankCapitalSavedData extends SavedData {
     private static final int MAX_INJECTION_RECEIPTS = 4096;
     private final Set<String> writeOffReceipts = new HashSet<>();
     private static final int MAX_WRITE_OFF_RECEIPTS = 4096;
+    private final Set<String> transactionReceipts = new HashSet<>();
+    private static final int MAX_TRANSACTION_RECEIPTS = 16384;
 
     private BankCapitalSavedData() {}
 
@@ -67,6 +69,23 @@ public final class BankCapitalSavedData extends SavedData {
 
     public boolean hasWriteOff(String sourceId) {
         return sourceId != null && !sourceId.isBlank() && writeOffReceipts.contains(sourceId);
+    }
+
+    /** Applies one bank operating transaction to equity exactly once. */
+    public boolean applyTransactionOnce(String sourceId, long incomeMinor, long expenseMinor) {
+        if (!initialized || sourceId == null || sourceId.isBlank()
+                || transactionReceipts.contains(sourceId) || incomeMinor < 0L || expenseMinor < 0L) return false;
+        long result;
+        try { result = Math.subtractExact(incomeMinor, expenseMinor); }
+        catch (ArithmeticException exception) { result = incomeMinor >= expenseMinor ? Long.MAX_VALUE : Long.MIN_VALUE; }
+        capitalMinor = saturatingAdd(capitalMinor, result);
+        cumulativeProfitLossMinor = saturatingAdd(cumulativeProfitLossMinor, result);
+        transactionReceipts.add(sourceId);
+        while (transactionReceipts.size() > MAX_TRANSACTION_RECEIPTS) {
+            transactionReceipts.remove(transactionReceipts.iterator().next());
+        }
+        setDirty();
+        return true;
     }
 
     public void initialize(long openingCapitalMinor) {
@@ -121,6 +140,13 @@ public final class BankCapitalSavedData extends SavedData {
             writeOffs.add(entry);
         }
         tag.put("writeOffReceipts", writeOffs);
+        net.minecraft.nbt.ListTag transactions = new net.minecraft.nbt.ListTag();
+        for (String source : transactionReceipts) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("source", source);
+            transactions.add(entry);
+        }
+        tag.put("transactionReceipts", transactions);
         return tag;
     }
 
@@ -140,6 +166,11 @@ public final class BankCapitalSavedData extends SavedData {
         for (int i = Math.max(0, writeOffs.size() - MAX_WRITE_OFF_RECEIPTS); i < writeOffs.size(); i++) {
             String source = writeOffs.getCompound(i).getString("source");
             if (!source.isBlank()) data.writeOffReceipts.add(source);
+        }
+        net.minecraft.nbt.ListTag transactions = tag.getList("transactionReceipts", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        for (int i = Math.max(0, transactions.size() - MAX_TRANSACTION_RECEIPTS); i < transactions.size(); i++) {
+            String source = transactions.getCompound(i).getString("source");
+            if (!source.isBlank()) data.transactionReceipts.add(source);
         }
         return data;
     }

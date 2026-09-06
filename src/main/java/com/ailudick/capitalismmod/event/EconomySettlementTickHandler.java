@@ -172,6 +172,7 @@ public final class EconomySettlementTickHandler {
             lastDay++;
         }
         BankAccountHelper.writeOffBadDebts(player, targetDay);
+        BankCapitalService.reconcilePlayerTransactions(player);
         player.setData(com.ailudick.capitalismmod.init.ModAttachments.LAST_BANK_SETTLEMENT_DAY, lastDay);
     }
 }
