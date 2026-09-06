@@ -222,11 +222,12 @@ public final class StockMarket {
                 break;
             }
             data.addShares(stockId, player.getUUID(), fill);
-            settleStampDuty(player.getServer(), UUID.fromString(sell.ownerId()), gross);
+            String tradeSource = "stock-trade:" + sell.id() + ":" + sell.quantity() + ":" + player.getUUID()
+                    + ":" + fill + ":" + gross;
+            settleStampDuty(player.getServer(), UUID.fromString(sell.ownerId()), gross, tradeSource);
             payTo(player.getServer(), UUID.fromString(sell.ownerId()),
                     Money.toMinor(gross - duty(gross)),
-                    "stock-trade:" + sell.id() + ":" + sell.quantity() + ":" + player.getUUID()
-                            + ":" + fill + ":" + gross);
+                    tradeSource);
             data.addNetVolume(stockId, fill);
             spent += gross;
             remaining -= fill;
@@ -265,10 +266,11 @@ public final class StockMarket {
                 break;
             }
             data.addShares(stockId, UUID.fromString(buy.ownerId()), fill);
-            settleStampDuty(player.getServer(), player.getUUID(), gross);
+            String tradeSource = "stock-trade:" + buy.id() + ":" + buy.quantity() + ":" + player.getUUID()
+                    + ":" + fill + ":" + gross;
+            settleStampDuty(player.getServer(), player.getUUID(), gross, tradeSource);
             payTo(player.getServer(), player.getUUID(), Money.toMinor(gross - duty(gross)),
-                    "stock-trade:" + buy.id() + ":" + buy.quantity() + ":" + player.getUUID()
-                            + ":" + fill + ":" + gross);
+                    tradeSource);
             data.addNetVolume(stockId, -fill);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
@@ -327,10 +329,11 @@ public final class StockMarket {
     }
 
     /** Withholds the stamp duty from sale proceeds and closes the matching tax bill. */
-    private static void settleStampDuty(MinecraftServer server, UUID taxpayer, long gross) {
+    private static void settleStampDuty(MinecraftServer server, UUID taxpayer, long gross, String tradeSource) {
         if (server == null || taxpayer == null || gross <= 0L) return;
         long now = server.overworld().getGameTime();
-        String source = "stock-sale:" + UUID.randomUUID();
+        if (tradeSource == null || tradeSource.isBlank()) return;
+        String source = "stock-sale:" + tradeSource;
         TaxTransactionService.assess(server, TaxType.STAMP_DUTY, taxpayer, Currencies.USD.id(),
                 Money.toMinorSaturated(gross), source, now);
         TaxService.settleFromProceeds(server,
