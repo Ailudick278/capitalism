@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.bank.BankAccountHelper;
 import com.ailudick.capitalismmod.bond.BondMarket;
 import com.ailudick.capitalismmod.economy.EconomySettlementSavedData;
+import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
 import com.ailudick.capitalismmod.futures.FuturesMarket;
 import com.ailudick.capitalismmod.loan.PeerLoan;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
@@ -71,6 +72,8 @@ public final class EconomySettlementTickHandler {
     }
 
     private static void settleOneDay(net.minecraft.server.MinecraftServer server, long settlementDay) {
+        EconomicSettlementJournalSavedData journal = EconomicSettlementJournalSavedData.get(server);
+        journal.markStarted(settlementDay, "households-and-labor", server.overworld().getGameTime());
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             settlePlayerToDay(player, settlementDay);
         }
@@ -102,6 +105,7 @@ public final class EconomySettlementTickHandler {
         GovernmentPolicyService.settleDaily(server, settlementDay);
         GovernmentPublicBudgetService.settleDaily(server, settlementDay);
         PopulationService.settleDaily(server, settlementDay);
+        journal.markCompleted(settlementDay, "households-and-labor", server.overworld().getGameTime());
         EconomicContractBridge.syncFreight(server);
         TaxRefundService.recoverUnfinished(server);
 
@@ -134,6 +138,7 @@ public final class EconomySettlementTickHandler {
             companyLoans.replace(loan.withDaysRemaining(nextDays).withLastSettlementDay(settlementDay));
         }
 
+        journal.markStarted(settlementDay, "credit-and-securities", server.overworld().getGameTime());
         BondMarket.settleMaturity(server, settlementDay);
         BondMarket.recoverIssuances(server);
         FinancialRiskService.settleDaily(server, settlementDay);
@@ -141,12 +146,15 @@ public final class EconomySettlementTickHandler {
         // Build the current-day liquidity snapshot before evaluating crisis
         // state, so balance-sheet and run stress are not delayed by one day.
         FinancialCrisisService.update(server, settlementDay);
+        journal.markCompleted(settlementDay, "credit-and-securities", server.overworld().getGameTime());
+        journal.markStarted(settlementDay, "markets-and-close", server.overworld().getGameTime());
         FuturesMarket.settleDay(server, settlementDay);
         CommodityMarket.expireOrders(server, server.overworld().getGameTime());
         StockMarket.expireOrders(server, server.overworld().getGameTime());
         SupplyMarket.expireOrders(server, server.overworld().getGameTime());
         CommodityMarket.closeDay(server);
         StockMarket.closeDay(server);
+        journal.markCompleted(settlementDay, "markets-and-close", server.overworld().getGameTime());
     }
 
     private static void settlePlayerToDay(ServerPlayer player, long targetDay) {
