@@ -773,7 +773,18 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Carrier treasury could not be credited; buyer debit was reversed."));
             return 0;
         }
-        data.settle(shipmentId, carrier.companyId(), now);
+        if (!data.settle(shipmentId, carrier.companyId(), now)) {
+            // Do not leave a successful cash transfer behind when the payable
+            // state could not be closed (for example, after a stale retry).
+            CompanyHelper.debitTreasuryNonOperating(source.getServer(), carrier.companyId(),
+                    Currencies.USD.id(), amount, "freight_settlement_reversal",
+                    "Reversal for failed payable close " + shipmentId);
+            CompanyHelper.creditTreasuryNonOperating(source.getServer(), buyer.companyId(),
+                    Currencies.USD.id(), amount, "freight_settlement_reversal",
+                    "Reversal for failed payable close " + shipmentId);
+            source.sendFailure(Component.literal("Freight payable could not be closed; cash transfer was reversed."));
+            return 0;
+        }
         if (contract != null) contracts.settle(contract.id(), now);
         CompanyHelper.recordTaxableIncome(source.getServer(), carrier, "freight:" + shipmentId,
                 amount, Currencies.USD.id(), now);
