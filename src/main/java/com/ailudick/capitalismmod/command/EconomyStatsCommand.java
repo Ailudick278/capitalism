@@ -16,6 +16,7 @@ import com.ailudick.capitalismmod.supply.PurchaseOrder;
 import com.ailudick.capitalismmod.stock.StockMarket;
 import com.ailudick.capitalismmod.supply.SupplyMarketSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -104,6 +105,14 @@ public final class EconomyStatsCommand {
         source.sendSuccess(() -> Component.literal("成交记录: " + tradeData.trades().size()
                 + "  成交数量: " + finalTradeQuantity + "  成交额: " + finalTradeVolume), false);
         source.sendSuccess(() -> Component.literal("总手续费: " + finalTradeFees), false);
+        var risk = FinancialRiskSavedData.get(server).latest();
+        if (risk != null) {
+            source.sendSuccess(() -> Component.literal("financial risk day=" + risk.day()
+                    + " totalDebtMinor=" + risk.totalDebtMinor()
+                    + " overdueDebtMinor=" + risk.overdueDebtMinor()
+                    + " overdueLoans=" + risk.overdueLoanCount()
+                    + " overdueShareBps=" + risk.overdueShareBasisPoints()), false);
+        }
         return 1;
     }
 
