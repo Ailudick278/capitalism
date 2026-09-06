@@ -67,11 +67,17 @@ public final class TaxRefundService {
             data.replace(new TaxRefundSavedData.Request(r.id(), r.taxpayerUuid(), r.currencyId(), r.amount(),
                     r.requestedAt(), "PROCESSING", server.overworld().getGameTime(), "SYSTEM_PROCESSING", r.reason(),
                     r.sourceSummary(), allocations, currentAllocations));
+            TaxRefundAuditSavedData.get(server).log(new TaxRefundAuditSavedData.Event(r.id(), r.taxpayerUuid(),
+                    "PROCESSING", "SYSTEM_PROCESSING", r.currencyId(), r.amount(), server.overworld().getGameTime(),
+                    "PROCESSING", r.reason(), allocations));
             long used = credits.consumeFor(r.taxpayerUuid(), r.currencyId(), r.amount());
             if (used != r.amount()) return failReview(data, r, server, "Refund credit changed during final verification.");
             data.replace(new TaxRefundSavedData.Request(r.id(), r.taxpayerUuid(), r.currencyId(), r.amount(),
                     r.requestedAt(), "CREDIT_CONSUMED", server.overworld().getGameTime(), "SYSTEM_SETTLEMENT", r.reason(),
                     r.sourceSummary(), allocations, currentAllocations));
+            TaxRefundAuditSavedData.get(server).log(new TaxRefundAuditSavedData.Event(r.id(), r.taxpayerUuid(),
+                    "CREDIT_CONSUME", "SYSTEM_SETTLEMENT", r.currencyId(), r.amount(), server.overworld().getGameTime(),
+                    "CREDIT_CONSUMED", r.reason(), allocations));
             r = data.get(id);
             if (r == null) return false;
         } else if (r.status().equals("PROCESSING")) {
@@ -85,6 +91,9 @@ public final class TaxRefundService {
             data.replace(new TaxRefundSavedData.Request(r.id(), r.taxpayerUuid(), r.currencyId(), r.amount(),
                     r.requestedAt(), "CREDIT_CONSUMED", server.overworld().getGameTime(), "SYSTEM_RECOVERY", r.reason(),
                     r.sourceSummary(), allocations, currentAllocations));
+            TaxRefundAuditSavedData.get(server).log(new TaxRefundAuditSavedData.Event(r.id(), r.taxpayerUuid(),
+                    "CREDIT_CONSUME", "SYSTEM_RECOVERY", r.currencyId(), r.amount(), server.overworld().getGameTime(),
+                    "CREDIT_CONSUMED", r.reason(), allocations));
             r = data.get(id);
             if (r == null) return false;
         } else if (currentAllocations.isEmpty()) {
@@ -93,6 +102,9 @@ public final class TaxRefundService {
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
         mailbox.creditMoneyOnce(r.taxpayerUuid(), r.currencyId(), r.amount(), "tax-refund:" + r.id());
         if (player != null) mailbox.redeem(player);
+        TaxRefundAuditSavedData.get(server).log(new TaxRefundAuditSavedData.Event(r.id(), r.taxpayerUuid(),
+                "PAYOUT", "SYSTEM_SETTLEMENT", r.currencyId(), r.amount(), server.overworld().getGameTime(),
+                "DELIVERED", r.reason(), "tax-refund:" + r.id()));
         data.replace(new TaxRefundSavedData.Request(r.id(), r.taxpayerUuid(), r.currencyId(), r.amount(), r.requestedAt(), "APPROVED", server.overworld().getGameTime(), reviewer, r.reason(), r.sourceSummary(), allocations, currentAllocations));
         TaxRefundAuditSavedData.get(server).log(new TaxRefundAuditSavedData.Event(r.id(), r.taxpayerUuid(), "APPROVE", reviewer, r.currencyId(), r.amount(), server.overworld().getGameTime(), "APPROVED", r.reason(), allocations));
         TaxRefundNotificationService.notify(server, r.id(), r.taxpayerUuid(), "Tax refund approved: " + r.currencyId().toUpperCase() + " " + com.ailudick.capitalismmod.currency.Money.format(r.amount()));

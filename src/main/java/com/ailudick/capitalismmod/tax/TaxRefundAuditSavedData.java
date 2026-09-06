@@ -23,6 +23,10 @@ public final class TaxRefundAuditSavedData extends SavedData {
         return server.overworld().getDataStorage().computeIfAbsent(new Factory<>(TaxRefundAuditSavedData::new, TaxRefundAuditSavedData::load), ID);
     }
     public void log(Event event) {
+        if (event == null || event.requestId() == null || event.requestId().isBlank()
+                || event.action() == null || event.action().isBlank()
+                || events.stream().anyMatch(existing -> existing.requestId().equals(event.requestId())
+                && existing.action().equals(event.action()) && existing.result().equals(event.result()))) return;
         events.add(event);
         while (events.size() > MAX_EVENTS) events.remove(0);
         setDirty();
@@ -42,7 +46,7 @@ public final class TaxRefundAuditSavedData extends SavedData {
     }
     public static TaxRefundAuditSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         TaxRefundAuditSavedData data = new TaxRefundAuditSavedData(); ListTag list = tag.getList("events", 10);
-        for (int i = 0; i < list.size(); i++) { CompoundTag value = list.getCompound(i); if (value.hasUUID("taxpayer")) data.events.add(new Event(value.getString("request"), value.getUUID("taxpayer"), value.getString("action"), value.getString("actor"), value.getString("currency"), value.getLong("amount"), value.getLong("time"), value.getString("result"), value.getString("reason"), value.getString("source"))); }
+        for (int i = 0; i < list.size(); i++) { CompoundTag value = list.getCompound(i); if (value.hasUUID("taxpayer")) { Event event = new Event(value.getString("request"), value.getUUID("taxpayer"), value.getString("action"), value.getString("actor"), value.getString("currency"), value.getLong("amount"), value.getLong("time"), value.getString("result"), value.getString("reason"), value.getString("source")); if (!event.requestId().isBlank() && data.events.stream().noneMatch(existing -> existing.requestId().equals(event.requestId()) && existing.action().equals(event.action()) && existing.result().equals(event.result()))) data.events.add(event); } }
         while (data.events.size() > MAX_EVENTS) data.events.remove(0);
         return data;
     }
