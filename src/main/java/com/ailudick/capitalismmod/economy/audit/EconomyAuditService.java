@@ -14,6 +14,8 @@ import com.ailudick.capitalismmod.economy.RecoveryIntentRules;
 import com.ailudick.capitalismmod.loan.PeerLoanOriginationIntentSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanPaymentSavedData;
 import com.ailudick.capitalismmod.bank.BankRecoveryRules;
+import com.ailudick.capitalismmod.bank.BankExposureAuditRules;
+import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
@@ -285,6 +287,12 @@ public final class EconomyAuditService {
                     || exposure.overdueDebtMinor() < 0L || exposure.overdueDebtMinor() > exposure.loanDebtMinor()
                     || exposure.overdueAccounts() < 0 || exposure.syncedAt() < 0L) {
                 issues.add("bank exposure invalid " + entry.getKey());
+            }
+        }
+        BankExposureSavedData exposureData = BankExposureSavedData.get(server);
+        for (var player : server.getPlayerList().getPlayers()) {
+            if (!BankExposureAuditRules.matches(exposureData.expected(player), exposureData.exposure(player.getUUID()))) {
+                issues.add("online bank exposure differs from account state " + player.getUUID());
             }
         }
         for (var snapshot : FinancialRiskSavedData.get(server).snapshots()) {

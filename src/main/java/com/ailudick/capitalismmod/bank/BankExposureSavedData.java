@@ -32,9 +32,20 @@ public final class BankExposureSavedData extends SavedData {
 
     public Map<UUID, Exposure> exposures() { return Map.copyOf(exposures); }
 
+    public Exposure exposure(UUID playerId) {
+        return playerId == null ? null : exposures.get(playerId);
+    }
+
     /** Replaces one player's normalized exposure from their authoritative accounts. */
     public void sync(ServerPlayer player) {
         if (player == null) return;
+        exposures.put(player.getUUID(), expected(player));
+        setDirty();
+    }
+
+    /** Recomputes the normalized base-currency exposure from the player's accounts. */
+    public Exposure expected(ServerPlayer player) {
+        if (player == null) return null;
         long deposits = 0L, loans = 0L, overdue = 0L;
         int overdueAccounts = 0;
         for (BankAccount account : BankAccountHelper.getAccounts(player).values()) {
@@ -51,9 +62,8 @@ public final class BankExposureSavedData extends SavedData {
                 overdueAccounts++;
             }
         }
-        exposures.put(player.getUUID(), new Exposure(deposits, loans, overdue, overdueAccounts,
-                player.getServer().overworld().getGameTime()));
-        setDirty();
+        return new Exposure(deposits, loans, overdue, overdueAccounts,
+                player.getServer().overworld().getGameTime());
     }
 
     private static long toBase(long amount, String currencyId) {
