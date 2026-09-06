@@ -35,7 +35,10 @@ public final class PopulationService {
             long cash = add(household.cashMinor(), income);
             long need = add(0L, household.dailyNeedMinor() * (long) household.size());
             ConsumptionResult result = consume(server, household, cash, need, day);
-            int welfare = need <= 0L ? 100 : (int) Math.max(0L, Math.min(100L, result.spent() * 100L / need));
+            int spendingWelfare = need <= 0L ? 100 : (int) Math.max(0L, Math.min(100L, result.spent() * 100L / need));
+            int serviceWelfare = LogisticsInfrastructureSavedData.get(server)
+                    .publicServiceScore(household.region(), population.population(household.region()));
+            int welfare = spendingWelfare * 70 / 100 + serviceWelfare * 30 / 100;
             population.upsert(household.withSettlement(day, result.remainingCash(), welfare, household.region()));
         }
     }

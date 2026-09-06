@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.market;
 
 import com.ailudick.capitalismmod.population.MigrationEconomics;
+import com.ailudick.capitalismmod.population.PublicServiceEconomics;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderLookup;
@@ -56,6 +57,34 @@ public final class LogisticsInfrastructureSavedData extends SavedData {
 
     public int count(String region, String facility) {
         return facilities.getOrDefault(region, Map.of()).getOrDefault(facility, 0);
+    }
+
+    public static boolean isPublicFacility(String facility) {
+        return "housing".equals(facility) || "school".equals(facility) || "clinic".equals(facility);
+    }
+
+    public boolean changePublicFacility(String region, String facility, int delta) {
+        if (region == null || region.isBlank() || !isPublicFacility(facility) || delta == 0) return false;
+        int current = count(region, facility);
+        long next = (long) current + delta;
+        if (next < 0L || next > 1_000_000L) return false;
+        if (delta > 0) {
+            facilities.computeIfAbsent(region, key -> new HashMap<>()).put(facility, (int) next);
+        } else if (next == 0L) {
+            Map<String, Integer> values = facilities.get(region);
+            if (values != null) values.remove(facility);
+            if (values != null && values.isEmpty()) facilities.remove(region);
+        } else {
+            facilities.getOrDefault(region, Map.of()).put(facility, (int) next);
+        }
+        setDirty();
+        return true;
+    }
+
+    /** Returns a 0-100 service score with a modest baseline for private provision. */
+    public int publicServiceScore(String region, int residents) {
+        return PublicServiceEconomics.score(residents, count(region, "housing"),
+                count(region, "school"), count(region, "clinic"));
     }
 
     public int capacityBonus(String origin, String destination, TransportMode mode) {

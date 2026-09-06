@@ -1,0 +1,57 @@
+package com.ailudick.capitalismmod.command;
+
+import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
+import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+
+/** Administrative entry point for the first persisted public-service layer. */
+public final class CityCommand {
+    private CityCommand() {}
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        var info = Commands.literal("info")
+                .executes(c -> info(c.getSource(), "spawn"))
+                .then(Commands.argument("region", StringArgumentType.word())
+                        .executes(c -> info(c.getSource(), StringArgumentType.getString(c, "region"))));
+        var add = Commands.literal("add").then(Commands.argument("region", StringArgumentType.word())
+                .then(Commands.argument("type", StringArgumentType.word())
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000000))
+                                .executes(c -> change(c.getSource(), StringArgumentType.getString(c, "region"),
+                                        StringArgumentType.getString(c, "type"), IntegerArgumentType.getInteger(c, "count"))))));
+        var remove = Commands.literal("remove").then(Commands.argument("region", StringArgumentType.word())
+                .then(Commands.argument("type", StringArgumentType.word())
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000000))
+                                .executes(c -> change(c.getSource(), StringArgumentType.getString(c, "region"),
+                                        StringArgumentType.getString(c, "type"), -IntegerArgumentType.getInteger(c, "count"))))));
+        var facility = Commands.literal("facility").requires(source -> source.hasPermission(2))
+                .then(add).then(remove);
+        dispatcher.register(Commands.literal("city").then(info).then(facility));
+    }
+
+    private static int info(CommandSourceStack source, String region) {
+        LogisticsInfrastructureSavedData infrastructure = LogisticsInfrastructureSavedData.get(source.getServer());
+        int residents = PopulationSavedData.get(source.getServer()).population(region);
+        int score = infrastructure.publicServiceScore(region, residents);
+        source.sendSuccess(() -> Component.literal("city region=" + region + " residents=" + residents
+                + " housing=" + infrastructure.count(region, "housing") + " school="
+                + infrastructure.count(region, "school") + " clinic=" + infrastructure.count(region, "clinic")
+                + " serviceScore=" + score), false);
+        return score;
+    }
+
+    private static int change(CommandSourceStack source, String region, String type, int delta) {
+        LogisticsInfrastructureSavedData data = LogisticsInfrastructureSavedData.get(source.getServer());
+        if (!data.changePublicFacility(region, type, delta)) {
+            source.sendFailure(Component.literal("Invalid public facility, count, or region."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("city facility " + (delta > 0 ? "added" : "removed")
+                + " type=" + type + " count=" + Math.abs(delta) + " region=" + region), true);
+        return Math.abs(delta);
+    }
+}
