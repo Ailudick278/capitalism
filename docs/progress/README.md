@@ -32,3 +32,6 @@
 - 需要安排下一阶段开发时，阅读“后续方向”。
 
 日志内容应随着实际代码和测试状态更新，避免记录与当前实现不一致的功能。
+
+新玩法的总体架构、系统依赖和现实依据见
+[`docs/design/economic-expansion-framework.md`](../design/economic-expansion-framework.md)。

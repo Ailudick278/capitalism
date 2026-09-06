@@ -123,6 +123,8 @@ src/main/java/com/ailudick/capitalismmod/
 
 开发进度见 [`docs/progress/`](docs/progress/README.md)。
 
+新玩法的系统边界和现实依据见 [`docs/design/economic-expansion-framework.md`](docs/design/economic-expansion-framework.md)。
+
 ## 免责声明
 
 本模组中的货币、税务、金融和经济数据仅用于游戏内模拟，不构成现实世界中的投资、税务、法律或金融建议。
