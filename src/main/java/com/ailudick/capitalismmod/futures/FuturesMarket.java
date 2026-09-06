@@ -118,6 +118,38 @@ public final class FuturesMarket {
         return true;
     }
 
+    /** Completes open-position intents left between margin debit and position creation. */
+    public static int recoverPendingOpenPositions(MinecraftServer server) {
+        FuturesSavedData data = FuturesSavedData.get(server);
+        int recovered = 0;
+        for (Position position : data.pendingOpenPositions()) {
+            Long balanceBefore = data.pendingOpenBalance(position.id());
+            Long netVolumeBefore = data.pendingOpenNetVolume(position.id());
+            if (balanceBefore == null || netVolumeBefore == null) continue;
+            long balance = data.marginBalance(position.playerId());
+            long expectedBalance = safeAdd(balanceBefore, -position.margin());
+            if (data.findPosition(position.id()) == null) {
+                if (balance == balanceBefore) {
+                    data.addMarginBalance(position.playerId(), -position.margin());
+                } else if (balance != expectedBalance) {
+                    continue;
+                }
+                data.addPosition(position);
+            }
+            long delta = position.longSide() ? position.quantity() : -position.quantity();
+            long currentVolume = data.netVolume(position.itemId());
+            long expectedVolume = safeAdd(netVolumeBefore, delta);
+            if (currentVolume == netVolumeBefore) {
+                data.addNetVolume(position.itemId(), delta);
+            } else if (currentVolume != expectedVolume) {
+                continue;
+            }
+            data.removePendingOpenPosition(position.id());
+            recovered++;
+        }
+        return recovered;
+    }
+
     // ---- open / close ----
 
     /** Opens a long or short position of {@code quantity} at the current futures price. */
@@ -125,6 +157,7 @@ public final class FuturesMarket {
         if (!Commodities.isValid(commodityIndex) || quantity <= 0) {
             return false;
         }
+        recoverPendingOpenPositions(player.getServer());
         String itemId = Commodities.id(Commodities.get(commodityIndex));
         FuturesSavedData data = FuturesSavedData.get(player.getServer());
         long price = data.price(itemId);
@@ -140,9 +173,14 @@ public final class FuturesMarket {
             return false;
         }
 
+        Position position = new Position(UUID.randomUUID().toString(), player.getUUID(), itemId, quantity, price, margin, longSide);
+        if (!data.addPendingOpenPosition(position, data.marginBalance(player.getUUID()), data.netVolume(itemId))) {
+            return false;
+        }
         data.addMarginBalance(player.getUUID(), -margin);
-        data.addPosition(new Position(UUID.randomUUID().toString(), player.getUUID(), itemId, quantity, price, margin, longSide));
+        data.addPosition(position);
         data.addNetVolume(itemId, longSide ? quantity : -quantity);
+        data.removePendingOpenPosition(position.id());
         data.setDirty();
         return true;
     }
@@ -200,6 +238,7 @@ public final class FuturesMarket {
 
     /** Marks every position once for the supplied economic settlement day. */
     public static void settleDay(MinecraftServer server, long settlementDay) {
+        recoverPendingOpenPositions(server);
         FuturesSavedData data = FuturesSavedData.get(server);
         if (data.lastSettlementDay() >= settlementDay) return;
         data.advanceToSettlementDay(settlementDay);

@@ -39,6 +39,9 @@ public final class FuturesSavedData extends SavedData {
     private final Map<String, Long> marginWithdrawalStarts = new HashMap<>();
     private final Set<String> marginDepositReceipts = new HashSet<>();
     private final Map<String, Long> marginDepositStarts = new HashMap<>();
+    private final List<Position> pendingOpenPositions = new ArrayList<>();
+    private final Map<String, Long> pendingOpenBalances = new HashMap<>();
+    private final Map<String, Long> pendingOpenNetVolumes = new HashMap<>();
 
     private record State(
             Map<String, Long> futuresPrice,
@@ -52,7 +55,10 @@ public final class FuturesSavedData extends SavedData {
             List<String> marginWithdrawalReceipts,
             Map<String, Long> marginWithdrawalStarts,
             List<String> marginDepositReceipts,
-            Map<String, Long> marginDepositStarts) {
+            Map<String, Long> marginDepositStarts,
+            List<Position> pendingOpenPositions,
+            Map<String, Long> pendingOpenBalances,
+            Map<String, Long> pendingOpenNetVolumes) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("futuresPrice").forGetter(State::futuresPrice),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("netVolume").forGetter(State::netVolume),
@@ -65,7 +71,10 @@ public final class FuturesSavedData extends SavedData {
                 Codec.STRING.listOf().optionalFieldOf("marginWithdrawalReceipts", List.of()).forGetter(State::marginWithdrawalReceipts),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("marginWithdrawalStarts", Map.of()).forGetter(State::marginWithdrawalStarts),
                 Codec.STRING.listOf().optionalFieldOf("marginDepositReceipts", List.of()).forGetter(State::marginDepositReceipts),
-                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("marginDepositStarts", Map.of()).forGetter(State::marginDepositStarts)
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("marginDepositStarts", Map.of()).forGetter(State::marginDepositStarts),
+                Position.CODEC.listOf().optionalFieldOf("pendingOpenPositions", List.of()).forGetter(State::pendingOpenPositions),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("pendingOpenBalances", Map.of()).forGetter(State::pendingOpenBalances),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("pendingOpenNetVolumes", Map.of()).forGetter(State::pendingOpenNetVolumes)
         ).apply(instance, State::new));
     }
 
@@ -283,6 +292,44 @@ public final class FuturesSavedData extends SavedData {
         }
     }
 
+    public List<Position> pendingOpenPositions() {
+        return List.copyOf(pendingOpenPositions);
+    }
+
+    /** Persists an open-position intent together with the balances needed for recovery. */
+    public boolean addPendingOpenPosition(Position position, long balanceBefore, long netVolumeBefore) {
+        if (position == null || position.id() == null || position.id().isBlank()
+                || balanceBefore < position.margin() || pendingOpenPositions.stream().anyMatch(p -> p.id().equals(position.id()))) {
+            return false;
+        }
+        pendingOpenPositions.add(position);
+        pendingOpenBalances.put(position.id(), balanceBefore);
+        pendingOpenNetVolumes.put(position.id(), netVolumeBefore);
+        while (pendingOpenPositions.size() > 8192) {
+            Position removed = pendingOpenPositions.remove(0);
+            pendingOpenBalances.remove(removed.id());
+            pendingOpenNetVolumes.remove(removed.id());
+        }
+        setDirty();
+        return true;
+    }
+
+    public Long pendingOpenBalance(String positionId) {
+        return positionId == null ? null : pendingOpenBalances.get(positionId);
+    }
+
+    public Long pendingOpenNetVolume(String positionId) {
+        return positionId == null ? null : pendingOpenNetVolumes.get(positionId);
+    }
+
+    public void removePendingOpenPosition(String positionId) {
+        if (positionId == null) return;
+        boolean changed = pendingOpenPositions.removeIf(p -> positionId.equals(p.id()));
+        changed |= pendingOpenBalances.remove(positionId) != null;
+        changed |= pendingOpenNetVolumes.remove(positionId) != null;
+        if (changed) setDirty();
+    }
+
     public Position findPosition(String positionId) {
         for (Position position : positions) {
             if (position.id().equals(positionId)) {
@@ -300,7 +347,8 @@ public final class FuturesSavedData extends SavedData {
                 dayCounter, new HashMap<>(marginBalance), new ArrayList<>(positions), lastSettlementDay,
                 new ArrayList<>(settlementReceipts), new ArrayList<>(marginWithdrawalReceipts),
                 new HashMap<>(marginWithdrawalStarts), new ArrayList<>(marginDepositReceipts),
-                new HashMap<>(marginDepositStarts));
+                new HashMap<>(marginDepositStarts), new ArrayList<>(pendingOpenPositions),
+                new HashMap<>(pendingOpenBalances), new HashMap<>(pendingOpenNetVolumes));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -327,6 +375,12 @@ public final class FuturesSavedData extends SavedData {
                 while (data.marginDepositReceipts.size() > 8192) data.marginDepositReceipts.remove(data.marginDepositReceipts.iterator().next());
                 data.marginDepositStarts.putAll(state.marginDepositStarts());
                 while (data.marginDepositStarts.size() > 8192) data.marginDepositStarts.remove(data.marginDepositStarts.keySet().iterator().next());
+                data.pendingOpenPositions.addAll(state.pendingOpenPositions());
+                while (data.pendingOpenPositions.size() > 8192) data.pendingOpenPositions.remove(0);
+                data.pendingOpenBalances.putAll(state.pendingOpenBalances());
+                data.pendingOpenNetVolumes.putAll(state.pendingOpenNetVolumes());
+                while (data.pendingOpenBalances.size() > 8192) data.pendingOpenBalances.remove(data.pendingOpenBalances.keySet().iterator().next());
+                while (data.pendingOpenNetVolumes.size() > 8192) data.pendingOpenNetVolumes.remove(data.pendingOpenNetVolumes.keySet().iterator().next());
             });
         }
         return data;
