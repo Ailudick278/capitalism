@@ -93,6 +93,28 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Credits operating revenue once for a durable business source. */
+    public static boolean creditTreasuryOnce(MinecraftServer server, String companyId, String currencyId,
+                                              long amount, String sourceId) {
+        if (server == null || companyId == null || currencyId == null || amount <= 0L
+                || sourceId == null || sourceId.isBlank()) return false;
+        String marker = "[source=" + sourceId + "]";
+        if (CompanyLedgerSavedData.get(server).entries(companyId).stream()
+                .anyMatch(entry -> entry.description() != null && entry.description().contains(marker))) {
+            return true;
+        }
+        CompanySavedData data = CompanySavedData.get(server);
+        Company company = data.get(companyId);
+        if (company == null) return false;
+        Company updated = company.addTreasury(currencyId, amount);
+        if (updated == company) return false;
+        data.put(updated);
+        CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                company.companyId(), server.overworld().getGameTime(), "revenue", currencyId,
+                amount, updated.treasuryOf(currencyId), "Supply market sales [source=" + sourceId + "]"));
+        return true;
+    }
+
     /** Credits a non-operating financing inflow without labeling it revenue. */
     public static boolean creditTreasuryNonOperating(MinecraftServer server, String companyId,
                                                        String currencyId, long amount,

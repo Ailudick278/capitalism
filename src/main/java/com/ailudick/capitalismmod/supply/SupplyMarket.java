@@ -404,7 +404,8 @@ public final class SupplyMarket {
         TaxTransactionService.assess(server, TaxType.VAT, supplierUuid, Currencies.USD.id(),
                 Money.toMinorSaturated(amount), "supply-sale:" + sourceId, now);
         Company company = CompanyHelper.findCompany(server, supplierUuid, companyName);
-        if (company != null && CompanyHelper.creditTreasury(server, company.companyId(), Currencies.USD.id(), amount)) {
+        if (company != null && CompanyHelper.creditTreasuryOnce(server, company.companyId(), Currencies.USD.id(),
+                amount, "supply-sale:" + sourceId)) {
             CompanyHelper.recordTaxableIncome(server, company, "supply_sale:" + sourceId,
                     amount, Currencies.USD.id(), now);
             settlements.recordSupplierPayment(sourceId);
