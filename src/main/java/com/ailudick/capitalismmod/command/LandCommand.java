@@ -563,7 +563,8 @@ public final class LandCommand {
         String marketKey = transferKey + ":market";
         if (!journal.has(marketKey)) {
             LandMarketSavedData.get(player.getServer()).record(new LandMarketSavedData.Transaction(
-                    player.level().getGameTime(), claim.dimension(), claim.chunkX(), claim.chunkZ(), claim.purpose(), price));
+                    player.level().getGameTime(), claim.dimension(), claim.chunkX(), claim.chunkZ(), claim.purpose(), price,
+                    transferKey + ":market"));
             journal.record(marketKey);
         }
         LandOperationLogSavedData.get(player.getServer()).record(player.level().getGameTime(), pending.from(), "土地转让给" + player.getUUID(),

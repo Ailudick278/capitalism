@@ -153,7 +153,8 @@ public final class LandRentTickHandler {
                 String marketKey = auction.claimId() + ":" + auction.endsAt() + ":market";
                 if (!auctionJournal.has(marketKey)) {
                     LandMarketSavedData.get(server).record(new LandMarketSavedData.Transaction(
-                            now, claim.dimension(), claim.chunkX(), claim.chunkZ(), claim.purpose(), auction.highestBid()));
+                            now, claim.dimension(), claim.chunkX(), claim.chunkZ(), claim.purpose(), auction.highestBid(),
+                            auction.claimId() + ":" + auction.endsAt() + ":market"));
                     auctionJournal.record(marketKey);
                 }
                 String noticeKey = auction.claimId() + ":" + auction.endsAt() + ":notice";
