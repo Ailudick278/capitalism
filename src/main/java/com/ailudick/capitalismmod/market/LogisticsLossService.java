@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.market;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
+import com.ailudick.capitalismmod.supply.SupplySettlementSavedData;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -43,7 +44,7 @@ public final class LogisticsLossService {
         data.add(new LogisticsLossSavedData.Loss(shipment.id(), shipment.buyer(), shipment.itemId(),
                 shipment.quantity(), shipment.originRegion(), shipment.destinationRegion(), shipment.transport(),
                 shipment.disruptionCount() + 1, server.overworld().getGameTime(), false, shipment.supplyOrderId(),
-                shipment.buyerCompanyId(), shipment.unitPrice()));
+                shipment.buyerCompanyId(), shipment.unitPrice(), shipment.supplierUuid()));
         if (!shipment.supplyOrderId().isBlank() && shipment.supplierUuid() != null) {
             SupplyMarket.compensateTransportLoss(server, shipment.id(), shipment.supplyOrderId(), shipment.buyer(), shipment.buyerCompanyId(), shipment.supplierUuid(),
                     shipment.itemId(), shipment.quantity(), shipment.unitPrice());
@@ -63,5 +64,27 @@ public final class LogisticsLossService {
                     + loss.quantity() + " 在运输中损失（中断 " + loss.disruptionCount() + " 次）。"), false);
         }
         data.acknowledge(player.getUUID());
+    }
+
+    /** Retries supply-order compensation after a loss record outlived its shipment. */
+    public static int recoverSupplyCompensations(MinecraftServer server) {
+        LogisticsLossSavedData losses = LogisticsLossSavedData.get(server);
+        SupplySettlementSavedData settlements = SupplySettlementSavedData.get(server);
+        int recovered = 0;
+        for (LogisticsLossSavedData.Loss loss : losses.losses()) {
+            if (loss.supplyOrderId() == null || loss.supplyOrderId().isBlank()
+                    || settlements.hasTransportCompensation(loss.shipmentId())) continue;
+            SupplyMarket.compensateTransportLoss(server, loss.shipmentId(), loss.supplyOrderId(), loss.buyer(),
+                    loss.buyerCompanyId(), loss.supplierUuid() != null ? loss.supplierUuid()
+                            : nullSafeSupplier(server, loss.supplyOrderId()), loss.itemId(),
+                    loss.quantity(), loss.unitPrice());
+            if (settlements.hasTransportCompensation(loss.shipmentId())) recovered++;
+        }
+        return recovered;
+    }
+
+    private static java.util.UUID nullSafeSupplier(MinecraftServer server, String orderId) {
+        var order = com.ailudick.capitalismmod.supply.SupplyMarketSavedData.get(server).findOrder(orderId);
+        return order == null ? null : order.supplierUuid();
     }
 }

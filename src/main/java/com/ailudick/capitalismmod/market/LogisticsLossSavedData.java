@@ -20,13 +20,21 @@ public final class LogisticsLossSavedData extends SavedData {
     public record Loss(String shipmentId, UUID buyer, String itemId, int quantity,
                        String originRegion, String destinationRegion, TransportMode transport,
                        int disruptionCount, long lostAt, boolean acknowledged, String supplyOrderId,
-                       String buyerCompanyId, long unitPrice) {
+                       String buyerCompanyId, long unitPrice, UUID supplierUuid) {
         public Loss {
             disruptionCount = Math.max(0, disruptionCount);
             lostAt = Math.max(0L, lostAt);
             supplyOrderId = supplyOrderId == null ? "" : supplyOrderId;
             buyerCompanyId = buyerCompanyId == null ? "" : buyerCompanyId;
             unitPrice = Math.max(0L, unitPrice);
+        }
+
+        public Loss(String shipmentId, UUID buyer, String itemId, int quantity,
+                    String originRegion, String destinationRegion, TransportMode transport,
+                    int disruptionCount, long lostAt, boolean acknowledged, String supplyOrderId,
+                    String buyerCompanyId, long unitPrice) {
+            this(shipmentId, buyer, itemId, quantity, originRegion, destinationRegion, transport,
+                    disruptionCount, lostAt, acknowledged, supplyOrderId, buyerCompanyId, unitPrice, null);
         }
     }
 
@@ -98,6 +106,7 @@ public final class LogisticsLossSavedData extends SavedData {
             entry.putString("supplyOrderId", loss.supplyOrderId());
             entry.putString("buyerCompanyId", loss.buyerCompanyId());
             entry.putLong("unitPrice", loss.unitPrice());
+            if (loss.supplierUuid() != null) entry.putUUID("supplier", loss.supplierUuid());
             list.add(entry);
         }
         tag.put("losses", list);
@@ -116,7 +125,8 @@ public final class LogisticsLossSavedData extends SavedData {
                         entry.getString("destinationRegion"), TransportMode.parse(entry.getString("transport")),
                         entry.getInt("disruptions"), entry.getLong("lostAt"), entry.getBoolean("acknowledged"),
                         entry.getString("supplyOrderId"), entry.getString("buyerCompanyId"),
-                        Math.max(0L, entry.getLong("unitPrice"))));
+                        Math.max(0L, entry.getLong("unitPrice")),
+                        entry.hasUUID("supplier") ? entry.getUUID("supplier") : null));
             }
         }
         while (data.losses.size() > MAX_RECORDS) {

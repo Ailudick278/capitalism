@@ -29,6 +29,7 @@ import com.ailudick.capitalismmod.risk.FinancialCrisisService;
 import com.ailudick.capitalismmod.bank.BankLiquidityService;
 import com.ailudick.capitalismmod.bank.BankCapitalService;
 import com.ailudick.capitalismmod.market.CommodityMarket;
+import com.ailudick.capitalismmod.market.LogisticsLossService;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
 import net.minecraft.server.level.ServerPlayer;
@@ -69,6 +70,7 @@ public final class EconomySettlementTickHandler {
             CompanyHelper.syncRegistryOwnership(player);
             PopulationService.ensurePlayerHousehold(player);
             SupplyMarket.recoverPendingOrderIntents(player.getServer());
+            LogisticsLossService.recoverSupplyCompensations(player.getServer());
             BankAccountHelper.recoverCashPayouts(player);
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
             PeerLoanNotificationService.deliver(player);
@@ -77,6 +79,7 @@ public final class EconomySettlementTickHandler {
 
     private static void settleOneDay(net.minecraft.server.MinecraftServer server, long settlementDay) {
         SupplyMarket.recoverPendingOrderIntents(server);
+        LogisticsLossService.recoverSupplyCompensations(server);
         EconomicSettlementJournalSavedData journal = EconomicSettlementJournalSavedData.get(server);
         journal.markStarted(settlementDay, "households-and-labor", server.overworld().getGameTime());
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
