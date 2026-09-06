@@ -36,6 +36,7 @@
 /population info [region]
 /city housing terminate <household>
 /economy-audit
+/economicevent priceShock <eventId> <itemId> <shockBps> <days>
 ```
 
 完整命令以游戏内 `/capitalism help` 为准。
