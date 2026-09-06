@@ -64,6 +64,7 @@ public final class EconomySettlementTickHandler {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             PopulationService.ensurePlayerHousehold(player);
+            BankAccountHelper.recoverCashPayouts(player);
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
             PeerLoanNotificationService.deliver(player);
         }

@@ -69,6 +69,24 @@ public final class BankAccountHelper {
         return getAccounts(player).get(accountId);
     }
 
+    /** Recovers new-format cash payouts whose account transaction was saved before mailbox delivery. */
+    public static int recoverCashPayouts(ServerPlayer player) {
+        if (player == null || player.getServer() == null) return 0;
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+        int recovered = 0;
+        for (BankAccount account : getAccounts(player).values()) {
+            for (BankTransaction transaction : account.transactions()) {
+                String source = transaction.reference();
+                boolean payout = source.startsWith("bank-withdrawal:") || source.startsWith("bank-loan:");
+                long amount = transaction.amount() < 0L ? -transaction.amount() : transaction.amount();
+                if (!payout || amount <= 0L || !Currencies.exists(transaction.currencyId())) continue;
+                if (mailbox.creditMoneyOnce(player.getUUID(), transaction.currencyId(), amount, source)) recovered++;
+            }
+        }
+        mailbox.redeemMoneyOnly(player);
+        return recovered;
+    }
+
     public static boolean canOpenAccount(Player player, boolean credit) {
         long count = getAccounts(player).values().stream()
                 .filter(account -> account.credit() == credit)
