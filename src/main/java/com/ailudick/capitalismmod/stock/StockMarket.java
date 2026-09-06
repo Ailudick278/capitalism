@@ -204,6 +204,7 @@ public final class StockMarket {
     // ---- matching internals ----
 
     private static boolean placeBuyOrder(ServerPlayer player, EconomySavedData data, String stockId, int quantity, long pricePerUnit) {
+        String orderId = UUID.randomUUID().toString();
         long total = EconomyMath.multiply(quantity, pricePerUnit);
         if (total < 0 || !EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(total))) {
             return false;
@@ -237,13 +238,16 @@ public final class StockMarket {
         }
 
         if (remaining > 0) {
-            data.addOrder(new StockOrder(UUID.randomUUID().toString(), player.getStringUUID(),
+            data.addOrder(new StockOrder(orderId, player.getStringUUID(),
                     stockId, remaining, pricePerUnit, false, player.getServer().overworld().getGameTime()));
         }
         long reserved = EconomyMath.multiply(remaining, pricePerUnit);
         long refund = total - spent - reserved;
         if (refund > 0) {
-            EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(refund));
+            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+            mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(refund),
+                    "stock-buy-residual-refund:" + orderId);
+            mailbox.redeemMoneyOnly(player);
         }
         return true;
     }
