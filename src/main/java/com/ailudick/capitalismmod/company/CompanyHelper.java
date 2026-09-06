@@ -1429,8 +1429,12 @@ public final class CompanyHelper {
         }
         long total = EconomyMath.multiply(offer.pricePerShare(), offer.quantity());
         String transferSource = "public-takeover:" + offer.id() + ":shares";
-        if (total < 0 || (!data.hasShareTransfer(transferSource)
-                && !EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(total)))) {
+        String paymentReference = "public-takeover:" + offer.id() + ":buyer-payment";
+        boolean alreadyDebited = EconomyLogSavedData.get(buyer.getServer())
+                .hasReference(buyer.getUUID(), paymentReference);
+        if (total < 0 || (!data.hasShareTransfer(transferSource) && !alreadyDebited
+                && !EconomyHelper.tryPayWithReference(buyer, Currencies.USD,
+                Money.toMinor(total), paymentReference))) {
             return false;
         }
         if (!data.hasShareTransfer(transferSource)
