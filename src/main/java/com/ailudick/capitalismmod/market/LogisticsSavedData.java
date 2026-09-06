@@ -63,9 +63,13 @@ public final class LogisticsSavedData extends SavedData {
     }
 
     public void add(Shipment shipment) {
-        if (shipment == null || shipment.buyer() == null || shipment.itemId() == null
+        if (shipment == null || shipment.id() == null || shipment.id().isBlank()
+                || shipment.buyer() == null || shipment.itemId() == null
                 || shipment.quantity() <= 0 || shipment.deliveryTick() < 0) {
             return;
+        }
+        for (Shipment current : shipments) {
+            if (shipment.id().equals(current.id())) return;
         }
         shipments.add(shipment);
         setDirty();
