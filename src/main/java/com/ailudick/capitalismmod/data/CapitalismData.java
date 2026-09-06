@@ -431,6 +431,10 @@ public final class CapitalismData {
                 ,new CommodityJson("capitalismmod:television", 820)
                 ,new CommodityJson("capitalismmod:laptop", 1150)
                 ,new CommodityJson("capitalismmod:wireless_router", 420)
+                ,new CommodityJson("capitalismmod:refurbished_smartphone", 390)
+                ,new CommodityJson("capitalismmod:refurbished_television", 490)
+                ,new CommodityJson("capitalismmod:refurbished_laptop", 690)
+                ,new CommodityJson("capitalismmod:refurbished_wireless_router", 250)
                 ,new CommodityJson("capitalismmod:plastic_container", 105)
                 ,new CommodityJson("capitalismmod:packaging_film", 70)
         );
@@ -606,7 +610,11 @@ public final class CapitalismData {
                         new RecipeJson("smartphone_recycling", Map.of("capitalismmod:smartphone", 1), Map.of("capitalismmod:copper_wire", 2, "capitalismmod:plastic_pellets", 1), 190, "electronics_recycler", 3, 6, 12),
                         new RecipeJson("television_recycling", Map.of("capitalismmod:television", 1), Map.of("capitalismmod:copper_wire", 3, "capitalismmod:plastic_pellets", 2), 260, "electronics_recycler", 4, 7, 14),
                         new RecipeJson("laptop_recycling", Map.of("capitalismmod:laptop", 1), Map.of("capitalismmod:copper_wire", 3, "capitalismmod:plastic_pellets", 2), 300, "electronics_recycler", 4, 8, 15),
-                        new RecipeJson("wireless_router_recycling", Map.of("capitalismmod:wireless_router", 1), Map.of("capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), 145, "electronics_recycler", 2, 5, 10)),
+                        new RecipeJson("wireless_router_recycling", Map.of("capitalismmod:wireless_router", 1), Map.of("capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), 145, "electronics_recycler", 2, 5, 10),
+                        new RecipeJson("smartphone_refurbishment", Map.of("capitalismmod:smartphone", 1, "capitalismmod:battery", 1, "capitalismmod:display_panel", 1), Map.of("capitalismmod:refurbished_smartphone", 1), 310, "refurbishment_line", 3, 6, 12),
+                        new RecipeJson("television_refurbishment", Map.of("capitalismmod:television", 1, "capitalismmod:display_panel", 1, "capitalismmod:circuit_board", 1), Map.of("capitalismmod:refurbished_television", 1), 360, "refurbishment_line", 3, 7, 14),
+                        new RecipeJson("laptop_refurbishment", Map.of("capitalismmod:laptop", 1, "capitalismmod:battery", 1, "capitalismmod:display_panel", 1), Map.of("capitalismmod:refurbished_laptop", 1), 420, "refurbishment_line", 4, 8, 15),
+                        new RecipeJson("wireless_router_refurbishment", Map.of("capitalismmod:wireless_router", 1, "capitalismmod:packaged_chip", 1), Map.of("capitalismmod:refurbished_wireless_router", 1), 220, "refurbishment_line", 2, 5, 10)),
                 withRecipes(new IndustryJson("utilities", Map.of("minecraft:coal", 1), Map.of(), 60),
                         new RecipeJson("coal_generation", Map.of("minecraft:coal", 1), Map.of(), 60,
                                 "none", 1, 0, 0),

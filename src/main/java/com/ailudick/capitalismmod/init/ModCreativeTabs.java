@@ -165,6 +165,10 @@ public class ModCreativeTabs {
                         output.accept(ModItems.TELEVISION.get());
                         output.accept(ModItems.LAPTOP.get());
                         output.accept(ModItems.WIRELESS_ROUTER.get());
+                        output.accept(ModItems.REFURBISHED_SMARTPHONE.get());
+                        output.accept(ModItems.REFURBISHED_TELEVISION.get());
+                        output.accept(ModItems.REFURBISHED_LAPTOP.get());
+                        output.accept(ModItems.REFURBISHED_WIRELESS_ROUTER.get());
                         output.accept(ModItems.PLASTIC_CONTAINER.get());
                         output.accept(ModItems.PACKAGING_FILM.get());
                     })

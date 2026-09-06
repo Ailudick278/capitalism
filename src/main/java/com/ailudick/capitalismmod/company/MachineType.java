@@ -81,6 +81,9 @@ public enum MachineType {
     ELECTRONICS_RECYCLER("electronics_recycler", 4100L, 11L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:steel_sheet", 4, "capitalismmod:electric_motor", 2,
             "capitalismmod:copper_wire", 2, "minecraft:iron_ingot", 4, "minecraft:redstone", 2)),
+    REFURBISHMENT_LINE("refurbishment_line", 3600L, 9L, Map.of("capitalismmod:machine_frame", 2,
+            "capitalismmod:electric_motor", 1, "capitalismmod:copper_wire", 2,
+            "minecraft:iron_ingot", 4, "minecraft:redstone", 2)),
     ROLLING_MILL("rolling_mill", 2200L, 6L, Map.of("minecraft:iron_ingot", 6, "minecraft:coal", 2)),
     ASSEMBLY_LINE("assembly_line", 3000L, 8L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:electric_motor", 2, "minecraft:glass", 1));
