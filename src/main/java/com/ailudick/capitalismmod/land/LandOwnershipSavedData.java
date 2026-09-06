@@ -17,7 +17,11 @@ import java.util.UUID;
 public final class LandOwnershipSavedData extends SavedData {
     private static final String ID = "capitalismmod_land_ownership";
     private final Map<String, List<OwnershipEvent>> owners = new HashMap<>();
-    public record OwnershipEvent(UUID owner, long time, String reason) {}
+    public record OwnershipEvent(UUID owner, long time, String reason, String eventId) {
+        public OwnershipEvent(UUID owner, long time, String reason) {
+            this(owner, time, reason, "");
+        }
+    }
     private LandOwnershipSavedData() {}
 
     public static LandOwnershipSavedData get(MinecraftServer server) {
@@ -31,9 +35,19 @@ public final class LandOwnershipSavedData extends SavedData {
     }
     public void record(String claimId, UUID owner) { record(claimId, owner, 0L, "历史记录"); }
     public void record(String claimId, UUID owner, long time, String reason) {
+        record(claimId, owner, time, reason, "");
+    }
+    public void record(String claimId, UUID owner, long time, String reason, String eventId) {
+        if (claimId == null || claimId.isBlank() || owner == null) return;
+        String normalizedReason = reason == null ? "" : reason;
+        String normalizedEventId = eventId == null ? "" : eventId;
         List<OwnershipEvent> history = new ArrayList<>(owners.getOrDefault(claimId, List.of()));
-        if (history.stream().noneMatch(event -> event.owner().equals(owner) && event.reason().equals(reason))) {
-            history.add(new OwnershipEvent(owner, time, reason)); owners.put(claimId, history); setDirty();
+        boolean duplicate = !normalizedEventId.isBlank()
+                ? history.stream().anyMatch(event -> normalizedEventId.equals(event.eventId()))
+                : history.stream().anyMatch(event -> event.owner().equals(owner)
+                && event.reason().equals(normalizedReason));
+        if (!duplicate) {
+            history.add(new OwnershipEvent(owner, time, normalizedReason, normalizedEventId)); owners.put(claimId, history); setDirty();
         }
     }
 
@@ -43,7 +57,9 @@ public final class LandOwnershipSavedData extends SavedData {
             CompoundTag entry = new CompoundTag(); entry.putString("claimId", claimId);
             ListTag people = new ListTag();
             history.forEach(event -> { CompoundTag person = new CompoundTag(); person.putUUID("uuid", event.owner());
-                person.putLong("time", event.time()); person.putString("reason", event.reason()); people.add(person); });
+                person.putLong("time", event.time()); person.putString("reason", event.reason());
+                if (event.eventId() != null && !event.eventId().isBlank()) person.putString("eventId", event.eventId());
+                people.add(person); });
             entry.put("owners", people); list.add(entry);
         });
         tag.put("history", list); return tag;
@@ -58,7 +74,7 @@ public final class LandOwnershipSavedData extends SavedData {
             List<OwnershipEvent> history = new ArrayList<>(); ListTag people = entry.getList("owners", Tag.TAG_COMPOUND);
             for (int j = 0; j < people.size(); j++) if (people.getCompound(j).hasUUID("uuid")) {
                 CompoundTag person = people.getCompound(j);
-                history.add(new OwnershipEvent(person.getUUID("uuid"), person.getLong("time"), person.getString("reason")));
+                history.add(new OwnershipEvent(person.getUUID("uuid"), person.getLong("time"), person.getString("reason"), person.getString("eventId")));
             }
             data.owners.put(claimId, history);
         }

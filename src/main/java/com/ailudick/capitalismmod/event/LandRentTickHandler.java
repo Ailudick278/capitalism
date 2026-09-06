@@ -137,7 +137,8 @@ public final class LandRentTickHandler {
                     if (!claim.ownerUuid().equals(auction.highestBidder())) {
                         LandClaim transferred = claim.withTaxSchedule(0L, 0L, 0L).withOwner(auction.highestBidder());
                         data.put(transferred);
-                        LandOwnershipSavedData.get(server).record(claim.id(), auction.highestBidder(), now, "拍卖成交");
+                        LandOwnershipSavedData.get(server).record(claim.id(), auction.highestBidder(), now, "拍卖成交",
+                                auction.claimId() + ":" + auction.endsAt() + ":transfer");
                         LandPermissionSavedData.get(server).remove(claim.id());
                     }
                     auctionJournal.record(transferKey);

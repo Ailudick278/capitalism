@@ -556,7 +556,7 @@ public final class LandCommand {
         if (!journal.has(ownershipKey)) {
             if (!alreadyTransferred) data.put(claim.withOwner(player.getUUID()));
             LandOwnershipSavedData.get(player.getServer()).record(claim.id(), player.getUUID(),
-                    player.level().getGameTime(), "主动转让");
+                    player.level().getGameTime(), "主动转让", transferKey);
             LandPermissionSavedData.get(player.getServer()).remove(claim.id());
             journal.record(ownershipKey);
         }
