@@ -33,4 +33,9 @@ public final class PublicConstructionEconomics {
         String normalized = role.trim().toLowerCase(java.util.Locale.ROOT);
         return normalized.equals("construction") || normalized.equals("builder") || role.contains("建筑");
     }
+
+    public static int qualityScore(int averageSkill, long workerDays) {
+        if (workerDays <= 0L) return 0;
+        return Math.max(0, Math.min(100, 40 + Math.max(0, Math.min(100, averageSkill)) * 60 / 100));
+    }
 }

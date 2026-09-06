@@ -164,11 +164,32 @@ public final class PublicConstructionSavedData extends SavedData {
                 if (project.completedUnits() + 1 >= project.units()) {
                     contracts.transition(contractId, ContractStatus.COMPLETED, server.overworld().getGameTime());
                 }
+                recordInspection(server, project, project.completedUnits() + 1, day);
             }
             delivered++;
         }
         if (delivered > 0) setDirty();
         return delivered;
+    }
+
+    private void recordInspection(MinecraftServer server, Project project, int unit, long day) {
+        var labor = LaborMarketSavedData.get(server);
+        var legacy = CompanyLaborSavedData.get(server).contracts(project.contractorCompanyId()).stream()
+                .filter(CompanyLaborSavedData.WorkerContract::active)
+                .filter(worker -> PublicConstructionEconomics.isConstructionRole(worker.role())).toList();
+        var market = labor.activeForEmployer(project.contractorCompanyId()).stream()
+                .filter(worker -> PublicConstructionEconomics.isConstructionRole(worker.role())).toList();
+        long workerDays = legacy.stream().mapToLong(CompanyLaborSavedData.WorkerContract::count).sum() + market.size();
+        long weightedSkill = legacy.stream().mapToLong(worker ->
+                (long) worker.count() * Math.max(0, Math.min(100, worker.skill()))).sum();
+        weightedSkill += market.stream().mapToLong(worker -> {
+            var profile = labor.profile(worker.workerId());
+            return profile == null ? 0L : profile.averageSkill();
+        }).sum();
+        int skill = workerDays <= 0L ? 0 : (int) Math.min(100L, weightedSkill / workerDays);
+        int quality = PublicConstructionEconomics.qualityScore(skill, workerDays);
+        PublicConstructionInspectionSavedData.get(server).record(new PublicConstructionInspectionSavedData.Inspection(
+                project.id(), unit, workerDays, skill, quality, quality >= 50 ? "ACCEPTED" : "REWORK_REQUIRED", day));
     }
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {

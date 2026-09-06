@@ -35,4 +35,12 @@ class PublicConstructionEconomicsTest {
         assertTrue(PublicConstructionEconomics.isConstructionRole("建筑工"));
         assertFalse(PublicConstructionEconomics.isConstructionRole("transport"));
     }
+
+    @Test
+    void qualityRequiresLaborAndImprovesWithSkill() {
+        assertEquals(0, PublicConstructionEconomics.qualityScore(80, 0));
+        assertEquals(64, PublicConstructionEconomics.qualityScore(40, 2));
+        assertTrue(PublicConstructionEconomics.qualityScore(80, 1)
+                > PublicConstructionEconomics.qualityScore(40, 1));
+    }
 }
