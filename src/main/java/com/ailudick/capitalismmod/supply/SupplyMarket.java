@@ -132,6 +132,15 @@ public final class SupplyMarket {
         } else if (!EconomyHelper.tryPayWithReference(buyer, Currencies.USD, Money.toMinor(total), orderSource)) {
             return false;
         }
+        // Persist the paid order before any inventory, logistics, or tax side
+        // effect. If the server stops during fulfillment, the backorder
+        // reconciler can continue from this complete snapshot.
+        PurchaseOrder paidOrder = new PurchaseOrder(supplyOrderId, buyer.getUUID(),
+                offer.ownerUuid(), offer.companyName(), offer.itemId(), quantity, offer.region(),
+                TradeRegion.of(buyer.blockPosition()), offer.price(),
+                buyer.getServer().overworld().getGameTime(), buyerCompanyId, offer.qualityScore())
+                .withOriginalQuantity(quantity);
+        data.addOrder(paidOrder);
         SupplyEscrowSavedData.get(buyer.getServer()).createOnce(supplyOrderId, Money.toMinorSaturated(total));
         SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "CREATED", buyer.getUUID(),
                 offer.ownerUuid(), offer.itemId(), quantity, total);
@@ -160,6 +169,7 @@ public final class SupplyMarket {
             stock = CompanyQualityHoldSavedData.get(buyer.getServer())
                     .availableUnits(supplierCompany.companyId(), offer.itemId(), stock);
         }
+        String initialDeliveryKey = supplyOrderId + ":delivery:" + quantity;
         int filled = Math.min(quantity, stock);
         if (filled > 0) {
             // Re-check the actual mutation result before creating delivery,
@@ -177,7 +187,7 @@ public final class SupplyMarket {
             }
             String destination = TradeRegion.of(buyer.blockPosition());
             deliverOrShip(buyer.getServer(), buyer.getUUID(), item, filled, offer.region(),
-                    destination, supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid(), orderSource);
+                    destination, supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid(), initialDeliveryKey);
             if (!buyerCompanyId.isBlank()) {
                 CompanyInventoryCostSavedData.get(buyer.getServer()).addInboundOnce(buyerCompanyId, offer.itemId(),
                         filled, EconomyMath.multiply(offer.price(), filled), orderSource);
@@ -189,8 +199,8 @@ public final class SupplyMarket {
         }
         if (filled > 0) {
             long filledAmount = EconomyMath.multiply(offer.price(), filled);
-            if (paySupplier(buyer.getServer(), offer.ownerUuid(), offer.companyName(), filledAmount, orderSource)) {
-                SupplyEscrowSavedData.get(buyer.getServer()).releaseOnce(supplyOrderId, orderSource,
+            if (paySupplier(buyer.getServer(), offer.ownerUuid(), offer.companyName(), filledAmount, initialDeliveryKey)) {
+                SupplyEscrowSavedData.get(buyer.getServer()).releaseOnce(supplyOrderId, initialDeliveryKey,
                         Money.toMinorSaturated(filledAmount));
             }
         }
@@ -203,12 +213,13 @@ public final class SupplyMarket {
                     buyer.getServer().overworld().getGameTime(), buyerCompanyId, offer.qualityScore())
                     .withOriginalQuantity(quantity)
                     .withInputCreditMinor(inputCreditMinor);
-            data.addOrder(backorder);
+            data.replaceOrder(backorder);
             SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "BACKORDERED", buyer.getUUID(),
                     offer.ownerUuid(), offer.itemId(), remaining, EconomyMath.multiply(offer.price(), remaining));
         } else {
             SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "FULFILLED", buyer.getUUID(),
                     offer.ownerUuid(), offer.itemId(), quantity, total);
+            data.removeOrder(supplyOrderId);
         }
         return true;
     }
