@@ -7,6 +7,7 @@ import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.List;
@@ -128,7 +129,12 @@ public final class TaxService {
         long left = requested;
         for (TaxBill bill : payable) {
             long payment = Math.min(left, bill.outstanding());
-            if (payment <= 0L || !EconomyHelper.tryPay(player, Currencies.byId(currencyId), payment)) {
+            String paymentReference = "tax-payment:" + bill.id() + ":" + bill.paidAmount() + ":" + payment;
+            boolean alreadyDebited = EconomyLogSavedData.get(player.getServer())
+                    .hasReference(player.getUUID(), paymentReference);
+            if (payment <= 0L || (!alreadyDebited
+                    && !EconomyHelper.tryPayWithReference(player, Currencies.byId(currencyId), payment,
+                    paymentReference))) {
                 return false;
             }
             TaxBill paidBill = bill.withPayment(payment);
@@ -148,7 +154,12 @@ public final class TaxService {
         if (bill == null || bill.paid() || !bill.declared() || !bill.subject().taxpayerUuid().equals(player.getUUID())) return false;
         bill = updateLateFee(player.getServer(), bill, player.getServer().overworld().getGameTime());
         long payment = Math.min(amount, bill.outstanding());
-        if (!Currencies.exists(bill.currencyId()) || !EconomyHelper.tryPay(player, Currencies.byId(bill.currencyId()), payment)) {
+        String paymentReference = "tax-payment:" + bill.id() + ":" + bill.paidAmount() + ":" + payment;
+        boolean alreadyDebited = EconomyLogSavedData.get(player.getServer())
+                .hasReference(player.getUUID(), paymentReference);
+        if (!Currencies.exists(bill.currencyId()) || payment <= 0L
+                || (!alreadyDebited && !EconomyHelper.tryPayWithReference(player,
+                Currencies.byId(bill.currencyId()), payment, paymentReference))) {
             return false;
         }
         TaxBill paidBill = bill.withPayment(payment);
