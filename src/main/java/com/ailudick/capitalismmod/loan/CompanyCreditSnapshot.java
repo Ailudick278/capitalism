@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.loan;
 
+import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
@@ -16,8 +17,6 @@ public record CompanyCreditSnapshot(long lookbackDays, long operatingCashFlow,
                                     boolean hasOperatingHistory, boolean hasOverdueLoan,
                                     int paymentCount, int onTimePayments, int overduePayments,
                                     int paymentBehaviorScore) {
-    private static final long CAPITAL_DEBT_MULTIPLE = 5L;
-
     public static CompanyCreditSnapshot from(MinecraftServer server, Company company, long lookbackDays) {
         long days = Math.max(1L, Math.min(360L, lookbackDays));
         if (server == null || company == null) {
@@ -32,7 +31,8 @@ public record CompanyCreditSnapshot(long lookbackDays, long operatingCashFlow,
         CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
                 cash.operatingCashFlow(), CompanyLoanSavedData.get(server).forCompany(company.companyId()),
                 0L, 1, 0.0, cash.hasOperatingHistory());
-        long capitalLimit = multiplySaturated(Math.max(0L, company.registeredCapital()), CAPITAL_DEBT_MULTIPLE);
+        long capitalLimit = multiplySaturated(Math.max(0L, company.registeredCapital()),
+                Config.MAX_COMPANY_DEBT_MULTIPLE.get());
         long cashLimit = Math.max(0L, cash.maximumSupportedDebt());
         long totalLimit = cash.hasOperatingHistory() ? Math.min(capitalLimit, cashLimit) : capitalLimit;
         long remaining = totalLimit > inputs.existingDebt() ? totalLimit - inputs.existingDebt() : 0L;
