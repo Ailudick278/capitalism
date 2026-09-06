@@ -303,6 +303,23 @@ public final class CompanyHelper {
         return released;
     }
 
+    /** Charges a documented rework cost and sends a held batch back to inspection. */
+    public static int reworkQualityBatch(MinecraftServer server, Company company, String batchId) {
+        if (server == null || company == null || batchId == null || batchId.isBlank()) return -1;
+        CompanyProductionBatchSavedData.Batch batch = CompanyProductionBatchSavedData.get(server)
+                .find(company.companyId(), batchId);
+        CompanyQualityControlSavedData.Inspection inspection = CompanyQualityControlSavedData.get(server)
+                .find(company.companyId(), batchId);
+        if (batch == null || inspection == null || !"rework".equalsIgnoreCase(inspection.status())) return -1;
+        long reworkCost = Math.max(1L, batch.conversionCost() / 5L);
+        if (!debitTreasury(server, company.companyId(), Currencies.USD.id(), reworkCost,
+                "quality_rework", "Quality rework for batch " + batchId)) return -1;
+        int improvedScore = Math.min(100, batch.qualityScore() + 10);
+        if (!CompanyQualityControlSavedData.get(server).reinspect(company.companyId(), batchId,
+                improvedScore, server.overworld().getGameTime())) return -1;
+        return improvedScore;
+    }
+
     public static boolean exists(Player player, String name) {
         return getCompanies(player).containsKey(name);
     }

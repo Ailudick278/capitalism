@@ -102,6 +102,15 @@ public final class CompanyQualityControlSavedData extends SavedData {
         return true;
     }
 
+    /** Returns a reworked lot to review with its new inspection score. */
+    public boolean reinspect(String companyId, String batchId, int score, long at) {
+        Inspection previous = find(companyId, batchId);
+        if (previous == null || !"rework".equalsIgnoreCase(previous.status())) return false;
+        upsert(new Inspection(previous.batchId(), previous.companyId(), "review",
+                score, "rework_completed", previous.inspectedAt(), Math.max(0L, at)));
+        return true;
+    }
+
     public void mergeCompany(String sourceId, String targetId) {
         if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
         boolean changed = false;

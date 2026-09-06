@@ -171,6 +171,12 @@ public class CompanyCommand {
                                                 StringArgumentType.getString(ctx, "name"),
                                                 StringArgumentType.getString(ctx, "batchId"),
                                                 StringArgumentType.getString(ctx, "status")))))));
+        root.then(Commands.literal("qualityrework")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("batchId", StringArgumentType.word())
+                                .executes(ctx -> qualityRework(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"),
+                                        StringArgumentType.getString(ctx, "batchId"))))));
         root.then(Commands.literal("services")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> services(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -994,6 +1000,25 @@ public class CompanyCommand {
         }
         source.sendSuccess(() -> Component.literal("Quality disposition recorded: " + status
                 + " for batch " + batchId), false);
+        return 1;
+    }
+
+    private static int qualityRework(CommandSourceStack source, String name, String batchId)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        int score = CompanyHelper.reworkQualityBatch(player.getServer(), company, batchId);
+        if (score < 0) {
+            source.sendFailure(Component.literal(
+                    "Rework failed: batch must be in rework status and the company must have enough USD."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(
+                "Batch reworked for USD cost; new inspection score is " + score + "/100. Review it again."), false);
         return 1;
     }
 
