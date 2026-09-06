@@ -67,6 +67,15 @@ public final class HousingLeaseSavedData extends SavedData {
         return termination;
     }
 
+    /** Creates a fresh lease after termination, clearing the old arrears while retaining the audit history. */
+    public boolean rehouse(String householdId, String region, long day, long dailyRentMinor) {
+        if (householdId == null || householdId.isBlank() || region == null || region.isBlank()
+                || dailyRentMinor < 0L || lease(householdId) != null) return false;
+        leases.add(new Lease(householdId, region, dailyRentMinor, 0L, -1L, 0, -1L,
+                HousingLeaseEconomics.securityDeposit(dailyRentMinor), 0L));
+        setDirty(); return true;
+    }
+
     /** Records one rent attempt and returns the existing result when retried. */
     public Payment settleRent(String householdId, String region, long day,
                               long dailyRentMinor, long dueMinor, long availableMinor) {

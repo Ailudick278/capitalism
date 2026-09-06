@@ -108,15 +108,19 @@ public final class CityCommand {
         if (population.find(householdId) == null) {
             source.sendFailure(Component.literal("Household not found.")); return 0;
         }
-        HousingLeaseSavedData.Termination termination = HousingLeaseSavedData.get(source.getServer())
+        HousingLeaseSavedData leases = HousingLeaseSavedData.get(source.getServer());
+        HousingLeaseSavedData.Lease previousLease = leases.lease(householdId);
+        HousingLeaseSavedData.Termination termination = leases
                 .terminate(householdId, source.getServer().overworld().getGameTime() / 24000L, "admin_termination");
         if (termination == null) {
             source.sendFailure(Component.literal("Lease is not eligible for termination.")); return 0;
         }
         if (termination.depositReleasedMinor() > 0L) population.addCash(householdId, termination.depositReleasedMinor());
+        if (previousLease != null) leases.rehouse(householdId, previousLease.region(),
+                source.getServer().overworld().getGameTime() / 24000L, previousLease.dailyRentMinor());
         source.sendSuccess(() -> Component.literal("housing lease terminated household=" + householdId
                 + " depositRefundMinor=" + termination.depositReleasedMinor()
-                + " residualArrearsMinor=" + termination.residualArrearsMinor()), true);
+                + " residualArrearsMinor=" + termination.residualArrearsMinor() + " rehoused=true"), true);
         return 1;
     }
 
