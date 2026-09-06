@@ -88,6 +88,27 @@ public final class BankAccountHelper {
         return recovered;
     }
 
+    /** Completes repayments whose wallet payment succeeded before the debt record was saved. */
+    public static int recoverRepayments(ServerPlayer player) {
+        if (player == null || player.getServer() == null) return 0;
+        BankRepaymentIntentSavedData data = BankRepaymentIntentSavedData.get(player.getServer());
+        int recovered = 0;
+        for (BankRepaymentIntentSavedData.Intent intent : data.intents()) {
+            if (!player.getUUID().equals(intent.player()) || !Currencies.exists(intent.currencyId())) continue;
+            BankAccount account = getAccount(player, intent.accountId());
+            if (account == null) continue;
+            if (!intent.paid()) {
+                if (!EconomyHelper.tryPayWithReference(player, Currencies.byId(intent.currencyId()), intent.amount(), "bank-repayment:" + intent.id())) continue;
+                data.markPaid(intent.id());
+            }
+            if (account.getDebt(intent.currencyId()) == intent.debtBefore()) {
+                applyRepayment(player, account, intent.currencyId(), intent.amount());
+            }
+            if (getAccount(player, intent.accountId()).getDebt(intent.currencyId()) == intent.debtBefore() - intent.amount()) { data.remove(intent.id()); recovered++; }
+        }
+        return recovered;
+    }
+
     public static boolean canOpenAccount(Player player, boolean credit) {
         long count = getAccounts(player).values().stream()
                 .filter(account -> account.credit() == credit)
@@ -403,16 +424,24 @@ public final class BankAccountHelper {
         if (debt < amount) {
             return false;
         }
-        if (!EconomyHelper.tryPay(player, currency, amount)) {
+        String id = UUID.randomUUID().toString();
+        BankRepaymentIntentSavedData intents = BankRepaymentIntentSavedData.get(player.getServer());
+        intents.add(new BankRepaymentIntentSavedData.Intent(id, player.getUUID(), accountId, currency.id(), debt, amount, false));
+        if (!EconomyHelper.tryPayWithReference(player, currency, amount, "bank-repayment:" + id)) {
+            intents.remove(id);
             return false;
         }
-        BankAccount updated = account.withDebt(currency.id(), debt - amount)
-                .withTransaction(BankTransaction.now(player, "repay", currency.id(), -amount));
-        if (totalDebtInBase(updated) == 0) {
-            updated = updated.withLoanDaysRemaining(0);
-        }
-        updateAccount(player, updated);
+        intents.markPaid(id);
+        applyRepayment(player, account, currency.id(), amount);
+        intents.remove(id);
         return true;
+    }
+
+    private static void applyRepayment(Player player, BankAccount account, String currencyId, long amount) {
+        BankAccount updated = account.withDebt(currencyId, account.getDebt(currencyId) - amount)
+                .withTransaction(BankTransaction.now(player, "repay", currencyId, -amount, "", "wallet"));
+        if (totalDebtInBase(updated) == 0) updated = updated.withLoanDaysRemaining(0);
+        updateAccount(player, updated);
     }
 
     /** Opens a fixed-term deposit, moving {@code amount} out of the demand balance for {@code termDays} days. */
