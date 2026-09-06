@@ -76,6 +76,24 @@ public final class HousingLeaseSavedData extends SavedData {
         setDirty(); return true;
     }
 
+    /** Moves an active lease with the household while preserving arrears and held deposit. */
+    public boolean relocate(String householdId, String region, long dailyRentMinor) {
+        if (householdId == null || householdId.isBlank() || region == null || region.isBlank()
+                || dailyRentMinor < 0L) return false;
+        Lease previous = lease(householdId);
+        if (previous == null) {
+            return rehouse(householdId, region, 0L, dailyRentMinor);
+        }
+        long depositDue = HousingLeaseEconomics.securityDeposit(dailyRentMinor);
+        long depositHeld = Math.min(previous.depositHeldMinor(), depositDue);
+        leases.removeIf(l -> l.householdId().equals(householdId));
+        leases.add(new Lease(householdId, region, dailyRentMinor, previous.arrearsMinor(),
+                previous.lastPaymentDay(), previous.missedDays(), previous.noticeDay(),
+                depositDue, depositHeld));
+        setDirty();
+        return true;
+    }
+
     /** Records one rent attempt and returns the existing result when retried. */
     public Payment settleRent(String householdId, String region, long day,
                               long dailyRentMinor, long dueMinor, long availableMinor) {

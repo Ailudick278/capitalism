@@ -103,9 +103,10 @@ public final class PopulationService {
                 if (!isNpc(household.id()) || household.workingAge() <= 0 || !labor.activeForWorker(household.id()).isEmpty()) continue;
                 boolean local = household.region().equals(offer.region());
                 long livingCost = multiply(household.dailyNeedMinor(), household.size());
-                long destinationRent = multiply(CityHousingSavedData.get(server).dailyRent(offer.region(),
+                long destinationRentPerResident = CityHousingSavedData.get(server).dailyRent(offer.region(),
                         population.population(offer.region()), LogisticsInfrastructureSavedData.get(server)
-                                .count(offer.region(), "housing")), household.size());
+                                .count(offer.region(), "housing"));
+                long destinationRent = multiply(destinationRentPerResident, household.size());
                 long commuteCost = HousingEconomics.commuteCost(household.dailyNeedMinor(), household.size(),
                         TradeRegion.distance(household.region(), offer.region()));
                 long migrationFriction = local ? 0L : LogisticsInfrastructureSavedData.get(server)
@@ -126,6 +127,10 @@ public final class PopulationService {
                 boolean migrated = local || population.migrate(household.id(), offer.region(), now, relocationCost);
                 if (!migrated) continue;
                 if (LaborMarketService.hireNpc(server, offer.id(), household.id())) {
+                    if (!local) {
+                        HousingLeaseSavedData.get(server).relocate(household.id(), offer.region(),
+                                destinationRentPerResident);
+                    }
                     hired++; offerHired++;
                     if (offerHired >= offerLimit) break;
                     continue;
