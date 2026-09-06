@@ -173,7 +173,8 @@ public final class PopulationService {
             long actualCost = purchasable > Long.MAX_VALUE / unitPrice
                     ? Long.MAX_VALUE : purchasable * unitPrice;
             boolean alreadyCredited = hasCompanySource(server, seller.companyId(), source);
-            if (!alreadyCredited && !warehouse.consume(InventoryOwner.company(seller.companyId()), item.getItem(), purchasable)) continue;
+            if (!warehouse.consumeOnce(InventoryOwner.company(seller.companyId()), item.getItem(), purchasable,
+                    source + ":goods")) continue;
             long revenueInUsdMinor = ExchangeRates.convert(actualCost, Config.defaultCurrency(), Currencies.USD);
             long revenueMajor = Money.toMajorCeiling(revenueInUsdMinor);
             if (!alreadyCredited && (revenueMajor <= 0L || !CompanyHelper.creditTreasuryNonOperatingOnce(server, seller.companyId(), "usd", revenueMajor,

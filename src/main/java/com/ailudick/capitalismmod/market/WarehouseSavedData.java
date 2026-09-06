@@ -33,6 +33,7 @@ public final class WarehouseSavedData extends SavedData {
     private final java.util.List<AuditEntry> audit = new java.util.ArrayList<>();
     private final Set<String> creditedSources = new HashSet<>();
     private final Map<String, Integer> creditedSourceQuantities = new HashMap<>();
+    private final Set<String> consumedSources = new HashSet<>();
 
     public record AuditEntry(String action, String from, String to, String itemId, int count) {
         static final Codec<AuditEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -45,7 +46,8 @@ public final class WarehouseSavedData extends SavedData {
     }
 
     private record State(Map<String, Map<String, Integer>> storage, java.util.List<AuditEntry> audit,
-                         List<String> creditedSources, Map<String, Integer> creditedSourceQuantities) {
+                         List<String> creditedSources, Map<String, Integer> creditedSourceQuantities,
+                         List<String> consumedSources) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, Codec.INT))
                         .fieldOf("storage").forGetter(State::storage),
@@ -54,7 +56,9 @@ public final class WarehouseSavedData extends SavedData {
                         .forGetter(State::creditedSources),
                 Codec.unboundedMap(Codec.STRING, Codec.INT)
                         .optionalFieldOf("creditedSourceQuantities", Map.of())
-                        .forGetter(State::creditedSourceQuantities)
+                        .forGetter(State::creditedSourceQuantities),
+                Codec.STRING.listOf().optionalFieldOf("consumedSources", List.of())
+                        .forGetter(State::consumedSources)
         ).apply(instance, State::new));
     }
 
@@ -114,6 +118,17 @@ public final class WarehouseSavedData extends SavedData {
     public int creditedQuantity(String sourceId) {
         return sourceId == null || sourceId.isBlank()
                 ? 0 : Math.max(0, creditedSourceQuantities.getOrDefault(sourceId, 0));
+    }
+
+    /** Removes warehouse stock once for a durable consumption source. */
+    public boolean consumeOnce(InventoryOwner owner, Item item, int count, String sourceId) {
+        if (owner == null || sourceId == null || sourceId.isBlank() || count <= 0) return false;
+        if (consumedSources.contains(sourceId)) return true;
+        if (!consume(owner, item, count)) return false;
+        consumedSources.add(sourceId);
+        while (consumedSources.size() > 8192) consumedSources.remove(consumedSources.iterator().next());
+        setDirty();
+        return true;
     }
 
     private static int saturatingAdd(int left, int right) {
@@ -301,7 +316,8 @@ public final class WarehouseSavedData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(storage), new java.util.ArrayList<>(audit),
-                new java.util.ArrayList<>(creditedSources), new HashMap<>(creditedSourceQuantities));
+                new java.util.ArrayList<>(creditedSources), new HashMap<>(creditedSourceQuantities),
+                new java.util.ArrayList<>(consumedSources));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -331,6 +347,10 @@ public final class WarehouseSavedData extends SavedData {
                         data.creditedSourceQuantities.remove(oldest);
                     }
                     data.creditedSourceQuantities.keySet().removeIf(source -> !data.creditedSources.contains(source));
+                    data.consumedSources.addAll(state.consumedSources());
+                    while (data.consumedSources.size() > 8192) {
+                        data.consumedSources.remove(data.consumedSources.iterator().next());
+                    }
             });
         }
         return data;
