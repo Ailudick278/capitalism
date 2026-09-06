@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Read-only invariant checks for persisted economic ledgers. */
 public final class EconomyAuditService {
@@ -196,6 +198,25 @@ public final class EconomyAuditService {
         LaborMarketSavedData labor = LaborMarketSavedData.get(server);
         for (EmploymentRecord employment : labor.employments()) if (employment.dailyWageMinor() < 0L || employment.workerId().isBlank() || employment.employerId().isBlank()) issues.add("employment " + employment.id() + " invalid participant or wage");
         for (var entry : labor.offers()) if (entry.vacancies() < 0 || entry.dailyWageMinor() <= 0L) issues.add("job offer " + entry.id() + " invalid vacancy or wage");
+        Set<String> activeWorkers = new HashSet<>();
+        for (EmploymentRecord employment : labor.employments()) {
+            if (!employment.active()) continue;
+            if (!activeWorkers.add(employment.workerId())) {
+                issues.add("worker has multiple active employments " + employment.workerId());
+            }
+            if (population.find(employment.workerId()) == null) {
+                issues.add("employment worker has no household " + employment.id());
+            }
+            if (CompanySavedData.get(server).get(employment.employerId()) == null) {
+                issues.add("employment employer has no company " + employment.id());
+            }
+        }
+        for (var offer : labor.offers()) {
+            if (CompanySavedData.get(server).get(offer.employerId()) == null) {
+                issues.add("job offer employer has no company " + offer.id());
+            }
+            if (offer.region().isBlank()) issues.add("job offer has blank region " + offer.id());
+        }
         for (var entry : labor.employments()) { var account = LaborPayrollSavedData.get(server).account(entry.id()); if (account.unpaid() < 0L) issues.add("payroll " + entry.id() + " negative arrears"); }
         EconomicContractSavedData contracts = EconomicContractSavedData.get(server);
         for (var contract : contracts.contracts()) {
