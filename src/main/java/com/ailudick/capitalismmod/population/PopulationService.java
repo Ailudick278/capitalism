@@ -182,7 +182,6 @@ public final class PopulationService {
                 continue;
             }
             consumption.record(new HouseholdConsumptionSavedData.Consumption(source, household.id(), day, categories[i][0], itemId, purchasable, unitPrice, actualCost));
-            CommoditySavedData.get(server).addNetVolumeOnce(itemId, -purchasable, source);
             remaining -= actualCost; spent = add(spent, actualCost);
         }
         return new ConsumptionResult(remaining, spent);

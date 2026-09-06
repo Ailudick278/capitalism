@@ -1,5 +1,9 @@
 package com.ailudick.capitalismmod.population;
 
+import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.currency.Currencies;
+import com.ailudick.capitalismmod.currency.ExchangeRates;
+import com.ailudick.capitalismmod.currency.Money;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -48,7 +52,8 @@ public final class PopulationSavedData extends SavedData {
     /** Returns simulated daily unit demand for essential commodities at a major-unit price. */
     public long demandUnits(String itemId, long priceMajor) {
         if (itemId == null || itemId.isBlank() || !isEssential(itemId)) return 0L;
-        long unitCostMinor = Math.max(1L, Math.min(Long.MAX_VALUE / 100L, Math.max(1L, priceMajor)) * 100L);
+        long unitCostMinor = Math.max(1L, ExchangeRates.convert(Money.toMinorSaturated(Math.max(1L, priceMajor)),
+                Currencies.USD, Config.defaultCurrency()));
         long units = 0L;
         for (Household household : households) {
             long affordable = Math.max(0L, household.dailyNeedMinor() / unitCostMinor);
