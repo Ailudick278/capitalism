@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.loan.PeerLoan;
 import com.ailudick.capitalismmod.loan.PeerLoanHelper;
 import com.ailudick.capitalismmod.currency.CurrencyExchangeService;
 import com.ailudick.capitalismmod.business.IndividualBusinessHelper;
+import com.ailudick.capitalismmod.economy.PlayerTransferService;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanNotificationService;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
@@ -89,6 +90,7 @@ public final class EconomySettlementTickHandler {
             IndividualBusinessHelper.recoverWithdrawals(player);
             IndividualBusinessHelper.recoverOrders(player);
             CompanyHelper.recoverWithdrawals(player);
+            PlayerTransferService.recover(player.getServer());
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
             PeerLoanNotificationService.deliver(player);
         }

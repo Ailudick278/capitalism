@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
+import com.ailudick.capitalismmod.economy.PlayerTransferService;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -33,15 +34,10 @@ public class PayCommand {
                                             }
                                             Currency currency = Currencies.byId(currencyId);
                                             long amountMinor = Money.toMinor(amount);
-                                            String transferSource = "player-pay:" + sender.getUUID() + ":" + target.getUUID()
-                                                    + ":" + currency.id() + ":" + amountMinor + ":" + sender.level().getGameTime();
-                                            if (!EconomyHelper.tryPayWithReference(sender, currency, amountMinor, transferSource + ":payment")) {
+                                            if (!PlayerTransferService.transfer(sender, target, currency, amountMinor)) {
                                                 ctx.getSource().sendFailure(Component.translatable("command.capitalismmod.insufficient"));
                                                 return 0;
                                             }
-                                            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(sender.getServer());
-                                            mailbox.creditTransferOnce(target.getUUID(), currency.id(), amountMinor, transferSource + ":delivery");
-                                            mailbox.redeemTransferOnly(target);
 
                                             sender.sendSystemMessage(Component.translatable("command.capitalismmod.pay_success",
                                                     amount, Component.translatable(currency.nameKey()), target.getDisplayName()));
