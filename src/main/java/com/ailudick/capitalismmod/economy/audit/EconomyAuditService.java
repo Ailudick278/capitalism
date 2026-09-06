@@ -34,6 +34,10 @@ import com.ailudick.capitalismmod.stock.StockOrder;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.MarketOrder;
+import com.ailudick.capitalismmod.market.LogisticsSavedData;
+import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
+import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
+import com.ailudick.capitalismmod.market.LogisticsAuditRules;
 import com.ailudick.capitalismmod.supply.SupplyOrderIntentSavedData;
 import com.ailudick.capitalismmod.bank.BankCashDepositIntentSavedData;
 import com.ailudick.capitalismmod.bank.BankRepaymentIntentSavedData;
@@ -101,6 +105,29 @@ public final class EconomyAuditService {
                     || !isUuid(order.ownerId()) || order.stockId().isBlank() || !stocks.isStock(order.stockId())
                     || order.quantity() <= 0 || order.pricePerUnit() <= 0L || order.createdAt() < 0L) {
                 issues.add("stock order invalid " + order.id());
+            }
+        }
+        Set<String> shipmentIds = new HashSet<>();
+        for (var shipment : LogisticsSavedData.get(server).shipments()) {
+            if (!LogisticsAuditRules.validShipment(shipment.id(), shipment.buyer(), shipment.itemId(),
+                    shipment.quantity(), shipment.deliveryTick(), shipment.transport(),
+                    shipment.disruptionCount(), shipment.unitPrice())
+                    || !LogisticsAuditRules.claimUnique(shipmentIds, shipment.id())) {
+                issues.add("logistics shipment invalid " + shipment.id());
+            }
+        }
+        for (var delivery : LogisticsDeliverySavedData.get(server).deliveries()) {
+            if (!LogisticsAuditRules.validDelivery(delivery.shipmentId(), delivery.buyer(), delivery.itemId(),
+                    delivery.quantity(), delivery.deliveredAt())
+                    || !LogisticsAuditRules.claimUnique(shipmentIds, delivery.shipmentId())) {
+                issues.add("logistics delivery invalid " + delivery.shipmentId());
+            }
+        }
+        for (var loss : LogisticsLossSavedData.get(server).losses()) {
+            if (!LogisticsAuditRules.validLoss(loss.shipmentId(), loss.buyer(), loss.itemId(), loss.quantity(),
+                    loss.transport(), loss.disruptionCount(), loss.lostAt(), loss.unitPrice())
+                    || !LogisticsAuditRules.claimUnique(shipmentIds, loss.shipmentId())) {
+                issues.add("logistics loss invalid " + loss.shipmentId());
             }
         }
         SupplyOrderIntentSavedData.get(server).intents().stream().limit(100)
