@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalService;
+import com.ailudick.capitalismmod.bond.BondMarket;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
@@ -40,6 +41,10 @@ public final class GovernmentCommand {
                 .executes(c -> recapitalize(c.getSource(), LongArgumentType.getLong(c, "amountMinor")));
         root.then(Commands.literal("bank").requires(s -> s.hasPermission(2))
                 .then(Commands.literal("recapitalize").then(recapAmount)));
+        var holdingId = Commands.argument("holdingId", com.mojang.brigadier.arguments.StringArgumentType.word())
+                .executes(c -> buyBack(c.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(c, "holdingId")));
+        root.then(Commands.literal("openMarket").requires(s -> s.hasPermission(2))
+                .then(Commands.literal("buyBond").then(holdingId)));
         dispatcher.register(root);
     }
 
@@ -107,6 +112,15 @@ public final class GovernmentCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("银行资本已补充 " + amount + " minor units。"), true);
+        return 1;
+    }
+
+    private static int buyBack(CommandSourceStack source, String holdingId) {
+        if (!BondMarket.buyBackBond(source.getServer(), holdingId)) {
+            source.sendFailure(Component.literal("公开市场回购失败：债券不存在、财政余额不足或结算未完成"));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("政府已回购债券 " + holdingId), true);
         return 1;
     }
 }

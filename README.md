@@ -40,6 +40,7 @@
 /economicevent logisticsShock <eventId> <origin> <destination> <capacityBps> <days>
 /economicevent laborShock <eventId> <region> <demandBps> <days>
 /economicevent list
+/government openMarket buyBond <holdingId>
 ```
 
 完整命令以游戏内 `/capitalism help` 为准。

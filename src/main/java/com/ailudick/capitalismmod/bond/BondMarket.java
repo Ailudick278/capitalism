@@ -173,6 +173,41 @@ public final class BondMarket {
         return true;
     }
 
+    /** Government open-market purchase of one outstanding bond holding. */
+    public static boolean buyBackBond(MinecraftServer server, String holdingId) {
+        BondSavedData data = BondSavedData.get(server);
+        BondSettlementSavedData settlements = BondSettlementSavedData.get(server);
+        BondHolding holding = data.findHolding(holdingId);
+        if (holding == null) return false;
+        if (settlements.has(holdingId)) {
+            data.removeHolding(holdingId);
+            return true;
+        }
+        long payout;
+        try {
+            payout = Math.addExact(holding.faceValue(), holding.accruedInterest());
+        } catch (ArithmeticException e) {
+            return false;
+        }
+        long payoutMinor = Money.toMinor(payout);
+        if (payout <= 0 || payoutMinor < 0) return false;
+        long basePayout = ExchangeRates.convert(payoutMinor, Currencies.USD, Config.defaultCurrency());
+        String spendingId = "bond-open-market:" + holdingId;
+        long day = server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY;
+        GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
+        if (!policy.hasSpending(spendingId)
+                && !policy.spend("open-market:" + holding.holder(), day, basePayout, spendingId)) return false;
+        String payoutSource = "bond-payout:" + holdingId;
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        if (!mailbox.hasCreditSource(payoutSource)
+                && !mailbox.creditMoneyOnce(holding.holder(), Currencies.USD.id(), payoutMinor, payoutSource)) return false;
+        settlements.record(holdingId);
+        data.removeHolding(holdingId);
+        ServerPlayer holder = server.getPlayerList().getPlayer(holding.holder());
+        if (holder != null) mailbox.redeemMoneyOnly(holder);
+        return true;
+    }
+
     /** Ticks bond maturities; pays out full face value plus coupon at maturity. */
     public static void settleMaturity(MinecraftServer server) {
         settleMaturity(server, server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY);
