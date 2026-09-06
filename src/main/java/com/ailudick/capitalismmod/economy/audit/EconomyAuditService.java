@@ -15,6 +15,7 @@ import com.ailudick.capitalismmod.land.LandLeaseDebtSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseSettlementSavedData;
 import com.ailudick.capitalismmod.land.LandRentBillSavedData;
 import com.ailudick.capitalismmod.supply.SupplyEscrowSavedData;
+import com.ailudick.capitalismmod.business.BusinessOrderEscrowSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -82,6 +83,15 @@ public final class EconomyAuditService {
             if (escrow.originalMinor() <= 0L || escrow.heldMinor() < 0L || escrow.releasedMinor() < 0L
                     || escrow.refundedMinor() < 0L || distributed != escrow.originalMinor()) {
                 issues.add("supply escrow balance mismatch " + escrow.orderId());
+            }
+        }
+        for (var escrow : BusinessOrderEscrowSavedData.get(server).escrows()) {
+            long distributed = safeAdd(escrow.heldMinor(), safeAdd(escrow.releasedMinor(), escrow.refundedMinor()));
+            if (escrow.orderId().isBlank() || escrow.batchId().isBlank() || escrow.buyerId().isBlank()
+                    || escrow.originalMinor() <= 0L || escrow.heldMinor() < 0L
+                    || escrow.releasedMinor() < 0L || escrow.refundedMinor() < 0L
+                    || distributed != escrow.originalMinor()) {
+                issues.add("business order escrow balance mismatch " + escrow.orderId() + "/" + escrow.batchId());
             }
         }
         LaborMarketSavedData labor = LaborMarketSavedData.get(server);
