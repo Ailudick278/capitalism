@@ -102,9 +102,9 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
         Map<String, Long> failureReasons = production == null ? Map.of() : production.failureReasons();
         int averageProductQuality = CompanyQualitySavedData.get(server).averageScore(company.companyId());
         CompanyFinancialSnapshot financial = CompanyFinancialSnapshot.from(server, company);
-        long grossProfit = subtractFloorZero(revenue, costOfSales);
-        long otherOperatingExpenses = subtractFloorZero(expenses, costOfSales);
-        long operatingProfit = subtractFloorZero(grossProfit, otherOperatingExpenses);
+        long grossProfit = subtractSaturated(revenue, costOfSales);
+        long otherOperatingExpenses = Math.max(0L, subtractSaturated(expenses, costOfSales));
+        long operatingProfit = subtractSaturated(grossProfit, otherOperatingExpenses);
         return new CompanyOperatingSnapshot(days, revenue, expenses, costOfSales, grossProfit, operatingProfit, cashFlow, workers, grossWages,
                 employerContributions, dailyLaborCost, machineUnits, capacity, successful, failed, failureReasons,
                 averageProductQuality, financial.assets(), financial.equity());
@@ -138,10 +138,12 @@ public record CompanyOperatingSnapshot(long lookbackDays, long revenue, long ope
                 && !"payroll_payment".equals(type) && !"liquidation_payroll".equals(type);
     }
 
-    private static long subtractFloorZero(long left, long right) {
-        if (left <= 0L) return 0L;
-        if (right <= 0L) return left;
-        return left >= right ? left - right : 0L;
+    private static long subtractSaturated(long left, long right) {
+        try {
+            return Math.subtractExact(left, right);
+        } catch (ArithmeticException exception) {
+            return right >= 0L ? Long.MIN_VALUE : Long.MAX_VALUE;
+        }
     }
 
     private static long addSaturated(long left, long right) {
