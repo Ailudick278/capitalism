@@ -57,6 +57,12 @@ public final class EconomicContractSavedData extends SavedData {
         return replace(current.withStatus(next));
     }
 
+    public boolean fulfill(String id, long quantity) {
+        EconomicContract current = find(id);
+        if (current == null || quantity <= 0L || current.status() != ContractStatus.ACTIVE) return false;
+        return replace(current.fulfill(quantity));
+    }
+
     public int expire(long now) {
         int changed = 0;
         for (int i = 0; i < contracts.size(); i++) {

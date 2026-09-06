@@ -2,7 +2,13 @@ package com.ailudick.capitalismmod.economy.contract;
 
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.economy.expansion.EconomicActorRef;
+import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
+import com.ailudick.capitalismmod.currency.Currencies;
+import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
+
+import java.util.UUID;
 
 /** Mirrors the existing freight domain lifecycle into the generic contract index. */
 public final class EconomicContractBridge {
@@ -17,6 +23,44 @@ public final class EconomicContractBridge {
     public static void status(MinecraftServer server, String id, ContractStatus status, long at) {
         if (server == null || id == null || status == null) return;
         EconomicContractSavedData.get(server).transition(id, status, at);
+    }
+
+    public static void supplyCreated(MinecraftServer server, String id, UUID buyer, UUID supplier,
+                                     String itemId, int quantity, long amountMajor, long createdAt) {
+        if (server == null || id == null || id.isBlank() || buyer == null || supplier == null
+                || itemId == null || itemId.isBlank() || quantity <= 0 || amountMajor <= 0L) return;
+        EconomicContractSavedData data = EconomicContractSavedData.get(server);
+        if (data.find(id) != null) return;
+        long lifetime = PerpetualCalendar.ticksForDays(Config.SUPPLY_ORDER_EXPIRY_DAYS.get());
+        long endsAt = lifetime > 0L && createdAt <= Long.MAX_VALUE - lifetime ? createdAt + lifetime : createdAt;
+        data.add(new EconomicContract(id, ContractType.SUPPLY,
+                new EconomicActorRef("player", buyer.toString()), new EconomicActorRef("player", supplier.toString()),
+                Math.max(0L, createdAt), Math.max(0L, createdAt), endsAt,
+                EconomyMath.multiply(amountMajor, 100L), Currencies.USD.id(), ContractStatus.OFFERED, 0L, 0L));
+    }
+
+    public static void supplyEvent(MinecraftServer server, String id, String eventType, int quantity, long at) {
+        if (server == null || id == null || id.isBlank() || eventType == null) return;
+        EconomicContractSavedData data = EconomicContractSavedData.get(server);
+        EconomicContract current = data.find(id);
+        if (current == null) return;
+        if ("DELIVERED".equals(eventType) && current.status() == ContractStatus.OFFERED) {
+            data.transition(id, ContractStatus.ACTIVE, at); current = data.find(id);
+        }
+        if (current == null) return;
+        if ("DELIVERED".equals(eventType) && current.status() == ContractStatus.ACTIVE) data.fulfill(id, quantity);
+        ContractStatus next = switch (eventType) {
+            case "BACKORDERED", "PARTIAL", "DISPATCHED" -> ContractStatus.ACTIVE;
+            case "FULFILLED" -> ContractStatus.COMPLETED;
+            case "CANCELLED_REFUND" -> ContractStatus.CANCELLED;
+            case "EXPIRED_REFUND", "EXPIRED_REFUND_COMPANY" -> ContractStatus.EXPIRED;
+            case "LOST" -> ContractStatus.BREACHED;
+            default -> null;
+        };
+        if (next != null && data.find(id) != null && data.find(id).status() != next) {
+            if (data.find(id).status() == ContractStatus.OFFERED && next == ContractStatus.COMPLETED) data.transition(id, ContractStatus.ACTIVE, at);
+            data.transition(id, next, at);
+        }
     }
 
     public static void syncFreight(MinecraftServer server) {

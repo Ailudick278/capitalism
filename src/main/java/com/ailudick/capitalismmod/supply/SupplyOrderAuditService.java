@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.supply;
 
+import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import net.minecraft.server.MinecraftServer;
 
 /** Centralized writer for supply-order lifecycle events. */
@@ -37,6 +38,7 @@ public final class SupplyOrderAuditService {
         SupplyOrderAuditSavedData.get(server).append(new SupplyOrderAuditSavedData.Event(
                 order.id(), type, order.buyerUuid(), order.supplierUuid(), order.itemId(), quantity,
                 Math.max(0L, amount), server.overworld().getGameTime()));
+        EconomicContractBridge.supplyEvent(server, order.id(), type, quantity, server.overworld().getGameTime());
     }
 
     public static void record(MinecraftServer server, String orderId, String type, java.util.UUID buyerUuid,
@@ -51,5 +53,10 @@ public final class SupplyOrderAuditService {
         SupplyOrderAuditSavedData.get(server).append(new SupplyOrderAuditSavedData.Event(
                 orderId, type, buyerUuid, supplierUuid, itemId == null ? "" : itemId, quantity,
                 Math.max(0L, amount), server.overworld().getGameTime(), eventKey));
+        if ("CREATED".equals(type)) {
+            EconomicContractBridge.supplyCreated(server, orderId, buyerUuid, supplierUuid, itemId, quantity,
+                    amount, server.overworld().getGameTime());
+        }
+        EconomicContractBridge.supplyEvent(server, orderId, type, quantity, server.overworld().getGameTime());
     }
 }
