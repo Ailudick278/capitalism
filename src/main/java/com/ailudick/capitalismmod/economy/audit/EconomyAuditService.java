@@ -16,6 +16,7 @@ import com.ailudick.capitalismmod.loan.PeerLoanPaymentSavedData;
 import com.ailudick.capitalismmod.bank.BankRecoveryRules;
 import com.ailudick.capitalismmod.bank.BankExposureAuditRules;
 import com.ailudick.capitalismmod.bank.BankExposureSavedData;
+import com.ailudick.capitalismmod.bank.BankCapitalAuditRules;
 import com.ailudick.capitalismmod.risk.FinancialRiskAuditRules;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
@@ -308,11 +309,19 @@ public final class EconomyAuditService {
             }
         }
         BankCapitalSavedData bankCapital = BankCapitalSavedData.get(server);
-        if (bankCapital.capitalMinor() == Long.MIN_VALUE
-                || bankCapital.cumulativeProfitLossMinor() == Long.MIN_VALUE
-                || bankCapital.lossProvisionMinor() < 0L
-                || bankCapital.lastSettlementDay() < -1L) {
+        if (!BankCapitalAuditRules.validState(bankCapital.initialized(), bankCapital.capitalMinor(),
+                bankCapital.cumulativeProfitLossMinor(), bankCapital.lossProvisionMinor(),
+                bankCapital.lastSettlementDay())) {
             issues.add("bank capital ledger invalid");
+        }
+        long bankOverdue = 0L;
+        for (var entry : exposureData.exposures().values()) {
+            bankOverdue = safeAdd(bankOverdue, entry.overdueDebtMinor());
+        }
+        long currentDay = server.overworld().getGameTime() / 24_000L;
+        if (!BankCapitalAuditRules.provisionMatchesAfterClose(bankCapital.lossProvisionMinor(), bankOverdue,
+                bankCapital.lastSettlementDay(), currentDay)) {
+            issues.add("bank loss provision differs from settled overdue exposure");
         }
         CompanySavedData companies = CompanySavedData.get(server);
         CompanyLedgerSavedData ledgers = CompanyLedgerSavedData.get(server);
