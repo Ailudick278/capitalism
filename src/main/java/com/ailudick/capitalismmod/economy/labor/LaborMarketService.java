@@ -104,4 +104,19 @@ public final class LaborMarketService {
         if (ended) EconomicContractBridge.employmentEnded(player.getServer(), employmentId, endedAt);
         return ended;
     }
+
+    /** Ends all active employments for a company after a lifecycle transition. */
+    public static int endEmploymentsForCompany(MinecraftServer server, String companyId, long endedAt) {
+        if (server == null || companyId == null || companyId.isBlank()) return 0;
+        LaborMarketSavedData data = LaborMarketSavedData.get(server);
+        int ended = 0;
+        for (EmploymentRecord employment : data.employments()) {
+            if (!employment.active() || !companyId.equals(employment.employerId())) continue;
+            if (data.endEmployment(employment.id(), endedAt)) {
+                EconomicContractBridge.employmentEnded(server, employment.id(), endedAt);
+                ended++;
+            }
+        }
+        return ended;
+    }
 }

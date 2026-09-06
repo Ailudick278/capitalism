@@ -16,6 +16,7 @@ import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
+import com.ailudick.capitalismmod.economy.labor.LaborMarketService;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -38,8 +39,10 @@ public final class CompanyLifecycleService {
         if (player == null || company == null || !company.ownerUuid().equals(player.getUUID())) return false;
         CompanyStatusSavedData data = CompanyStatusSavedData.get(player.getServer());
         if (!"ACTIVE".equals(data.statusOf(company.companyId()))) return false;
-        data.set(new CompanyStatusSavedData.Status(company.companyId(), "SUSPENDED",
-                player.getServer().overworld().getGameTime(), reason == null ? "" : reason));
+        long now = player.getServer().overworld().getGameTime();
+        data.set(new CompanyStatusSavedData.Status(company.companyId(), "SUSPENDED", now,
+                reason == null ? "" : reason));
+        LaborMarketService.endEmploymentsForCompany(player.getServer(), company.companyId(), now);
         return true;
     }
 
@@ -61,8 +64,10 @@ public final class CompanyLifecycleService {
         if (server == null || companyId == null || companyId.isBlank()) return false;
         CompanyStatusSavedData data = CompanyStatusSavedData.get(server);
         if (!"ACTIVE".equals(data.statusOf(companyId))) return false;
-        data.set(new CompanyStatusSavedData.Status(companyId, "SUSPENDED",
-                server.overworld().getGameTime(), reason == null ? "regulatory suspension" : reason));
+        long now = server.overworld().getGameTime();
+        data.set(new CompanyStatusSavedData.Status(companyId, "SUSPENDED", now,
+                reason == null ? "regulatory suspension" : reason));
+        LaborMarketService.endEmploymentsForCompany(server, companyId, now);
         return true;
     }
 
@@ -73,8 +78,10 @@ public final class CompanyLifecycleService {
         String current = data.statusOf(companyId);
         if ("LIQUIDATING".equals(current) || "DISSOLVED".equals(current)
                 || EconomySavedData.get(server).isListed(companyId)) return false;
-        data.set(new CompanyStatusSavedData.Status(companyId, "LIQUIDATING",
-                server.overworld().getGameTime(), reason == null ? "automatic liquidation after loan default" : reason));
+        long now = server.overworld().getGameTime();
+        data.set(new CompanyStatusSavedData.Status(companyId, "LIQUIDATING", now,
+                reason == null ? "automatic liquidation after loan default" : reason));
+        LaborMarketService.endEmploymentsForCompany(server, companyId, now);
         return true;
     }
 
@@ -84,8 +91,10 @@ public final class CompanyLifecycleService {
         String current = data.statusOf(company.companyId());
         if ("LIQUIDATING".equals(current) || "DISSOLVED".equals(current)
                 || EconomySavedData.get(player.getServer()).isListed(company.companyId())) return false;
-        data.set(new CompanyStatusSavedData.Status(company.companyId(), "LIQUIDATING",
-                player.getServer().overworld().getGameTime(), "liquidation opened by owner"));
+        long now = player.getServer().overworld().getGameTime();
+        data.set(new CompanyStatusSavedData.Status(company.companyId(), "LIQUIDATING", now,
+                "liquidation opened by owner"));
+        LaborMarketService.endEmploymentsForCompany(player.getServer(), company.companyId(), now);
         return true;
     }
 
