@@ -99,6 +99,10 @@ public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId,
         return accrued > interestPaid ? accrued - interestPaid : 0L;
     }
 
+    public boolean isOverdue() {
+        return daysRemaining < 0;
+    }
+
     private static long interestBetween(long startElapsed, long endElapsed, long principal,
                                         double ratePerYear, int totalDays) {
         if (endElapsed <= startElapsed) return 0L;

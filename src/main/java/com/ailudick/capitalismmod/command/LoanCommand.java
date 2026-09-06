@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.loan.PeerLoan;
 import com.ailudick.capitalismmod.loan.PeerLoanPaymentAllocation;
+import com.ailudick.capitalismmod.loan.PeerLoanPaymentSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
@@ -130,6 +131,10 @@ public class LoanCommand {
             }
             data.replaceLoan(updated);
         }
+        PeerLoanPaymentSavedData.get(borrower.getServer()).append(new PeerLoanPaymentSavedData.Payment(
+                loan.id(), loan.lender(), loan.borrower(), borrower.getServer().overworld().getGameTime(),
+                payment, allocation.interestPayment(), allocation.principalPayment(),
+                allocation.remainingPrincipal(), loan.daysRemaining(), loan.isOverdue()));
         borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",
                 payment, Component.translatable(currency.nameKey())));
         return 1;
