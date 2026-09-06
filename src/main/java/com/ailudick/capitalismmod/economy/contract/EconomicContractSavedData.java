@@ -71,6 +71,13 @@ public final class EconomicContractSavedData extends SavedData {
         return replace(breached);
     }
 
+    public boolean openDispute(MinecraftServer server, String id, String disputeId, long at, String reason) {
+        EconomicContract current = find(id);
+        if (current == null || (current.status() != ContractStatus.ACTIVE && current.status() != ContractStatus.OFFERED)) return false;
+        if (!ContractDisputeSavedData.get(server).openOnce(disputeId, id, at, reason)) return false;
+        return transition(id, ContractStatus.DISPUTED, at);
+    }
+
     public int expire(long now) {
         int changed = 0;
         for (int i = 0; i < contracts.size(); i++) {

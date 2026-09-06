@@ -9,9 +9,11 @@ public final class ContractEconomics {
         return switch (from) {
             case DRAFT -> to == ContractStatus.OFFERED || to == ContractStatus.CANCELLED;
             case OFFERED -> to == ContractStatus.ACTIVE || to == ContractStatus.CANCELLED
-                    || to == ContractStatus.BREACHED || to == ContractStatus.EXPIRED;
+                    || to == ContractStatus.BREACHED || to == ContractStatus.EXPIRED || to == ContractStatus.DISPUTED;
             case ACTIVE -> to == ContractStatus.COMPLETED || to == ContractStatus.CANCELLED
-                    || to == ContractStatus.BREACHED || to == ContractStatus.EXPIRED;
+                    || to == ContractStatus.BREACHED || to == ContractStatus.EXPIRED || to == ContractStatus.DISPUTED;
+            case DISPUTED -> to == ContractStatus.COMPLETED || to == ContractStatus.CANCELLED
+                    || to == ContractStatus.BREACHED;
             case COMPLETED, CANCELLED, BREACHED, EXPIRED -> false;
         };
     }

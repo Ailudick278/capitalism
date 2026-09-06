@@ -7,6 +7,9 @@ import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.economy.labor.EmploymentRecord;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborPayrollSavedData;
+import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
+import com.ailudick.capitalismmod.economy.contract.ContractStatus;
 import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
@@ -111,6 +114,17 @@ public final class EconomyAuditService {
         for (EmploymentRecord employment : labor.employments()) if (employment.dailyWageMinor() < 0L || employment.workerId().isBlank() || employment.employerId().isBlank()) issues.add("employment " + employment.id() + " invalid participant or wage");
         for (var entry : labor.offers()) if (entry.vacancies() < 0 || entry.dailyWageMinor() <= 0L) issues.add("job offer " + entry.id() + " invalid vacancy or wage");
         for (var entry : labor.employments()) { var account = LaborPayrollSavedData.get(server).account(entry.id()); if (account.unpaid() < 0L) issues.add("payroll " + entry.id() + " negative arrears"); }
+        EconomicContractSavedData contracts = EconomicContractSavedData.get(server);
+        for (var dispute : ContractDisputeSavedData.get(server).disputes()) {
+            var contract = contracts.find(dispute.contractId());
+            if (contract == null) {
+                issues.add("dispute has no contract " + dispute.id());
+            } else if ("OPEN".equals(dispute.status()) && contract.status() != ContractStatus.DISPUTED) {
+                issues.add("open dispute contract is not disputed " + dispute.id());
+            } else if (!"OPEN".equals(dispute.status()) && contract.status() == ContractStatus.DISPUTED) {
+                issues.add("resolved dispute contract remains disputed " + dispute.id());
+            }
+        }
         return List.copyOf(issues);
     }
     public static boolean isBalanceChainValid(List<CompanyLedgerEntry> entries) {
