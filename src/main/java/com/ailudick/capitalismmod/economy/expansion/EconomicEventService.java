@@ -62,6 +62,21 @@ public final class EconomicEventService {
         return EconomicExpansionSavedData.get(server).addOnce(event);
     }
 
+    public static boolean addLogisticsCapacityShock(MinecraftServer server, String eventId,
+                                                     String origin, String destination, int shockBps,
+                                                     long startsAt, int durationDays) {
+        if (server == null || eventId == null || eventId.isBlank() || origin == null || origin.isBlank()
+                || destination == null || destination.isBlank() || origin.equals(destination)
+                || shockBps < -9000 || shockBps > 9000 || startsAt < 0L || durationDays <= 0) return false;
+        long endsAt = startsAt + PerpetualCalendar.ticksForDays(durationDays);
+        if (endsAt <= startsAt) return false;
+        String type = shockBps >= 0 ? "logistics_capacity_shock_up" : "logistics_capacity_shock_down";
+        EconomicEvent event = new EconomicEvent(eventId, ExpansionSystem.ECONOMIC_EVENTS, type,
+                server.overworld().getGameTime(), startsAt, endsAt, null,
+                EconomicActorRef.of("route", routeId(origin, destination)), Math.abs((long) shockBps), "bps", "active");
+        return EconomicExpansionSavedData.get(server).addOnce(event);
+    }
+
     public static int commodityPriceShockBps(MinecraftServer server, String itemId, long gameTime) {
         if (server == null || itemId == null || itemId.isBlank()) return 0;
         int total = 0;
@@ -72,6 +87,39 @@ public final class EconomicEventService {
             total = (int) Math.max(-9000L, Math.min(9000L, (long) total + signed));
         }
         return total;
+    }
+
+    public static int logisticsCapacityShockBps(MinecraftServer server, String origin, String destination, long gameTime) {
+        if (server == null || origin == null || origin.isBlank() || destination == null || destination.isBlank()) return 0;
+        int total = 0;
+        String route = routeId(origin, destination);
+        for (EconomicEvent event : EconomicExpansionSavedData.get(server).eventsFor(ExpansionSystem.ECONOMIC_EVENTS)) {
+            if (!event.activeAt(gameTime) || event.target() == null || !route.equals(event.target().id())) continue;
+            long signed = "logistics_capacity_shock_down".equals(event.type())
+                    ? -event.amountMinor() : event.amountMinor();
+            total = (int) Math.max(-9000L, Math.min(9000L, (long) total + signed));
+        }
+        return total;
+    }
+
+    public static int applyCapacityShock(int baseCapacity, int shockBps) {
+        if (baseCapacity <= 0) return 0;
+        long adjusted = (long) baseCapacity * (10_000L + Math.max(-9000, Math.min(9000, shockBps))) / 10_000L;
+        return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, adjusted));
+    }
+
+    public static long applyTravelShock(long baseTicks, int shockBps) {
+        if (baseTicks <= 0L) return 1L;
+        long multiplier = 10_000L - Math.max(-9000, Math.min(9000, shockBps)) / 2L;
+        try {
+            return Math.max(1L, Math.multiplyExact(baseTicks, multiplier) / 10_000L);
+        } catch (ArithmeticException ignored) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static String routeId(String origin, String destination) {
+        return origin.trim() + "->" + destination.trim();
     }
 
     private static boolean hasActiveCommodityShock(MinecraftServer server, String itemId, long gameTime) {

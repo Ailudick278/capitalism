@@ -20,4 +20,13 @@ class EconomicEventServiceTest {
         assertEquals(1000, EconomicEventService.automaticCorrectionShockBps(40, 100));
         assertEquals(0, EconomicEventService.automaticCorrectionShockBps(150, 100));
     }
+
+    @Test
+    void logisticsShockChangesCapacityAndTransitTimeWithinBounds() {
+        assertEquals(50, EconomicEventService.applyCapacityShock(100, -5000));
+        assertEquals(150, EconomicEventService.applyCapacityShock(100, 5000));
+        assertEquals(125, EconomicEventService.applyTravelShock(100, -5000));
+        assertEquals(75, EconomicEventService.applyTravelShock(100, 5000));
+        assertEquals(10, EconomicEventService.applyCapacityShock(100, -9000));
+    }
 }

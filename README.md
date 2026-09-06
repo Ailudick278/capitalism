@@ -37,6 +37,7 @@
 /city housing terminate <household>
 /economy-audit
 /economicevent priceShock <eventId> <itemId> <shockBps> <days>
+/economicevent logisticsShock <eventId> <origin> <destination> <capacityBps> <days>
 /economicevent list
 ```
 

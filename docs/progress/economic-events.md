@@ -9,6 +9,7 @@
 - `/economicevent priceShock <eventId> <itemId> <shockBps> <days>` 可由管理员创建可复现的市场冲击。
 - `shockBps` 为基点：正值表示供给收缩/价格上行，负值表示需求收缩/价格下行；例如 `2500` 代表约 25%。
 - `/economicevent list` 以只读方式查看当前有效事件、目标商品和剩余模拟时间。
+- `/economicevent logisticsShock <eventId> <origin> <destination> <capacityBps> <days>` 会改变指定路线的批次运力和运输时间；负值表示中断/拥堵，正值表示临时增容。
 - 当价格达到基础价值的 2.5 倍或低于 40% 时，市场会自动生成 3 天、±1000 基点的反向稳定事件；同一商品已有冲击时不会叠加新事件。
 
 ## 存在的问题

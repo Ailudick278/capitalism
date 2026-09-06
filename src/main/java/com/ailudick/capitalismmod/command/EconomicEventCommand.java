@@ -26,9 +26,26 @@ public final class EconomicEventCommand {
         var item = Commands.argument("itemId", StringArgumentType.word()).then(shock);
         var id = Commands.argument("eventId", StringArgumentType.word()).then(item);
         var priceShock = Commands.literal("priceShock").then(id);
+        var logisticsDays = Commands.argument("days", IntegerArgumentType.integer(1, 365))
+                .executes(c -> logistics(c.getSource(), StringArgumentType.getString(c, "eventId"),
+                        StringArgumentType.getString(c, "origin"), StringArgumentType.getString(c, "destination"),
+                        IntegerArgumentType.getInteger(c, "capacityBps"), IntegerArgumentType.getInteger(c, "days")));
+        var capacity = Commands.argument("capacityBps", IntegerArgumentType.integer(-9000, 9000)).then(logisticsDays);
+        var destination = Commands.argument("destination", StringArgumentType.word()).then(capacity);
+        var origin = Commands.argument("origin", StringArgumentType.word()).then(destination);
+        var logisticsShock = Commands.literal("logisticsShock").then(Commands.argument("eventId", StringArgumentType.word()).then(origin));
         var list = Commands.literal("list").executes(c -> list(c.getSource()));
         dispatcher.register(Commands.literal("economicevent").requires(s -> s.hasPermission(2))
-                .then(priceShock).then(list));
+                .then(priceShock).then(logisticsShock).then(list));
+    }
+
+    private static int logistics(CommandSourceStack source, String eventId, String origin, String destination,
+                                 int capacityBps, int days) {
+        long now = source.getServer().overworld().getGameTime();
+        if (!EconomicEventService.addLogisticsCapacityShock(source.getServer(), eventId, origin, destination,
+                capacityBps, now, days)) return 0;
+        source.sendSuccess(() -> Component.literal("Logistics capacity shock created: " + eventId), true);
+        return 1;
     }
 
     private static int create(CommandSourceStack source, String eventId, String itemId, int shockBps, int days) {

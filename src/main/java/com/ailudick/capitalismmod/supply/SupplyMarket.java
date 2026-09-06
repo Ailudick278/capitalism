@@ -690,6 +690,9 @@ public final class SupplyMarket {
         try {
             delay = transport.travelTicks(Config.REGIONAL_SHIPPING_TICKS.get(), distance);
             delay = infrastructure.adjustTravelTicks(delay, origin, destination, transport);
+            delay = com.ailudick.capitalismmod.economy.expansion.EconomicEventService.applyTravelShock(delay,
+                    com.ailudick.capitalismmod.economy.expansion.EconomicEventService.logisticsCapacityShockBps(
+                            server, origin, destination, server.overworld().getGameTime()));
             delay = Math.addExact(server.overworld().getGameTime(), delay);
         } catch (ArithmeticException e) {
             delay = Long.MAX_VALUE;
@@ -698,6 +701,9 @@ public final class SupplyMarket {
         LogisticsSavedData data = LogisticsSavedData.get(server);
         int remaining = quantity;
         int capacity = transport.capacity() + infrastructure.capacityBonus(origin, destination, transport);
+        capacity = com.ailudick.capitalismmod.economy.expansion.EconomicEventService.applyCapacityShock(capacity,
+                com.ailudick.capitalismmod.economy.expansion.EconomicEventService.logisticsCapacityShockBps(
+                        server, origin, destination, server.overworld().getGameTime()));
         while (remaining > 0) {
             int batch = Math.min(remaining, capacity);
             int batchIndex = (quantity - remaining) / Math.max(1, capacity);
