@@ -2,7 +2,7 @@ package com.ailudick.capitalismmod.market;
 
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
-import com.ailudick.capitalismmod.supply.SupplyOrderAuditService;
+import com.ailudick.capitalismmod.supply.SupplyMarket;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -39,20 +39,14 @@ public final class LogisticsLossService {
             }
             CompanyHelper.recordInventoryLoss(server, shipment.buyerCompanyId(), loss, shipment.id());
         }
-        if (!shipment.supplyOrderId().isBlank() && shipment.supplierUuid() != null) {
-            long amount;
-            try {
-                amount = Math.multiplyExact((long) shipment.quantity(), shipment.unitPrice());
-            } catch (ArithmeticException e) {
-                amount = Long.MAX_VALUE;
-            }
-            SupplyOrderAuditService.record(server, shipment.supplyOrderId(), "LOST", shipment.buyer(),
-                    shipment.supplierUuid(), shipment.itemId(), shipment.quantity(), amount, shipment.id());
-        }
         data.add(new LogisticsLossSavedData.Loss(shipment.id(), shipment.buyer(), shipment.itemId(),
                 shipment.quantity(), shipment.originRegion(), shipment.destinationRegion(), shipment.transport(),
                 shipment.disruptionCount() + 1, server.overworld().getGameTime(), false, shipment.supplyOrderId(),
                 shipment.buyerCompanyId(), shipment.unitPrice()));
+        if (!shipment.supplyOrderId().isBlank() && shipment.supplierUuid() != null) {
+            SupplyMarket.compensateTransportLoss(server, shipment.id(), shipment.supplyOrderId(), shipment.buyer(), shipment.buyerCompanyId(), shipment.supplierUuid(),
+                    shipment.itemId(), shipment.quantity(), shipment.unitPrice());
+        }
         ServerPlayer player = server.getPlayerList().getPlayer(shipment.buyer());
         if (player != null) {
             player.displayClientMessage(Component.literal("物流通知：货物 " + shipment.itemId() + " x"

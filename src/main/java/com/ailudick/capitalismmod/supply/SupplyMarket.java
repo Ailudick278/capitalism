@@ -263,6 +263,77 @@ public final class SupplyMarket {
         }
     }
 
+    /**
+     * Returns the prepaid value of a shipment lost in transit. The shipment is
+     * still part of the order's remaining quantity, so only that lost batch is
+     * refunded; other batches remain eligible for delivery.
+     */
+    public static void compensateTransportLoss(MinecraftServer server, String shipmentId, String supplyOrderId, UUID buyerUuid,
+                                                String buyerCompanyId, UUID supplierUuid, String itemId, int quantity, long unitPrice) {
+        if (server == null || shipmentId == null || shipmentId.isBlank() || buyerUuid == null
+                || supplyOrderId == null || supplyOrderId.isBlank() || supplierUuid == null || quantity <= 0) return;
+        SupplySettlementSavedData settlements = SupplySettlementSavedData.get(server);
+        if (settlements.hasTransportCompensation(shipmentId)) return;
+
+        SupplyMarketSavedData data = SupplyMarketSavedData.get(server);
+        PurchaseOrder order = data.orders().stream()
+                .filter(candidate -> candidate.id().equals(supplyOrderId))
+                .findFirst().orElse(null);
+        if (order == null) {
+            long refund = EconomyMath.multiply(unitPrice, quantity);
+            long refundMinor = refund < 0L ? -1L : Money.toMinor(refund);
+            if (refundMinor < 0L) return;
+            boolean refundedToCompany = false;
+            if (buyerCompanyId != null && !buyerCompanyId.isBlank()) {
+                Company company = CompanySavedData.get(server).get(buyerCompanyId);
+                refundedToCompany = company != null && CompanyHelper.creditTreasuryNonOperatingOnce(server,
+                        company.companyId(), Currencies.USD.id(), refund, "supply_loss_refund",
+                        "Transport loss prepaid supply refund", "supply-loss-refund:" + shipmentId);
+            }
+            if (!refundedToCompany) {
+                MarketMailboxSavedData.get(server).creditMoneyOnce(buyerUuid, Currencies.USD.id(), refundMinor,
+                        "supply-loss-refund:" + shipmentId);
+            }
+            if (!SupplyEscrowSavedData.get(server).refundOnce(supplyOrderId, "loss:" + shipmentId, refundMinor)) return;
+            SupplyOrderAuditService.record(server, supplyOrderId, "LOST", buyerUuid, supplierUuid,
+                    itemId, quantity, EconomyMath.multiply(unitPrice, quantity), shipmentId);
+            settlements.recordTransportCompensation(shipmentId);
+            return;
+        }
+
+        int lost = Math.min(quantity, Math.max(0, order.remaining()));
+        long refund = EconomyMath.multiply(order.unitPrice() > 0L ? order.unitPrice() : unitPrice, lost);
+        long refundMinor = refund < 0L ? -1L : Money.toMinor(refund);
+        if (lost <= 0 || refundMinor < 0L) return;
+
+        boolean refundedToCompany = false;
+        if (order.buyerCompanyId() != null && !order.buyerCompanyId().isBlank()) {
+            Company company = CompanySavedData.get(server).get(order.buyerCompanyId());
+            refundedToCompany = company != null && CompanyHelper.creditTreasuryNonOperatingOnce(server,
+                    company.companyId(), Currencies.USD.id(), refund, "supply_loss_refund",
+                    "Transport loss prepaid supply refund", "supply-loss-refund:" + shipmentId);
+        }
+        if (!refundedToCompany) {
+            MarketMailboxSavedData.get(server).creditMoneyOnce(buyerUuid, Currencies.USD.id(), refundMinor,
+                    "supply-loss-refund:" + shipmentId);
+        }
+        if (!SupplyEscrowSavedData.get(server).refundOnce(order.id(), "loss:" + shipmentId, refundMinor)) return;
+
+        long creditToReverse = SupplyOrderTaxCreditCalculator.proportional(order.inputCreditMinor(), lost,
+                Math.max(1, order.originalQuantity()));
+        if (creditToReverse > 0L) {
+            TaxTransactionService.reverseInputCredit(server, order.buyerUuid(), Currencies.USD.id(),
+                    creditToReverse, "supply_order:" + order.id(), server.overworld().getGameTime());
+        }
+        int newRemaining = order.remaining() - lost;
+        String event = newRemaining <= 0 ? "LOST" : "PARTIAL_LOSS";
+        SupplyOrderAuditService.record(server, order, event, lost, refund);
+        if (newRemaining <= 0) data.removeOrder(order.id());
+        else data.replaceOrder(order.withRemaining(newRemaining));
+        settlements.recordTransportCompensation(shipmentId);
+    }
+
+
     /** Cancels an undelivered backorder and refunds only its remaining escrow. */
     public static boolean cancelOrder(ServerPlayer buyer, String orderId) {
         if (buyer == null || orderId == null || orderId.isBlank()) return false;

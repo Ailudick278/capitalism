@@ -61,6 +61,7 @@ public final class EconomicContractBridge {
             case "FULFILLED" -> null;
             case "CANCELLED_REFUND" -> ContractStatus.CANCELLED;
             case "EXPIRED_REFUND", "EXPIRED_REFUND_COMPANY" -> ContractStatus.EXPIRED;
+            case "PARTIAL_LOSS" -> ContractStatus.ACTIVE;
             case "LOST" -> ContractStatus.BREACHED;
             default -> null;
         };

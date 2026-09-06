@@ -16,6 +16,7 @@ public final class SupplySettlementSavedData extends SavedData {
     private static final int MAX_KEYS = 8192;
     private final Set<String> supplierPayments = new HashSet<>();
     private final Set<String> orderRefunds = new HashSet<>();
+    private final Set<String> transportCompensations = new HashSet<>();
 
     private SupplySettlementSavedData() {
     }
@@ -45,6 +46,16 @@ public final class SupplySettlementSavedData extends SavedData {
         setDirty();
     }
 
+    public boolean hasTransportCompensation(String shipmentId) {
+        return shipmentId != null && !shipmentId.isBlank() && transportCompensations.contains(shipmentId);
+    }
+
+    public void recordTransportCompensation(String shipmentId) {
+        if (shipmentId == null || shipmentId.isBlank() || !transportCompensations.add(shipmentId)) return;
+        trim(transportCompensations);
+        setDirty();
+    }
+
     private static void trim(Set<String> keys) {
         while (keys.size() > MAX_KEYS) {
             keys.remove(keys.iterator().next());
@@ -67,6 +78,13 @@ public final class SupplySettlementSavedData extends SavedData {
         });
         tag.put("supplierPayments", payments);
         tag.put("orderRefunds", refunds);
+        ListTag compensations = new ListTag();
+        transportCompensations.forEach(key -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("id", key);
+            compensations.add(entry);
+        });
+        tag.put("transportCompensations", compensations);
         return tag;
     }
 
@@ -84,6 +102,12 @@ public final class SupplySettlementSavedData extends SavedData {
         }
         trim(data.supplierPayments);
         trim(data.orderRefunds);
+        ListTag compensations = tag.getList("transportCompensations", Tag.TAG_COMPOUND);
+        for (int i = 0; i < compensations.size(); i++) {
+            String id = compensations.getCompound(i).getString("id");
+            if (!id.isBlank()) data.transportCompensations.add(id);
+        }
+        trim(data.transportCompensations);
         return data;
     }
 }
