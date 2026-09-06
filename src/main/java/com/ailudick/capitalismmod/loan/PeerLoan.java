@@ -14,11 +14,16 @@ import java.util.UUID;
  * @param daysRemaining days until maturity (negative = overdue)
  */
 public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId, long principal, double ratePerYear, int totalDays, int daysRemaining,
-                       long interestPaid) {
+                       long interestPaid, long lastSettlementDay) {
 
     public PeerLoan(String id, UUID lender, UUID borrower, String currencyId, long principal,
                     double ratePerYear, int totalDays, int daysRemaining) {
-        this(id, lender, borrower, currencyId, principal, ratePerYear, totalDays, daysRemaining, 0L);
+        this(id, lender, borrower, currencyId, principal, ratePerYear, totalDays, daysRemaining, 0L, -1L);
+    }
+
+    public PeerLoan(String id, UUID lender, UUID borrower, String currencyId, long principal,
+                    double ratePerYear, int totalDays, int daysRemaining, long interestPaid) {
+        this(id, lender, borrower, currencyId, principal, ratePerYear, totalDays, daysRemaining, interestPaid, -1L);
     }
 
     /**
@@ -41,17 +46,24 @@ public record PeerLoan(String id, UUID lender, UUID borrower, String currencyId,
                 Codec.DOUBLE.fieldOf("ratePerYear").forGetter(PeerLoan::ratePerYear),
                 Codec.INT.fieldOf("totalDays").forGetter(PeerLoan::totalDays),
                 Codec.INT.fieldOf("daysRemaining").forGetter(PeerLoan::daysRemaining),
-                Codec.LONG.optionalFieldOf("interestPaid", 0L).forGetter(PeerLoan::interestPaid)
+                Codec.LONG.optionalFieldOf("interestPaid", 0L).forGetter(PeerLoan::interestPaid),
+                Codec.LONG.optionalFieldOf("lastSettlementDay", -1L).forGetter(PeerLoan::lastSettlementDay)
         ).apply(instance, PeerLoan::new));
     }
 
     public PeerLoan withDaysRemaining(int newDays) {
-        return new PeerLoan(id, lender, borrower, currencyId, principal, ratePerYear, totalDays, newDays, interestPaid);
+        return new PeerLoan(id, lender, borrower, currencyId, principal, ratePerYear, totalDays, newDays, interestPaid,
+                lastSettlementDay);
     }
 
     public PeerLoan withInterestPaid(long amount) {
         return new PeerLoan(id, lender, borrower, currencyId, principal, ratePerYear, totalDays,
-                daysRemaining, Math.max(0L, amount));
+                daysRemaining, Math.max(0L, amount), lastSettlementDay);
+    }
+
+    public PeerLoan withLastSettlementDay(long day) {
+        return new PeerLoan(id, lender, borrower, currencyId, principal, ratePerYear, totalDays,
+                daysRemaining, interestPaid, day);
     }
 
     /** Interest currently due (major units); only overdue days carry penalty interest. */

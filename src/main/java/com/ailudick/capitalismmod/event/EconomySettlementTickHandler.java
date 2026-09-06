@@ -65,7 +65,9 @@ public final class EconomySettlementTickHandler {
 
         PeerLoanSavedData loans = PeerLoanSavedData.get(server);
         for (PeerLoan loan : new ArrayList<>(loans.loans())) {
-            PeerLoan updated = loan.withDaysRemaining(loan.daysRemaining() - 1);
+            if (loan.lastSettlementDay() >= settlementDay) continue;
+            PeerLoan updated = loan.withDaysRemaining(loan.daysRemaining() - 1)
+                    .withLastSettlementDay(settlementDay);
             if (loan.daysRemaining() > 0 && updated.daysRemaining() <= 0) {
                 PeerLoanNotificationService.notify(server, loan.borrower(), "due:" + loan.id(),
                         "贷款已到期，请及时偿还本金及利息（" + loan.id().substring(0, Math.min(8, loan.id().length())) + "）");
