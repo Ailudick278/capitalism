@@ -166,7 +166,10 @@ public final class LandHelper {
         long refund = Math.round(Config.LAND_CLAIM_PRICE.get() * Config.LAND_RELEASE_REFUND_RATE.get());
         String refundSource = "land-release:" + id + ":" + refund;
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
-        mailbox.creditMoneyOnce(player.getUUID(), Config.defaultCurrencyId(), refund, refundSource);
+        if (refund > 0L && !mailbox.hasCreditSource(refundSource)
+                && !mailbox.creditMoneyOnce(player.getUUID(), Config.defaultCurrencyId(), refund, refundSource)) {
+            return false;
+        }
         mailbox.redeemMoneyOnly(player);
         // Remove ownership only after the durable refund receipt exists. If the
         // server stops between these steps, the same source prevents a duplicate
