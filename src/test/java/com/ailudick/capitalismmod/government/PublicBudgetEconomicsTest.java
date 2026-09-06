@@ -13,4 +13,12 @@ class PublicBudgetEconomicsTest {
         assertEquals(0L, PublicBudgetEconomics.dailyMaintenance("port", 10));
         assertEquals(0L, PublicBudgetEconomics.dailyMaintenance("clinic", 0));
     }
+
+    @Test
+    void maintenanceHandlesLargeCitiesWithoutOverflow() {
+        assertEquals(50L * Integer.MAX_VALUE,
+                PublicBudgetEconomics.dailyMaintenance("housing", Integer.MAX_VALUE));
+        assertEquals(0L, PublicBudgetEconomics.dailyMaintenance(null, Integer.MAX_VALUE));
+        assertEquals(0L, PublicBudgetEconomics.dailyMaintenance("clinic", -1));
+    }
 }
