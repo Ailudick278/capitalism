@@ -91,11 +91,15 @@ public final class StockMarket {
             return true;
         }
         if (order.sell()) {
-            data.addShares(order.stockId(), player.getUUID(), order.quantity());
+            data.addSharesOnce(order.stockId(), player.getUUID(), order.quantity(),
+                    "stock-order-cancel-shares:" + order.id());
         } else {
             long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
             if (total >= 0) {
-                EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(total));
+                MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+                mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(total),
+                        "stock-order-cancel-money:" + order.id());
+                mailbox.redeemMoneyOnly(player);
             }
         }
         settlements.record(orderId);
