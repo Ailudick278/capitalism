@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.economy.labor;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import net.minecraft.server.MinecraftServer;
@@ -43,7 +44,9 @@ public final class LaborMarketService {
                                long dailyWageMinor, LaborSkill skill, int minimumSkill, int durationDays, String region) {
         Company company = CompanyHelper.getCompany(player, companyName);
         long now = player.getServer().overworld().getGameTime();
-        if (company == null || durationDays < 0 || durationDays > 100000 || dailyWageMinor <= 0L || region == null || region.isBlank()) return false;
+        if (company == null || !CompanyLifecycleService.canOperate(player.getServer(), company.companyId())
+                || durationDays < 0 || durationDays > 100000 || dailyWageMinor <= 0L
+                || region == null || region.isBlank()) return false;
         long closes = durationDays == 0 ? 0L : EconomyMath.add(now, Math.multiplyExact(durationDays, 24000L));
         if (closes < now) return false;
         try {
@@ -58,7 +61,8 @@ public final class LaborMarketService {
         LaborMarketSavedData data = LaborMarketSavedData.get(employer.getServer());
         JobOffer offer = data.offer(offerId);
         Company company = CompanySavedData.get(employer.getServer()).get(offer == null ? "" : offer.employerId());
-        if (offer == null || company == null || !company.ownerUuid().equals(employer.getUUID())) return false;
+        if (offer == null || company == null || !CompanyLifecycleService.canOperate(employer.getServer(), company.companyId())
+                || !company.ownerUuid().equals(employer.getUUID())) return false;
         ensureProfile(worker);
         LaborProfile profile = data.profile(actor(worker));
         if (profile == null || profile.participation() <= 0 || profile.skill(offer.requiredSkill()) < offer.minimumSkill()
@@ -77,7 +81,9 @@ public final class LaborMarketService {
         if (server == null || npcId == null || npcId.isBlank()) return false;
         LaborMarketSavedData data = LaborMarketSavedData.get(server); JobOffer offer = data.offer(offerId);
         LaborProfile profile = data.profile(npcId);
-        if (offer == null || profile == null || profile.participation() <= 0 || profile.skill(offer.requiredSkill()) < offer.minimumSkill()
+        if (offer == null || !CompanyLifecycleService.canOperate(server,
+                offer == null ? "" : offer.employerId()) || profile == null
+                || profile.participation() <= 0 || profile.skill(offer.requiredSkill()) < offer.minimumSkill()
                 || offer.dailyWageMinor() < profile.effectiveReservationWageMinor() || !data.activeForWorker(npcId).isEmpty()) return false;
         if (!data.reserveVacancy(offerId)) return false;
         EmploymentRecord employment = new EmploymentRecord(java.util.UUID.randomUUID().toString(), npcId, offer.employerId(), offer.role(),

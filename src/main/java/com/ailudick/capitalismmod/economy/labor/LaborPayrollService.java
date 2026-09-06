@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyLedgerEntry;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.company.CompanyPayrollService;
+import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
 import com.ailudick.capitalismmod.currency.Money;
@@ -27,6 +28,12 @@ public final class LaborPayrollService {
             if (!employment.active() || payroll.account(employment.id()).lastSettlementDay() >= day) continue;
             Company company = CompanySavedData.get(server).get(employment.employerId());
             if (company == null) continue;
+            if (!CompanyLifecycleService.canOperate(server, company.companyId())) {
+                if (labor.endEmployment(employment.id(), server.overworld().getGameTime())) {
+                    EconomicContractBridge.employmentEnded(server, employment.id(), server.overworld().getGameTime());
+                }
+                continue;
+            }
             long due;
             try { due = Math.addExact(payroll.account(employment.id()).unpaid(), employment.dailyWageMinor()); }
             catch (ArithmeticException e) { due = Long.MAX_VALUE; }
