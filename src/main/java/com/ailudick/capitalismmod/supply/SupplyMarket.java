@@ -372,9 +372,10 @@ public final class SupplyMarket {
                         creditToReverse, "supply_order:" + order.id(), now);
             }
             settlements.recordOrderRefund(order.id());
-            SupplyOrderAuditService.record(server, order,
+            SupplyOrderAuditService.record(server, order.id(),
                     refundedToCompany ? "EXPIRED_REFUND_COMPANY" : "EXPIRED_REFUND",
-                    order.remaining(), refund);
+                    order.buyerUuid(), order.supplierUuid(), order.itemId(), order.remaining(), refund,
+                    "expiry-refund:" + order.id());
             data.removeOrder(order.id());
         }
     }
@@ -488,7 +489,9 @@ public final class SupplyMarket {
                     creditToReverse, "supply_order:" + order.id(), server.overworld().getGameTime());
         }
         settlements.recordOrderRefund(order.id());
-        SupplyOrderAuditService.record(server, order, "CANCELLED_REFUND", order.remaining(), refund);
+        SupplyOrderAuditService.record(server, order.id(), "CANCELLED_REFUND",
+                order.buyerUuid(), order.supplierUuid(), order.itemId(), order.remaining(), refund,
+                "cancel-refund:" + order.id());
         data.removeOrder(order.id());
         return true;
     }
