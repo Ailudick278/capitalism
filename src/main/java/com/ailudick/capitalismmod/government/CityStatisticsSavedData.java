@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.government;
 
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.population.CityHousingSavedData;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -21,7 +22,8 @@ public final class CityStatisticsSavedData extends SavedData {
     private final List<Snapshot> snapshots = new ArrayList<>();
 
     public record Snapshot(long day, String region, int residents, int housing, int school, int clinic,
-                           int serviceScore, long treasuryMinor, int activeProjects) {}
+                           int serviceScore, int unemploymentRate, long dailyRentPerResident,
+                           long treasuryMinor, int activeProjects) {}
 
     private CityStatisticsSavedData() {}
 
@@ -48,11 +50,17 @@ public final class CityStatisticsSavedData extends SavedData {
         for (String region : regions) {
             if (region == null || region.isBlank() || snapshots.stream().anyMatch(s -> s.day() == day && s.region().equals(region))) continue;
             int residents = population.population(region);
+            var households = population.households().stream().filter(h -> h.region().equals(region)).toList();
+            int workingAge = households.stream().mapToInt(h -> h.workingAge()).sum();
+            int unemployed = households.stream().mapToInt(h -> h.unemploymentDays() > 0 ? h.workingAge() : 0).sum();
+            int unemploymentRate = workingAge <= 0 ? 0 : Math.min(100, unemployed * 100 / workingAge);
             int activeProjects = (int) construction.projects().stream()
                     .filter(p -> p.region().equals(region) && p.completedUnits() < p.units()).count();
             snapshots.add(new Snapshot(day, region, residents, infrastructure.count(region, "housing"),
                     infrastructure.count(region, "school"), infrastructure.count(region, "clinic"),
                     infrastructure.publicServiceScore(server, region, residents),
+                    unemploymentRate,
+                    CityHousingSavedData.get(server).dailyRent(region, residents, infrastructure.count(region, "housing")),
                     GovernmentPolicySavedData.get(server).treasuryMinor(), activeProjects));
             recorded++;
         }
@@ -69,6 +77,7 @@ public final class CityStatisticsSavedData extends SavedData {
             CompoundTag e = new CompoundTag(); e.putLong("day", s.day()); e.putString("region", s.region());
             e.putInt("residents", s.residents()); e.putInt("housing", s.housing());
             e.putInt("school", s.school()); e.putInt("clinic", s.clinic()); e.putInt("score", s.serviceScore());
+            e.putInt("unemployment", s.unemploymentRate()); e.putLong("rent", s.dailyRentPerResident());
             e.putLong("treasury", s.treasuryMinor()); e.putInt("projects", s.activeProjects()); list.add(e);
         }
         tag.put("snapshots", list); return tag;
@@ -82,7 +91,9 @@ public final class CityStatisticsSavedData extends SavedData {
             if (!region.isBlank() && e.getLong("day") >= 0L) data.snapshots.add(new Snapshot(e.getLong("day"), region,
                     Math.max(0, e.getInt("residents")), Math.max(0, e.getInt("housing")),
                     Math.max(0, e.getInt("school")), Math.max(0, e.getInt("clinic")),
-                    Math.max(0, Math.min(100, e.getInt("score"))), Math.max(0L, e.getLong("treasury")),
+                    Math.max(0, Math.min(100, e.getInt("score"))),
+                    Math.max(0, Math.min(100, e.getInt("unemployment"))), Math.max(0L, e.getLong("rent")),
+                    Math.max(0L, e.getLong("treasury")),
                     Math.max(0, e.getInt("projects"))));
         }
         return data;

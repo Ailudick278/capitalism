@@ -113,8 +113,9 @@ public final class CityCommand {
         for (var entry : entries) {
             source.sendSuccess(() -> Component.literal("city history day=" + entry.day()
                     + " residents=" + entry.residents() + " serviceScore=" + entry.serviceScore()
-                    + " treasuryMinor=" + entry.treasuryMinor() + " activeProjects="
-                    + entry.activeProjects()), false);
+                    + " unemploymentRate=" + entry.unemploymentRate() + "% dailyRentPerResident="
+                    + entry.dailyRentPerResident() + " treasuryMinor=" + entry.treasuryMinor()
+                    + " activeProjects=" + entry.activeProjects()), false);
         }
         return entries.size();
     }
