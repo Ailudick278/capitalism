@@ -8,6 +8,7 @@
 - `/government policy benefit <dailyMinor>` 设置每日补助，`/government treasury deposit <amountMinor>` 注入储备，`/government info` 查看状态。
 - 补助按模拟日和家庭 ID 幂等发放，家庭现金增加后会进入下一轮消费和市场需求。
 - 政府支出不能超过储备，支出流水记录支付后余额，避免凭空创造货币。
+- 政府补助采用可恢复结算凭证：先记录政府支出，再将款项写入家庭；服务器在两步之间重启时，下一次日结会依据凭证补发，不会重复扣款或漏记财政支出。
 
 ## 存在的问题
 

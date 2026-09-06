@@ -94,6 +94,12 @@ public final class GovernmentPolicySavedData extends SavedData {
         setDirty(); return true;
     }
 
+    /** Returns whether a durable government spending receipt already exists. */
+    public boolean hasSpending(String transactionId) {
+        return transactionId != null && !transactionId.isBlank()
+                && transactions.stream().anyMatch(t -> transactionId.equals(t.id()));
+    }
+
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putLong("treasury", treasuryMinor); tag.putLong("benefit", dailyBenefitMinor);
         tag.putInt("policyRateBps", policyRateBasisPoints);

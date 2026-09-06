@@ -19,11 +19,16 @@ public final class GovernmentPolicyService {
                     || household.employmentDays() < 7 || household.satisfaction() >= 70) continue;
             long maximum = multiply(multiply(household.dailyNeedMinor(), household.size()), 60L) / 100L;
             long payment = Math.min(benefit, maximum);
-            if (payment <= 0L || policy.treasuryMinor() < payment) continue;
+            if (payment <= 0L) continue;
             if (population.find(household.id()) == null) continue;
             String source = "government-benefit:" + day + ":" + household.id();
-            if (population.addCashOnce(household.id(), payment, source)
-                    && policy.spend(household.id(), day, payment, source)) paid++;
+            // Persist the government-side receipt first. If the server stops
+            // before the household update, the next pass sees this receipt and
+            // completes the household credit without spending twice.
+            boolean alreadySpent = policy.hasSpending(source);
+            if (!alreadySpent && (policy.treasuryMinor() < payment
+                    || !policy.spend(household.id(), day, payment, source))) continue;
+            if (population.addCashOnce(household.id(), payment, source)) paid++;
         }
         return paid;
     }
