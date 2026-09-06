@@ -15,6 +15,8 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import net.minecraft.server.level.ServerPlayer;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
+import com.ailudick.capitalismmod.economy.contract.ContractStatus;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -201,6 +203,7 @@ public final class IndividualBusinessHelper {
         BusinessOrder order = new BusinessOrder(id, business.businessId(), player.getUUID(), itemId, quantity,
                 quantity, unitPrice, now, now + PerpetualCalendar.ticksForDays(days), "open");
         BusinessOrderSavedData.get(player.getServer()).put(order);
+        EconomicContractBridge.businessOrderCreated(player.getServer(), order);
         BusinessLedgerSavedData.get(player.getServer()).append(new BusinessLedgerEntry(
                 business.businessId(), now, "order_created", "", 0L, business.balance("usd"),
                 "发布销售订单 " + id + "：" + itemId + " x" + quantity));
@@ -219,6 +222,7 @@ public final class IndividualBusinessHelper {
         String goodsSource = order.businessId() + ":order:" + order.id() + ":goods";
         if (now > order.deadline() && !WarehouseSavedData.get(player.getServer()).hasConsumedSource(goodsSource)) {
             orderData.put(order.withStatus("expired"));
+            EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.EXPIRED, now);
             return false;
         }
         Item item = parseItem(order.itemId());
@@ -245,6 +249,7 @@ public final class IndividualBusinessHelper {
             IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
         }
         orderData.put(order.withDelivery(0, "completed"));
+        EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.COMPLETED, now);
         recordTaxableIncome(player, business, business.businessId() + ":order:" + order.id(), payment, now);
         TaxIncomeVoucherService.record(player.getServer(), business.ownerUuid(), business.businessId(),
                 "individual_business_income", Currencies.USD.id(), payment, now,
@@ -275,6 +280,8 @@ public final class IndividualBusinessHelper {
             return false;
         }
         BusinessOrderSavedData.get(player.getServer()).put(order.withStatus("cancelled"));
+        EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.CANCELLED,
+                player.level().getGameTime());
         BusinessLedgerSavedData.get(player.getServer()).append(new BusinessLedgerEntry(
                 business.businessId(), player.level().getGameTime(), "order_cancelled", "", 0L,
                 business.balance("usd"), "取消销售订单 " + order.id()));

@@ -5,6 +5,8 @@ import com.ailudick.capitalismmod.economy.expansion.EconomicActorRef;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
+import com.ailudick.capitalismmod.currency.Money;
+import com.ailudick.capitalismmod.business.BusinessOrder;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 
@@ -23,6 +25,30 @@ public final class EconomicContractBridge {
     public static void status(MinecraftServer server, String id, ContractStatus status, long at) {
         if (server == null || id == null || status == null) return;
         EconomicContractSavedData.get(server).transition(id, status, at);
+    }
+
+    public static void businessOrderCreated(MinecraftServer server, BusinessOrder order) {
+        if (server == null || order == null) return;
+        EconomicContractSavedData data = EconomicContractSavedData.get(server);
+        if (data.find(order.id()) != null) return;
+        long amount = EconomyMath.multiply(Money.toMinor(order.unitPrice()), order.quantity());
+        data.add(new EconomicContract(order.id(), ContractType.TRADE,
+                new EconomicActorRef("individual_business", order.businessId()),
+                new EconomicActorRef("npc_market", "system"), order.createdTick(), order.createdTick(), order.deadline(),
+                Math.max(0L, amount), Currencies.USD.id(), ContractStatus.OFFERED, 0L, order.quantity(), 0L));
+    }
+
+    public static void businessOrderEvent(MinecraftServer server, BusinessOrder order, ContractStatus status, long at) {
+        if (server == null || order == null) return;
+        EconomicContractSavedData data = EconomicContractSavedData.get(server);
+        EconomicContract current = data.find(order.id());
+        if (current == null) { businessOrderCreated(server, order); current = data.find(order.id()); }
+        if (current == null) return;
+        if (status == ContractStatus.COMPLETED) {
+            if (current.status() == ContractStatus.OFFERED) data.transition(order.id(), ContractStatus.ACTIVE, at);
+            data.fulfill(order.id(), order.quantity());
+        }
+        data.transition(order.id(), status, at);
     }
 
     public static void supplyCreated(MinecraftServer server, String id, UUID buyer, UUID supplier,
