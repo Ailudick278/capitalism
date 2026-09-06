@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.command;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.Money;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.loan.PeerLoan;
 import com.ailudick.capitalismmod.loan.PeerLoanPaymentAllocation;
 import com.ailudick.capitalismmod.loan.PeerLoanPaymentSavedData;
@@ -53,6 +54,10 @@ public class LoanCommand {
                                         LongArgumentType.getLong(ctx, "amount"))))));
 
         dispatcher.register(Commands.literal("loans").executes(ctx -> list(ctx.getSource().getPlayerOrException())));
+        dispatcher.register(Commands.literal("loanhistory")
+                .then(Commands.argument("loanId", StringArgumentType.word())
+                        .executes(ctx -> history(ctx.getSource().getPlayerOrException(),
+                                StringArgumentType.getString(ctx, "loanId")))));
     }
 
     private static int lend(ServerPlayer lender, ServerPlayer borrower, String currencyId, long amount, int days, double ratePercent) {
@@ -150,6 +155,42 @@ public class LoanCommand {
                                 + (isLender ? "→" : "←") + " $" + loan.principal() + " "
                                 + loan.currencyId() + " " + loan.daysRemaining() + "d"));
             }
+        }
+        return 1;
+    }
+
+    private static int history(ServerPlayer player, String loanId) {
+        PeerLoan loan = PeerLoanSavedData.get(player.getServer()).findLoan(loanId);
+        var records = PeerLoanPaymentSavedData.get(player.getServer()).forLoan(loanId);
+        boolean participant = loan != null && (loan.lender().equals(player.getUUID())
+                || loan.borrower().equals(player.getUUID()));
+        if (!participant) {
+            for (var record : records) {
+                if (record.lender().equals(player.getUUID()) || record.borrower().equals(player.getUUID())) {
+                    participant = true;
+                    break;
+                }
+            }
+        }
+        if (!participant) {
+            player.sendSystemMessage(Component.translatable("command.capitalismmod.loan_not_found"));
+            return 0;
+        }
+        player.sendSystemMessage(Component.literal("贷款还款记录 " + loanId.substring(0, Math.min(8, loanId.length()))));
+        if (records.isEmpty()) {
+            player.sendSystemMessage(Component.literal("暂无还款记录"));
+            return 1;
+        }
+        int start = Math.max(0, records.size() - 10);
+        for (int i = start; i < records.size(); i++) {
+            var record = records.get(i);
+            player.sendSystemMessage(Component.literal(
+                    PerpetualCalendar.formatMinecraftTicks(record.timestamp())
+                            + " total=" + record.total()
+                            + " interest=" + record.interest()
+                            + " principal=" + record.principal()
+                            + " remaining=" + record.remainingPrincipal()
+                            + (record.overdue() ? " overdue" : "")));
         }
         return 1;
     }
