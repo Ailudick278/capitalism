@@ -316,18 +316,8 @@ public final class CapitalismData {
     private static void upgradeLegacyDisplayRecipe(RecipeJson recipe) {
         if (recipe == null || !"display_panel".equals(recipe.id)
                 || recipe.inputs == null || recipe.outputs == null) return;
-        Map<String, Integer> legacyInputs = Map.of(
-                "minecraft:glass", 1,
-                "capitalismmod:silicon_wafer", 1,
-                "capitalismmod:copper_wire", 1,
-                "capitalismmod:plastic_pellets", 1);
-        if (legacyInputs.equals(recipe.inputs)
-                && Map.of("capitalismmod:display_panel", 1).equals(recipe.outputs)) {
-            recipe.inputs = new HashMap<>(Map.of(
-                    "capitalismmod:display_glass_substrate", 1,
-                    "capitalismmod:backlight_module", 1,
-                    "capitalismmod:display_driver", 1,
-                    "capitalismmod:plastic_pellets", 1));
+        if (DisplayRecipeMigration.isLegacyDefault(recipe.id, recipe.inputs, recipe.outputs)) {
+            recipe.inputs = new HashMap<>(DisplayRecipeMigration.upgradedInputs());
             recipe.income = 390;
             recipe.machine_type = "electronics_assembly";
             recipe.workers_per_cycle = 4;
