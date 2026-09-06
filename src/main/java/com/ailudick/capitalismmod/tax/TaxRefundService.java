@@ -4,7 +4,6 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
-import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import java.util.UUID;
@@ -42,28 +41,58 @@ public final class TaxRefundService {
         return request;
     }
     public static boolean approve(MinecraftServer server, String id, String reviewer) {
-        TaxRefundSavedData data = TaxRefundSavedData.get(server); TaxRefundSavedData.Request r = data.get(id);
-        if (r == null || !r.status().equals("PENDING")) return false;
+        TaxRefundSavedData data = TaxRefundSavedData.get(server);
+        TaxRefundSavedData.Request r = data.get(id);
+        if (r == null || (!r.status().equals("PENDING") && !r.status().equals("PROCESSING")
+                && !r.status().equals("CREDIT_CONSUMED"))) return false;
         if (!Currencies.exists(r.currencyId())) return failReview(data, r, server, "Refund currency is no longer valid.");
         TaxCreditSavedData credits = TaxCreditSavedData.get(server);
-        if (credits.totalFor(r.taxpayerUuid(), r.currencyId()) < r.amount()) {
-            return failReview(data, r, server, "Available tax credit is lower than the requested refund.");
-        }
-        var currentAllocations = credits.allocationsFor(r.taxpayerUuid(), r.currencyId(), r.amount());
-        long allocated = currentAllocations.stream().mapToLong(TaxRefundAllocation::refundAmount).sum();
-        if (allocated != r.amount() || currentAllocations.stream().anyMatch(allocation -> allocation.refundAmount() <= 0L
-                || allocation.originalCredit() < allocation.refundAmount() || allocation.sourceId().isBlank())) {
-            return failReview(data, r, server, "Refund source allocation failed final verification.");
-        }
+        var currentAllocations = r.allocationDetails();
+        String allocations = r.allocations();
         ServerPlayer player = server.getPlayerList().getPlayer(r.taxpayerUuid());
-        if (player == null && !Config.TAX_REFUND_ALLOW_OFFLINE.get()) {
+        if (r.status().equals("PENDING") && player == null && !Config.TAX_REFUND_ALLOW_OFFLINE.get()) {
             return failReview(data, r, server, "Offline refund delivery is disabled by server rules.");
         }
-        String allocations = credits.allocationSummaryFor(r.taxpayerUuid(), r.currencyId(), r.amount());
-        long used = credits.consumeFor(r.taxpayerUuid(), r.currencyId(), r.amount());
-        if (used != r.amount()) return failReview(data, r, server, "Refund credit changed during final verification.");
-        if (player != null) EconomyHelper.giveMoney(player, Currencies.byId(r.currencyId()), r.amount());
-        else MarketMailboxSavedData.get(server).creditMoney(r.taxpayerUuid(), r.currencyId(), r.amount());
+        if (r.status().equals("PENDING")) {
+            if (credits.totalFor(r.taxpayerUuid(), r.currencyId()) < r.amount()) {
+                return failReview(data, r, server, "Available tax credit is lower than the requested refund.");
+            }
+            currentAllocations = credits.allocationsFor(r.taxpayerUuid(), r.currencyId(), r.amount());
+            long allocated = currentAllocations.stream().mapToLong(TaxRefundAllocation::refundAmount).sum();
+            if (allocated != r.amount() || currentAllocations.stream().anyMatch(allocation -> allocation.refundAmount() <= 0L
+                    || allocation.originalCredit() < allocation.refundAmount() || allocation.sourceId().isBlank())) {
+                return failReview(data, r, server, "Refund source allocation failed final verification.");
+            }
+            allocations = credits.allocationSummaryFor(r.taxpayerUuid(), r.currencyId(), r.amount());
+            data.replace(new TaxRefundSavedData.Request(r.id(), r.taxpayerUuid(), r.currencyId(), r.amount(),
+                    r.requestedAt(), "PROCESSING", server.overworld().getGameTime(), "SYSTEM_PROCESSING", r.reason(),
+                    r.sourceSummary(), allocations, currentAllocations));
+            long used = credits.consumeFor(r.taxpayerUuid(), r.currencyId(), r.amount());
+            if (used != r.amount()) return failReview(data, r, server, "Refund credit changed during final verification.");
+            data.replace(new TaxRefundSavedData.Request(r.id(), r.taxpayerUuid(), r.currencyId(), r.amount(),
+                    r.requestedAt(), "CREDIT_CONSUMED", server.overworld().getGameTime(), "SYSTEM_SETTLEMENT", r.reason(),
+                    r.sourceSummary(), allocations, currentAllocations));
+            r = data.get(id);
+            if (r == null) return false;
+        } else if (r.status().equals("PROCESSING")) {
+            if (currentAllocations.isEmpty()) {
+                return failReview(data, r, server, "Refund recovery data is incomplete.");
+            }
+            if (credits.totalFor(r.taxpayerUuid(), r.currencyId()) >= r.amount()
+                    && credits.consumeFor(r.taxpayerUuid(), r.currencyId(), r.amount()) != r.amount()) {
+                return failReview(data, r, server, "Refund recovery credit settlement failed.");
+            }
+            data.replace(new TaxRefundSavedData.Request(r.id(), r.taxpayerUuid(), r.currencyId(), r.amount(),
+                    r.requestedAt(), "CREDIT_CONSUMED", server.overworld().getGameTime(), "SYSTEM_RECOVERY", r.reason(),
+                    r.sourceSummary(), allocations, currentAllocations));
+            r = data.get(id);
+            if (r == null) return false;
+        } else if (currentAllocations.isEmpty()) {
+            return failReview(data, r, server, "Refund recovery data is incomplete.");
+        }
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        mailbox.creditMoneyOnce(r.taxpayerUuid(), r.currencyId(), r.amount(), "tax-refund:" + r.id());
+        if (player != null) mailbox.redeem(player);
         data.replace(new TaxRefundSavedData.Request(r.id(), r.taxpayerUuid(), r.currencyId(), r.amount(), r.requestedAt(), "APPROVED", server.overworld().getGameTime(), reviewer, r.reason(), r.sourceSummary(), allocations, currentAllocations));
         TaxRefundAuditSavedData.get(server).log(new TaxRefundAuditSavedData.Event(r.id(), r.taxpayerUuid(), "APPROVE", reviewer, r.currencyId(), r.amount(), server.overworld().getGameTime(), "APPROVED", r.reason(), allocations));
         TaxRefundNotificationService.notify(server, r.id(), r.taxpayerUuid(), "Tax refund approved: " + r.currencyId().toUpperCase() + " " + com.ailudick.capitalismmod.currency.Money.format(r.amount()));

@@ -18,6 +18,8 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -30,6 +32,7 @@ public final class MarketMailboxSavedData extends SavedData {
 
     // player UUID -> currency id -> amount
     private final Map<UUID, Map<String, Long>> money = new HashMap<>();
+    private final Set<String> creditedSources = new HashSet<>();
     // player UUID -> item id -> count
     private final Map<UUID, Map<String, Integer>> items = new HashMap<>();
 
@@ -44,6 +47,17 @@ public final class MarketMailboxSavedData extends SavedData {
         }
         money.computeIfAbsent(playerId, k -> new HashMap<>()).merge(currencyId, amount, MarketMailboxSavedData::saturatingAdd);
         setDirty();
+    }
+
+    /** Credits a payout source at most once, allowing crash-safe retry by callers. */
+    public boolean creditMoneyOnce(UUID playerId, String currencyId, long amount, String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || amount <= 0L || playerId == null
+                || currencyId == null || currencyId.isBlank() || creditedSources.contains(sourceId)) return false;
+        creditMoney(playerId, currencyId, amount);
+        creditedSources.add(sourceId);
+        while (creditedSources.size() > 8192) creditedSources.remove(creditedSources.iterator().next());
+        setDirty();
+        return true;
     }
 
     public void creditItems(UUID playerId, Item item, int count) {
@@ -126,6 +140,14 @@ public final class MarketMailboxSavedData extends SavedData {
         }
         tag.put("money", moneyList);
 
+        ListTag sourceList = new ListTag();
+        for (String source : creditedSources) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("source", source);
+            sourceList.add(entry);
+        }
+        tag.put("creditedSources", sourceList);
+
         ListTag itemList = new ListTag();
         for (Map.Entry<UUID, Map<String, Integer>> entry : items.entrySet()) {
             CompoundTag nbt = new CompoundTag();
@@ -156,6 +178,13 @@ public final class MarketMailboxSavedData extends SavedData {
                 data.money.put(nbt.getUUID("uuid"), balances);
             }
         }
+
+        ListTag sourceList = tag.getList("creditedSources", Tag.TAG_COMPOUND);
+        for (int i = 0; i < sourceList.size(); i++) {
+            String source = sourceList.getCompound(i).getString("source");
+            if (!source.isBlank()) data.creditedSources.add(source);
+        }
+        while (data.creditedSources.size() > 8192) data.creditedSources.remove(data.creditedSources.iterator().next());
 
         ListTag itemList = tag.getList("items", Tag.TAG_COMPOUND);
         for (int i = 0; i < itemList.size(); i++) {
