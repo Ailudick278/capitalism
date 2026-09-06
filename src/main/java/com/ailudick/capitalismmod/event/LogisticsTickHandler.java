@@ -134,9 +134,16 @@ public final class LogisticsTickHandler {
                     financialJournal.markCompleted(claimSource, "logistics", "contract-close", payoutMinor, now);
                     data.remove(shipment.id());
                 } else if (shipment.disruptionCount() + 1 >= Config.LOGISTICS_MAX_DISRUPTIONS.get()) {
+                    String lossSource = "logistics-loss:" + shipment.id();
+                    FinancialSettlementJournalSavedData financialJournal =
+                            FinancialSettlementJournalSavedData.get(server);
+                    financialJournal.markStarted(lossSource, "logistics", "loss-record", shipment.quantity(), now);
                     LogisticsLossService.record(server, shipment);
+                    financialJournal.markCompleted(lossSource, "logistics", "loss-record", shipment.quantity(), now);
+                    financialJournal.markStarted(lossSource, "logistics", "contract-close", shipment.quantity(), now);
                     CompanyFreightContractSavedData.get(server).closeForLoss(shipment.id());
                     markFreightBreached(server, shipment.id(), now);
+                    financialJournal.markCompleted(lossSource, "logistics", "contract-close", shipment.quantity(), now);
                     data.remove(shipment.id());
                 } else {
                     data.replace(new LogisticsSavedData.Shipment(shipment.id(), shipment.buyer(), shipment.itemId(),
