@@ -35,6 +35,8 @@ import com.ailudick.capitalismmod.bank.BankCashDepositIntentSavedData;
 import com.ailudick.capitalismmod.bank.BankRepaymentIntentSavedData;
 import com.ailudick.capitalismmod.currency.CurrencyExchangeIntentSavedData;
 import com.ailudick.capitalismmod.economy.PlayerTransferIntentSavedData;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
+import com.ailudick.capitalismmod.bond.BondSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -80,6 +82,26 @@ public final class EconomyAuditService {
                 .forEach(intent -> issues.add("pending currency exchange " + intent.id()));
         PlayerTransferIntentSavedData.get(server).intents().stream().limit(100)
                 .forEach(intent -> issues.add("pending player transfer " + intent.id()));
+        GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);
+        if (government.treasuryMinor() < 0L) issues.add("government treasury is negative");
+        for (var transaction : government.transactions()) {
+            if (transaction.id().isBlank() || transaction.amount() <= 0L || transaction.balanceAfter() < 0L) {
+                issues.add("government spending transaction invalid " + transaction.id());
+            }
+        }
+        for (var revenue : government.taxRevenues()) {
+            if (revenue.id().isBlank() || revenue.originalAmount() <= 0L
+                    || revenue.convertedAmount() <= 0L || revenue.balanceAfter() < 0L) {
+                issues.add("government tax revenue invalid " + revenue.id());
+            }
+        }
+        for (var holding : BondSavedData.get(server).holdings()) {
+            if (holding.id().isBlank() || holding.holder() == null || holding.faceValue() <= 0L
+                    || holding.ratePerYear() < 0.0 || holding.totalDays() <= 0
+                    || holding.daysToMaturity() < 0 || holding.daysToMaturity() > holding.totalDays()) {
+                issues.add("bond holding invalid " + holding.id());
+            }
+        }
         CompanySavedData companies = CompanySavedData.get(server);
         CompanyLedgerSavedData ledgers = CompanyLedgerSavedData.get(server);
         for (Company company : companies.companies().values()) {
