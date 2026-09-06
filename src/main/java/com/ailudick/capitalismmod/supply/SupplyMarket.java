@@ -241,7 +241,8 @@ public final class SupplyMarket {
                         Currencies.USD.id(), refund, "supply_refund", "Expired undelivered supply order refund");
             }
             if (!refundedToCompany) {
-                MarketMailboxSavedData.get(server).creditMoney(order.buyerUuid(), Currencies.USD.id(), refundMinor);
+                MarketMailboxSavedData.get(server).creditMoneyOnce(order.buyerUuid(), Currencies.USD.id(),
+                        refundMinor, "supply-order-refund:" + order.id());
             }
             long creditToReverse = proportionalInputCredit(order);
             if (creditToReverse > 0L) {
@@ -283,7 +284,8 @@ public final class SupplyMarket {
                     Currencies.USD.id(), refund, "supply_cancel_refund", "Cancelled undelivered supply order refund");
         }
         if (!refundedToCompany) {
-            MarketMailboxSavedData.get(server).creditMoney(buyer.getUUID(), Currencies.USD.id(), refundMinor);
+            MarketMailboxSavedData.get(server).creditMoneyOnce(buyer.getUUID(), Currencies.USD.id(), refundMinor,
+                    "supply-order-refund:" + order.id());
         }
         long creditToReverse = proportionalInputCredit(order);
         if (creditToReverse > 0L) {
@@ -410,7 +412,8 @@ public final class SupplyMarket {
         if (supplier != null) {
             EconomyHelper.giveMoney(supplier, Currencies.USD, Money.toMinor(amount));
         } else {
-            MarketMailboxSavedData.get(server).creditMoney(supplierUuid, "usd", Money.toMinor(amount));
+            MarketMailboxSavedData.get(server).creditMoneyOnce(supplierUuid, "usd", Money.toMinor(amount),
+                    "supply-supplier-payment:" + sourceId);
         }
         settlements.recordSupplierPayment(sourceId);
     }
