@@ -27,8 +27,19 @@ public record LaborProfile(String actorId, Map<LaborSkill, Integer> skills,
     public LaborProfile withHealthAndEducation(int health, int education) {
         EnumMap<LaborSkill, Integer> next = new EnumMap<>(LaborSkill.class);
         next.putAll(skills);
-        int foundation = Math.min(100, Math.max(skill(LaborSkill.FOUNDATION), 45 + Math.max(0, education) / 2));
+        int boundedHealth = Math.max(0, Math.min(100, health));
+        int boundedEducation = Math.max(0, Math.min(100, education));
+        int foundation = Math.min(100, Math.max(skill(LaborSkill.FOUNDATION), 45 + boundedEducation / 2));
         next.put(LaborSkill.FOUNDATION, foundation);
-        return new LaborProfile(actorId, next, Math.max(0, Math.min(100, health)), reservationWageMinor);
+        return new LaborProfile(actorId, next, boundedHealth, reservationWageMinor);
+    }
+
+    /** Reservation wage adjusted at the hiring decision without mutating the stored baseline. */
+    public long effectiveReservationWageMinor() {
+        if (reservationWageMinor <= 0L) return 0L;
+        long education = Math.max(0L, Math.min(100L, (long) (skill(LaborSkill.FOUNDATION) - 45) * 2L));
+        long multiplier = 70L + participation * 20L / 100L + education * 30L / 100L;
+        return reservationWageMinor > Long.MAX_VALUE / multiplier
+                ? Long.MAX_VALUE : reservationWageMinor * multiplier / 100L;
     }
 }

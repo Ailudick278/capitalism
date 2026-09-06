@@ -62,7 +62,7 @@ public final class LaborMarketService {
         ensureProfile(worker);
         LaborProfile profile = data.profile(actor(worker));
         if (profile == null || profile.participation() <= 0 || profile.skill(offer.requiredSkill()) < offer.minimumSkill()
-                || offer.dailyWageMinor() < profile.reservationWageMinor() || data.activeForWorker(actor(worker)).size() > 0) return false;
+                || offer.dailyWageMinor() < profile.effectiveReservationWageMinor() || data.activeForWorker(actor(worker)).size() > 0) return false;
         if (!data.reserveVacancy(offerId)) return false;
         try {
             EmploymentRecord employment = new EmploymentRecord(UUID.randomUUID().toString(), actor(worker), offer.employerId(),
@@ -78,7 +78,7 @@ public final class LaborMarketService {
         LaborMarketSavedData data = LaborMarketSavedData.get(server); JobOffer offer = data.offer(offerId);
         LaborProfile profile = data.profile(npcId);
         if (offer == null || profile == null || profile.participation() <= 0 || profile.skill(offer.requiredSkill()) < offer.minimumSkill()
-                || offer.dailyWageMinor() < profile.reservationWageMinor() || !data.activeForWorker(npcId).isEmpty()) return false;
+                || offer.dailyWageMinor() < profile.effectiveReservationWageMinor() || !data.activeForWorker(npcId).isEmpty()) return false;
         if (!data.reserveVacancy(offerId)) return false;
         EmploymentRecord employment = new EmploymentRecord(java.util.UUID.randomUUID().toString(), npcId, offer.employerId(), offer.role(),
                 offer.dailyWageMinor(), server.overworld().getGameTime(), 0L, true);
