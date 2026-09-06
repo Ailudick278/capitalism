@@ -4,9 +4,15 @@ import com.ailudick.capitalismmod.economy.expansion.EconomicActorRef;
 import com.ailudick.capitalismmod.economy.expansion.EconomicEvent;
 import com.ailudick.capitalismmod.economy.expansion.ExpansionSystem;
 import com.ailudick.capitalismmod.economy.expansion.ExpansionSystemCatalog;
+import com.ailudick.capitalismmod.economy.contract.ContractStatus;
+import com.ailudick.capitalismmod.economy.contract.ContractType;
+import com.ailudick.capitalismmod.economy.contract.EconomicContract;
+import com.ailudick.capitalismmod.economy.labor.LaborProfile;
+import com.ailudick.capitalismmod.economy.labor.LaborSkill;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,5 +44,22 @@ class EconomicExpansionFrameworkTest {
         assertThrows(IllegalArgumentException.class, () -> new EconomicActorRef("", "id"));
         assertThrows(IllegalArgumentException.class, () -> new EconomicEvent("bad", ExpansionSystem.LABOR,
                 "job", 10L, 50L, 40L, null, null, 0L, "usd", "active"));
+    }
+
+    @Test
+    void modelsContractLifecycleAndPortableLaborSkills() {
+        EconomicActorRef company = EconomicActorRef.of("company", "factory-1");
+        EconomicActorRef worker = EconomicActorRef.of("household", "worker-1");
+        EconomicContract contract = new EconomicContract("contract-1", ContractType.EMPLOYMENT,
+                company, worker, 0L, 1L, 100L, 1_000L, "cny", ContractStatus.OFFERED, 0L, 0L)
+                .withStatus(ContractStatus.ACTIVE);
+        EconomicContract fulfilled = contract.fulfill(1L).complete();
+        assertEquals(ContractStatus.COMPLETED, fulfilled.status());
+        assertEquals(1L, fulfilled.fulfilledQuantity());
+
+        LaborProfile profile = new LaborProfile("worker-1",
+                Map.of(LaborSkill.FOUNDATION, 80, LaborSkill.TECHNICAL, 60), 75, 100L);
+        assertEquals(80, profile.skill(LaborSkill.FOUNDATION));
+        assertEquals(70, profile.averageSkill());
     }
 }
