@@ -37,6 +37,7 @@ import com.ailudick.capitalismmod.currency.CurrencyExchangeIntentSavedData;
 import com.ailudick.capitalismmod.economy.PlayerTransferIntentSavedData;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.bond.BondSavedData;
+import com.ailudick.capitalismmod.population.HouseholdConsumptionSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -116,6 +117,16 @@ public final class EconomyAuditService {
         }
         PopulationSavedData population = PopulationSavedData.get(server);
         for (Household household : population.households()) if (household.cashMinor() < 0L || household.size() < household.workingAge()) issues.add("household " + household.id() + " invalid cash or age structure");
+        for (var consumption : HouseholdConsumptionSavedData.get(server).records()) {
+            Household household = population.find(consumption.householdId());
+            long expected = safeMultiply(consumption.quantity(), consumption.unitPriceMinor());
+            if (household == null) issues.add("consumption has no household " + consumption.id());
+            if (consumption.id().isBlank() || consumption.itemId().isBlank() || consumption.quantity() <= 0L
+                    || consumption.unitPriceMinor() <= 0L || consumption.totalCostMinor() <= 0L
+                    || expected != consumption.totalCostMinor()) {
+                issues.add("household consumption invalid " + consumption.id());
+            }
+        }
         HousingLeaseSavedData housing = HousingLeaseSavedData.get(server);
         for (var lease : housing.leases()) {
             Household household = population.find(lease.householdId());
@@ -219,4 +230,5 @@ public final class EconomyAuditService {
         return true;
     }
     private static long safeAdd(long a, long b) { try { return Math.addExact(a, b); } catch (ArithmeticException e) { return Long.MIN_VALUE; } }
+    private static long safeMultiply(long a, long b) { try { return Math.multiplyExact(a, b); } catch (ArithmeticException e) { return Long.MIN_VALUE; } }
 }
