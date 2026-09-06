@@ -242,12 +242,19 @@ public final class BankAccountHelper {
             if (newBalance == Long.MAX_VALUE && accountBalance != Long.MAX_VALUE) {
                 return false;
             }
+            String depositSource = "bank-deposit:" + player.getUUID() + ":" + accountId + ":"
+                    + currency.id() + ":" + accountBalance + ":" + amount;
+            // The account update is persisted before the caller can retry after a
+            // network/UI timeout. Do not consume the same cash deposit twice.
+            if (account.hasTransactionReference(depositSource)) {
+                return true;
+            }
             if (!EconomyHelper.consumeItemsWithChange(player, currency, amount)) {
                 return false;
             }
             account = account.withBalance(currency.id(), newBalance)
                     .withTransaction(BankTransaction.now(player, "deposit", currency.id(), amount,
-                            "cash_deposit", "wallet"));
+                            depositSource, "wallet"));
         } else {
             // account -> physical items
             if (accountBalance < amount) {

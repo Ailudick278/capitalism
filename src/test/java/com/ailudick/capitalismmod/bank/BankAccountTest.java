@@ -45,4 +45,15 @@ class BankAccountTest {
         assertEquals("interest", transaction.type());
         assertEquals(3L, transaction.amount());
     }
+
+    @Test
+    void findsStableTransactionReferenceForRetryRecovery() {
+        BankTransaction transaction = BankTransaction.atTick(10L, "deposit", "usd", 25L,
+                "bank-deposit:player:account:usd:100:25", "wallet");
+        BankAccount account = new BankAccount("1", false, Map.of("usd", 125L), Map.of(),
+                List.of(transaction), List.of(), 0);
+
+        assertTrue(account.hasTransactionReference("bank-deposit:player:account:usd:100:25"));
+        assertTrue(!account.hasTransactionReference("bank-deposit:player:account:usd:100:26"));
+    }
 }

@@ -104,6 +104,12 @@ public record BankAccount(String id, boolean credit, Map<String, Long> balances,
                 depositInterestRemainders, loanInterestRemainders);
     }
 
+    /** Returns whether this account already contains a transaction with the given stable reference. */
+    public boolean hasTransactionReference(String reference) {
+        if (reference == null || reference.isBlank()) return false;
+        return transactions.stream().anyMatch(transaction -> reference.equals(transaction.reference()));
+    }
+
     private BankAccount copyWith(Map<String, Long> newBalances, Map<String, Long> newDebts,
                                  List<BankTransaction> newTransactions, List<TermDeposit> newTerms,
                                  int newLoanDays, Map<String, Long> newDepositRemainders,
