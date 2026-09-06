@@ -88,7 +88,8 @@ public final class EconomicContractSavedData extends SavedData {
             e.putLong("createdAt", contract.createdAt()); e.putLong("startsAt", contract.startsAt());
             e.putLong("endsAt", contract.endsAt()); e.putLong("amount", contract.agreedAmountMinor());
             e.putString("currency", contract.currencyId()); e.putString("status", contract.status().name());
-            e.putLong("fulfilled", contract.fulfilledQuantity()); e.putLong("breach", contract.breachAmountMinor());
+            e.putLong("fulfilled", contract.fulfilledQuantity()); e.putLong("agreedQuantity", contract.agreedQuantity());
+            e.putLong("breach", contract.breachAmountMinor());
             list.add(e);
         }
         tag.put("contracts", list); return tag;
@@ -118,7 +119,8 @@ public final class EconomicContractSavedData extends SavedData {
                 data.contracts.add(new EconomicContract(e.getString("id"), type, proposer, counterparty,
                         e.getLong("createdAt"), e.getLong("startsAt"), e.getLong("endsAt"),
                         Math.max(0L, e.getLong("amount")), e.getString("currency"), status,
-                        Math.max(0L, e.getLong("fulfilled")), Math.max(0L, e.getLong("breach"))));
+                        Math.max(0L, e.getLong("fulfilled")), Math.max(0L, e.getLong("agreedQuantity")),
+                        Math.max(0L, e.getLong("breach"))));
             } catch (IllegalArgumentException ignored) { }
         }
         data.trim(); return data;

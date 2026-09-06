@@ -36,7 +36,7 @@ public final class EconomicContractBridge {
         data.add(new EconomicContract(id, ContractType.SUPPLY,
                 new EconomicActorRef("player", buyer.toString()), new EconomicActorRef("player", supplier.toString()),
                 Math.max(0L, createdAt), Math.max(0L, createdAt), endsAt,
-                EconomyMath.multiply(amountMajor, 100L), Currencies.USD.id(), ContractStatus.OFFERED, 0L, 0L));
+                EconomyMath.multiply(amountMajor, 100L), Currencies.USD.id(), ContractStatus.OFFERED, 0L, quantity, 0L));
     }
 
     public static void supplyEvent(MinecraftServer server, String id, String eventType, int quantity, long at) {
@@ -48,10 +48,17 @@ public final class EconomicContractBridge {
             data.transition(id, ContractStatus.ACTIVE, at); current = data.find(id);
         }
         if (current == null) return;
-        if ("DELIVERED".equals(eventType) && current.status() == ContractStatus.ACTIVE) data.fulfill(id, quantity);
+        if ("DELIVERED".equals(eventType) && current.status() == ContractStatus.ACTIVE) {
+            data.fulfill(id, quantity);
+            EconomicContract progressed = data.find(id);
+            if (progressed != null && progressed.agreedQuantity() > 0L
+                    && progressed.fulfilledQuantity() >= progressed.agreedQuantity()) {
+                data.transition(id, ContractStatus.COMPLETED, at);
+            }
+        }
         ContractStatus next = switch (eventType) {
             case "BACKORDERED", "PARTIAL", "DISPATCHED" -> ContractStatus.ACTIVE;
-            case "FULFILLED" -> ContractStatus.COMPLETED;
+            case "FULFILLED" -> null;
             case "CANCELLED_REFUND" -> ContractStatus.CANCELLED;
             case "EXPIRED_REFUND", "EXPIRED_REFUND_COMPANY" -> ContractStatus.EXPIRED;
             case "LOST" -> ContractStatus.BREACHED;
