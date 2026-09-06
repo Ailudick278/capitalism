@@ -50,6 +50,11 @@ import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
 import com.ailudick.capitalismmod.market.LogisticsAuditRules;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
+import com.ailudick.capitalismmod.auction.AuctionAuditRules;
+import com.ailudick.capitalismmod.auction.AuctionSavedData;
+import com.ailudick.capitalismmod.auction.AuctionSettlementSavedData;
+import com.ailudick.capitalismmod.auction.AuctionListingIntentSavedData;
+import com.ailudick.capitalismmod.auction.AuctionBidSavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -262,6 +267,43 @@ public final class EconomyAuditService {
                     || !BankRecoveryRules.validRepayment(intent.id(), intent.player(), intent.accountId(),
                     intent.currencyId(), intent.debtBefore(), intent.amount(), Currencies.exists(intent.currencyId()))) {
                 issues.add("bank repayment intent invalid " + intent.id());
+            }
+        }
+        Set<String> auctionIds = new HashSet<>();
+        AuctionSavedData auctions = AuctionSavedData.get(server);
+        for (var auction : auctions.auctions()) {
+            if (!auctionIds.add(auction.id())
+                    || !AuctionAuditRules.validAuction(auction.id(), auction.seller(), auction.itemId(),
+                    auction.quantity(), auction.startingPrice(), auction.currentBid(),
+                    auction.currentBidder(), auction.endTick())
+                    || !validItemId(auction.itemId())) {
+                issues.add("auction invalid " + auction.id());
+            }
+            if (AuctionSettlementSavedData.get(server).has(auction.id())) {
+                issues.add("settled auction remains active " + auction.id());
+            }
+        }
+        for (String settledId : AuctionSettlementSavedData.get(server).settledIds()) {
+            if (settledId == null || settledId.isBlank()) issues.add("auction settlement id invalid");
+        }
+        Set<String> bidKeys = new HashSet<>();
+        for (var bid : AuctionBidSavedData.get(server).bids()) {
+            if (bid.auctionId().isBlank() || bid.bidder() == null || bid.amount() <= 0L
+                    || !bidKeys.add(bid.auctionId() + ":" + bid.bidder() + ":" + bid.amount())) {
+                issues.add("auction bid invalid " + bid.auctionId());
+            }
+            var auction = auctions.findAuction(bid.auctionId());
+            if (auction != null && (auction.seller().equals(bid.bidder()) || bid.amount() > auction.currentBid())) {
+                issues.add("auction bid exceeds current record " + bid.auctionId());
+            }
+        }
+        Set<String> listingIntentIds = new HashSet<>();
+        for (var intent : AuctionListingIntentSavedData.get(server).intents()) {
+            if (!listingIntentIds.add(intent.auctionId())
+                    || !AuctionAuditRules.validListingIntent(intent.auctionId(), intent.seller(), intent.itemId(),
+                    intent.quantity(), intent.startingPrice(), intent.endTick(), intent.warehouseBefore())
+                    || !validItemId(intent.itemId())) {
+                issues.add("auction listing intent invalid " + intent.auctionId());
             }
         }
         GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);

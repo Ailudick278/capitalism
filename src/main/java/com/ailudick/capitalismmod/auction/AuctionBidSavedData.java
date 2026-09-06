@@ -33,6 +33,10 @@ public final class AuctionBidSavedData extends SavedData {
                 && bid.bidder().equals(bidder) && bid.amount() == amount).findFirst().orElse(null);
     }
 
+    public List<Bid> bids() {
+        return List.copyOf(bids);
+    }
+
     public void record(Bid bid) {
         if (bid == null || bid.auctionId() == null || bid.auctionId().isBlank()
                 || bid.bidder() == null || bid.amount() <= 0L || find(bid.auctionId(), bid.bidder(), bid.amount()) != null) {

@@ -28,6 +28,10 @@ public final class AuctionSettlementSavedData extends SavedData {
         return auctionId != null && !auctionId.isBlank() && settled.contains(auctionId);
     }
 
+    public Set<String> settledIds() {
+        return Set.copyOf(settled);
+    }
+
     public void record(String auctionId) {
         if (auctionId == null || auctionId.isBlank() || !settled.add(auctionId)) return;
         while (settled.size() > MAX_RECORDS) settled.remove(settled.iterator().next());
