@@ -29,6 +29,7 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     private final Set<String> inboundSources = new HashSet<>();
     private final Set<String> inventorySaleSources = new HashSet<>();
     private final Set<String> inventoryLossSources = new HashSet<>();
+    private final Set<String> inventoryConsumptionSources = new HashSet<>();
 
     public record CostLayer(int quantity, long totalCost) {
         private static final Codec<CostLayer> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -43,7 +44,8 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     private record State(Map<String, Map<String, CostLayer>> layers,
                          Map<String, Map<String, List<FifoInventoryCost.Batch>>> batches,
                          Set<String> freightSources, Set<String> inboundSources,
-                         Set<String> inventorySaleSources, Set<String> inventoryLossSources) {
+                         Set<String> inventorySaleSources, Set<String> inventoryLossSources,
+                         Set<String> inventoryConsumptionSources) {
         private static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, CostLayer.CODEC))
                         .fieldOf("layers").forGetter(State::layers),
@@ -64,7 +66,11 @@ public final class CompanyInventoryCostSavedData extends SavedData {
                 Codec.STRING.listOf().xmap(values -> (Set<String>) new HashSet<String>(values),
                         values -> new ArrayList<>(values))
                         .optionalFieldOf("inventoryLossSources", Set.of())
-                        .forGetter(State::inventoryLossSources)
+                        .forGetter(State::inventoryLossSources),
+                Codec.STRING.listOf().xmap(values -> (Set<String>) new HashSet<String>(values),
+                        values -> new ArrayList<>(values))
+                        .optionalFieldOf("inventoryConsumptionSources", Set.of())
+                        .forGetter(State::inventoryConsumptionSources)
         ).apply(instance, State::new));
     }
 
@@ -167,6 +173,18 @@ public final class CompanyInventoryCostSavedData extends SavedData {
         return new Consumption(taken, cost);
     }
 
+    /** Consumes tracked inventory cost at most once for a durable external source. */
+    public Consumption consumeOnce(String companyId, String itemId, int requested, String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || inventoryConsumptionSources.contains(sourceId)) {
+            return new Consumption(0, 0L);
+        }
+        Consumption result = consume(companyId, itemId, requested);
+        inventoryConsumptionSources.add(sourceId);
+        trimSources(inventoryConsumptionSources);
+        setDirty();
+        return result;
+    }
+
     /** Moves all tracked cost layers during a company merger. */
     public void transferCompany(String sourceId, String targetId) {
         if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
@@ -237,7 +255,7 @@ public final class CompanyInventoryCostSavedData extends SavedData {
         Map<String, Map<String, List<FifoInventoryCost.Batch>>> savedBatches = new HashMap<>();
         batches.forEach((companyId, values) -> savedBatches.put(companyId, new HashMap<>(values)));
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers, savedBatches, freightSources, inboundSources,
-                inventorySaleSources, inventoryLossSources)).result()
+                inventorySaleSources, inventoryLossSources, inventoryConsumptionSources)).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
     }
@@ -258,6 +276,8 @@ public final class CompanyInventoryCostSavedData extends SavedData {
                 trimSources(data.inboundSources);
                 data.inventorySaleSources.addAll(state.inventorySaleSources());
                 data.inventoryLossSources.addAll(state.inventoryLossSources());
+                data.inventoryConsumptionSources.addAll(state.inventoryConsumptionSources());
+                trimSources(data.inventoryConsumptionSources);
             });
         }
         return data;

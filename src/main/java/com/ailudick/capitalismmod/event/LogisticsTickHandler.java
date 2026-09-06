@@ -104,8 +104,8 @@ public final class LogisticsTickHandler {
                             // This avoids recording a settled claim after a transient company-data failure.
                             continue;
                         }
-                        CompanyInventoryCostSavedData.get(server).consume(company.companyId(),
-                                shipment.itemId(), shipment.quantity());
+                        CompanyInventoryCostSavedData.get(server).consumeOnce(company.companyId(),
+                                shipment.itemId(), shipment.quantity(), "logistics-claim:" + shipment.id());
                     } else {
                         long payoutMinor = Money.toMinor(payout);
                         if (payout > 0L && payoutMinor <= 0L) {
