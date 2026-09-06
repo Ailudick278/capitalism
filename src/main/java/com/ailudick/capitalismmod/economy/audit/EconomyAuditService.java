@@ -16,6 +16,7 @@ import com.ailudick.capitalismmod.land.LandLeaseSettlementSavedData;
 import com.ailudick.capitalismmod.land.LandRentBillSavedData;
 import com.ailudick.capitalismmod.supply.SupplyEscrowSavedData;
 import com.ailudick.capitalismmod.business.BusinessOrderEscrowSavedData;
+import com.ailudick.capitalismmod.business.BusinessOrderSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -85,6 +86,7 @@ public final class EconomyAuditService {
                 issues.add("supply escrow balance mismatch " + escrow.orderId());
             }
         }
+        BusinessOrderSavedData businessOrders = BusinessOrderSavedData.get(server);
         for (var escrow : BusinessOrderEscrowSavedData.get(server).escrows()) {
             long distributed = safeAdd(escrow.heldMinor(), safeAdd(escrow.releasedMinor(), escrow.refundedMinor()));
             if (escrow.orderId().isBlank() || escrow.batchId().isBlank() || escrow.buyerId().isBlank()
@@ -92,6 +94,15 @@ public final class EconomyAuditService {
                     || escrow.releasedMinor() < 0L || escrow.refundedMinor() < 0L
                     || distributed != escrow.originalMinor()) {
                 issues.add("business order escrow balance mismatch " + escrow.orderId() + "/" + escrow.batchId());
+            }
+            var order = businessOrders.get(escrow.orderId());
+            if (order == null) {
+                issues.add("business order escrow has no order " + escrow.orderId());
+            } else if ("completed".equals(order.status()) && escrow.heldMinor() != 0L) {
+                issues.add("completed business order still has held escrow " + escrow.orderId() + "/" + escrow.batchId());
+            } else if (("cancelled".equals(order.status()) || "expired".equals(order.status()))
+                    && escrow.heldMinor() != 0L) {
+                issues.add("closed business order still has held escrow " + escrow.orderId() + "/" + escrow.batchId());
             }
         }
         LaborMarketSavedData labor = LaborMarketSavedData.get(server);
