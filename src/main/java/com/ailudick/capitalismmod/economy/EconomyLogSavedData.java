@@ -61,6 +61,15 @@ public final class EconomyLogSavedData extends SavedData {
                 && reference.equals(entry.reference()));
     }
 
+    /** Returns whether a reference belongs to the same payment contract. */
+    public boolean hasPayment(UUID playerId, String currencyId, long amount, String reference) {
+        return playerId != null && currencyId != null && reference != null && !reference.isBlank()
+                && amount > 0L
+                && entries.stream().anyMatch(entry -> playerId.equals(entry.playerId())
+                && currencyId.equals(entry.currencyId()) && amount == entry.amount()
+                && reference.equals(entry.reference()));
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag list = new ListTag();

@@ -55,12 +55,16 @@ public final class BankCapitalService {
         for (BankAccount account : BankAccountHelper.getAccounts(player).values()) {
             for (BankTransaction transaction : account.transactions()) {
                 long income = 0L;
+                long expense = 0L;
                 if ("interest".equals(transaction.type()) && transaction.amount() < 0L) {
                     income = BankCapitalEconomics.positiveMagnitude(transaction.amount());
+                } else if ("interest".equals(transaction.type()) && transaction.amount() > 0L) {
+                    expense = transaction.amount();
                 } else if ("transfer_fee".equals(transaction.type()) && transaction.amount() < 0L) {
                     income = BankCapitalEconomics.positiveMagnitude(transaction.amount());
                 }
-                if (income > 0L && capital.applyTransactionOnce(transactionSource(account, transaction), income, 0L)) {
+                if ((income > 0L || expense > 0L)
+                        && capital.applyTransactionOnce(transactionSource(account, transaction), income, expense)) {
                     reconciled++;
                 }
             }

@@ -125,11 +125,11 @@ public final class SupplyMarket {
         String orderSource = "supply_order:" + supplyOrderId;
         long inputCreditMinor = 0L;
         if (buyerCompany != null) {
-            if (!CompanyHelper.debitTreasuryNonOperating(buyer.getServer(), buyerCompany.companyId(), Currencies.USD.id(),
-                    total, "supply_purchase", "采购原料并取得存货")) {
+            if (!CompanyHelper.debitTreasuryNonOperatingOnce(buyer.getServer(), buyerCompany.companyId(),
+                    Currencies.USD.id(), total, "supply_purchase", "采购原料并取得存货", orderSource)) {
                 return false;
             }
-        } else if (!EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(total))) {
+        } else if (!EconomyHelper.tryPayWithReference(buyer, Currencies.USD, Money.toMinor(total), orderSource)) {
             return false;
         }
         SupplyEscrowSavedData.get(buyer.getServer()).createOnce(supplyOrderId, Money.toMinorSaturated(total));

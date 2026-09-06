@@ -78,6 +78,15 @@ public final class EconomyHelper {
         if (amount == 0) {
             return true;
         }
+        if (reference != null && !reference.isBlank() && player.getServer() != null) {
+            var log = EconomyLogSavedData.get(player.getServer());
+            if (log.hasPayment(player.getUUID(), currency.id(), amount, reference)) {
+                return true;
+            }
+            if (log.hasReference(player.getUUID(), reference)) {
+                return false;
+            }
+        }
         long items = countItems(player, currency);
         // Accept a larger physical denomination only when it can be consumed
         // and the excess returned as change. This prevents a successful
