@@ -1,3 +1,9 @@
+﻿# Capitalism Mod - ui-network progress log
+
+Consolidated on: 2026-09-06
+
+## Current system log
+
 # 界面、网络与基础设施开发进度
 
 最后更新：2026-09-05
@@ -31,3 +37,5 @@
 - Windows 中文路径下，Java `@argfile` 仍可能导致 Gradle worker 类路径失效；使用临时 ASCII 驱动器映射运行测试可以规避该 JDK/路径兼容问题。
 - 2026-09-05：清理 Gradle 构建产物后，完整源码和测试代码编译成功；直接使用中文路径执行测试时仍会触发 `GradleWorkerMain` 类加载错误。Gradle 官方文档确认测试默认使用独立 JVM，当前已用 ASCII 驱动器映射验证通过。
 - 2026-09-05：补充 JUnit Platform Launcher，并通过 ASCII 驱动器映射完成全部 8 项单元测试。
+
+## Consolidated historical entries
