@@ -44,6 +44,9 @@ public final class BankAccountHelper {
 
     public static void setAccounts(Player player, Map<String, BankAccount> accounts) {
         player.setData(ModAttachments.BANK_ACCOUNTS, accounts);
+        if (player instanceof ServerPlayer serverPlayer) {
+            BankExposureSavedData.get(serverPlayer.getServer()).sync(serverPlayer);
+        }
     }
 
     public static BankAccount openAccount(Player player, boolean credit) {

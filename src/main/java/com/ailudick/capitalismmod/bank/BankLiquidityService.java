@@ -6,7 +6,6 @@ import com.ailudick.capitalismmod.currency.ExchangeRates;
 import com.ailudick.capitalismmod.risk.FinancialCrisisSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
 
 /** Aggregates online bank exposure and limits crisis-period withdrawals to 10% of deposits per day. */
 public final class BankLiquidityService {
@@ -16,10 +15,12 @@ public final class BankLiquidityService {
         BankLiquiditySavedData data = BankLiquiditySavedData.get(server);
         BankLiquiditySnapshot latest = data.latest();
         if (latest != null && latest.day() >= day) return latest;
+        BankExposureSavedData exposure = BankExposureSavedData.get(server);
+        for (var player : server.getPlayerList().getPlayers()) exposure.sync(player);
         long deposits = 0L, loans = 0L;
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) for (BankAccount account : BankAccountHelper.getAccounts(player).values()) {
-            for (var entry : account.balances().entrySet()) deposits = add(deposits, toBase(entry.getValue(), entry.getKey()));
-            for (var entry : account.debts().entrySet()) loans = add(loans, toBase(entry.getValue(), entry.getKey()));
+        for (BankExposureSavedData.Exposure value : exposure.exposures().values()) {
+            deposits = add(deposits, value.depositsMinor());
+            loans = add(loans, value.loanDebtMinor());
         }
         boolean limited = FinancialCrisisSavedData.get(server).active();
         BankLiquiditySnapshot snapshot = new BankLiquiditySnapshot(day, deposits, loans, data.withdrawnToday(day), limited);

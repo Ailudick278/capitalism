@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.risk;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.bank.BankAccount;
 import com.ailudick.capitalismmod.bank.BankAccountHelper;
+import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.bond.BondHolding;
 import com.ailudick.capitalismmod.bond.BondSavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
@@ -35,11 +36,12 @@ public final class FinancialRiskService {
             peer = add(peer, liability);
             if (loan.isOverdue()) { overdue = add(overdue, liability); overdueCount++; }
         }
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) for (BankAccount account : BankAccountHelper.getAccounts(player).values()) {
-            long accountDebt = 0L;
-            for (var entry : account.debts().entrySet()) accountDebt = add(accountDebt, toBaseMinor(entry.getValue(), entry.getKey()));
-            bank = add(bank, accountDebt);
-            if (account.loanDaysRemaining() < 0 && accountDebt > 0L) { overdue = add(overdue, accountDebt); overdueCount++; }
+        BankExposureSavedData exposure = BankExposureSavedData.get(server);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) exposure.sync(player);
+        for (BankExposureSavedData.Exposure value : exposure.exposures().values()) {
+            bank = add(bank, value.loanDebtMinor());
+            overdue = add(overdue, value.overdueDebtMinor());
+            overdueCount += value.overdueAccounts();
         }
         for (BondHolding holding : BondSavedData.get(server).holdings()) {
             long coupon = (long) Math.max(0.0, holding.faceValue() * holding.ratePerYear()
