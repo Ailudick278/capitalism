@@ -10,6 +10,11 @@ import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
+import com.ailudick.capitalismmod.economy.contract.ContractStatus;
+import com.ailudick.capitalismmod.economy.contract.ContractType;
+import com.ailudick.capitalismmod.economy.expansion.EconomicActorRef;
+import com.ailudick.capitalismmod.economy.contract.EconomicContract;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -80,10 +85,27 @@ public final class PublicConstructionSavedData extends SavedData {
                             && CompanyLifecycleService.canOperate(server, company.companyId());
                 }).min(Comparator.comparingLong(Bid::unitPriceMinor).thenComparing(Bid::submittedDay)).orElse(null);
         if (winner == null) return;
+        if (!createContract(server, project, winner.companyId(), winner.unitPriceMinor())) return;
         int index = projects.indexOf(project);
         projects.set(index, new Project(project.id(), project.region(), project.facility(), project.units(),
                 project.completedUnits(), winner.companyId(), winner.unitPriceMinor(), project.startDay(), project.lastProgressDay()));
         setDirty();
+    }
+
+    private boolean createContract(MinecraftServer server, Project project, String companyId, long unitPrice) {
+        String contractId = "public-construction:" + project.id();
+        EconomicContractSavedData contracts = EconomicContractSavedData.get(server);
+        if (contracts.find(contractId) != null) return true;
+        long total;
+        try { total = Math.multiplyExact(unitPrice, project.units()); }
+        catch (ArithmeticException e) { return false; }
+        long endsAt;
+        try { endsAt = Math.addExact(server.overworld().getGameTime(), Math.multiplyExact(Math.max(1, project.units()), 24000L)); }
+        catch (ArithmeticException e) { endsAt = Long.MAX_VALUE; }
+        return contracts.add(new EconomicContract(contractId, ContractType.PUBLIC_CONSTRUCTION,
+                EconomicActorRef.of("government", "treasury"), EconomicActorRef.of("company", companyId),
+                server.overworld().getGameTime(), server.overworld().getGameTime(), endsAt, total,
+                Currencies.USD.id(), ContractStatus.ACTIVE, 0L, project.units(), 0L));
     }
 
     /** Advances each active project by at most one funded unit for the settlement day. */
@@ -96,6 +118,14 @@ public final class PublicConstructionSavedData extends SavedData {
             if (project.completedUnits() >= project.units() || project.lastProgressDay() >= day) continue;
             awardLowestBid(server, project);
             project = projects.get(i);
+            if (!project.contractorCompanyId().isBlank()
+                    && !createContract(server, project, project.contractorCompanyId(),
+                    project.contractPriceMinor() > 0L ? project.contractPriceMinor()
+                            : PublicConstructionEconomics.unitCost(project.facility()))) continue;
+            if (!project.contractorCompanyId().isBlank()) {
+                var contract = EconomicContractSavedData.get(server).find("public-construction:" + project.id());
+                if (contract == null || contract.status() != ContractStatus.ACTIVE) continue;
+            }
             if (infrastructure.count(project.region(), project.facility()) >= 1_000_000) continue;
             long cost = project.contractPriceMinor() > 0L ? project.contractPriceMinor()
                     : PublicConstructionEconomics.unitCost(project.facility());
@@ -127,6 +157,14 @@ public final class PublicConstructionSavedData extends SavedData {
             projects.set(i, new Project(project.id(), project.region(), project.facility(), project.units(),
                     project.completedUnits() + 1, project.contractorCompanyId(), project.contractPriceMinor(),
                     project.startDay(), day));
+            String contractId = "public-construction:" + project.id();
+            if (!project.contractorCompanyId().isBlank()) {
+                EconomicContractSavedData contracts = EconomicContractSavedData.get(server);
+                contracts.fulfill(contractId, 1L);
+                if (project.completedUnits() + 1 >= project.units()) {
+                    contracts.transition(contractId, ContractStatus.COMPLETED, server.overworld().getGameTime());
+                }
+            }
             delivered++;
         }
         if (delivered > 0) setDirty();
