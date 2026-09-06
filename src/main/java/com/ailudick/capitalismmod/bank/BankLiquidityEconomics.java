@@ -27,7 +27,9 @@ public final class BankLiquidityEconomics {
     public static boolean solvencyStress(long depositsMinor, long loansMinor) {
         if (loansMinor <= 0L) return false;
         if (depositsMinor <= 0L) return true;
-        return loansMinor > depositsMinor + depositsMinor / 5L;
+        long threshold = depositsMinor / 5L > Long.MAX_VALUE - depositsMinor
+                ? Long.MAX_VALUE : depositsMinor + depositsMinor / 5L;
+        return loansMinor > threshold;
     }
 
     /** Returns whether same-day withdrawals are large enough to indicate a run. */

@@ -16,6 +16,7 @@ class BankLiquidityEconomicsTest {
         assertEquals(false, BankLiquidityEconomics.solvencyStress(100_000L, 120_000L));
         assertEquals(true, BankLiquidityEconomics.solvencyStress(100_000L, 120_001L));
         assertEquals(true, BankLiquidityEconomics.solvencyStress(0L, 1L));
+        assertEquals(false, BankLiquidityEconomics.solvencyStress(Long.MAX_VALUE, Long.MAX_VALUE));
         assertEquals(false, BankLiquidityEconomics.withdrawalRunStress(100_000L, 50_000L));
         assertEquals(true, BankLiquidityEconomics.withdrawalRunStress(100_000L, 50_001L));
     }
