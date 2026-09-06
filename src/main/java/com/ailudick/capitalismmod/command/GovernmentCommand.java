@@ -28,7 +28,9 @@ public final class GovernmentCommand {
     private static int info(CommandSourceStack source) {
         GovernmentPolicySavedData data = GovernmentPolicySavedData.get(source.getServer());
         source.sendSuccess(() -> Component.literal("government treasuryMinor=" + data.treasuryMinor()
-                + " dailyBenefitMinor=" + data.dailyBenefitMinor() + " transactions=" + data.transactions().size()), false);
+                + " dailyBenefitMinor=" + data.dailyBenefitMinor()
+                + " transfers=" + data.transactions().size()
+                + " taxRevenues=" + data.taxRevenues().size()), false);
         return 1;
     }
 

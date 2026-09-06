@@ -17,8 +17,12 @@ public final class GovernmentPolicySavedData extends SavedData {
     private long treasuryMinor;
     private long dailyBenefitMinor;
     private final List<Transaction> transactions = new ArrayList<>();
+    private final List<TaxRevenue> taxRevenues = new ArrayList<>();
 
     public record Transaction(String id, long day, String householdId, long amount, long balanceAfter) {}
+    public record TaxRevenue(String id, long day, String subject, String taxType,
+                             String currencyId, long originalAmount, long convertedAmount,
+                             long balanceAfter) {}
 
     private GovernmentPolicySavedData() {}
 
@@ -30,6 +34,7 @@ public final class GovernmentPolicySavedData extends SavedData {
     public long treasuryMinor() { return treasuryMinor; }
     public long dailyBenefitMinor() { return dailyBenefitMinor; }
     public List<Transaction> transactions() { return List.copyOf(transactions); }
+    public List<TaxRevenue> taxRevenues() { return List.copyOf(taxRevenues); }
 
     public boolean setDailyBenefit(long amount) {
         if (amount < 0L || amount > 1_000_000_000L) return false;
@@ -39,6 +44,22 @@ public final class GovernmentPolicySavedData extends SavedData {
     public boolean deposit(long amount) {
         if (amount <= 0L || treasuryMinor > Long.MAX_VALUE - amount) return false;
         treasuryMinor += amount; setDirty(); return true;
+    }
+
+    /** Collects a tax bill in the government's base currency, once per bill. */
+    public boolean collectTax(String billId, long day, String subject, String taxType,
+                              String currencyId, long originalAmount, long convertedAmount) {
+        if (billId == null || billId.isBlank() || subject == null || subject.isBlank()
+                || taxType == null || taxType.isBlank() || currencyId == null || currencyId.isBlank()
+                || originalAmount <= 0L || convertedAmount <= 0L
+                || treasuryMinor > Long.MAX_VALUE - convertedAmount
+                || taxRevenues.stream().anyMatch(t -> billId.equals(t.id()))) return false;
+        treasuryMinor += convertedAmount;
+        taxRevenues.add(new TaxRevenue(billId, day, subject, taxType, currencyId,
+                originalAmount, convertedAmount, treasuryMinor));
+        while (taxRevenues.size() > MAX_TRANSACTIONS) taxRevenues.remove(0);
+        setDirty();
+        return true;
     }
 
     public boolean spend(String householdId, long day, long amount, String transactionId) {
@@ -59,7 +80,16 @@ public final class GovernmentPolicySavedData extends SavedData {
             e.putString("household", t.householdId()); e.putLong("amount", t.amount());
             e.putLong("balance", t.balanceAfter()); list.add(e);
         }
-        tag.put("transactions", list); return tag;
+        tag.put("transactions", list);
+        ListTag revenues = new ListTag();
+        for (TaxRevenue revenue : taxRevenues) {
+            CompoundTag e = new CompoundTag(); e.putString("id", revenue.id()); e.putLong("day", revenue.day());
+            e.putString("subject", revenue.subject()); e.putString("taxType", revenue.taxType());
+            e.putString("currency", revenue.currencyId()); e.putLong("original", revenue.originalAmount());
+            e.putLong("converted", revenue.convertedAmount()); e.putLong("balance", revenue.balanceAfter());
+            revenues.add(e);
+        }
+        tag.put("taxRevenues", revenues); return tag;
     }
 
     public static GovernmentPolicySavedData load(CompoundTag tag, HolderLookup.Provider registries) {
@@ -72,6 +102,17 @@ public final class GovernmentPolicySavedData extends SavedData {
             if (!e.getString("id").isBlank() && !e.getString("household").isBlank() && e.getLong("amount") > 0L) {
                 data.transactions.add(new Transaction(e.getString("id"), e.getLong("day"),
                         e.getString("household"), e.getLong("amount"), Math.max(0L, e.getLong("balance"))));
+            }
+        }
+        ListTag revenues = tag.getList("taxRevenues", Tag.TAG_COMPOUND);
+        for (int i = Math.max(0, revenues.size() - MAX_TRANSACTIONS); i < revenues.size(); i++) {
+            CompoundTag e = revenues.getCompound(i);
+            if (!e.getString("id").isBlank() && !e.getString("subject").isBlank()
+                    && !e.getString("taxType").isBlank() && !e.getString("currency").isBlank()
+                    && e.getLong("original") > 0L && e.getLong("converted") > 0L) {
+                data.taxRevenues.add(new TaxRevenue(e.getString("id"), e.getLong("day"),
+                        e.getString("subject"), e.getString("taxType"), e.getString("currency"),
+                        e.getLong("original"), e.getLong("converted"), Math.max(0L, e.getLong("balance"))));
             }
         }
         return data;
