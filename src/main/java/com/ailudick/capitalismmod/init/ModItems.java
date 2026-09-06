@@ -260,6 +260,14 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> ABS_RESIN = ITEMS.register("abs_resin",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> P_XYLENE = ITEMS.register("p_xylene",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> TEREPHTHALIC_ACID = ITEMS.register("terephthalic_acid",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PET_RESIN = ITEMS.register("pet_resin",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PET_BOTTLE = ITEMS.register("pet_bottle",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FAN_BLADES = ITEMS.register("fan_blades",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FAN_CONTROL = ITEMS.register("fan_control",

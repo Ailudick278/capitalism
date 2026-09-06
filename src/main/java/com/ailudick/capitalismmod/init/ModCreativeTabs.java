@@ -118,6 +118,10 @@ public class ModCreativeTabs {
                         output.accept(ModItems.BENZENE.get());
                         output.accept(ModItems.STYRENE_MONOMER.get());
                         output.accept(ModItems.ABS_RESIN.get());
+                        output.accept(ModItems.P_XYLENE.get());
+                        output.accept(ModItems.TEREPHTHALIC_ACID.get());
+                        output.accept(ModItems.PET_RESIN.get());
+                        output.accept(ModItems.PET_BOTTLE.get());
                         output.accept(ModItems.FAN_BLADES.get());
                         output.accept(ModItems.FAN_CONTROL.get());
                         output.accept(ModItems.POLYSILICON.get());
