@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.business;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
+import com.ailudick.capitalismmod.currency.ExchangeRates;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.tax.TaxService;
@@ -17,6 +18,9 @@ import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
+import com.ailudick.capitalismmod.population.Household;
+import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.market.TradeRegion;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -227,12 +231,24 @@ public final class IndividualBusinessHelper {
         }
         Item item = parseItem(order.itemId());
         WarehouseSavedData warehouse = WarehouseSavedData.get(player.getServer());
-        if (item == null || warehouse.count(player.getUUID(), order.itemId()) < order.remaining()) {
+        boolean goodsConsumed = warehouse.hasConsumedSource(goodsSource);
+        if (item == null || (!goodsConsumed && warehouse.count(player.getUUID(), order.itemId()) < order.remaining())) {
             return false;
         }
-        if (!warehouse.consumeOnce(InventoryOwner.player(player.getUUID()), item, order.remaining(), goodsSource)) return false;
         long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
         String source = business.businessId() + ":order:" + order.id();
+        String buyerSource = source + ":buyer";
+        PopulationSavedData population = PopulationSavedData.get(player.getServer());
+        String buyerId = population.chargedHousehold(buyerSource);
+        if (buyerId == null) {
+            String region = TradeRegion.of(player.blockPosition());
+            long paymentMinor = ExchangeRates.convert(Money.toMinorSaturated(payment), Currencies.USD, Config.defaultCurrency());
+            buyerId = population.households().stream()
+                    .filter(h -> h.id().startsWith("npc-") && region.equals(h.region()) && h.cashMinor() >= paymentMinor)
+                    .map(Household::id).findFirst().orElse(null);
+            if (buyerId == null || !population.chargeCashOnce(buyerId, paymentMinor, buyerSource)) return false;
+        }
+        if (!goodsConsumed && !warehouse.consumeOnce(InventoryOwner.player(player.getUUID()), item, order.remaining(), goodsSource)) return false;
         BusinessLedgerSavedData ledger = BusinessLedgerSavedData.get(player.getServer());
         BusinessLedgerEntry settlement = ledger.findSource(business.businessId(), source);
         if (settlement == null) {
