@@ -6,6 +6,12 @@ import com.ailudick.capitalismmod.economy.labor.LaborMarketService;
 import com.ailudick.capitalismmod.economy.labor.JobOffer;
 import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
+import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.market.InventoryOwner;
+import com.ailudick.capitalismmod.company.Company;
+import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 
@@ -70,17 +76,47 @@ public final class PopulationService {
             long budget = Math.min(remaining, need * shares[i] / 100L);
             long quantity = Math.min((long) household.size() * 4L, budget / unitPrice);
             if (quantity <= 0L) continue;
-            long cost = quantity > Long.MAX_VALUE / unitPrice ? Long.MAX_VALUE : quantity * unitPrice;
             String source = "household-consumption:" + household.id() + ":" + day + ":" + categories[i][0];
-            HouseholdConsumptionSavedData.get(server).record(new HouseholdConsumptionSavedData.Consumption(source, household.id(), day, categories[i][0], itemId, quantity, unitPrice, cost));
-            CommoditySavedData.get(server).addNetVolumeOnce(itemId, -quantity, source);
-            remaining -= cost; spent = add(spent, cost);
+            long cost = quantity > Long.MAX_VALUE / unitPrice ? Long.MAX_VALUE : quantity * unitPrice;
+            HouseholdConsumptionSavedData consumption = HouseholdConsumptionSavedData.get(server);
+            HouseholdConsumptionSavedData.Consumption previous = consumption.records().stream().filter(r -> r.id().equals(source)).findFirst().orElse(null);
+            if (previous != null) { remaining -= previous.totalCostMinor(); spent = add(spent, previous.totalCostMinor()); continue; }
+            Company seller = findSeller(server, itemId, (int) Math.min(Integer.MAX_VALUE, quantity));
+            if (seller == null) continue;
+            WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+            int purchasable = (int) Math.min((long) Integer.MAX_VALUE, Math.min(quantity, warehouse.count(InventoryOwner.company(seller.companyId()), itemId)));
+            if (purchasable <= 0) continue;
+            long actualCost = purchasable > Long.MAX_VALUE / unitPrice
+                    ? Long.MAX_VALUE : purchasable * unitPrice;
+            boolean alreadyCredited = hasCompanySource(server, seller.companyId(), source);
+            if (!alreadyCredited && !warehouse.consume(InventoryOwner.company(seller.companyId()), item.getItem(), purchasable)) continue;
+            long revenueMajor = actualCost / 100L;
+            if (!alreadyCredited && (revenueMajor <= 0L || !CompanyHelper.creditTreasuryNonOperatingOnce(server, seller.companyId(), "usd", revenueMajor,
+                    "household_sales", "Virtual household sale", source))) {
+                warehouse.credit(InventoryOwner.company(seller.companyId()), item.getItem(), purchasable);
+                continue;
+            }
+            consumption.record(new HouseholdConsumptionSavedData.Consumption(source, household.id(), day, categories[i][0], itemId, purchasable, unitPrice, actualCost));
+            CommoditySavedData.get(server).addNetVolumeOnce(itemId, -purchasable, source);
+            remaining -= actualCost; spent = add(spent, actualCost);
         }
         return new ConsumptionResult(remaining, spent);
     }
     private static ItemStack findCommodity(String[] names) {
         for (ItemStack stack : Commodities.ALL) { String id = Commodities.id(stack).toLowerCase(java.util.Locale.ROOT); for (int i=1;i<names.length;i++) if (id.contains(names[i])) return stack; }
         return null;
+    }
+    private static Company findSeller(MinecraftServer server, String itemId, int quantity) {
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        for (Company company : CompanySavedData.get(server).companies().values()) {
+            if (company == null || company.treasuryOf("usd") < 0L) continue;
+            if (warehouse.count(InventoryOwner.company(company.companyId()), itemId) >= quantity) return company;
+        }
+        return null;
+    }
+    private static boolean hasCompanySource(MinecraftServer server, String companyId, String source) {
+        return CompanyLedgerSavedData.get(server).entries(companyId).stream()
+                .anyMatch(entry -> entry.description() != null && entry.description().contains("[source=" + source + "]"));
     }
     private record ConsumptionResult(long remainingCash, long spent) {}
     private static long add(long a,long b){try{return Math.addExact(a,b);}catch(ArithmeticException e){return Long.MAX_VALUE;}}

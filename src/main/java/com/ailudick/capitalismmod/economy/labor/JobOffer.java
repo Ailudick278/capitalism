@@ -14,8 +14,11 @@ public record JobOffer(String id, String employerId, String role, int vacancies,
         id = Objects.requireNonNullElse(id, "").trim(); employerId = Objects.requireNonNullElse(employerId, "").trim();
         role = Objects.requireNonNullElse(role, "").trim(); requiredSkill = requiredSkill == null ? LaborSkill.FOUNDATION : requiredSkill;
         region = Objects.requireNonNullElse(region, "spawn").trim();
+        // Older world saves did not persist a region field; treat a missing or
+        // blank value as the legacy default instead of failing world loading.
+        if (region.isEmpty()) region = "spawn";
         if (id.isEmpty() || employerId.isEmpty() || role.isEmpty() || vacancies <= 0 || dailyWageMinor < 0L
-                || minimumSkill < 0 || minimumSkill > 100 || postedAt < 0L || closesAt < postedAt || region.isEmpty()) {
+                || minimumSkill < 0 || minimumSkill > 100 || postedAt < 0L || closesAt < postedAt) {
             throw new IllegalArgumentException("Invalid job offer");
         }
     }
