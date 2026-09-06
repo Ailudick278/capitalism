@@ -110,7 +110,7 @@ public final class LandRentTickHandler {
                 }
                 LandClaim claim = data.get(auction.claimId());
                 if (claim == null) {
-                    refundAuctionBid(server, auction, auctionJournal, "expired-missing-claim");
+                    if (!refundAuctionBid(server, auction, auctionJournal, "expired-missing-claim")) continue;
                     auctionJournal.record(settlementKey);
                     auctions.remove(auction.claimId());
                     continue;
@@ -148,8 +148,8 @@ public final class LandRentTickHandler {
                 }
                 String payoutKey = auction.claimId() + ":" + auction.endsAt() + ":owner-payout";
                 if (ownerPayout > 0L && !auctionJournal.has(payoutKey)) {
-                    payOwner(server, server.getPlayerList().getPlayer(auction.ownerUuid()), auction.ownerUuid(), ownerPayout,
-                            "land-auction-owner-payout:" + payoutKey);
+                    if (!payOwner(server, server.getPlayerList().getPlayer(auction.ownerUuid()), auction.ownerUuid(), ownerPayout,
+                            "land-auction-owner-payout:" + payoutKey)) continue;
                     auctionJournal.record(payoutKey);
                 }
                 TaxTransactionService.assess(server, TaxType.LAND_TRANSFER, auction.ownerUuid(), Currencies.CNY.id(),
@@ -235,7 +235,7 @@ public final class LandRentTickHandler {
             boolean paid = EconomyLogSavedData.get(server).hasReference(tenant.getUUID(), paymentReference)
                     || EconomyHelper.tryPayWithReference(tenant, Config.defaultCurrency(), totalDue, paymentReference);
             if (paid) {
-                payOwner(server, owner, claim.ownerUuid(), totalDue, billId + ":owner");
+                if (!payOwner(server, owner, claim.ownerUuid(), totalDue, billId + ":owner")) continue;
                 bills.markStatus(billId, "PAID");
                 data.put(claim.withLeaseState(claim.leaseeUuid(), claim.leaseUntil(), claim.leaseRent(),
                         0L, 0L));
@@ -282,8 +282,8 @@ public final class LandRentTickHandler {
                 continue;
             }
             ServerPlayer owner = server.getPlayerList().getPlayer(claim.ownerUuid());
-            payOwner(server, owner, claim.ownerUuid(), debt,
-                    "land-rent-arrears:" + claim.id() + ":" + claim.leaseUntil() + ":" + debt);
+            if (!payOwner(server, owner, claim.ownerUuid(), debt,
+                    "land-rent-arrears:" + claim.id() + ":" + claim.leaseUntil() + ":" + debt)) continue;
             data.put(claim.withLeaseState(claim.leaseeUuid(), claim.leaseUntil(), claim.leaseRent(), 0L, 0L));
             logLand(server, claim, "补缴租金:" + debt);
             tenant.displayClientMessage(net.minecraft.network.chat.Component.literal("已自动补缴土地租金：" + debt), true);
@@ -291,25 +291,31 @@ public final class LandRentTickHandler {
         }
     }
 
-    private static void payOwner(MinecraftServer server, ServerPlayer owner, java.util.UUID ownerUuid,
-                                 long amount, String source) {
-        if (amount <= 0L || ownerUuid == null || source == null || source.isBlank()) return;
+    private static boolean payOwner(MinecraftServer server, ServerPlayer owner, java.util.UUID ownerUuid,
+                                    long amount, String source) {
+        if (amount <= 0L) return true;
+        if (ownerUuid == null || source == null || source.isBlank()) return false;
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
-        mailbox.creditMoneyOnce(ownerUuid, Config.defaultCurrencyId(), amount, source);
+        boolean credited = mailbox.hasCreditSource(source)
+                || mailbox.creditMoneyOnce(ownerUuid, Config.defaultCurrencyId(), amount, source);
+        if (!credited) return false;
         if (owner != null) mailbox.redeemMoneyOnly(owner);
+        return true;
     }
 
-    private static void refundAuctionBid(MinecraftServer server, LandAuctionSavedData.Auction auction,
-                                         LandAuctionSettlementSavedData journal, String reason) {
-        if (auction == null || auction.highestBidder() == null || auction.highestBid() <= 0L) return;
+    private static boolean refundAuctionBid(MinecraftServer server, LandAuctionSavedData.Auction auction,
+                                            LandAuctionSettlementSavedData journal, String reason) {
+        if (auction == null || auction.highestBidder() == null || auction.highestBid() <= 0L) return true;
         String key = auction.claimId() + ":" + auction.endsAt() + ":refund:" + reason + ":"
                 + auction.highestBidder() + ":" + auction.highestBid();
-        if (journal.has(key)) return;
+        if (journal.has(key)) return true;
         ServerPlayer bidder = server.getPlayerList().getPlayer(auction.highestBidder());
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
-        mailbox.creditMoneyOnce(auction.highestBidder(), Config.defaultCurrencyId(), auction.highestBid(), key);
+        if (!mailbox.hasCreditSource(key)
+                && !mailbox.creditMoneyOnce(auction.highestBidder(), Config.defaultCurrencyId(), auction.highestBid(), key)) return false;
         if (bidder != null) mailbox.redeemMoneyOnly(bidder);
         journal.record(key);
+        return true;
     }
 
     private static long addSaturated(long left, long right) {
