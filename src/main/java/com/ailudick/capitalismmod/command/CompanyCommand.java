@@ -18,6 +18,8 @@ import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightSettlementSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
+import com.ailudick.capitalismmod.market.InventoryOwner;
+import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.company.CompanyServiceDeliverySavedData;
 import com.ailudick.capitalismmod.company.Industries;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
@@ -631,8 +633,15 @@ public class CompanyCommand {
         }
         products.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
             CompanyQualitySavedData.ProductQuality quality = entry.getValue();
+            int warehouseUnits = WarehouseSavedData.get(player.getServer()).count(
+                    InventoryOwner.company(company.companyId()), entry.getKey());
+            int heldUnits = CompanyQualityHoldSavedData.get(player.getServer())
+                    .heldUnits(company.companyId(), entry.getKey());
+            int availableUnits = Math.max(0, warehouseUnits - heldUnits);
             source.sendSuccess(() -> Component.literal(entry.getKey() + " | units " + quality.units()
-                    + " | average score " + quality.averageScore() + "/100"), false);
+                    + " | average score " + quality.averageScore() + "/100"
+                    + " | warehouse " + warehouseUnits + " | held " + heldUnits
+                    + " | available " + availableUnits), false);
         });
         return 1;
     }
