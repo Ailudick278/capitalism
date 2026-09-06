@@ -90,6 +90,28 @@ public final class EconomicEventService {
         return EconomicExpansionSavedData.get(server).addOnce(event);
     }
 
+    /** Records a system-wide financial-crisis episode until the risk state recovers. */
+    public static boolean addFinancialCrisisSignal(MinecraftServer server, long day, long startsAt) {
+        if (server == null || day < 0L || startsAt < 0L) return false;
+        EconomicEvent event = new EconomicEvent("financial-crisis:" + day,
+                ExpansionSystem.ECONOMIC_EVENTS, "financial_crisis", startsAt, startsAt, 0L, null,
+                EconomicActorRef.of("global", "financial-system"), 1L, "state", "active");
+        return EconomicExpansionSavedData.get(server).addOnce(event);
+    }
+
+    public static int resolveFinancialCrisisSignals(MinecraftServer server) {
+        if (server == null) return 0;
+        int resolved = 0;
+        EconomicExpansionSavedData data = EconomicExpansionSavedData.get(server);
+        for (EconomicEvent event : data.events()) {
+            if ("active".equals(event.status()) && "financial_crisis".equals(event.type())
+                    && data.replace(new EconomicEvent(event.id(), event.system(), event.type(), event.createdAt(),
+                    event.startsAt(), event.endsAt(), event.source(), event.target(), event.amountMinor(),
+                    event.currencyId(), "resolved"))) resolved++;
+        }
+        return resolved;
+    }
+
     public static int commodityPriceShockBps(MinecraftServer server, String itemId, long gameTime) {
         if (server == null || itemId == null || itemId.isBlank()) return 0;
         int total = 0;
