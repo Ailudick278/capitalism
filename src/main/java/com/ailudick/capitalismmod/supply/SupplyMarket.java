@@ -339,10 +339,13 @@ public final class SupplyMarket {
                     : InventoryOwner.company(supplierCompany.companyId());
             String dispatchPrefix = deliveryKey + ":shipment:";
             int existingDispatch = LogisticsSavedData.get(server).quantityForIdPrefix(dispatchPrefix);
-            boolean dispatchAlreadyCreated = existingDispatch > 0;
+            String localDeliverySource = "supply-local-delivery:" + deliveryKey;
+            int existingLocalDelivery = TradeRegion.distance(order.originRegion(), order.destinationRegion()) == 0
+                    ? warehouse.creditedQuantity(localDeliverySource) : 0;
+            boolean dispatchAlreadyCreated = existingDispatch > 0 || existingLocalDelivery > 0;
             int deliver;
             if (dispatchAlreadyCreated) {
-                deliver = Math.min(order.remaining(), existingDispatch);
+                deliver = Math.min(order.remaining(), Math.max(existingDispatch, existingLocalDelivery));
             } else {
                 int stock = warehouse.count(resolvedOwner, itemId);
                 if (supplierCompany != null) {

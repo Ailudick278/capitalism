@@ -32,6 +32,7 @@ public final class WarehouseSavedData extends SavedData {
     private final Map<String, Map<String, Integer>> storage = new HashMap<>();
     private final java.util.List<AuditEntry> audit = new java.util.ArrayList<>();
     private final Set<String> creditedSources = new HashSet<>();
+    private final Map<String, Integer> creditedSourceQuantities = new HashMap<>();
 
     public record AuditEntry(String action, String from, String to, String itemId, int count) {
         static final Codec<AuditEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -44,13 +45,16 @@ public final class WarehouseSavedData extends SavedData {
     }
 
     private record State(Map<String, Map<String, Integer>> storage, java.util.List<AuditEntry> audit,
-                         List<String> creditedSources) {
+                         List<String> creditedSources, Map<String, Integer> creditedSourceQuantities) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, Codec.INT))
                         .fieldOf("storage").forGetter(State::storage),
                 AuditEntry.CODEC.listOf().optionalFieldOf("audit", java.util.List.of()).forGetter(State::audit),
                 Codec.STRING.listOf().optionalFieldOf("creditedSources", java.util.List.of())
-                        .forGetter(State::creditedSources)
+                        .forGetter(State::creditedSources),
+                Codec.unboundedMap(Codec.STRING, Codec.INT)
+                        .optionalFieldOf("creditedSourceQuantities", Map.of())
+                        .forGetter(State::creditedSourceQuantities)
         ).apply(instance, State::new));
     }
 
@@ -96,11 +100,20 @@ public final class WarehouseSavedData extends SavedData {
         if (item == null || item == Items.AIR || count <= 0) return false;
         credit(owner, item, count);
         creditedSources.add(sourceId);
+        creditedSourceQuantities.put(sourceId, count);
         while (creditedSources.size() > 8192) {
-            creditedSources.remove(creditedSources.iterator().next());
+            String oldest = creditedSources.iterator().next();
+            creditedSources.remove(oldest);
+            creditedSourceQuantities.remove(oldest);
         }
         setDirty();
         return true;
+    }
+
+    /** Returns the quantity previously credited for a delivery source. */
+    public int creditedQuantity(String sourceId) {
+        return sourceId == null || sourceId.isBlank()
+                ? 0 : Math.max(0, creditedSourceQuantities.getOrDefault(sourceId, 0));
     }
 
     private static int saturatingAdd(int left, int right) {
@@ -288,7 +301,7 @@ public final class WarehouseSavedData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(storage), new java.util.ArrayList<>(audit),
-                new java.util.ArrayList<>(creditedSources));
+                new java.util.ArrayList<>(creditedSources), new HashMap<>(creditedSourceQuantities));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -307,9 +320,17 @@ public final class WarehouseSavedData extends SavedData {
                     });
                     data.audit.addAll(state.audit());
                     data.creditedSources.addAll(state.creditedSources());
+                    state.creditedSourceQuantities().forEach((source, quantity) -> {
+                        if (source != null && !source.isBlank() && quantity != null && quantity > 0) {
+                            data.creditedSourceQuantities.put(source, quantity);
+                        }
+                    });
                     while (data.creditedSources.size() > 8192) {
-                        data.creditedSources.remove(data.creditedSources.iterator().next());
+                        String oldest = data.creditedSources.iterator().next();
+                        data.creditedSources.remove(oldest);
+                        data.creditedSourceQuantities.remove(oldest);
                     }
+                    data.creditedSourceQuantities.keySet().removeIf(source -> !data.creditedSources.contains(source));
             });
         }
         return data;
