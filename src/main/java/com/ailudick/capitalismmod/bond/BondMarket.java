@@ -82,12 +82,18 @@ public final class BondMarket {
             return false;
         }
         long basePayout = ExchangeRates.convert(payoutMinor, Currencies.USD, Config.defaultCurrency());
-        if (!GovernmentPolicySavedData.get(player.getServer()).spend(
+        String spendingId = "bond-redeem:" + holdingId;
+        GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(player.getServer());
+        if (!policy.hasSpending(spendingId) && !policy.spend(
                 "bond-holder:" + player.getUUID(), player.getServer().overworld().getGameTime()
-                        / PerpetualCalendar.TICKS_PER_DAY, basePayout, "bond-redeem:" + holdingId)) return false;
-        EconomyHelper.giveMoney(player, Currencies.USD, payoutMinor);
+                        / PerpetualCalendar.TICKS_PER_DAY, basePayout, spendingId)) return false;
+        String payoutSource = "bond-payout:" + holdingId;
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+        if (!mailbox.hasCreditSource(payoutSource)
+                && !mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), payoutMinor, payoutSource)) return false;
         settlements.record(holdingId);
         data.removeHolding(holdingId);
+        mailbox.redeemMoneyOnly(player);
         return true;
     }
 
@@ -123,17 +129,18 @@ public final class BondMarket {
                 continue;
             }
             long basePayout = ExchangeRates.convert(payoutMinor, Currencies.USD, Config.defaultCurrency());
-            if (!GovernmentPolicySavedData.get(server).spend(
-                    "bond-holder:" + holding.holder(), settlementDay, basePayout,
-                    "bond-maturity:" + holding.id())) continue;
-            ServerPlayer holder = server.getPlayerList().getPlayer(holding.holder());
-            if (holder != null) {
-                EconomyHelper.giveMoney(holder, Currencies.USD, payoutMinor);
-            } else {
-                MarketMailboxSavedData.get(server).creditMoney(holding.holder(), "usd", payoutMinor);
-            }
+            String spendingId = "bond-maturity:" + holding.id();
+            GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
+            if (!policy.hasSpending(spendingId) && !policy.spend(
+                    "bond-holder:" + holding.holder(), settlementDay, basePayout, spendingId)) continue;
+            String payoutSource = "bond-payout:" + holding.id();
+            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+            if (!mailbox.hasCreditSource(payoutSource)
+                    && !mailbox.creditMoneyOnce(holding.holder(), Currencies.USD.id(), payoutMinor, payoutSource)) continue;
             settlements.record(holding.id());
             data.removeHolding(holding.id());
+            ServerPlayer holder = server.getPlayerList().getPlayer(holding.holder());
+            if (holder != null) mailbox.redeemMoneyOnly(holder);
         }
     }
 }

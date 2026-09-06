@@ -60,6 +60,11 @@ public final class MarketMailboxSavedData extends SavedData {
         return true;
     }
 
+    /** Returns whether a durable money-credit receipt already exists. */
+    public boolean hasCreditSource(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && creditedSources.contains(sourceId);
+    }
+
     public void creditItems(UUID playerId, Item item, int count) {
         if (item == null || item == Items.AIR || count <= 0) {
             return;
