@@ -30,6 +30,10 @@ import com.ailudick.capitalismmod.market.CommodityTradeIntentSavedData;
 import com.ailudick.capitalismmod.stock.StockBuyIntentSavedData;
 import com.ailudick.capitalismmod.stock.StockSellIntentSavedData;
 import com.ailudick.capitalismmod.stock.StockTradeIntentSavedData;
+import com.ailudick.capitalismmod.stock.StockOrder;
+import com.ailudick.capitalismmod.economy.EconomySavedData;
+import com.ailudick.capitalismmod.market.CommoditySavedData;
+import com.ailudick.capitalismmod.market.MarketOrder;
 import com.ailudick.capitalismmod.supply.SupplyOrderIntentSavedData;
 import com.ailudick.capitalismmod.bank.BankCashDepositIntentSavedData;
 import com.ailudick.capitalismmod.bank.BankRepaymentIntentSavedData;
@@ -80,6 +84,25 @@ public final class EconomyAuditService {
                 .forEach(intent -> issues.add("pending stock sell " + intent.orderId()));
         StockTradeIntentSavedData.get(server).intents().stream().limit(100)
                 .forEach(intent -> issues.add("pending stock trade " + intent.id()));
+        Set<String> marketOrderIds = new HashSet<>();
+        CommoditySavedData commodities = CommoditySavedData.get(server);
+        for (MarketOrder order : commodities.orders()) {
+            if (order.id().isBlank() || !marketOrderIds.add("commodity:" + order.id())
+                    || !isUuid(order.ownerId()) || order.commodity().isEmpty()
+                    || com.ailudick.capitalismmod.market.Commodities.byId(
+                    com.ailudick.capitalismmod.market.Commodities.id(order.commodity())) == null
+                    || order.quantity() <= 0 || order.pricePerUnit() <= 0L || order.createdAt() < 0L) {
+                issues.add("commodity order invalid " + order.id());
+            }
+        }
+        EconomySavedData stocks = EconomySavedData.get(server);
+        for (StockOrder order : stocks.orders()) {
+            if (order.id().isBlank() || !marketOrderIds.add("stock:" + order.id())
+                    || !isUuid(order.ownerId()) || order.stockId().isBlank() || !stocks.isStock(order.stockId())
+                    || order.quantity() <= 0 || order.pricePerUnit() <= 0L || order.createdAt() < 0L) {
+                issues.add("stock order invalid " + order.id());
+            }
+        }
         SupplyOrderIntentSavedData.get(server).intents().stream().limit(100)
                 .forEach(intent -> issues.add("pending supply order " + intent.orderId()));
         BankCashDepositIntentSavedData.get(server).intents().stream().limit(100)
@@ -313,4 +336,13 @@ public final class EconomyAuditService {
     }
     private static long safeAdd(long a, long b) { try { return Math.addExact(a, b); } catch (ArithmeticException e) { return Long.MIN_VALUE; } }
     private static long safeMultiply(long a, long b) { try { return Math.multiplyExact(a, b); } catch (ArithmeticException e) { return Long.MIN_VALUE; } }
+    private static boolean isUuid(String value) {
+        if (value == null || value.isBlank()) return false;
+        try {
+            java.util.UUID.fromString(value);
+            return true;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+    }
 }
