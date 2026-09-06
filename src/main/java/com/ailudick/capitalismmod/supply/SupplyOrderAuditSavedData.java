@@ -18,7 +18,15 @@ public final class SupplyOrderAuditSavedData extends SavedData {
     private final List<Event> events = new ArrayList<>();
 
     public record Event(String orderId, String type, UUID buyerUuid, UUID supplierUuid, String itemId,
-                        int quantity, long amount, long occurredAt) {
+                        int quantity, long amount, long occurredAt, String eventKey) {
+        public Event(String orderId, String type, UUID buyerUuid, UUID supplierUuid, String itemId,
+                     int quantity, long amount, long occurredAt) {
+            this(orderId, type, buyerUuid, supplierUuid, itemId, quantity, amount, occurredAt, "");
+        }
+
+        public Event {
+            eventKey = eventKey == null ? "" : eventKey;
+        }
     }
 
     private SupplyOrderAuditSavedData() {
@@ -43,6 +51,10 @@ public final class SupplyOrderAuditSavedData extends SavedData {
                 || event.supplierUuid() == null || event.quantity() < 0 || event.amount() < 0) {
             return;
         }
+        if (!event.eventKey().isBlank() && events.stream().anyMatch(existing ->
+                existing.orderId().equals(event.orderId())
+                        && existing.type().equals(event.type())
+                        && event.eventKey().equals(existing.eventKey()))) return;
         events.add(event);
         while (events.size() > MAX_EVENTS) {
             events.remove(0);
@@ -63,6 +75,7 @@ public final class SupplyOrderAuditSavedData extends SavedData {
             entry.putInt("quantity", event.quantity());
             entry.putLong("amount", event.amount());
             entry.putLong("occurredAt", event.occurredAt());
+            if (!event.eventKey().isBlank()) entry.putString("eventKey", event.eventKey());
             list.add(entry);
         }
         tag.put("events", list);
@@ -79,7 +92,7 @@ public final class SupplyOrderAuditSavedData extends SavedData {
                 data.events.add(new Event(entry.getString("orderId"), entry.getString("type"),
                         entry.getUUID("buyer"), entry.getUUID("supplier"), entry.getString("item"),
                         Math.max(0, entry.getInt("quantity")), Math.max(0L, entry.getLong("amount")),
-                        Math.max(0L, entry.getLong("occurredAt"))));
+                        Math.max(0L, entry.getLong("occurredAt")), entry.getString("eventKey")));
             }
         }
         while (data.events.size() > MAX_EVENTS) {

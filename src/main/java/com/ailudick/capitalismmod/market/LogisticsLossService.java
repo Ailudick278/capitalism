@@ -47,7 +47,7 @@ public final class LogisticsLossService {
                 amount = Long.MAX_VALUE;
             }
             SupplyOrderAuditService.record(server, shipment.supplyOrderId(), "LOST", shipment.buyer(),
-                    shipment.supplierUuid(), shipment.itemId(), shipment.quantity(), amount);
+                    shipment.supplierUuid(), shipment.itemId(), shipment.quantity(), amount, shipment.id());
         }
         data.add(new LogisticsLossSavedData.Loss(shipment.id(), shipment.buyer(), shipment.itemId(),
                 shipment.quantity(), shipment.originRegion(), shipment.destinationRegion(), shipment.transport(),

@@ -41,9 +41,15 @@ public final class SupplyOrderAuditService {
 
     public static void record(MinecraftServer server, String orderId, String type, java.util.UUID buyerUuid,
                               java.util.UUID supplierUuid, String itemId, int quantity, long amount) {
+        record(server, orderId, type, buyerUuid, supplierUuid, itemId, quantity, amount, "");
+    }
+
+    public static void record(MinecraftServer server, String orderId, String type, java.util.UUID buyerUuid,
+                              java.util.UUID supplierUuid, String itemId, int quantity, long amount,
+                              String eventKey) {
         if (server == null || orderId == null || orderId.isBlank() || buyerUuid == null || supplierUuid == null) return;
         SupplyOrderAuditSavedData.get(server).append(new SupplyOrderAuditSavedData.Event(
                 orderId, type, buyerUuid, supplierUuid, itemId == null ? "" : itemId, quantity,
-                Math.max(0L, amount), server.overworld().getGameTime()));
+                Math.max(0L, amount), server.overworld().getGameTime(), eventKey));
     }
 }

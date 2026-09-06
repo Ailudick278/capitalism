@@ -145,7 +145,7 @@ public final class LogisticsTickHandler {
                 if (!shipment.supplyOrderId().isBlank() && shipment.supplierUuid() != null) {
                     SupplyOrderAuditService.record(server, shipment.supplyOrderId(), "DELIVERED",
                             shipment.buyer(), shipment.supplierUuid(), shipment.itemId(), shipment.quantity(),
-                            shipmentValue(shipment));
+                            shipmentValue(shipment), shipment.id());
                 }
                 deliveries.record(new LogisticsDeliverySavedData.Delivery(shipment.id(), shipment.buyer(),
                         shipment.itemId(), shipment.quantity(), now));
