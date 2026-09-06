@@ -9,6 +9,8 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Persistent fiscal policy, reserve balance, and transfer audit trail. */
 public final class GovernmentPolicySavedData extends SavedData {
@@ -20,6 +22,7 @@ public final class GovernmentPolicySavedData extends SavedData {
     private final List<Transaction> transactions = new ArrayList<>();
     private final List<TaxRevenue> taxRevenues = new ArrayList<>();
     private final List<RentRevenue> rentRevenues = new ArrayList<>();
+    private final Set<String> depositReceipts = new HashSet<>();
 
     public record Transaction(String id, long day, String householdId, long amount, long balanceAfter) {}
     public record TaxRevenue(String id, long day, String subject, String taxType,
@@ -55,6 +58,19 @@ public final class GovernmentPolicySavedData extends SavedData {
     public boolean deposit(long amount) {
         if (amount <= 0L || treasuryMinor > Long.MAX_VALUE - amount) return false;
         treasuryMinor += amount; setDirty(); return true;
+    }
+
+    /** Deposits non-tax government revenue at most once for a durable source. */
+    public boolean depositOnce(long amount, String sourceId) {
+        if (amount <= 0L || sourceId == null || sourceId.isBlank() || depositReceipts.contains(sourceId)
+                || treasuryMinor > Long.MAX_VALUE - amount) return false;
+        treasuryMinor += amount;
+        depositReceipts.add(sourceId);
+        while (depositReceipts.size() > MAX_TRANSACTIONS) {
+            depositReceipts.remove(depositReceipts.iterator().next());
+        }
+        setDirty();
+        return true;
     }
 
     /** Collects a tax bill in the government's base currency, once per bill. */
@@ -125,7 +141,15 @@ public final class GovernmentPolicySavedData extends SavedData {
             e.putString("household", revenue.householdId()); e.putString("region", revenue.region());
             e.putLong("amount", revenue.amount()); e.putLong("balance", revenue.balanceAfter()); rents.add(e);
         }
-        tag.put("rentRevenues", rents); return tag;
+        tag.put("rentRevenues", rents);
+        ListTag deposits = new ListTag();
+        for (String source : depositReceipts) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("source", source);
+            deposits.add(entry);
+        }
+        tag.put("depositReceipts", deposits);
+        return tag;
     }
 
     public static GovernmentPolicySavedData load(CompoundTag tag, HolderLookup.Provider registries) {
@@ -133,6 +157,11 @@ public final class GovernmentPolicySavedData extends SavedData {
         data.treasuryMinor = Math.max(0L, tag.getLong("treasury"));
         data.dailyBenefitMinor = Math.max(0L, tag.getLong("benefit"));
         data.policyRateBasisPoints = Math.max(-10000, Math.min(20000, tag.getInt("policyRateBps")));
+        ListTag deposits = tag.getList("depositReceipts", Tag.TAG_COMPOUND);
+        for (int i = 0; i < deposits.size(); i++) {
+            String source = deposits.getCompound(i).getString("source");
+            if (!source.isBlank()) data.depositReceipts.add(source);
+        }
         ListTag list = tag.getList("transactions", Tag.TAG_COMPOUND);
         for (int i = Math.max(0, list.size() - MAX_TRANSACTIONS); i < list.size(); i++) {
             CompoundTag e = list.getCompound(i);

@@ -37,12 +37,13 @@ public final class BondMarket {
             return false;
         }
         long totalMinor = Money.toMinor(total);
+        String issuanceId = "bond-issuance:" + UUID.randomUUID();
         if (total <= 0 || totalMinor < 0 || !EconomyHelper.tryPay(player, Currencies.USD, totalMinor)) {
             return false;
         }
         long treasuryProceeds = com.ailudick.capitalismmod.currency.ExchangeRates.convert(
                 totalMinor, Currencies.USD, Config.defaultCurrency());
-        if (!GovernmentPolicySavedData.get(player.getServer()).deposit(treasuryProceeds)) {
+        if (!GovernmentPolicySavedData.get(player.getServer()).depositOnce(treasuryProceeds, issuanceId)) {
             EconomyHelper.giveMoney(player, Currencies.USD, totalMinor);
             return false;
         }
@@ -52,7 +53,6 @@ public final class BondMarket {
                 GovernmentPolicySavedData.get(player.getServer()).policyRateBasisPoints())
                 + FinancialRiskPolicy.bondLiquidityPremium(overdueShare);
         int days = Config.BOND_MATURITY_DAYS.get();
-        String issuanceId = "bond-issuance:" + UUID.randomUUID();
         BondIssuanceSavedData.get(player.getServer()).add(new BondIssuanceSavedData.Issuance(
                 issuanceId, player.getUUID(), count, faceValue, rate, days, true, false));
         createHoldings(player.getServer(), new BondIssuanceSavedData.Issuance(
