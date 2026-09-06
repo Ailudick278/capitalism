@@ -23,9 +23,11 @@ public final class BankLiquidityService {
             deposits = add(deposits, value.depositsMinor());
             loans = add(loans, value.loanDebtMinor());
         }
-        boolean limited = FinancialCrisisSavedData.get(server).active();
-        BankLiquiditySnapshot snapshot = new BankLiquiditySnapshot(day, deposits, loans,
-                data.withdrawalsForAssessment(day), limited);
+        long withdrawn = data.withdrawalsForAssessment(day);
+        boolean pressure = BankLiquidityEconomics.solvencyStress(deposits, loans)
+                || BankLiquidityEconomics.withdrawalRunStress(deposits, withdrawn);
+        boolean limited = FinancialCrisisSavedData.get(server).active() || pressure;
+        BankLiquiditySnapshot snapshot = new BankLiquiditySnapshot(day, deposits, loans, withdrawn, limited);
         data.record(snapshot); return snapshot;
     }
 
