@@ -1218,16 +1218,24 @@ public final class CompanyHelper {
             return false;
         }
         Company company = getCompany(seller, offer.companyName());
-        if (company == null || getCompany(buyer, offer.companyName()) != null
+        Company buyerCompany = getCompany(buyer, offer.companyName());
+        boolean alreadyTransferred = company == null && buyerCompany != null
+                && buyerCompany.ownerUuid().equals(buyer.getUUID()) && !isListed(buyer, offer.companyName());
+        if ((!alreadyTransferred && company == null) || (!alreadyTransferred && buyerCompany != null)
                 || isListed(seller, offer.companyName())) {
             return false;
         }
-        if (!EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(offer.price()))) {
+        String payoutSource = "company-acquisition:" + offer.id() + ":seller-payout";
+        if (!alreadyTransferred && !EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(offer.price()))) {
             return false;
         }
-        removeCompany(seller, company.name());
-        putCompany(buyer, company.name(), company);
-        EconomyHelper.giveMoney(seller, Currencies.USD, Money.toMinor(offer.price()));
+        if (!alreadyTransferred) {
+            removeCompany(seller, company.name());
+            putCompany(buyer, company.name(), company);
+        }
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(buyer.getServer());
+        mailbox.creditMoneyOnce(seller.getUUID(), Currencies.USD.id(), Money.toMinor(offer.price()), payoutSource);
+        mailbox.redeemMoneyOnly(seller);
         TaxTransactionService.assess(buyer.getServer(), TaxType.CAPITAL_GAINS, seller.getUUID(), Currencies.USD.id(),
                 Money.toMinorSaturated(offer.price()), "company-acquisition:" + offer.id(),
                 buyer.getServer().overworld().getGameTime());
