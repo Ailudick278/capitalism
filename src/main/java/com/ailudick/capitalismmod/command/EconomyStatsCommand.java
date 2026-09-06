@@ -17,6 +17,7 @@ import com.ailudick.capitalismmod.stock.StockMarket;
 import com.ailudick.capitalismmod.supply.SupplyMarketSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
+import com.ailudick.capitalismmod.risk.FinancialRiskPolicy;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -111,7 +112,8 @@ public final class EconomyStatsCommand {
                     + " totalDebtMinor=" + risk.totalDebtMinor()
                     + " overdueDebtMinor=" + risk.overdueDebtMinor()
                     + " overdueLoans=" + risk.overdueLoanCount()
-                    + " overdueShareBps=" + risk.overdueShareBasisPoints()), false);
+                    + " overdueShareBps=" + risk.overdueShareBasisPoints()
+                    + " creditMultiplier=" + FinancialRiskPolicy.creditMultiplier(risk.overdueShareBasisPoints())), false);
         }
         return 1;
     }

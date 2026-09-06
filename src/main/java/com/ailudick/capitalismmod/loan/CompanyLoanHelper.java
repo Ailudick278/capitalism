@@ -10,6 +10,8 @@ import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.government.MonetaryPolicyEconomics;
+import com.ailudick.capitalismmod.risk.FinancialRiskPolicy;
+import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
@@ -29,8 +31,12 @@ public final class CompanyLoanHelper {
                 || !Double.isFinite(ratePercent) || ratePercent < 0.0 || ratePercent > 100.0) return null;
         double effectiveRate = MonetaryPolicyEconomics.adjustedAnnualRate(ratePercent / 100.0,
                 GovernmentPolicySavedData.get(server).policyRateBasisPoints());
+        var risk = FinancialRiskSavedData.get(server).latest();
+        int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
+        if (!FinancialRiskPolicy.newCompanyCreditAllowed(overdueShare)) return null;
         long maximumDebt = EconomyMath.multiply(company.registeredCapital(), Config.MAX_COMPANY_DEBT_MULTIPLE.get());
         if (maximumDebt < 0L) return null;
+        maximumDebt = (long) Math.floor(maximumDebt * FinancialRiskPolicy.creditMultiplier(overdueShare));
         List<CompanyLoan> existingLoans = CompanyLoanSavedData.get(server).forCompany(company.companyId());
         if (CompanyDebtServiceAssessment.hasOverdueLoan(existingLoans)) return null;
         long existingDebt = 0L;
