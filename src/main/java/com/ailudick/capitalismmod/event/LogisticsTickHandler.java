@@ -11,6 +11,7 @@ import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
+import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.supply.SupplyOrderAuditService;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
@@ -19,6 +20,7 @@ import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
+import com.ailudick.capitalismmod.market.TradeRegion;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -142,6 +144,11 @@ public final class LogisticsTickHandler {
                     Company company = CompanySavedData.get(server).get(shipment.buyerCompanyId());
                     LogisticsCostSavedData.FuelPlan fuelPlan = LogisticsCostSavedData.get(server)
                             .find(shipment.id());
+                    if (company != null && fuelPlan == null) {
+                        // Recover the planning record if the server stopped after
+                        // creating the shipment but before persisting its fuel plan.
+                        fuelPlan = backfillFuelPlan(server, shipment, now);
+                    }
                     if (company != null && fuelPlan != null
                             && shipment.buyerCompanyId().equals(fuelPlan.buyerCompanyId())
                             && fuelPlan.estimatedCost() >= 0L) {
@@ -196,6 +203,29 @@ public final class LogisticsTickHandler {
         } catch (ArithmeticException e) {
             return Long.MAX_VALUE;
         }
+    }
+
+    private static LogisticsCostSavedData.FuelPlan backfillFuelPlan(MinecraftServer server,
+                                                                     LogisticsSavedData.Shipment shipment,
+                                                                     long now) {
+        long distance = TradeRegion.distance(shipment.originRegion(), shipment.destinationRegion());
+        int fuelUnits = shipment.transport().estimatedFuelUnits(shipment.quantity(), distance);
+        if (fuelUnits <= 0) return null;
+        long fuelUnitPrice = Math.max(0L, CommoditySavedData.get(server)
+                .price(shipment.transport().fuelItemId()));
+        long estimatedCost;
+        try {
+            estimatedCost = Math.multiplyExact((long) fuelUnits, fuelUnitPrice);
+        } catch (ArithmeticException e) {
+            estimatedCost = Long.MAX_VALUE;
+        }
+        LogisticsCostSavedData costs = LogisticsCostSavedData.get(server);
+        costs.record(new LogisticsCostSavedData.FuelPlan(
+                shipment.id(), shipment.buyer(), shipment.itemId(), shipment.quantity(),
+                shipment.originRegion(), shipment.destinationRegion(), shipment.transport(),
+                shipment.transport().fuelItemId(), fuelUnits, fuelUnitPrice, estimatedCost, now,
+                shipment.buyerCompanyId()));
+        return costs.find(shipment.id());
     }
 
     private static Item parseItem(String itemId) {
