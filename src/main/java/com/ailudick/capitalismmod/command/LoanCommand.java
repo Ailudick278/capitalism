@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.loan.PeerLoanHelper;
 import com.ailudick.capitalismmod.loan.PeerLoanPaymentAllocation;
 import com.ailudick.capitalismmod.loan.PeerLoanPaymentSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
+import com.ailudick.capitalismmod.loan.PeerLoanOriginationIntentSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.mojang.brigadier.CommandDispatcher;
@@ -68,14 +69,29 @@ public class LoanCommand {
             return 0;
         }
         Currency currency = Currencies.byId(currencyId);
-        if (!EconomyHelper.tryPay(lender, currency, amountMinor)) {
+        String loanId = UUID.randomUUID().toString();
+        PeerLoanOriginationIntentSavedData intents = PeerLoanOriginationIntentSavedData.get(lender.getServer());
+        intents.add(new PeerLoanOriginationIntentSavedData.Intent(loanId, lender.getUUID(), borrower.getUUID(),
+                currencyId, amount, ratePercent / 100.0, days, false));
+        String paymentSource = "peer-loan-origination:" + loanId;
+        if (!EconomyHelper.tryPayWithReference(lender, currency, amountMinor, paymentSource)) {
+            intents.remove(loanId);
             lender.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
             return 0;
         }
-        EconomyHelper.giveMoney(borrower, currency, amountMinor);
+        intents.markPaid(loanId);
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(lender.getServer());
+        String disbursementSource = "peer-loan-disbursement:" + loanId;
+        if (!mailbox.hasCreditSource(disbursementSource)
+                && !mailbox.creditMoneyOnce(borrower.getUUID(), currencyId, amountMinor, disbursementSource)) {
+            lender.sendSystemMessage(Component.literal("放款已进入恢复队列，请勿重复操作。"));
+            return 1;
+        }
+        mailbox.redeem(borrower);
         PeerLoanSavedData.get(lender.getServer()).addLoan(new PeerLoan(
-                UUID.randomUUID().toString(), lender.getUUID(), borrower.getUUID(),
+                loanId, lender.getUUID(), borrower.getUUID(),
                 currencyId, amount, ratePercent / 100.0, days, days));
+        intents.remove(loanId);
         lender.sendSystemMessage(Component.translatable("command.capitalismmod.loan_made",
                 amount, Component.translatable(currency.nameKey()), borrower.getDisplayName()));
         borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_received",

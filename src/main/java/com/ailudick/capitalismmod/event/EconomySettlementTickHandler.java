@@ -10,6 +10,7 @@ import com.ailudick.capitalismmod.economy.EconomySettlementSavedData;
 import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
 import com.ailudick.capitalismmod.futures.FuturesMarket;
 import com.ailudick.capitalismmod.loan.PeerLoan;
+import com.ailudick.capitalismmod.loan.PeerLoanHelper;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanNotificationService;
 import com.ailudick.capitalismmod.loan.CompanyLoan;
@@ -78,6 +79,7 @@ public final class EconomySettlementTickHandler {
             StockMarket.recoverPendingBuyIntents(player.getServer());
             StockMarket.recoverPendingSellIntents(player.getServer());
             AuctionMarket.recoverListingIntents(player.getServer());
+            PeerLoanHelper.recoverOriginationIntents(player.getServer());
             BankAccountHelper.recoverCashPayouts(player);
             BankAccountHelper.recoverCashDeposits(player);
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);

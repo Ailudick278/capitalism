@@ -8,10 +8,48 @@ import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.MinecraftServer;
 
 /** Shared repayment operations for player-to-player loans. */
 public final class PeerLoanHelper {
     private PeerLoanHelper() {}
+
+    /** Recovers peer-loan disbursements interrupted before the loan record was saved. */
+    public static int recoverOriginationIntents(MinecraftServer server) {
+        if (server == null) return 0;
+        PeerLoanSavedData loans = PeerLoanSavedData.get(server);
+        PeerLoanOriginationIntentSavedData intents = PeerLoanOriginationIntentSavedData.get(server);
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        int recovered = 0;
+        for (PeerLoanOriginationIntentSavedData.Intent intent : intents.intents()) {
+            if (loans.findLoan(intent.loanId()) != null) {
+                intents.remove(intent.loanId());
+                recovered++;
+                continue;
+            }
+            ServerPlayer lender = server.getPlayerList().getPlayer(intent.lender());
+            if (!intent.paid()) {
+                if (lender == null) continue;
+                Currency currency = Currencies.byId(intent.currencyId());
+                if (currency == null) continue;
+                long minor = Money.toMinor(intent.principal());
+                if (minor <= 0L || !EconomyHelper.tryPayWithReference(lender, currency, minor,
+                        "peer-loan-origination:" + intent.loanId())) continue;
+                intents.markPaid(intent.loanId());
+            }
+            long minor = Money.toMinor(intent.principal());
+            String disbursementSource = "peer-loan-disbursement:" + intent.loanId();
+            if (!mailbox.hasCreditSource(disbursementSource)
+                    && !mailbox.creditMoneyOnce(intent.borrower(), intent.currencyId(), minor, disbursementSource)) continue;
+            ServerPlayer borrower = server.getPlayerList().getPlayer(intent.borrower());
+            if (borrower != null) mailbox.redeem(borrower);
+            loans.addLoan(new PeerLoan(intent.loanId(), intent.lender(), intent.borrower(), intent.currencyId(),
+                    intent.principal(), intent.ratePerYear(), intent.days(), intent.days()));
+            intents.remove(intent.loanId());
+            recovered++;
+        }
+        return recovered;
+    }
 
     public static boolean repay(ServerPlayer borrower, String loanId, Long requestedAmount) {
         PeerLoanSavedData data = PeerLoanSavedData.get(borrower.getServer());
