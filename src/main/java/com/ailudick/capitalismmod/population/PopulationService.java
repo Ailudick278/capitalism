@@ -8,6 +8,7 @@ import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
+import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
@@ -44,8 +45,11 @@ public final class PopulationService {
             for (Household household : population.households()) {
                 if (!isNpc(household.id()) || household.workingAge() <= 0 || !labor.activeForWorker(household.id()).isEmpty()) continue;
                 boolean local = household.region().equals(offer.region());
+                long livingCost = multiply(household.dailyNeedMinor(), household.size());
+                long migrationFriction = local ? 0L : LogisticsInfrastructureSavedData.get(server)
+                        .migrationFriction(household.dailyNeedMinor(), household.size(), offer.region());
                 boolean willingToMove = !local && household.satisfaction() <= 40
-                        && offer.dailyWageMinor() >= household.dailyNeedMinor() * (long) household.size();
+                        && offer.dailyWageMinor() >= add(livingCost, migrationFriction);
                 if (!local && !willingToMove) continue;
                 LaborMarketService.ensureNpcProfile(server, household.id(), household.workingAge());
                 if (LaborMarketService.hireNpc(server, offer.id(), household.id())) {
@@ -119,5 +123,6 @@ public final class PopulationService {
                 .anyMatch(entry -> entry.description() != null && entry.description().contains("[source=" + source + "]"));
     }
     private record ConsumptionResult(long remainingCash, long spent) {}
+    private static long multiply(long a, long b) { try { return Math.multiplyExact(a, b); } catch (ArithmeticException e) { return Long.MAX_VALUE; } }
     private static long add(long a,long b){try{return Math.addExact(a,b);}catch(ArithmeticException e){return Long.MAX_VALUE;}}
 }

@@ -87,6 +87,28 @@ public final class LogisticsInfrastructureSavedData extends SavedData {
         return Math.min(0.80, reduction);
     }
 
+    /** A bounded connectivity score shared by regional economic systems. */
+    public int accessScore(String region) {
+        if (region == null || region.isBlank()) return 0;
+        int score = 10 * count(region, "logistics_center")
+                + 15 * count(region, "transfer_station")
+                + 25 * count(region, "port");
+        return Math.min(100, Math.max(0, score));
+    }
+
+    /** Returns the daily-need-equivalent friction of moving to a region. */
+    public long migrationFriction(long dailyNeedMinor, int householdSize, String destination) {
+        if (dailyNeedMinor <= 0L || householdSize <= 0) return 0L;
+        long base;
+        try {
+            base = Math.multiplyExact(dailyNeedMinor, householdSize);
+        } catch (ArithmeticException e) {
+            base = Long.MAX_VALUE;
+        }
+        long rate = 100L - accessScore(destination);
+        return base > Long.MAX_VALUE / rate ? Long.MAX_VALUE : base * rate / 100L;
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(facilities)).result()
