@@ -56,6 +56,7 @@ import com.ailudick.capitalismmod.auction.AuctionSettlementSavedData;
 import com.ailudick.capitalismmod.auction.AuctionListingIntentSavedData;
 import com.ailudick.capitalismmod.auction.AuctionBidSavedData;
 import com.ailudick.capitalismmod.auction.AuctionSettlementAuditRules;
+import com.ailudick.capitalismmod.supply.SupplySettlementAuditRules;
 import com.ailudick.capitalismmod.currency.Currencies;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -322,6 +323,21 @@ public final class EconomyAuditService {
                 issues.add("auction journal has no active or settled record " + auctionId);
             } else if (settled && !AuctionSettlementAuditRules.hasCompleteOutcome(entry.getValue())) {
                 issues.add("settled auction journal missing terminal phase " + auctionId);
+            }
+        }
+        Map<String, Set<String>> supplyJournalPhases = new HashMap<>();
+        for (var entry : financialJournal.entries()) {
+            if (!"supply".equals(entry.instrument()) || !"completed".equals(entry.status())) continue;
+            supplyJournalPhases.computeIfAbsent(entry.transactionId(), ignored -> new HashSet<>()).add(entry.phase());
+        }
+        for (var entry : supplyJournalPhases.entrySet()) {
+            String transactionId = entry.getKey();
+            if (transactionId.contains(":delivery:") && !SupplySettlementAuditRules.hasCompleteDelivery(entry.getValue())) {
+                issues.add("supply delivery journal missing terminal phase " + transactionId);
+            }
+            if (entry.getValue().contains("loss-refund")
+                    && !SupplySettlementAuditRules.hasCompleteLossRefund(entry.getValue())) {
+                issues.add("supply loss journal missing escrow refund " + transactionId);
             }
         }
         GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);
