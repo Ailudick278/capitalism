@@ -132,6 +132,7 @@ public final class SupplyMarket {
         } else if (!EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(total))) {
             return false;
         }
+        SupplyEscrowSavedData.get(buyer.getServer()).createOnce(supplyOrderId, Money.toMinorSaturated(total));
         SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId, "CREATED", buyer.getUUID(),
                 offer.ownerUuid(), offer.itemId(), quantity, total);
         if (buyerCompany != null) {
@@ -187,8 +188,11 @@ public final class SupplyMarket {
                     offer.ownerUuid(), offer.itemId(), filled, EconomyMath.multiply(offer.price(), filled));
         }
         if (filled > 0) {
-            paySupplier(buyer.getServer(), offer.ownerUuid(), offer.companyName(),
-                    EconomyMath.multiply(offer.price(), filled), orderSource);
+            long filledAmount = EconomyMath.multiply(offer.price(), filled);
+            if (paySupplier(buyer.getServer(), offer.ownerUuid(), offer.companyName(), filledAmount, orderSource)) {
+                SupplyEscrowSavedData.get(buyer.getServer()).releaseOnce(supplyOrderId, orderSource,
+                        Money.toMinorSaturated(filledAmount));
+            }
         }
 
         int remaining = quantity - filled;
@@ -245,6 +249,7 @@ public final class SupplyMarket {
                 MarketMailboxSavedData.get(server).creditMoneyOnce(order.buyerUuid(), Currencies.USD.id(),
                         refundMinor, "supply-order-refund:" + order.id());
             }
+            SupplyEscrowSavedData.get(server).refundOnce(order.id(), "expiry:" + order.id(), refundMinor);
             long creditToReverse = proportionalInputCredit(order);
             if (creditToReverse > 0L) {
                 TaxTransactionService.reverseInputCredit(server, order.buyerUuid(), Currencies.USD.id(),
@@ -289,6 +294,7 @@ public final class SupplyMarket {
             MarketMailboxSavedData.get(server).creditMoneyOnce(buyer.getUUID(), Currencies.USD.id(), refundMinor,
                     "supply-order-refund:" + order.id());
         }
+        SupplyEscrowSavedData.get(server).refundOnce(order.id(), "cancel:" + order.id(), refundMinor);
         long creditToReverse = proportionalInputCredit(order);
         if (creditToReverse > 0L) {
             TaxTransactionService.reverseInputCredit(server, buyer.getUUID(), Currencies.USD.id(),
@@ -329,8 +335,10 @@ public final class SupplyMarket {
             if (recorded != null) {
                 // The goods were already dispatched; recover the order state without
                 // consuming fresh stock. The payment key makes this retry safe too.
-                paySupplier(server, order.supplierUuid(), order.companyName(),
-                        EconomyMath.multiply(order.unitPrice(), recorded.quantity()), deliveryKey);
+                long recordedAmount = EconomyMath.multiply(order.unitPrice(), recorded.quantity());
+                if (!paySupplier(server, order.supplierUuid(), order.companyName(), recordedAmount, deliveryKey)) continue;
+                SupplyEscrowSavedData.get(server).releaseOnce(order.id(), deliveryKey,
+                        Money.toMinorSaturated(recordedAmount));
                 applyDeliveryProgress(server, data, order, recorded.remaining(), recorded.quantity(), false);
                 continue;
             }
@@ -375,9 +383,10 @@ public final class SupplyMarket {
             int newRemaining = order.remaining() - deliver;
             // Buyer funds for a backorder are held until this portion is
             // dispatched. The undelivered remainder remains refundable.
-            paySupplier(server, order.supplierUuid(), order.companyName(),
-                    EconomyMath.multiply(order.unitPrice(), deliver),
-                    deliveryKey);
+            long deliveredAmount = EconomyMath.multiply(order.unitPrice(), deliver);
+            if (!paySupplier(server, order.supplierUuid(), order.companyName(), deliveredAmount, deliveryKey)) continue;
+            SupplyEscrowSavedData.get(server).releaseOnce(order.id(), deliveryKey,
+                    Money.toMinorSaturated(deliveredAmount));
             deliveryJournal.record(new SupplyDeliverySavedData.Delivery(deliveryKey, order.id(), deliver,
                     newRemaining));
             SupplyOrderAuditService.record(server, order, deliveryType, deliver,
@@ -404,11 +413,11 @@ public final class SupplyMarket {
         }
     }
 
-    private static void paySupplier(MinecraftServer server, UUID supplierUuid, String companyName,
+    private static boolean paySupplier(MinecraftServer server, UUID supplierUuid, String companyName,
                                     long amount, String sourceId) {
-        if (server == null || supplierUuid == null || amount <= 0L) return;
+        if (server == null || supplierUuid == null || amount <= 0L) return false;
         SupplySettlementSavedData settlements = SupplySettlementSavedData.get(server);
-        if (settlements.hasSupplierPayment(sourceId)) return;
+        if (settlements.hasSupplierPayment(sourceId)) return true;
         long now = server.overworld().getGameTime();
         TaxTransactionService.assess(server, TaxType.VAT, supplierUuid, Currencies.USD.id(),
                 Money.toMinorSaturated(amount), "supply-sale:" + sourceId, now);
@@ -418,18 +427,19 @@ public final class SupplyMarket {
             CompanyHelper.recordTaxableIncome(server, company, "supply_sale:" + sourceId,
                     amount, Currencies.USD.id(), now);
             settlements.recordSupplierPayment(sourceId);
-            return;
+            return true;
         }
         ServerPlayer supplier = server.getPlayerList().getPlayer(supplierUuid);
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
         long amountMinor = Money.toMinor(amount);
         if (amountMinor <= 0L) {
-            return;
+            return false;
         }
-        mailbox.creditMoneyOnce(supplierUuid, "usd", amountMinor,
+        boolean credited = mailbox.creditMoneyOnce(supplierUuid, "usd", amountMinor,
                 "supply-supplier-payment:" + sourceId);
-        if (supplier != null) mailbox.redeemMoneyOnly(supplier);
+        if (credited && supplier != null) mailbox.redeemMoneyOnly(supplier);
         settlements.recordSupplierPayment(sourceId);
+        return credited;
     }
 
     private static void deliverOrShip(MinecraftServer server, UUID buyer, Item item, int quantity,
