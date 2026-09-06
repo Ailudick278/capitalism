@@ -1092,7 +1092,10 @@ public final class CompanyHelper {
     public static boolean contributeCapital(Player player, String name, long amount) {
         if (amount <= 0) return false;
         Company company = getCompany(player, name);
-        if (company == null || !EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(amount))) return false;
+        if (company == null) return false;
+        String paymentReference = "company-capital:" + company.companyId() + ":"
+                + company.registeredCapital() + ":" + amount;
+        if (!EconomyHelper.tryPayWithReference(player, Currencies.USD, Money.toMinor(amount), paymentReference)) return false;
         long capital = EconomyMath.add(company.registeredCapital(), amount);
         if (capital < 0L || company.treasuryOf(Currencies.USD.id()) > Long.MAX_VALUE - amount) return false;
         Company funded = company.withRegisteredCapital(capital).addTreasury(Currencies.USD.id(), amount);
@@ -1102,7 +1105,8 @@ public final class CompanyHelper {
         if (server != null) {
             CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
                     company.companyId(), server.overworld().getGameTime(), "capital_contribution",
-                    Currencies.USD.id(), amount, funded.treasuryOf(Currencies.USD.id()), "paid-in capital"));
+                    Currencies.USD.id(), amount, funded.treasuryOf(Currencies.USD.id()),
+                    "paid-in capital [source=" + paymentReference + "]"));
             EconomySavedData.get(server).updateListingCapital(stockId(player, name), capital);
         }
         return true;
