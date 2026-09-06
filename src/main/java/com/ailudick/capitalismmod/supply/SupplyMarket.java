@@ -176,7 +176,7 @@ public final class SupplyMarket {
             }
             String destination = TradeRegion.of(buyer.blockPosition());
             deliverOrShip(buyer.getServer(), buyer.getUUID(), item, filled, offer.region(),
-                    destination, supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid());
+                    destination, supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid(), orderSource);
             if (!buyerCompanyId.isBlank()) {
                 CompanyInventoryCostSavedData.get(buyer.getServer()).add(buyerCompanyId, offer.itemId(), filled,
                         EconomyMath.multiply(offer.price(), filled));
@@ -346,9 +346,11 @@ public final class SupplyMarket {
             if (deliver <= 0) {
                 continue;
             }
+            boolean dispatchAlreadyCreated = TradeRegion.distance(order.originRegion(), order.destinationRegion()) > 0
+                    && LogisticsSavedData.get(server).hasIdPrefix(deliveryKey + ":shipment:");
             // Do not create a delivery from a stale stock snapshot. Every
             // downstream side effect is conditional on the actual debit.
-            if (!warehouse.consume(resolvedOwner, item, deliver)) {
+            if (!dispatchAlreadyCreated && !warehouse.consume(resolvedOwner, item, deliver)) {
                 continue;
             }
             if (supplierCompany != null) {
@@ -358,7 +360,7 @@ public final class SupplyMarket {
             String deliveryType = TradeRegion.distance(order.originRegion(), order.destinationRegion()) == 0
                     ? "DELIVERED" : "DISPATCHED";
             deliverOrShip(server, order.buyerUuid(), item, deliver, order.originRegion(), order.destinationRegion(),
-                    order.id(), order.buyerCompanyId(), order.unitPrice(), order.supplierUuid());
+                    order.id(), order.buyerCompanyId(), order.unitPrice(), order.supplierUuid(), deliveryKey);
             if (!order.buyerCompanyId().isBlank()) {
                 CompanyInventoryCostSavedData.get(server).add(order.buyerCompanyId(), order.itemId(), deliver,
                         EconomyMath.multiply(order.unitPrice(), deliver));
@@ -425,7 +427,8 @@ public final class SupplyMarket {
 
     private static void deliverOrShip(MinecraftServer server, UUID buyer, Item item, int quantity,
                                       String origin, String destination, String supplyOrderId,
-                                      String buyerCompanyId, long unitPrice, UUID supplierUuid) {
+                                      String buyerCompanyId, long unitPrice, UUID supplierUuid,
+                                      String dispatchKey) {
         if (quantity <= 0) {
             return;
         }
@@ -452,10 +455,11 @@ public final class SupplyMarket {
         int capacity = transport.capacity() + infrastructure.capacityBonus(origin, destination, transport);
         while (remaining > 0) {
             int batch = Math.min(remaining, capacity);
-            data.add(new LogisticsSavedData.Shipment(UUID.randomUUID().toString(), buyer, itemId, batch, delay,
+            int batchIndex = (quantity - remaining) / Math.max(1, capacity);
+            String shipmentId = dispatchKey + ":shipment:" + batchIndex;
+            data.add(new LogisticsSavedData.Shipment(shipmentId, buyer, itemId, batch, delay,
                     origin, destination, transport, false, 0, supplyOrderId, buyerCompanyId, unitPrice,
                     supplierUuid));
-            String shipmentId = data.shipments().get(data.shipments().size() - 1).id();
             int fuelUnits = transport.estimatedFuelUnits(batch, distance);
             long fuelUnitPrice = Math.max(0L, com.ailudick.capitalismmod.market.CommoditySavedData
                     .get(server).price(transport.fuelItemId()));

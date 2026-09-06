@@ -62,6 +62,12 @@ public final class LogisticsSavedData extends SavedData {
         return List.copyOf(shipments);
     }
 
+    /** Returns whether a deterministic dispatch already created one of its shipments. */
+    public boolean hasIdPrefix(String prefix) {
+        return prefix != null && !prefix.isBlank()
+                && shipments.stream().anyMatch(shipment -> shipment.id().startsWith(prefix));
+    }
+
     public void add(Shipment shipment) {
         if (shipment == null || shipment.id() == null || shipment.id().isBlank()
                 || shipment.buyer() == null || shipment.itemId() == null
