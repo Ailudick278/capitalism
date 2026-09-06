@@ -88,7 +88,16 @@ public final class CompanyQualityControlSavedData extends SavedData {
     public boolean review(String companyId, String batchId, String status, long at) {
         Inspection previous = find(companyId, batchId);
         if (previous == null || !isManualStatus(status)) return false;
-        upsert(new Inspection(previous.batchId(), previous.companyId(), status, previous.score(),
+        String normalized = status.toLowerCase(java.util.Locale.ROOT);
+        String previousStatus = previous.status().toLowerCase(java.util.Locale.ROOT);
+        // Released and rejected are terminal dispositions. A rework decision
+        // may be followed by a fresh release or rejection, but an already
+        // disposed/released lot must never be resurrected by a later command.
+        if (!previousStatus.equals("rework")
+                && !previousStatus.equals("review")
+                && !previousStatus.equals("conditional")
+                && !previousStatus.equals(normalized)) return false;
+        upsert(new Inspection(previous.batchId(), previous.companyId(), normalized, previous.score(),
                 "manual_" + status, previous.inspectedAt(), Math.max(0L, at)));
         return true;
     }
