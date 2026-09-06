@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -64,8 +65,11 @@ public final class LaborMarketService {
                 || offer.dailyWageMinor() < profile.reservationWageMinor() || data.activeForWorker(actor(worker)).size() > 0) return false;
         if (!data.reserveVacancy(offerId)) return false;
         try {
-            return data.hire(new EmploymentRecord(UUID.randomUUID().toString(), actor(worker), offer.employerId(),
-                    offer.role(), offer.dailyWageMinor(), employer.getServer().overworld().getGameTime(), 0L, true));
+            EmploymentRecord employment = new EmploymentRecord(UUID.randomUUID().toString(), actor(worker), offer.employerId(),
+                    offer.role(), offer.dailyWageMinor(), employer.getServer().overworld().getGameTime(), 0L, true);
+            boolean hired = data.hire(employment);
+            if (hired) EconomicContractBridge.employmentCreated(employer.getServer(), employment);
+            return hired;
         } catch (RuntimeException e) { return false; }
     }
 
@@ -76,8 +80,11 @@ public final class LaborMarketService {
         if (offer == null || profile == null || profile.participation() <= 0 || profile.skill(offer.requiredSkill()) < offer.minimumSkill()
                 || offer.dailyWageMinor() < profile.reservationWageMinor() || !data.activeForWorker(npcId).isEmpty()) return false;
         if (!data.reserveVacancy(offerId)) return false;
-        return data.hire(new EmploymentRecord(java.util.UUID.randomUUID().toString(), npcId, offer.employerId(), offer.role(),
-                offer.dailyWageMinor(), server.overworld().getGameTime(), 0L, true));
+        EmploymentRecord employment = new EmploymentRecord(java.util.UUID.randomUUID().toString(), npcId, offer.employerId(), offer.role(),
+                offer.dailyWageMinor(), server.overworld().getGameTime(), 0L, true);
+        boolean hired = data.hire(employment);
+        if (hired) EconomicContractBridge.employmentCreated(server, employment);
+        return hired;
     }
 
     public static boolean end(ServerPlayer player, String employmentId) {
@@ -86,6 +93,9 @@ public final class LaborMarketService {
         if (found == null) return false;
         Company company = CompanySavedData.get(player.getServer()).get(found.employerId());
         if (!found.workerId().equals(actor(player)) && (company == null || !company.ownerUuid().equals(player.getUUID()))) return false;
-        return data.endEmployment(employmentId, player.getServer().overworld().getGameTime());
+        long endedAt = player.getServer().overworld().getGameTime();
+        boolean ended = data.endEmployment(employmentId, endedAt);
+        if (ended) EconomicContractBridge.employmentEnded(player.getServer(), employmentId, endedAt);
+        return ended;
     }
 }

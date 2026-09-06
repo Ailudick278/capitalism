@@ -7,6 +7,7 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.business.BusinessOrder;
+import com.ailudick.capitalismmod.economy.labor.EmploymentRecord;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 
@@ -49,6 +50,22 @@ public final class EconomicContractBridge {
             data.fulfill(order.id(), order.quantity());
         }
         data.transition(order.id(), status, at);
+    }
+
+    public static void employmentCreated(MinecraftServer server, EmploymentRecord employment) {
+        if (server == null || employment == null) return;
+        EconomicContractSavedData data = EconomicContractSavedData.get(server);
+        if (data.find(employment.id()) != null) return;
+        long endsAt = employment.endedAt() > 0L ? employment.endedAt() : Long.MAX_VALUE;
+        data.add(new EconomicContract(employment.id(), ContractType.EMPLOYMENT,
+                new EconomicActorRef("company", employment.employerId()),
+                new EconomicActorRef(employment.workerId().startsWith("npc-") ? "npc" : "player", employment.workerId()),
+                employment.startedAt(), employment.startedAt(), endsAt, employment.dailyWageMinor(),
+                Currencies.USD.id(), ContractStatus.ACTIVE, 0L, 0L, 0L));
+    }
+
+    public static void employmentEnded(MinecraftServer server, String employmentId, long at) {
+        status(server, employmentId, ContractStatus.COMPLETED, at);
     }
 
     public static void supplyCreated(MinecraftServer server, String id, UUID buyer, UUID supplier,
