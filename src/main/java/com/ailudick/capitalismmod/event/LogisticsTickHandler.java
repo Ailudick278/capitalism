@@ -139,7 +139,8 @@ public final class LogisticsTickHandler {
                 InventoryOwner owner = shipment.buyerCompanyId().isBlank()
                         ? InventoryOwner.player(shipment.buyer())
                         : InventoryOwner.company(shipment.buyerCompanyId());
-                warehouse.credit(owner, item, shipment.quantity());
+                warehouse.creditOnce(owner, item, shipment.quantity(),
+                        "logistics-delivery:" + shipment.id());
                 if (!shipment.buyerCompanyId().isBlank()) {
                     Company company = CompanySavedData.get(server).get(shipment.buyerCompanyId());
                     LogisticsCostSavedData.FuelPlan fuelPlan = LogisticsCostSavedData.get(server)
