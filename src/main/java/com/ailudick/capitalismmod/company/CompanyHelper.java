@@ -161,6 +161,17 @@ public final class CompanyHelper {
         return debitTreasuryInternal(server, companyId, currencyId, amount, type, description, false);
     }
 
+    /** Idempotent non-operating debit keyed by a durable settlement source. */
+    public static boolean debitTreasuryNonOperatingOnce(MinecraftServer server, String companyId, String currencyId,
+                                                         long amount, String type, String description, String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || amount <= 0L) return false;
+        String marker = "[source=" + sourceId + "]";
+        if (CompanyLedgerSavedData.get(server).entries(companyId).stream()
+                .anyMatch(entry -> entry.amount() < 0L && entry.description() != null && entry.description().contains(marker))) return true;
+        return debitTreasuryNonOperating(server, companyId, currencyId, amount, type,
+                (description == null ? "" : description) + " " + marker);
+    }
+
     private static boolean debitTreasuryInternal(MinecraftServer server, String companyId, String currencyId,
                                                  long amount, String type, String description,
                                                  boolean taxableExpense) {
