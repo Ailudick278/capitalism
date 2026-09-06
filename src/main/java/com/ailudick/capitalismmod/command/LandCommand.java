@@ -296,22 +296,15 @@ public final class LandCommand {
             source.sendFailure(Component.literal("出价必须至少为 " + minimum + "，且人民币余额足够"));
             return 0;
         }
-        if (auction.highestBidder() != null && auction.highestBidder().equals(player.getUUID())) {
-            if (!refundAuctionBid(player.getServer(), auction, "outbid")) {
-                source.sendFailure(Component.literal("上一笔出价退款暂未完成，请稍后重试"));
-                return 0;
-            }
-        }
+        boolean sameBidder = auction.highestBidder() != null && auction.highestBidder().equals(player.getUUID());
+        long additional = sameBidder ? price - auction.highestBid() : price;
         String bidReference = "land-auction-bid:" + auction.claimId() + ":" + auction.endsAt() + ":"
-                + player.getUUID() + ":" + price;
-        if (!EconomyHelper.tryPayWithReference(player, Currencies.CNY, price, bidReference)) {
-            if (auction.highestBidder() != null && auction.highestBidder().equals(player.getUUID())) {
-                EconomyHelper.tryPay(player, Currencies.CNY, auction.highestBid());
-            }
+                + player.getUUID() + ":" + price + ":" + additional;
+        if (!EconomyHelper.tryPayWithReference(player, Currencies.CNY, additional, bidReference)) {
             source.sendFailure(Component.literal("托管出价资金失败"));
             return 0;
         }
-        if (auction.highestBidder() != null && !auction.highestBidder().equals(player.getUUID())) {
+        if (auction.highestBidder() != null && !sameBidder) {
             if (!refundAuctionBid(player.getServer(), auction, "outbid")) {
                 source.sendFailure(Component.literal("上一笔出价退款暂未完成，请稍后重试"));
                 return 0;
