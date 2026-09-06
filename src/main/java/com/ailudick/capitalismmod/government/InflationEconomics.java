@@ -31,4 +31,8 @@ public final class InflationEconomics {
         if (currentIndexBps < targetIndexBps) return -25;
         return 0;
     }
+
+    public static boolean automaticAdjustmentDue(long day, long lastAdjustmentDay) {
+        return day >= 0L && day > lastAdjustmentDay;
+    }
 }

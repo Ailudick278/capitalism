@@ -41,7 +41,7 @@ public final class GovernmentPolicyService {
         if (snapshot == null) return;
         int adjustment = InflationEconomics.policyRateAdjustment(snapshot.indexBps(),
                 policy.inflationTargetIndexBps());
-        if (adjustment != 0) policy.adjustPolicyRate(adjustment);
+        policy.adjustPolicyRateOnce(day, adjustment);
     }
 
     private static void stimulateHousing(MinecraftServer server, PopulationSavedData population,
