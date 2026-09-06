@@ -16,6 +16,9 @@ import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.currency.Currencies;
+import com.ailudick.capitalismmod.currency.ExchangeRates;
+import com.ailudick.capitalismmod.currency.Money;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 
@@ -33,8 +36,9 @@ public final class PopulationService {
         LaborMarketSavedData labor = LaborMarketSavedData.get(server);
         for (Household household : population.households()) {
             if (household.lastSettlementDay() >= day) continue;
-            long income = isNpc(household.id()) ? 0L : labor.employments().stream().filter(e -> e.active() && e.workerId().equals(household.id()))
-                    .mapToLong(EmploymentRecord::dailyWageMinor).reduce(0L, PopulationService::add);
+            long income = labor.employments().stream().filter(e -> e.active() && e.workerId().equals(household.id()))
+                    .mapToLong(e -> ExchangeRates.convert(e.dailyWageMinor(), Currencies.USD, Config.defaultCurrency()))
+                    .reduce(0L, PopulationService::add);
             long cash = add(household.cashMinor(), income);
             int residents = population.population(household.region());
             int housingUnits = LogisticsInfrastructureSavedData.get(server).count(household.region(), "housing");
@@ -151,7 +155,8 @@ public final class PopulationService {
             ItemStack item = findCommodity(categories[i]);
             if (item == null) continue;
             String itemId = Commodities.id(item); long priceMajor = CommoditySavedData.get(server).price(itemId);
-            long unitPrice = Math.max(1L, Math.min(Long.MAX_VALUE / 100L, priceMajor) * 100L);
+            long unitPrice = Math.max(1L, ExchangeRates.convert(Money.toMinorSaturated(priceMajor),
+                    Currencies.USD, Config.defaultCurrency()));
             long budget = Math.min(remaining, need * shares[i] / 100L);
             long quantity = Math.min((long) household.size() * 4L, budget / unitPrice);
             if (quantity <= 0L) continue;
@@ -169,7 +174,8 @@ public final class PopulationService {
                     ? Long.MAX_VALUE : purchasable * unitPrice;
             boolean alreadyCredited = hasCompanySource(server, seller.companyId(), source);
             if (!alreadyCredited && !warehouse.consume(InventoryOwner.company(seller.companyId()), item.getItem(), purchasable)) continue;
-            long revenueMajor = actualCost / 100L;
+            long revenueInUsdMinor = ExchangeRates.convert(actualCost, Config.defaultCurrency(), Currencies.USD);
+            long revenueMajor = Money.toMajorCeiling(revenueInUsdMinor);
             if (!alreadyCredited && (revenueMajor <= 0L || !CompanyHelper.creditTreasuryNonOperatingOnce(server, seller.companyId(), "usd", revenueMajor,
                     "household_sales", "Virtual household sale", source))) {
                 warehouse.credit(InventoryOwner.company(seller.companyId()), item.getItem(), purchasable);
