@@ -22,6 +22,7 @@ import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightSettlementService;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -90,6 +91,11 @@ public final class LogisticsTickHandler {
                     long coveredLoss = Math.min(insuredValue, actualLoss);
                     long deductible = insuranceDeductible(insuredValue, coveredLoss);
                     long payout = Math.max(0L, coveredLoss - deductible);
+                    String claimSource = "logistics-claim:" + shipment.id();
+                    FinancialSettlementJournalSavedData financialJournal =
+                            FinancialSettlementJournalSavedData.get(server);
+                    long payoutMinor = Money.toMinor(payout);
+                    financialJournal.markStarted(claimSource, "logistics", "insurance-payout", payoutMinor, now);
                     CompanyFreightContractSavedData.Contract freightContract =
                             CompanyFreightContractSavedData.get(server).activeForShipment(shipment.id());
                     String carrierCompanyId = freightContract == null ? "" : freightContract.carrierCompanyId();
@@ -99,27 +105,33 @@ public final class LogisticsTickHandler {
                     if (companyShipment) {
                         if (payout > 0L && !CompanyHelper.creditTreasuryNonOperatingOnce(server, company.companyId(),
                                 "usd", payout, "cargo_insurance_claim", "Cargo insurance indemnity",
-                                "logistics-claim:" + shipment.id())) {
+                                claimSource)) {
                             // Keep the shipment pending when the beneficiary cannot be credited yet.
                             // This avoids recording a settled claim after a transient company-data failure.
                             continue;
                         }
                         CompanyInventoryCostSavedData.get(server).consumeOnce(company.companyId(),
-                                shipment.itemId(), shipment.quantity(), "logistics-claim:" + shipment.id());
+                                shipment.itemId(), shipment.quantity(), claimSource);
                     } else {
-                        long payoutMinor = Money.toMinor(payout);
                         if (payout > 0L && payoutMinor <= 0L) {
                             // Do not discard a claim when the currency conversion overflows or rejects it.
                             continue;
                         }
-                        MarketMailboxSavedData.get(server).creditMoneyOnce(shipment.buyer(), "usd", payoutMinor,
-                                "logistics-claim:" + shipment.id());
+                        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+                        boolean credited = payout <= 0L || mailbox.hasCreditSource(claimSource)
+                                || mailbox.creditMoneyOnce(shipment.buyer(), "usd", payoutMinor, claimSource);
+                        if (!credited) continue;
                     }
+                    financialJournal.markCompleted(claimSource, "logistics", "insurance-payout", payoutMinor, now);
+                    financialJournal.markStarted(claimSource, "logistics", "claim-record", payoutMinor, now);
                     claims.settle(new LogisticsClaimSavedData.Claim(
                             java.util.UUID.randomUUID().toString(), shipment.id(), shipment.buyer(), insuredValue,
                             actualLoss, payout, now, "settled", carrierCompanyId, deductible));
+                    financialJournal.markCompleted(claimSource, "logistics", "claim-record", payoutMinor, now);
+                    financialJournal.markStarted(claimSource, "logistics", "contract-close", payoutMinor, now);
                     CompanyFreightContractSavedData.get(server).closeForLoss(shipment.id());
                     markFreightBreached(server, shipment.id(), now);
+                    financialJournal.markCompleted(claimSource, "logistics", "contract-close", payoutMinor, now);
                     data.remove(shipment.id());
                 } else if (shipment.disruptionCount() + 1 >= Config.LOGISTICS_MAX_DISRUPTIONS.get()) {
                     LogisticsLossService.record(server, shipment);
