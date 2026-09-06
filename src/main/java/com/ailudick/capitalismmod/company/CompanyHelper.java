@@ -1095,21 +1095,64 @@ public final class CompanyHelper {
         if (company == null) return false;
         String paymentReference = "company-capital:" + company.companyId() + ":"
                 + company.registeredCapital() + ":" + amount;
+        MinecraftServer server = player.getServer();
+        CompanyLedgerSavedData ledger = server == null ? null : CompanyLedgerSavedData.get(server);
+        if (ledger != null && hasAppliedCapitalContribution(ledger, company, amount)) {
+            // The company leg is already present; reconcile the derived listing
+            // snapshot if a stop occurred between those two writes.
+            EconomySavedData.get(server).updateListingCapital(stockId(player, name), company.registeredCapital());
+            return true;
+        }
+        // Recovery path for a server stop after the ledger append but before the
+        // company registry update. The source is authoritative: finish the
+        // missing company-side leg instead of charging the founder again.
+        if (ledger != null && ledger.hasSource(company.companyId(), paymentReference)) {
+            long recoveredCapital = EconomyMath.add(company.registeredCapital(), amount);
+            if (recoveredCapital < 0L || company.treasuryOf(Currencies.USD.id()) > Long.MAX_VALUE - amount) return false;
+            Company recovered = company.withRegisteredCapital(recoveredCapital)
+                    .addTreasury(Currencies.USD.id(), amount);
+            if (recovered != company) setCompany(player, name, recovered);
+            EconomySavedData.get(server).updateListingCapital(stockId(player, name), recoveredCapital);
+            return true;
+        }
         if (!EconomyHelper.tryPayWithReference(player, Currencies.USD, Money.toMinor(amount), paymentReference)) return false;
         long capital = EconomyMath.add(company.registeredCapital(), amount);
         if (capital < 0L || company.treasuryOf(Currencies.USD.id()) > Long.MAX_VALUE - amount) return false;
         Company funded = company.withRegisteredCapital(capital).addTreasury(Currencies.USD.id(), amount);
         if (funded == company) return false;
-        setCompany(player, name, funded);
-        MinecraftServer server = player.getServer();
         if (server != null) {
-            CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+            ledger.append(new CompanyLedgerEntry(
                     company.companyId(), server.overworld().getGameTime(), "capital_contribution",
                     Currencies.USD.id(), amount, funded.treasuryOf(Currencies.USD.id()),
                     "paid-in capital [source=" + paymentReference + "]"));
+            // Record the durable company-side settlement before changing the
+            // registry. If the server stops here, the next request can finish it.
+            setCompany(player, name, funded);
             EconomySavedData.get(server).updateListingCapital(stockId(player, name), capital);
+        } else {
+            setCompany(player, name, funded);
         }
         return true;
+    }
+
+    private static boolean hasAppliedCapitalContribution(CompanyLedgerSavedData ledger, Company company, long amount) {
+        String prefix = "[source=company-capital:" + company.companyId() + ":";
+        for (CompanyLedgerEntry entry : ledger.entries(company.companyId())) {
+            if (!"capital_contribution".equals(entry.type()) || entry.amount() != amount
+                    || entry.description() == null) continue;
+            int start = entry.description().indexOf(prefix);
+            if (start < 0) continue;
+            start += prefix.length();
+            int end = entry.description().indexOf(':', start);
+            if (end < 0) continue;
+            try {
+                long previousCapital = Long.parseLong(entry.description().substring(start, end));
+                if (EconomyMath.add(previousCapital, amount) == company.registeredCapital()) return true;
+            } catch (NumberFormatException ignored) {
+                // Ignore malformed legacy descriptions and continue scanning.
+            }
+        }
+        return false;
     }
 
     /**

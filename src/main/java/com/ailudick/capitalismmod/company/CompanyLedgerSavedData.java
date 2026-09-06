@@ -36,6 +36,14 @@ public final class CompanyLedgerSavedData extends SavedData {
         return List.copyOf(entries.getOrDefault(companyId, List.of()));
     }
 
+    /** Returns whether a ledger entry already records the given durable source. */
+    public boolean hasSource(String companyId, String sourceId) {
+        if (companyId == null || companyId.isBlank() || sourceId == null || sourceId.isBlank()) return false;
+        String marker = "[source=" + sourceId + "]";
+        return entries(companyId).stream().anyMatch(entry -> entry.description() != null
+                && entry.description().contains(marker));
+    }
+
     public void append(CompanyLedgerEntry entry) {
         if (entry == null || entry.companyId() == null || entry.companyId().isBlank()) return;
         entries.computeIfAbsent(entry.companyId(), ignored -> new ArrayList<>()).add(entry);
