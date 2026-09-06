@@ -41,6 +41,7 @@ import com.ailudick.capitalismmod.population.HouseholdConsumptionSavedData;
 import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
+import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -130,6 +131,13 @@ public final class EconomyAuditService {
                     || snapshot.withdrawnMinor() < 0L || snapshot.withdrawnMinor() > snapshot.depositsMinor()) {
                 issues.add("bank liquidity snapshot invalid day " + snapshot.day());
             }
+        }
+        BankCapitalSavedData bankCapital = BankCapitalSavedData.get(server);
+        if (bankCapital.capitalMinor() == Long.MIN_VALUE
+                || bankCapital.cumulativeProfitLossMinor() == Long.MIN_VALUE
+                || bankCapital.lossProvisionMinor() < 0L
+                || bankCapital.lastSettlementDay() < -1L) {
+            issues.add("bank capital ledger invalid");
         }
         CompanySavedData companies = CompanySavedData.get(server);
         CompanyLedgerSavedData ledgers = CompanyLedgerSavedData.get(server);
