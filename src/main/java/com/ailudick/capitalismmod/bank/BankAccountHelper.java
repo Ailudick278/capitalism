@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.event.AccountOpenedEvent;
 import com.ailudick.capitalismmod.event.LoanTakenEvent;
 import com.ailudick.capitalismmod.init.ModAttachments;
 import com.ailudick.capitalismmod.util.EconomyMath;
+import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -203,10 +204,16 @@ public final class BankAccountHelper {
             if (!BankLiquidityService.authorizeWithdrawal(player.getServer(), currency.id(), amount)) {
                 return false;
             }
+            String payoutSource = "bank-withdrawal:" + player.getUUID() + ":" + accountId + ":"
+                    + currency.id() + ":" + accountBalance + ":" + amount;
             account = account.withBalance(currency.id(), accountBalance - amount)
                     .withTransaction(BankTransaction.now(player, "withdraw", currency.id(), -amount,
-                            "cash_withdraw", "wallet"));
-            EconomyHelper.giveMoney(player, currency, amount);
+                            payoutSource, "wallet"));
+            updateAccount(player, account);
+            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+            mailbox.creditMoneyOnce(player.getUUID(), currency.id(), amount, payoutSource);
+            if (player instanceof ServerPlayer serverPlayer) mailbox.redeemMoneyOnly(serverPlayer);
+            return true;
         }
 
         updateAccount(player, account);
@@ -264,10 +271,15 @@ public final class BankAccountHelper {
         }
 
         int loanDays = existingDebtInBase == 0 ? Config.LOAN_TERM_DAYS.get() : account.loanDaysRemaining();
-        EconomyHelper.giveMoney(player, currency, amount);
+        String payoutSource = "bank-loan:" + player.getUUID() + ":" + accountId + ":"
+                + currency.id() + ":" + account.getDebt(currency.id()) + ":" + amount;
         updateAccount(player, account.withDebt(currency.id(), newDebt)
                 .withLoanDaysRemaining(loanDays)
-                .withTransaction(BankTransaction.now(player, "loan", currency.id(), amount)));
+                .withTransaction(BankTransaction.now(player, "loan", currency.id(), amount,
+                        payoutSource, "wallet")));
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+        mailbox.creditMoneyOnce(player.getUUID(), currency.id(), amount, payoutSource);
+        if (player instanceof ServerPlayer serverPlayer) mailbox.redeemMoneyOnly(serverPlayer);
         NeoForge.EVENT_BUS.post(new LoanTakenEvent(player, accountId, currency.id(), amount));
         return true;
     }
