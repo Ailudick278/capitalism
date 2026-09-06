@@ -300,8 +300,9 @@ public final class LandRentTickHandler {
                 + auction.highestBidder() + ":" + auction.highestBid();
         if (journal.has(key)) return;
         ServerPlayer bidder = server.getPlayerList().getPlayer(auction.highestBidder());
-        if (bidder != null) EconomyHelper.giveMoney(bidder, Config.defaultCurrency(), auction.highestBid());
-        else MarketMailboxSavedData.get(server).creditMoney(auction.highestBidder(), Config.defaultCurrencyId(), auction.highestBid());
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        mailbox.creditMoneyOnce(auction.highestBidder(), Config.defaultCurrencyId(), auction.highestBid(), key);
+        if (bidder != null) mailbox.redeemMoneyOnly(bidder);
         journal.record(key);
     }
 

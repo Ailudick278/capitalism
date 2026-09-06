@@ -573,8 +573,9 @@ public final class LandCommand {
         String payoutKey = transferKey + ":seller-payout";
         ServerPlayer oldOwner = player.getServer().getPlayerList().getPlayer(pending.from());
         if (!journal.has(payoutKey)) {
-            if (oldOwner != null) EconomyHelper.giveMoney(oldOwner, Currencies.CNY, price);
-            else MarketMailboxSavedData.get(player.getServer()).creditMoney(pending.from(), Currencies.CNY.id(), price);
+            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+            mailbox.creditMoneyOnce(pending.from(), Currencies.CNY.id(), price, payoutKey);
+            if (oldOwner != null) mailbox.redeemMoneyOnly(oldOwner);
             journal.record(payoutKey);
         }
         TaxTransactionService.assess(player.getServer(), TaxType.LAND_TRANSFER, pending.from(), Currencies.CNY.id(),
@@ -605,8 +606,9 @@ public final class LandCommand {
         LandAuctionSettlementSavedData journal = LandAuctionSettlementSavedData.get(server);
         if (journal.has(key)) return;
         ServerPlayer bidder = server.getPlayerList().getPlayer(auction.highestBidder());
-        if (bidder != null) EconomyHelper.giveMoney(bidder, Currencies.CNY, auction.highestBid());
-        else MarketMailboxSavedData.get(server).creditMoney(auction.highestBidder(), Currencies.CNY.id(), auction.highestBid());
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        mailbox.creditMoneyOnce(auction.highestBidder(), Currencies.CNY.id(), auction.highestBid(), key);
+        if (bidder != null) mailbox.redeemMoneyOnly(bidder);
         journal.record(key);
     }
 
