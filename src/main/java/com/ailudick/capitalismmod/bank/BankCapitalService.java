@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.bank;
 
 import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -41,6 +42,20 @@ public final class BankCapitalService {
         else income = add(income, -provisionDelta);
         capital.applyDailyResult(day, income, expense);
         return capital;
+    }
+
+    /** Transfers fiscal funds into bank equity with a retryable two-ledger receipt. */
+    public static boolean injectFromTreasury(MinecraftServer server, long day, long amountMinor,
+                                             String sourceId) {
+        if (server == null || amountMinor <= 0L || sourceId == null || sourceId.isBlank()) return false;
+        BankCapitalSavedData capital = BankCapitalSavedData.get(server);
+        if (!capital.initialized()) capital.initialize(Config.BANK_INITIAL_CAPITAL_MINOR.get());
+        if (capital.hasInjection(sourceId)) return true;
+        GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);
+        String spendingId = "bank-capital-injection:" + sourceId;
+        if (!government.hasSpending(spendingId)
+                && !government.spend("bank-capital-injection", day, amountMinor, spendingId)) return false;
+        return capital.injectOnce(amountMinor, sourceId) || capital.hasInjection(sourceId);
     }
 
     private static long add(long left, long right) {

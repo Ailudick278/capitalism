@@ -5,6 +5,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /** Persistent bank equity ledger in default-currency minor units. */
 public final class BankCapitalSavedData extends SavedData {
     private static final String ID = "capitalismmod_bank_capital";
@@ -13,6 +16,8 @@ public final class BankCapitalSavedData extends SavedData {
     private long lossProvisionMinor;
     private long lastSettlementDay = -1L;
     private boolean initialized;
+    private final Set<String> injectionReceipts = new HashSet<>();
+    private static final int MAX_INJECTION_RECEIPTS = 4096;
 
     private BankCapitalSavedData() {}
 
@@ -26,6 +31,23 @@ public final class BankCapitalSavedData extends SavedData {
     public long lastSettlementDay() { return lastSettlementDay; }
     public long lossProvisionMinor() { return lossProvisionMinor; }
     public boolean initialized() { return initialized; }
+
+    /** Applies a government capital injection once, using a durable source receipt. */
+    public boolean injectOnce(long amountMinor, String sourceId) {
+        if (!initialized || amountMinor <= 0L || sourceId == null || sourceId.isBlank()
+                || injectionReceipts.contains(sourceId)) return false;
+        capitalMinor = saturatingAdd(capitalMinor, amountMinor);
+        injectionReceipts.add(sourceId);
+        while (injectionReceipts.size() > MAX_INJECTION_RECEIPTS) {
+            injectionReceipts.remove(injectionReceipts.iterator().next());
+        }
+        setDirty();
+        return true;
+    }
+
+    public boolean hasInjection(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && injectionReceipts.contains(sourceId);
+    }
 
     public void initialize(long openingCapitalMinor) {
         if (initialized) return;
@@ -65,6 +87,13 @@ public final class BankCapitalSavedData extends SavedData {
         tag.putLong("lossProvisionMinor", lossProvisionMinor);
         tag.putLong("lastSettlementDay", lastSettlementDay);
         tag.putBoolean("initialized", initialized);
+        net.minecraft.nbt.ListTag injections = new net.minecraft.nbt.ListTag();
+        for (String source : injectionReceipts) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("source", source);
+            injections.add(entry);
+        }
+        tag.put("injectionReceipts", injections);
         return tag;
     }
 
@@ -75,6 +104,11 @@ public final class BankCapitalSavedData extends SavedData {
         data.lossProvisionMinor = Math.max(0L, tag.getLong("lossProvisionMinor"));
         data.lastSettlementDay = tag.getLong("lastSettlementDay");
         data.initialized = tag.getBoolean("initialized") || tag.contains("capitalMinor");
+        net.minecraft.nbt.ListTag injections = tag.getList("injectionReceipts", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        for (int i = Math.max(0, injections.size() - MAX_INJECTION_RECEIPTS); i < injections.size(); i++) {
+            String source = injections.getCompound(i).getString("source");
+            if (!source.isBlank()) data.injectionReceipts.add(source);
+        }
         return data;
     }
 
