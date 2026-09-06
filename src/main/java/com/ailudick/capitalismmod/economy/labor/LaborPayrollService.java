@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -60,6 +61,12 @@ public final class LaborPayrollService {
                 }
             } else paid = 0L;
             payroll.settle(employment.id(), day, due - paid);
+            long arrears = payroll.account(employment.id()).unpaid();
+            long breachThreshold = employment.dailyWageMinor() > Long.MAX_VALUE / 7L
+                    ? Long.MAX_VALUE : employment.dailyWageMinor() * 7L;
+            if (arrears > 0L && arrears >= breachThreshold) {
+                EconomicContractBridge.employmentBreach(server, employment.id(), arrears, server.overworld().getGameTime());
+            }
         }
     }
 

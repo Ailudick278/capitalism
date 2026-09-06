@@ -68,6 +68,15 @@ public final class EconomicContractBridge {
         status(server, employmentId, ContractStatus.COMPLETED, at);
     }
 
+    public static void employmentBreach(MinecraftServer server, String employmentId, long arrearsMinor, long at) {
+        if (server == null || employmentId == null || arrearsMinor <= 0L) return;
+        EconomicContractSavedData data = EconomicContractSavedData.get(server);
+        EconomicContract current = data.find(employmentId);
+        if (current != null && (current.status() == ContractStatus.ACTIVE || current.status() == ContractStatus.OFFERED)) {
+            data.breach(employmentId, arrearsMinor);
+        }
+    }
+
     public static void supplyCreated(MinecraftServer server, String id, UUID buyer, UUID supplier,
                                      String itemId, int quantity, long amountMajor, long createdAt) {
         if (server == null || id == null || id.isBlank() || buyer == null || supplier == null

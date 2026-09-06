@@ -63,6 +63,14 @@ public final class EconomicContractSavedData extends SavedData {
         return replace(current.fulfill(quantity));
     }
 
+    public boolean breach(String id, long amountMinor) {
+        EconomicContract current = find(id);
+        if (current == null) return false;
+        EconomicContract breached = current.breach(amountMinor);
+        if (breached == current) return false;
+        return replace(breached);
+    }
+
     public int expire(long now) {
         int changed = 0;
         for (int i = 0; i < contracts.size(); i++) {
