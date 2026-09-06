@@ -10,6 +10,9 @@ import com.ailudick.capitalismmod.economy.labor.LaborPayrollSavedData;
 import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
 import com.ailudick.capitalismmod.economy.SettlementJournalRules;
+import com.ailudick.capitalismmod.economy.RecoveryIntentRules;
+import com.ailudick.capitalismmod.loan.PeerLoanOriginationIntentSavedData;
+import com.ailudick.capitalismmod.loan.PeerLoanPaymentSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
@@ -206,6 +209,40 @@ public final class EconomyAuditService {
                 .forEach(intent -> issues.add("pending currency exchange " + intent.id()));
         PlayerTransferIntentSavedData.get(server).intents().stream().limit(100)
                 .forEach(intent -> issues.add("pending player transfer " + intent.id()));
+        Set<String> recoveryIds = new HashSet<>();
+        for (var intent : CurrencyExchangeIntentSavedData.get(server).intents()) {
+            if (!recoveryIds.add("exchange:" + intent.id())
+                    || !RecoveryIntentRules.validExchange(intent.id(), intent.player(), intent.from(), intent.to(),
+                    intent.amount(), intent.converted(), Currencies.exists(intent.from()), Currencies.exists(intent.to()))) {
+                issues.add("currency exchange intent invalid " + intent.id());
+            }
+        }
+        for (var intent : PlayerTransferIntentSavedData.get(server).intents()) {
+            if (!recoveryIds.add("transfer:" + intent.id())
+                    || !RecoveryIntentRules.validTransfer(intent.id(), intent.sender(), intent.target(),
+                    intent.currencyId(), intent.amount(), Currencies.exists(intent.currencyId()))) {
+                issues.add("player transfer intent invalid " + intent.id());
+            }
+        }
+        for (var intent : PeerLoanOriginationIntentSavedData.get(server).intents()) {
+            if (!recoveryIds.add("loan:" + intent.loanId())
+                    || !RecoveryIntentRules.validOrigination(intent.loanId(), intent.lender(), intent.borrower(),
+                    intent.currencyId(), intent.principal(), intent.ratePerYear(), intent.days(),
+                    Currencies.exists(intent.currencyId()))) {
+                issues.add("peer loan origination invalid " + intent.loanId());
+            }
+        }
+        Set<String> paymentKeys = new HashSet<>();
+        for (var payment : PeerLoanPaymentSavedData.get(server).forAll()) {
+            String paymentKey = PeerLoanPaymentSavedData.payoutSource(payment);
+            if (!paymentKeys.add(paymentKey)
+                    || !RecoveryIntentRules.validPayment(payment.loanId(), payment.lender(), payment.borrower(),
+                    payment.currencyId(), payment.timestamp(), payment.total(), payment.interest(),
+                    payment.principal(), payment.remainingPrincipal(), payment.daysRemaining(),
+                    Currencies.exists(payment.currencyId()))) {
+                issues.add("peer loan payment invalid " + payment.loanId());
+            }
+        }
         GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);
         if (government.treasuryMinor() < 0L) issues.add("government treasury is negative");
         for (var transaction : government.transactions()) {
