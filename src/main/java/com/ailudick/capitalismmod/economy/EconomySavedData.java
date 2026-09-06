@@ -257,6 +257,10 @@ public final class EconomySavedData extends SavedData {
         return true;
     }
 
+    public boolean hasShareCredit(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && shareCreditReceipts.contains(sourceId);
+    }
+
     /** Transfers shares atomically within this saved-data ledger, at most once per source. */
     public boolean transferSharesOnce(String stockId, UUID sellerId, UUID buyerId, long amount, String sourceId) {
         if (stockId == null || stockId.isBlank() || sellerId == null || buyerId == null

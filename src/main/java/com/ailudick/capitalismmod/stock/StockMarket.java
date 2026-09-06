@@ -7,6 +7,7 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.event.TradeCompletedEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
@@ -224,7 +225,13 @@ public final class StockMarket {
             }
             String tradeSource = "stock-trade:" + sell.id() + ":" + sell.quantity() + ":" + player.getUUID()
                     + ":" + fill + ":" + gross;
-            data.addSharesOnce(stockId, player.getUUID(), fill, tradeSource + ":shares");
+            FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
+            long now = player.getServer().overworld().getGameTime();
+            journal.markStarted(tradeSource, "stock", "shares", fill, now);
+            String shareSource = tradeSource + ":shares";
+            if (!data.hasShareCredit(shareSource)) data.addSharesOnce(stockId, player.getUUID(), fill, shareSource);
+            if (!data.hasShareCredit(shareSource)) break;
+            journal.markCompleted(tradeSource, "stock", "shares", fill, now);
             settleStampDuty(player.getServer(), UUID.fromString(sell.ownerId()), gross, tradeSource);
             payTo(player.getServer(), UUID.fromString(sell.ownerId()),
                     Money.toMinor(gross - duty(gross)),
@@ -271,7 +278,13 @@ public final class StockMarket {
             }
             String tradeSource = "stock-trade:" + buy.id() + ":" + buy.quantity() + ":" + player.getUUID()
                     + ":" + fill + ":" + gross;
-            data.addSharesOnce(stockId, UUID.fromString(buy.ownerId()), fill, tradeSource + ":shares");
+            FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
+            long now = player.getServer().overworld().getGameTime();
+            journal.markStarted(tradeSource, "stock", "shares", fill, now);
+            String shareSource = tradeSource + ":shares";
+            if (!data.hasShareCredit(shareSource)) data.addSharesOnce(stockId, UUID.fromString(buy.ownerId()), fill, shareSource);
+            if (!data.hasShareCredit(shareSource)) break;
+            journal.markCompleted(tradeSource, "stock", "shares", fill, now);
             settleStampDuty(player.getServer(), player.getUUID(), gross, tradeSource);
             payTo(player.getServer(), player.getUUID(), Money.toMinor(gross - duty(gross)),
                     tradeSource);
@@ -338,11 +351,14 @@ public final class StockMarket {
         long now = server.overworld().getGameTime();
         if (tradeSource == null || tradeSource.isBlank()) return;
         String source = "stock-sale:" + tradeSource;
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+        journal.markStarted(tradeSource, "stock", "tax", Money.toMinorSaturated(gross), now);
         TaxTransactionService.assess(server, TaxType.STAMP_DUTY, taxpayer, Currencies.USD.id(),
                 Money.toMinorSaturated(gross), source, now);
         TaxService.settleFromProceeds(server,
                 new TaxSubject(TaxType.STAMP_DUTY, source, taxpayer),
                 Money.toMinorSaturated(duty(gross)), source + ":withheld", now);
+        journal.markCompleted(tradeSource, "stock", "tax", Money.toMinorSaturated(gross), now);
     }
 
     private static boolean withinLimit(EconomySavedData data, String stockId, long price) {
@@ -370,9 +386,15 @@ public final class StockMarket {
     /** Pays {@code amount} USD to {@code recipientId}, or parks it in the mailbox if offline. */
     private static void payTo(MinecraftServer server, UUID recipientId, long amount, String source) {
         if (server == null || recipientId == null || amount <= 0L || source == null || source.isBlank()) return;
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+        long now = server.overworld().getGameTime();
+        journal.markStarted(source, "stock", "seller-payout", amount, now);
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
-        mailbox.creditMoneyOnce(recipientId, Currencies.USD.id(), amount, source);
+        boolean credited = mailbox.hasCreditSource(source)
+                || mailbox.creditMoneyOnce(recipientId, Currencies.USD.id(), amount, source);
+        if (!credited) return;
         ServerPlayer recipient = server.getPlayerList().getPlayer(recipientId);
         if (recipient != null) mailbox.redeemMoneyOnly(recipient);
+        journal.markCompleted(source, "stock", "seller-payout", amount, now);
     }
 }
