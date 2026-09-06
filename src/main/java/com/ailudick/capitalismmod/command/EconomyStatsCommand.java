@@ -23,6 +23,7 @@ import com.ailudick.capitalismmod.risk.FinancialRiskPolicy;
 import com.ailudick.capitalismmod.risk.FinancialCrisisSavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
 import com.ailudick.capitalismmod.government.InflationSavedData;
+import com.ailudick.capitalismmod.government.MoneySupplySavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -131,6 +132,13 @@ public final class EconomyStatsCommand {
             source.sendSuccess(() -> Component.literal("CPI day=" + inflation.day()
                     + " indexBps=" + inflation.indexBps()
                     + " dailyChangeBps=" + inflation.dailyChangeBps()), false);
+        }
+        var money = MoneySupplySavedData.get(server).latest();
+        if (money != null) {
+            source.sendSuccess(() -> Component.literal("money day=" + money.day()
+                    + " privateMoneyMinor=" + money.privateMoneyMinor()
+                    + " bankCreditMinor=" + money.bankCreditMinor()
+                    + " governmentTreasuryMinor=" + money.governmentTreasuryMinor()), false);
         }
         if (risk != null) {
             source.sendSuccess(() -> Component.literal("financial risk day=" + risk.day()

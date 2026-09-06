@@ -33,6 +33,7 @@ import com.ailudick.capitalismmod.government.GovernmentPublicBudgetService;
 import com.ailudick.capitalismmod.government.PublicConstructionSavedData;
 import com.ailudick.capitalismmod.government.CityStatisticsSavedData;
 import com.ailudick.capitalismmod.government.InflationService;
+import com.ailudick.capitalismmod.government.MoneySupplyService;
 import com.ailudick.capitalismmod.risk.FinancialRiskService;
 import com.ailudick.capitalismmod.risk.FinancialCrisisService;
 import com.ailudick.capitalismmod.bank.BankLiquidityService;
@@ -194,6 +195,7 @@ public final class EconomySettlementTickHandler {
         CommodityMarket.closeDay(server);
         StockMarket.closeDay(server);
         InflationService.settleDaily(server, settlementDay);
+        MoneySupplyService.settleDaily(server, settlementDay);
         CityStatisticsSavedData.get(server).recordDaily(server, settlementDay);
         journal.markCompleted(settlementDay, "markets-and-close", server.overworld().getGameTime());
     }
