@@ -19,6 +19,7 @@ import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
+import com.ailudick.capitalismmod.company.CompanyFreightSettlementService;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
@@ -169,6 +170,13 @@ public final class LogisticsTickHandler {
                     SupplyOrderAuditService.record(server, shipment.supplyOrderId(), "DELIVERED",
                             shipment.buyer(), shipment.supplierUuid(), shipment.itemId(), shipment.quantity(),
                             shipmentValue(shipment), shipment.id());
+                }
+                CompanyFreightContractSavedData.Contract freightContract =
+                        CompanyFreightContractSavedData.get(server).findByShipment(shipment.id());
+                if (freightContract != null && "accepted".equals(freightContract.status())
+                        && !shipment.buyerCompanyId().isBlank()) {
+                    CompanyFreightSettlementService.settleIfFunded(server, shipment.id(),
+                            freightContract.buyerCompanyId(), freightContract.carrierCompanyId(), now);
                 }
                 settleFreightContract(server, shipment.id(), now);
                 deliveries.record(new LogisticsDeliverySavedData.Delivery(shipment.id(), shipment.buyer(),
