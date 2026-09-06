@@ -17,5 +17,7 @@ class FinancialRiskPolicyTest {
         assertTrue(FinancialRiskPolicy.crisisTriggered(6000));
         assertFalse(FinancialRiskPolicy.crisisRecovered(4001));
         assertTrue(FinancialRiskPolicy.crisisRecovered(4000));
+        assertEquals(0.0, FinancialRiskPolicy.bondLiquidityPremium(2000), 0.000001);
+        assertEquals(0.02, FinancialRiskPolicy.bondLiquidityPremium(6000), 0.000001);
     }
 }

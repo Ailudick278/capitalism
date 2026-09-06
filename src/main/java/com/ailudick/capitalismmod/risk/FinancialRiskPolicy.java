@@ -22,4 +22,10 @@ public final class FinancialRiskPolicy {
     public static boolean crisisRecovered(int overdueShareBasisPoints) {
         return overdueShareBasisPoints <= 4000;
     }
+
+    /** Adds a bounded liquidity premium to newly issued government bonds. */
+    public static double bondLiquidityPremium(int overdueShareBasisPoints) {
+        int share = Math.max(0, Math.min(10000, overdueShareBasisPoints));
+        return Math.min(0.05, Math.max(0, share - 2000) / 10000.0 * 0.05);
+    }
 }

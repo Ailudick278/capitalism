@@ -11,6 +11,8 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.government.MonetaryPolicyEconomics;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
+import com.ailudick.capitalismmod.risk.FinancialRiskPolicy;
+import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -45,8 +47,11 @@ public final class BondMarket {
             EconomyHelper.giveMoney(player, Currencies.USD, totalMinor);
             return false;
         }
+        var risk = FinancialRiskSavedData.get(player.getServer()).latest();
+        int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
         double rate = MonetaryPolicyEconomics.adjustedAnnualRate(Config.BOND_RATE_PER_YEAR.get(),
-                GovernmentPolicySavedData.get(player.getServer()).policyRateBasisPoints());
+                GovernmentPolicySavedData.get(player.getServer()).policyRateBasisPoints())
+                + FinancialRiskPolicy.bondLiquidityPremium(overdueShare);
         int days = Config.BOND_MATURITY_DAYS.get();
         for (int i = 0; i < count; i++) {
             data.addHolding(new BondHolding(UUID.randomUUID().toString(), player.getUUID(), faceValue, rate, days, days));
