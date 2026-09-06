@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.tax;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -100,11 +101,19 @@ public final class TaxRefundService {
             return failReview(data, r, server, "Refund recovery data is incomplete.");
         }
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
-        mailbox.creditMoneyOnce(r.taxpayerUuid(), r.currencyId(), r.amount(), "tax-refund:" + r.id());
+        String payoutSource = "tax-refund:" + r.id();
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+        long settlementTime = server.overworld().getGameTime();
+        journal.markStarted(r.id(), "tax-refund", "payout", r.amount(), settlementTime);
+        boolean credited = journal.isCompleted(r.id(), "payout")
+                || mailbox.hasCreditSource(payoutSource)
+                || mailbox.creditMoneyOnce(r.taxpayerUuid(), r.currencyId(), r.amount(), payoutSource);
+        if (!credited) return false;
+        journal.markCompleted(r.id(), "tax-refund", "payout", r.amount(), settlementTime);
         if (player != null) mailbox.redeem(player);
         TaxRefundAuditSavedData.get(server).log(new TaxRefundAuditSavedData.Event(r.id(), r.taxpayerUuid(),
                 "PAYOUT", "SYSTEM_SETTLEMENT", r.currencyId(), r.amount(), server.overworld().getGameTime(),
-                "DELIVERED", r.reason(), "tax-refund:" + r.id()));
+                "DELIVERED", r.reason(), payoutSource));
         data.replace(new TaxRefundSavedData.Request(r.id(), r.taxpayerUuid(), r.currencyId(), r.amount(), r.requestedAt(), "APPROVED", server.overworld().getGameTime(), reviewer, r.reason(), r.sourceSummary(), allocations, currentAllocations));
         TaxRefundAuditSavedData.get(server).log(new TaxRefundAuditSavedData.Event(r.id(), r.taxpayerUuid(), "APPROVE", reviewer, r.currencyId(), r.amount(), server.overworld().getGameTime(), "APPROVED", r.reason(), allocations));
         TaxRefundNotificationService.notify(server, r.id(), r.taxpayerUuid(), "Tax refund approved: " + r.currencyId().toUpperCase() + " " + com.ailudick.capitalismmod.currency.Money.format(r.amount()));
