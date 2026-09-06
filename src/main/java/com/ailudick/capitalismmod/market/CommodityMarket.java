@@ -84,8 +84,10 @@ public final class CommodityMarket {
             UUID buyerId = UUID.fromString(buy.ownerId());
             String tradeSource = "commodity-trade:" + buy.id() + ":" + buy.quantity() + ":" + player.getUUID()
                     + ":" + fill + ":" + gross;
+            if (!payOrPend(player.getServer(), player, player.getUUID(), gross - commission(gross), tradeSource + ":money")) {
+                break;
+            }
             warehouse.creditOnce(InventoryOwner.player(buyerId), commodity.getItem(), fill, tradeSource + ":goods");
-            payOrPend(player.getServer(), player, player.getUUID(), gross - commission(gross), tradeSource + ":money");
             TaxTransactionService.assess(player.getServer(), TaxType.VAT, player.getUUID(), Currencies.USD.id(),
                     Money.toMinorSaturated(gross), "commodity-sale:" + tradeSource,
                     player.getServer().overworld().getGameTime());
@@ -136,10 +138,12 @@ public final class CommodityMarket {
             }
             String tradeSource = "commodity-trade:" + sell.id() + ":" + sell.quantity() + ":" + player.getUUID()
                     + ":" + fill + ":" + gross;
-            warehouse.creditOnce(InventoryOwner.player(player.getUUID()), commodity.getItem(), fill, tradeSource + ":goods");
             UUID sellerId = UUID.fromString(sell.ownerId());
             ServerPlayer seller = player.getServer().getPlayerList().getPlayer(sellerId);
-            payOrPend(player.getServer(), seller, sellerId, gross - commission(gross), tradeSource + ":money");
+            if (!payOrPend(player.getServer(), seller, sellerId, gross - commission(gross), tradeSource + ":money")) {
+                break;
+            }
+            warehouse.creditOnce(InventoryOwner.player(player.getUUID()), commodity.getItem(), fill, tradeSource + ":goods");
             TaxTransactionService.assess(player.getServer(), TaxType.VAT, sellerId, Currencies.USD.id(),
                     Money.toMinorSaturated(gross), "commodity-sale:" + tradeSource,
                     player.getServer().overworld().getGameTime());
@@ -182,8 +186,11 @@ public final class CommodityMarket {
             long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
             if (total >= 0) {
                 MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
-                mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(total),
-                        "commodity-order-cancel-money:" + order.id());
+                String refundSource = "commodity-order-cancel-money:" + order.id();
+                if (!mailbox.hasCreditSource(refundSource)
+                        && !mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(total), refundSource)) {
+                    return false;
+                }
                 mailbox.redeemMoneyOnly(player);
             }
         }
@@ -260,8 +267,12 @@ public final class CommodityMarket {
             } else {
                 long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
                 if (total > 0L) {
-                    MarketMailboxSavedData.get(server).creditMoneyOnce(owner, Currencies.USD.id(),
-                            Money.toMinor(total), "commodity-order-expiry-money:" + order.id());
+                    MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+                    String refundSource = "commodity-order-expiry-money:" + order.id();
+                    if (!mailbox.hasCreditSource(refundSource)
+                            && !mailbox.creditMoneyOnce(owner, Currencies.USD.id(), Money.toMinor(total), refundSource)) {
+                        continue;
+                    }
                 }
             }
             data.removeOrder(order.id());
@@ -336,11 +347,15 @@ public final class CommodityMarket {
     }
 
     /** Pays {@code amount} USD to {@code recipient}, or parks it in the mailbox if they are offline. */
-    private static void payOrPend(MinecraftServer server, ServerPlayer recipient, UUID recipientId,
+    private static boolean payOrPend(MinecraftServer server, ServerPlayer recipient, UUID recipientId,
                                   long amount, String source) {
-        if (server == null || recipientId == null || amount <= 0L || source == null || source.isBlank()) return;
+        if (amount == 0L) return true;
+        if (server == null || recipientId == null || amount < 0L || source == null || source.isBlank()) return false;
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
-        mailbox.creditMoneyOnce(recipientId, Currencies.USD.id(), Money.toMinor(amount), source);
+        boolean credited = mailbox.hasCreditSource(source)
+                || mailbox.creditMoneyOnce(recipientId, Currencies.USD.id(), Money.toMinor(amount), source);
+        if (!credited) return false;
         if (recipient != null) mailbox.redeemMoneyOnly(recipient);
+        return true;
     }
 }
