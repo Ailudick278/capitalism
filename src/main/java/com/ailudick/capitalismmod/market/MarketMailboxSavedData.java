@@ -32,7 +32,10 @@ public final class MarketMailboxSavedData extends SavedData {
 
     // player UUID -> currency id -> amount
     private final Map<UUID, Map<String, Long>> money = new HashMap<>();
+    // Transfers such as currency exchange are not new income and use a separate queue.
+    private final Map<UUID, Map<String, Long>> transferMoney = new HashMap<>();
     private final Set<String> creditedSources = new HashSet<>();
+    private final Set<String> transferSources = new HashSet<>();
     // player UUID -> item id -> count
     private final Map<UUID, Map<String, Integer>> items = new HashMap<>();
 
@@ -63,6 +66,20 @@ public final class MarketMailboxSavedData extends SavedData {
     /** Returns whether a durable money-credit receipt already exists. */
     public boolean hasCreditSource(String sourceId) {
         return sourceId != null && !sourceId.isBlank() && creditedSources.contains(sourceId);
+    }
+
+    public boolean hasTransferSource(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && transferSources.contains(sourceId);
+    }
+
+    public boolean creditTransferOnce(UUID playerId, String currencyId, long amount, String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || amount <= 0L || playerId == null
+                || currencyId == null || currencyId.isBlank() || transferSources.contains(sourceId)) return false;
+        transferMoney.computeIfAbsent(playerId, k -> new HashMap<>()).merge(currencyId, amount, MarketMailboxSavedData::saturatingAdd);
+        transferSources.add(sourceId);
+        while (transferSources.size() > 8192) transferSources.remove(transferSources.iterator().next());
+        setDirty();
+        return true;
     }
 
     public void creditItems(UUID playerId, Item item, int count) {
@@ -104,6 +121,23 @@ public final class MarketMailboxSavedData extends SavedData {
             changed = true;
         }
         if (owedMoney.isEmpty()) money.remove(player.getUUID());
+        if (changed) setDirty();
+    }
+
+    /** Redeems queued currency transfers without recording them as new income. */
+    public void redeemTransferOnly(ServerPlayer player) {
+        if (player == null) return;
+        Map<String, Long> owed = transferMoney.get(player.getUUID());
+        if (owed == null) return;
+        boolean changed = false;
+        var iterator = owed.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Long> entry = iterator.next();
+            if (!Currencies.exists(entry.getKey())) continue;
+            EconomyHelper.giveMoneyWithoutIncome(player, Currencies.byId(entry.getKey()), entry.getValue());
+            iterator.remove(); changed = true;
+        }
+        if (owed.isEmpty()) transferMoney.remove(player.getUUID());
         if (changed) setDirty();
     }
 
@@ -166,6 +200,15 @@ public final class MarketMailboxSavedData extends SavedData {
         }
         tag.put("money", moneyList);
 
+        ListTag transferList = new ListTag();
+        for (Map.Entry<UUID, Map<String, Long>> entry : transferMoney.entrySet()) {
+            CompoundTag nbt = new CompoundTag(); nbt.putUUID("uuid", entry.getKey());
+            CompoundTag balances = new CompoundTag();
+            for (Map.Entry<String, Long> e : entry.getValue().entrySet()) balances.putLong(e.getKey(), e.getValue());
+            nbt.put("balances", balances); transferList.add(nbt);
+        }
+        tag.put("transferMoney", transferList);
+
         ListTag sourceList = new ListTag();
         for (String source : creditedSources) {
             CompoundTag entry = new CompoundTag();
@@ -173,6 +216,10 @@ public final class MarketMailboxSavedData extends SavedData {
             sourceList.add(entry);
         }
         tag.put("creditedSources", sourceList);
+
+        ListTag transferSourceList = new ListTag();
+        for (String source : transferSources) { CompoundTag entry = new CompoundTag(); entry.putString("source", source); transferSourceList.add(entry); }
+        tag.put("transferSources", transferSourceList);
 
         ListTag itemList = new ListTag();
         for (Map.Entry<UUID, Map<String, Integer>> entry : items.entrySet()) {
@@ -205,12 +252,27 @@ public final class MarketMailboxSavedData extends SavedData {
             }
         }
 
+        ListTag transferList = tag.getList("transferMoney", Tag.TAG_COMPOUND);
+        for (int i = 0; i < transferList.size(); i++) {
+            CompoundTag nbt = transferList.getCompound(i); Map<String, Long> balances = new HashMap<>();
+            CompoundTag balanceTag = nbt.getCompound("balances");
+            for (String key : balanceTag.getAllKeys()) balances.put(key, balanceTag.getLong(key));
+            if (!balances.isEmpty() && nbt.hasUUID("uuid")) data.transferMoney.put(nbt.getUUID("uuid"), balances);
+        }
+
         ListTag sourceList = tag.getList("creditedSources", Tag.TAG_COMPOUND);
         for (int i = 0; i < sourceList.size(); i++) {
             String source = sourceList.getCompound(i).getString("source");
             if (!source.isBlank()) data.creditedSources.add(source);
         }
         while (data.creditedSources.size() > 8192) data.creditedSources.remove(data.creditedSources.iterator().next());
+
+        ListTag transferSourceList = tag.getList("transferSources", Tag.TAG_COMPOUND);
+        for (int i = 0; i < transferSourceList.size(); i++) {
+            String source = transferSourceList.getCompound(i).getString("source");
+            if (!source.isBlank()) data.transferSources.add(source);
+        }
+        while (data.transferSources.size() > 8192) data.transferSources.remove(data.transferSources.iterator().next());
 
         ListTag itemList = tag.getList("items", Tag.TAG_COMPOUND);
         for (int i = 0; i < itemList.size(); i++) {

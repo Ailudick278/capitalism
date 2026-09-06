@@ -4,7 +4,7 @@ import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
 import com.ailudick.capitalismmod.currency.Money;
-import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.currency.CurrencyExchangeService;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -42,12 +42,10 @@ public class ExchangeCommand {
                                                 ctx.getSource().sendFailure(Component.translatable("command.capitalismmod.amount_too_small"));
                                                 return 0;
                                             }
-                                            if (!EconomyHelper.tryPay(player, from, amountMinor)) {
+                                            if (!CurrencyExchangeService.exchange(player, from, to, amountMinor, converted)) {
                                                 ctx.getSource().sendFailure(Component.translatable("command.capitalismmod.insufficient"));
                                                 return 0;
                                             }
-
-                                            EconomyHelper.giveMoney(player, to, converted);
 
                                             player.sendSystemMessage(Component.translatable("command.capitalismmod.exchange_success",
                                                     amount, Component.translatable(from.nameKey()), Money.format(converted), Component.translatable(to.nameKey())));

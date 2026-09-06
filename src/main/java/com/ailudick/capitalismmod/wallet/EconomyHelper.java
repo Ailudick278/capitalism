@@ -204,6 +204,11 @@ public final class EconomyHelper {
         giveMoneyInternal(player, currency, amount, true);
     }
 
+    /** Gives currency without treating an internal transfer as new income. */
+    public static void giveMoneyWithoutIncome(Player player, Currency currency, long amount) {
+        giveMoneyInternal(player, currency, amount, false);
+    }
+
     /**
      * Gives physical currency while optionally recording it as an economic
      * income. Change is a return of the payer's own money, not new income.
