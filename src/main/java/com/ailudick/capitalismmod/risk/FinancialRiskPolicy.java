@@ -14,4 +14,12 @@ public final class FinancialRiskPolicy {
     public static boolean newCompanyCreditAllowed(int overdueShareBasisPoints) {
         return overdueShareBasisPoints < 6000;
     }
+
+    public static boolean crisisTriggered(int overdueShareBasisPoints) {
+        return overdueShareBasisPoints >= 6000;
+    }
+
+    public static boolean crisisRecovered(int overdueShareBasisPoints) {
+        return overdueShareBasisPoints <= 4000;
+    }
 }

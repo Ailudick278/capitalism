@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.government.MonetaryPolicyEconomics;
+import com.ailudick.capitalismmod.currency.ExchangeRates;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -75,6 +76,10 @@ public final class BondMarket {
         if (payout <= 0 || payoutMinor < 0) {
             return false;
         }
+        long basePayout = ExchangeRates.convert(payoutMinor, Currencies.USD, Config.defaultCurrency());
+        if (!GovernmentPolicySavedData.get(player.getServer()).spend(
+                "bond-holder:" + player.getUUID(), player.getServer().overworld().getGameTime()
+                        / PerpetualCalendar.TICKS_PER_DAY, basePayout, "bond-redeem:" + holdingId)) return false;
         EconomyHelper.giveMoney(player, Currencies.USD, payoutMinor);
         settlements.record(holdingId);
         data.removeHolding(holdingId);
@@ -112,6 +117,10 @@ public final class BondMarket {
             if (payout <= 0 || payoutMinor < 0) {
                 continue;
             }
+            long basePayout = ExchangeRates.convert(payoutMinor, Currencies.USD, Config.defaultCurrency());
+            if (!GovernmentPolicySavedData.get(server).spend(
+                    "bond-holder:" + holding.holder(), settlementDay, basePayout,
+                    "bond-maturity:" + holding.id())) continue;
             ServerPlayer holder = server.getPlayerList().getPlayer(holding.holder());
             if (holder != null) {
                 EconomyHelper.giveMoney(holder, Currencies.USD, payoutMinor);
