@@ -85,6 +85,7 @@ public final class EconomySettlementTickHandler {
             FuturesMarket.recoverPendingOpenPositions(player.getServer());
             CommodityMarket.recoverPendingBuyIntents(player.getServer());
             CommodityMarket.recoverPendingSellIntents(player.getServer());
+            CommodityMarket.recoverPendingTrades(player.getServer());
             StockMarket.recoverPendingBuyIntents(player.getServer());
             StockMarket.recoverPendingSellIntents(player.getServer());
             AuctionMarket.recoverListingIntents(player.getServer());
@@ -110,6 +111,7 @@ public final class EconomySettlementTickHandler {
         SupplyMarket.recoverPendingOrderIntents(server);
         LogisticsLossService.recoverSupplyCompensations(server);
         FuturesMarket.recoverPendingOpenPositions(server);
+        CommodityMarket.recoverPendingTrades(server);
         if (!journal.isCompleted(settlementDay, "households-and-labor")) {
             journal.markStarted(settlementDay, "households-and-labor", server.overworld().getGameTime());
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {

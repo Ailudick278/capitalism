@@ -101,6 +101,11 @@ public final class CommodityMarket {
             UUID buyerId = UUID.fromString(buy.ownerId());
             String tradeSource = "commodity-trade:" + orderId + ":" + buy.id()
                     + ":" + fill + ":" + gross;
+            MarketOrder initiatingSell = data.findOrder(orderId);
+            int sellQuantityBefore = initiatingSell == null ? remaining : initiatingSell.quantity();
+            CommodityTradeIntentSavedData.get(player.getServer()).add(new CommodityTradeIntentSavedData.Intent(
+                    tradeSource, buy.id(), orderId, buyerId, player.getUUID(), itemId, fill, gross,
+                    buy.quantity(), sellQuantityBefore, false, player.getServer().overworld().getGameTime()));
             FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
             long now = player.getServer().overworld().getGameTime();
             journal.markStarted(tradeSource, "commodity", "seller-payout", Money.toMinorSaturated(gross), now);
@@ -124,6 +129,7 @@ public final class CommodityMarket {
                 if (!data.hasNetVolumeSource(volumeSource)) data.addNetVolumeOnce(itemId, -fill, volumeSource);
                 journal.markCompleted(tradeSource, "commodity", "volume", fill, now);
             }
+            journal.markStarted(tradeSource, "commodity", "order-update", fill, now);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
             MarketOrder currentSell = data.findOrder(orderId);
@@ -131,8 +137,10 @@ public final class CommodityMarket {
                 if (currentSell.quantity() <= fill) data.removeOrder(orderId);
                 else data.replaceOrder(currentSell.withQuantity(currentSell.quantity() - fill));
             }
+            journal.markCompleted(tradeSource, "commodity", "order-update", fill, now);
             NeoForge.EVENT_BUS.post(new TradeCompletedEvent(null, player, commodity, fill, "usd", gross,
                     "commodity", commission(gross)));
+            CommodityTradeIntentSavedData.get(player.getServer()).remove(tradeSource);
         }
 
         // The sell order was persisted before matching; each fill updates its
@@ -231,6 +239,11 @@ public final class CommodityMarket {
             String tradeSource = "commodity-trade:" + orderId + ":" + sell.id()
                     + ":" + fill + ":" + gross;
             UUID sellerId = UUID.fromString(sell.ownerId());
+            MarketOrder initiatingBuy = data.findOrder(orderId);
+            int buyQuantityBefore = initiatingBuy == null ? remaining : initiatingBuy.quantity();
+            CommodityTradeIntentSavedData.get(player.getServer()).add(new CommodityTradeIntentSavedData.Intent(
+                    tradeSource, orderId, sell.id(), player.getUUID(), sellerId, itemId, fill, gross,
+                    buyQuantityBefore, sell.quantity(), true, player.getServer().overworld().getGameTime()));
             ServerPlayer seller = player.getServer().getPlayerList().getPlayer(sellerId);
             long now = player.getServer().overworld().getGameTime();
             journal.markStarted(tradeSource, "commodity", "seller-payout", Money.toMinorSaturated(gross), now);
@@ -255,6 +268,7 @@ public final class CommodityMarket {
                 if (!data.hasNetVolumeSource(volumeSource)) data.addNetVolumeOnce(itemId, fill, volumeSource);
                 journal.markCompleted(tradeSource, "commodity", "volume", fill, now);
             }
+            journal.markStarted(tradeSource, "commodity", "order-update", fill, now);
             spent += gross;
             remaining -= fill;
             reduceOrRemove(data, sell, fill);
@@ -266,8 +280,10 @@ public final class CommodityMarket {
                     data.replaceOrder(currentBuy.withQuantity(currentBuy.quantity() - fill));
                 }
             }
+            journal.markCompleted(tradeSource, "commodity", "order-update", fill, now);
             NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, seller, commodity, fill, "usd", gross,
                     "commodity", commission(gross)));
+            CommodityTradeIntentSavedData.get(player.getServer()).remove(tradeSource);
         }
 
         // The buy order was persisted before matching. Update or remove that
@@ -319,6 +335,75 @@ public final class CommodityMarket {
             recovered++;
         }
         return recovered;
+    }
+
+    /** Replays interrupted fills after the durable order/payment intents are recovered. */
+    public static int recoverPendingTrades(MinecraftServer server) {
+        if (server == null) return 0;
+        int recovered = 0;
+        CommodityTradeIntentSavedData intents = CommodityTradeIntentSavedData.get(server);
+        for (CommodityTradeIntentSavedData.Intent intent : intents.intents()) {
+            if (completeTradeIntent(server, intent)) {
+                intents.remove(intent.id());
+                recovered++;
+            }
+        }
+        return recovered;
+    }
+
+    private static boolean completeTradeIntent(MinecraftServer server, CommodityTradeIntentSavedData.Intent intent) {
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+        long now = server.overworld().getGameTime();
+        if (!journal.isCompleted(intent.id(), "seller-payout")) {
+            long net = intent.gross() - commission(intent.gross());
+            if (!payOrPend(server, server.getPlayerList().getPlayer(intent.seller()), intent.seller(), net,
+                    intent.id() + ":money")) return false;
+            journal.markCompleted(intent.id(), "commodity", "seller-payout", Money.toMinorSaturated(intent.gross()), now);
+        }
+        ItemStack item;
+        try {
+            item = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM
+                    .get(net.minecraft.resources.ResourceLocation.parse(intent.itemId())));
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+        if (item.isEmpty()) return false;
+        String goodsSource = intent.id() + ":goods";
+        if (!journal.isCompleted(intent.id(), "goods-delivery")) {
+            if (!WarehouseSavedData.get(server).hasCreditSource(goodsSource)
+                    && !WarehouseSavedData.get(server).creditOnce(InventoryOwner.player(intent.buyer()), item.getItem(),
+                    intent.fill(), goodsSource)) return false;
+            journal.markCompleted(intent.id(), "commodity", "goods-delivery", intent.fill(), now);
+        }
+        if (!journal.isCompleted(intent.id(), "tax")) {
+            TaxTransactionService.assess(server, TaxType.VAT, intent.seller(), Currencies.USD.id(),
+                    Money.toMinorSaturated(intent.gross()), "commodity-sale:" + intent.id(), now);
+            journal.markCompleted(intent.id(), "commodity", "tax", Money.toMinorSaturated(intent.gross()), now);
+        }
+        if (!journal.isCompleted(intent.id(), "volume")) {
+            CommoditySavedData data = CommoditySavedData.get(server);
+            String source = intent.id() + ":volume";
+            if (!data.hasNetVolumeSource(source)) {
+                data.addNetVolumeOnce(intent.itemId(), intent.buyerInitiated() ? intent.fill() : -intent.fill(), source);
+            }
+            journal.markCompleted(intent.id(), "commodity", "volume", intent.fill(), now);
+        }
+        if (!journal.isCompleted(intent.id(), "order-update")) {
+            CommoditySavedData data = CommoditySavedData.get(server);
+            journal.markStarted(intent.id(), "commodity", "order-update", intent.fill(), now);
+            if (!reconcileOrder(data, intent.buyOrderId(), intent.buyQuantityBefore(), intent.fill())
+                    || !reconcileOrder(data, intent.sellOrderId(), intent.sellQuantityBefore(), intent.fill())) return false;
+            journal.markCompleted(intent.id(), "commodity", "order-update", intent.fill(), now);
+        }
+        return true;
+    }
+
+    private static boolean reconcileOrder(CommoditySavedData data, String orderId, int before, int fill) {
+        MarketOrder order = data.findOrder(orderId);
+        if (order == null || order.quantity() == before - fill) return true;
+        if (order.quantity() != before || before < fill) return false;
+        reduceOrRemove(data, order, fill);
+        return true;
     }
 
     /** Cancels the player's own order, returning the escrowed commodity or money. */
