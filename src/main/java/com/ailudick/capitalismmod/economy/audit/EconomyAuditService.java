@@ -98,6 +98,8 @@ public final class EconomyAuditService {
             var order = businessOrders.get(escrow.orderId());
             if (order == null) {
                 issues.add("business order escrow has no order " + escrow.orderId());
+            } else if (population.find(escrow.buyerId()) == null) {
+                issues.add("business order escrow has no buyer household " + escrow.orderId() + "/" + escrow.batchId());
             } else if ("completed".equals(order.status()) && escrow.heldMinor() != 0L) {
                 issues.add("completed business order still has held escrow " + escrow.orderId() + "/" + escrow.batchId());
             } else if (("cancelled".equals(order.status()) || "expired".equals(order.status()))
