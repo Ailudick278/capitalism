@@ -1,22 +1,20 @@
-# Capitalism Mod 系统开发进度
+# 系统开发进度
 
-本目录记录各经济系统当前的实现状态。每个主日志统一分为三个部分：
+本文记录各经济系统当前的真实实现状态。每个系统日志固定分为三部分：
 
 1. 已实现功能
 2. 存在的问题
 3. 后续方向
 
-这些日志用于说明当前代码边界和下一阶段开发计划，不替代源码、测试或正式的版本变更记录。
-
 ## 系统日志
 
-| 系统 | 主日志 |
+| 系统 | 日志 |
 |---|---|
 | 拍卖 | [auction.md](auction.md) |
 | 银行与货币 | [bank-currency.md](bank-currency.md) |
 | 企业与个人经营 | [business-company.md](business-company.md) |
-| 万年历与时间 | [calendar.md](calendar.md) |
-| 石化、电子与制造产业链 | [industry.md](industry.md) |
+| 时间与日历 | [calendar.md](calendar.md) |
+| 工业与生产 | [industry.md](industry.md) |
 | 土地 | [land.md](land.md) |
 | 贷款 | [loan.md](loan.md) |
 | 市场、供应链与物流 | [market-logistics.md](market-logistics.md) |
@@ -25,13 +23,19 @@
 | 界面、网络与基础设施 | [ui-network.md](ui-network.md) |
 | 世界地图 | [world-map.md](world-map.md) |
 
-## 阅读方式
+## 阅读规则
 
-- 需要了解某个系统当前能做什么时，阅读“已实现功能”。
-- 需要了解尚未完成或存在风险的部分时，阅读“存在的问题”。
-- 需要安排下一阶段开发时，阅读“后续方向”。
+- 以源代码和测试结果为准，日志只做状态说明。
+- “已实现功能”只记录当前可运行的功能。
+- “存在的问题”记录会影响真实性、稳定性或扩展性的缺口。
+- “后续方向”按依赖关系排序，不代表全部同时开发。
 
-日志内容应随着实际代码和测试状态更新，避免记录与当前实现不一致的功能。
+## 阶段路线
 
-新玩法的总体架构、系统依赖和现实依据见
-[`docs/design/economic-expansion-framework.md`](../design/economic-expansion-framework.md)。
+- 阶段一：修复编码、统一账本边界、补充跨系统结算测试。
+- 阶段二：实现 NPC 人口、家庭收入、消费、就业和迁移。
+- 阶段三：统一合同履约、订单、库存、物流和违约处理。
+- 阶段四：完善动态价格、城市公共设施和区域经济。
+- 阶段五：加入政府政策、宏观经济事件和金融风险传导。
+
+总体框架见 [economic-expansion-framework.md](../design/economic-expansion-framework.md)。
