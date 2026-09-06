@@ -12,13 +12,19 @@ import net.minecraft.world.level.saveddata.SavedData;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /** Weighted-average cost layers for company-owned warehouse inventory. */
 public final class CompanyInventoryCostSavedData extends SavedData {
     private static final String ID = "capitalismmod_company_inventory_cost";
+    private static final Codec<FifoInventoryCost.Batch> BATCH_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.INT.fieldOf("quantity").forGetter(FifoInventoryCost.Batch::quantity),
+            Codec.LONG.fieldOf("totalCost").forGetter(FifoInventoryCost.Batch::totalCost)
+    ).apply(instance, FifoInventoryCost.Batch::new));
     private final Map<String, Map<String, CostLayer>> layers = new HashMap<>();
+    private final Map<String, Map<String, ArrayList<FifoInventoryCost.Batch>>> batches = new HashMap<>();
     private final Set<String> freightSources = new HashSet<>();
     private final Set<String> inventorySaleSources = new HashSet<>();
     private final Set<String> inventoryLossSources = new HashSet<>();
@@ -33,11 +39,15 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     public record Consumption(int quantity, long cost) {
     }
 
-    private record State(Map<String, Map<String, CostLayer>> layers, Set<String> freightSources,
+    private record State(Map<String, Map<String, CostLayer>> layers,
+                         Map<String, Map<String, List<FifoInventoryCost.Batch>>> batches,
+                         Set<String> freightSources,
                          Set<String> inventorySaleSources, Set<String> inventoryLossSources) {
         private static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, CostLayer.CODEC))
                         .fieldOf("layers").forGetter(State::layers),
+                Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, BATCH_CODEC.listOf()))
+                        .optionalFieldOf("batches", Map.of()).forGetter(State::batches),
                 Codec.STRING.listOf().xmap(values -> (Set<String>) new HashSet<String>(values),
                                 values -> new ArrayList<>(values))
                         .optionalFieldOf("freightSources", Set.of())
@@ -89,11 +99,11 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     public void add(String companyId, String itemId, int quantity, long totalCost) {
         if (companyId == null || companyId.isBlank() || itemId == null || itemId.isBlank()
                 || quantity <= 0 || totalCost < 0L) return;
-        CostLayer previous = layer(companyId, itemId);
-        WeightedAverageCost next = new WeightedAverageCost(previous == null ? 0 : previous.quantity(),
-                previous == null ? 0L : previous.totalCost()).add(quantity, totalCost);
-        layers.computeIfAbsent(companyId, ignored -> new HashMap<>())
-                .put(itemId, new CostLayer(next.quantity(), next.totalCost()));
+        List<FifoInventoryCost.Batch> current = batchesFor(companyId, itemId);
+        List<FifoInventoryCost.Batch> next = FifoInventoryCost.add(current, quantity, totalCost);
+        batches.computeIfAbsent(companyId, ignored -> new HashMap<>())
+                .put(itemId, new ArrayList<>(next));
+        rebuildLayer(companyId, itemId, next);
         setDirty();
     }
 
@@ -102,10 +112,13 @@ public final class CompanyInventoryCostSavedData extends SavedData {
         if (companyId == null || companyId.isBlank() || itemId == null || itemId.isBlank()
                 || totalCost < 0L || sourceId == null || sourceId.isBlank()
                 || freightSources.contains(sourceId)) return false;
-        CostLayer previous = layer(companyId, itemId);
-        long nextCost = addSaturated(previous == null ? 0L : previous.totalCost(), totalCost);
-        layers.computeIfAbsent(companyId, ignored -> new HashMap<>())
-                .put(itemId, new CostLayer(previous == null ? 0 : previous.quantity(), nextCost));
+        List<FifoInventoryCost.Batch> current = new ArrayList<>(batchesFor(companyId, itemId));
+        if (current.isEmpty()) return false;
+        FifoInventoryCost.Batch last = current.remove(current.size() - 1);
+        current.add(new FifoInventoryCost.Batch(last.quantity(), addSaturated(last.totalCost(), totalCost)));
+        batches.computeIfAbsent(companyId, ignored -> new HashMap<>())
+                .put(itemId, new ArrayList<>(current));
+        rebuildLayer(companyId, itemId, current);
         freightSources.add(sourceId);
         setDirty();
         return true;
@@ -114,20 +127,24 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     /** Consumes the tracked portion of a batch and returns its weighted-average cost. */
     public Consumption consume(String companyId, String itemId, int requested) {
         if (companyId == null || itemId == null || requested <= 0) return new Consumption(0, 0L);
-        CostLayer previous = layer(companyId, itemId);
-        if (previous == null || previous.quantity() <= 0) return new Consumption(0, 0L);
-        WeightedAverageCost.Consumption result = new WeightedAverageCost(
-                previous.quantity(), previous.totalCost()).consume(requested);
+        List<FifoInventoryCost.Batch> current = batchesFor(companyId, itemId);
+        FifoInventoryCost.Consumption result = FifoInventoryCost.consume(current, requested);
         int taken = result.quantity();
         long cost = result.cost();
-        int remaining = result.remaining().quantity();
-        Map<String, CostLayer> companyLayers = layers.get(companyId);
-        if (remaining <= 0) {
-            companyLayers.remove(itemId);
+        Map<String, ArrayList<FifoInventoryCost.Batch>> companyBatches = batches.get(companyId);
+        if (result.remaining().isEmpty()) {
+            if (companyBatches != null) companyBatches.remove(itemId);
+            if (companyBatches != null && companyBatches.isEmpty()) batches.remove(companyId);
+            Map<String, CostLayer> companyLayers = layers.get(companyId);
+            if (companyLayers != null) {
+                companyLayers.remove(itemId);
+                if (companyLayers.isEmpty()) layers.remove(companyId);
+            }
         } else {
-            companyLayers.put(itemId, new CostLayer(remaining, result.remaining().totalCost()));
+            batches.computeIfAbsent(companyId, ignored -> new HashMap<>())
+                    .put(itemId, new ArrayList<>(result.remaining()));
+            rebuildLayer(companyId, itemId, result.remaining());
         }
-        if (companyLayers.isEmpty()) layers.remove(companyId);
         setDirty();
         return new Consumption(taken, cost);
     }
@@ -136,15 +153,51 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     public void transferCompany(String sourceId, String targetId) {
         if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
         Map<String, CostLayer> source = layers.remove(sourceId);
-        if (source == null || source.isEmpty()) return;
+        Map<String, ArrayList<FifoInventoryCost.Batch>> sourceBatches = batches.remove(sourceId);
+        if (source == null && (sourceBatches == null || sourceBatches.isEmpty())) return;
         Map<String, CostLayer> target = layers.computeIfAbsent(targetId, ignored -> new HashMap<>());
-        source.forEach((itemId, layer) -> {
-            CostLayer existing = target.get(itemId);
-            if (existing == null) target.put(itemId, layer);
-            else target.put(itemId, new CostLayer(safeQuantity(existing.quantity(), layer.quantity()),
-                    addSaturated(existing.totalCost(), layer.totalCost())));
+        if (source != null) source.forEach((itemId, layer) -> {
+                CostLayer existing = target.get(itemId);
+                if (existing == null) target.put(itemId, layer);
+                else target.put(itemId, new CostLayer(safeQuantity(existing.quantity(), layer.quantity()),
+                        addSaturated(existing.totalCost(), layer.totalCost())));
+            });
+        if (sourceBatches != null) sourceBatches.forEach((itemId, values) -> {
+            ArrayList<FifoInventoryCost.Batch> targetValues = new ArrayList<>(batchesFor(targetId, itemId));
+            targetValues.addAll(values);
+            batches.computeIfAbsent(targetId, ignored -> new HashMap<>()).put(itemId, targetValues);
+            rebuildLayer(targetId, itemId, targetValues);
         });
         setDirty();
+    }
+
+    /** Returns FIFO batches, converting a legacy aggregate layer on first access. */
+    private List<FifoInventoryCost.Batch> batchesFor(String companyId, String itemId) {
+        Map<String, ArrayList<FifoInventoryCost.Batch>> company =
+                batches.computeIfAbsent(companyId, ignored -> new HashMap<>());
+        ArrayList<FifoInventoryCost.Batch> existing = company.get(itemId);
+        if (existing != null) return existing;
+        CostLayer legacy = layers.getOrDefault(companyId, Map.of()).get(itemId);
+        ArrayList<FifoInventoryCost.Batch> migrated = new ArrayList<>();
+        if (legacy != null && legacy.quantity() > 0) {
+            migrated.add(new FifoInventoryCost.Batch(legacy.quantity(), legacy.totalCost()));
+        }
+        company.put(itemId, migrated);
+        return migrated;
+    }
+
+    private void rebuildLayer(String companyId, String itemId, List<FifoInventoryCost.Batch> values) {
+        int quantity = FifoInventoryCost.quantity(values);
+        if (quantity <= 0) {
+            Map<String, CostLayer> company = layers.get(companyId);
+            if (company != null) {
+                company.remove(itemId);
+                if (company.isEmpty()) layers.remove(companyId);
+            }
+            return;
+        }
+        layers.computeIfAbsent(companyId, ignored -> new HashMap<>())
+                .put(itemId, new CostLayer(quantity, FifoInventoryCost.totalCost(values)));
     }
 
     private static long addSaturated(long left, long right) {
@@ -159,7 +212,9 @@ public final class CompanyInventoryCostSavedData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers, freightSources, inventorySaleSources,
+        Map<String, Map<String, List<FifoInventoryCost.Batch>>> savedBatches = new HashMap<>();
+        batches.forEach((companyId, values) -> savedBatches.put(companyId, new HashMap<>(values)));
+        State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers, savedBatches, freightSources, inventorySaleSources,
                 inventoryLossSources)).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -171,6 +226,11 @@ public final class CompanyInventoryCostSavedData extends SavedData {
             State.CODEC.parse(NbtOps.INSTANCE, tag.get("data")).result().ifPresent(state -> {
                 state.layers().forEach((companyId, values) ->
                         data.layers.put(companyId, new HashMap<>(values)));
+                state.batches().forEach((companyId, values) -> {
+                    Map<String, ArrayList<FifoInventoryCost.Batch>> company = new HashMap<>();
+                    values.forEach((itemId, list) -> company.put(itemId, new ArrayList<>(list)));
+                    data.batches.put(companyId, company);
+                });
                 data.freightSources.addAll(state.freightSources());
                 data.inventorySaleSources.addAll(state.inventorySaleSources());
                 data.inventoryLossSources.addAll(state.inventoryLossSources());
