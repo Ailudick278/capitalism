@@ -215,30 +215,42 @@ public final class IndividualBusinessHelper {
     }
 
     public static boolean deliverOrder(ServerPlayer player, String orderId) {
+        return deliverOrder(player, orderId, Integer.MAX_VALUE);
+    }
+
+    /** Delivers one batch of an order; the remainder stays open for later dispatch. */
+    public static boolean deliverOrder(ServerPlayer player, String orderId, int requestedQuantity) {
         BusinessOrderSavedData orderData = BusinessOrderSavedData.get(player.getServer());
         BusinessOrder order = orderData.get(orderId);
         IndividualBusiness business = get(player);
         if (order == null || business == null || !order.sellerUuid().equals(player.getUUID())
-                || !order.businessId().equals(business.businessId()) || !"open".equals(order.status())) {
+                || !order.businessId().equals(business.businessId()) || !"open".equals(order.status())
+                || requestedQuantity <= 0 || order.remaining() <= 0) {
             return false;
         }
+        int deliveryQuantity = Math.min(order.remaining(), requestedQuantity);
+        int deliveredBefore = order.quantity() - order.remaining();
+        String batchId = Integer.toString(deliveredBefore);
         long now = player.level().getGameTime();
-        String goodsSource = order.businessId() + ":order:" + order.id() + ":goods";
-        if (now > order.deadline() && !WarehouseSavedData.get(player.getServer()).hasConsumedSource(goodsSource)) {
+        String baseSource = order.businessId() + ":order:" + order.id();
+        String goodsSource = baseSource + ":goods:" + batchId;
+        String legacyGoodsSource = baseSource + ":goods";
+        WarehouseSavedData warehouse = WarehouseSavedData.get(player.getServer());
+        boolean legacyGoodsConsumed = deliveredBefore == 0 && warehouse.hasConsumedSource(legacyGoodsSource);
+        if (now > order.deadline() && !warehouse.hasConsumedSource(goodsSource) && !legacyGoodsConsumed) {
             long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
-            if (!refundBuyer(player, order, payment)) return false;
+            if (!refundBuyer(player, order, payment, batchId)) return false;
             orderData.put(order.withStatus("expired"));
             EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.EXPIRED, now);
             return false;
         }
         Item item = parseItem(order.itemId());
-        WarehouseSavedData warehouse = WarehouseSavedData.get(player.getServer());
-        boolean goodsConsumed = warehouse.hasConsumedSource(goodsSource);
-        if (item == null || (!goodsConsumed && warehouse.count(player.getUUID(), order.itemId()) < order.remaining())) {
+        boolean goodsConsumed = warehouse.hasConsumedSource(goodsSource) || legacyGoodsConsumed;
+        if (item == null || (!goodsConsumed && warehouse.count(player.getUUID(), order.itemId()) < deliveryQuantity)) {
             return false;
         }
-        long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
-        String source = business.businessId() + ":order:" + order.id();
+        long payment = Math.multiplyExact((long) deliveryQuantity, order.unitPrice());
+        String source = legacyGoodsConsumed ? baseSource : baseSource + ":batch:" + batchId;
         String buyerSource = source + ":buyer";
         PopulationSavedData population = PopulationSavedData.get(player.getServer());
         String buyerId = population.chargedHousehold(buyerSource);
@@ -250,14 +262,14 @@ public final class IndividualBusinessHelper {
                     .map(Household::id).findFirst().orElse(null);
             if (buyerId == null || !population.chargeCashOnce(buyerId, paymentMinor, buyerSource)) return false;
         }
-        if (!goodsConsumed && !warehouse.consumeOnce(InventoryOwner.player(player.getUUID()), item, order.remaining(), goodsSource)) return false;
+        if (!goodsConsumed && !warehouse.consumeOnce(InventoryOwner.player(player.getUUID()), item, deliveryQuantity, goodsSource)) return false;
         BusinessLedgerSavedData ledger = BusinessLedgerSavedData.get(player.getServer());
         BusinessLedgerEntry settlement = ledger.findSource(business.businessId(), source);
         if (settlement == null) {
             long newBalance = Math.addExact(business.balance("usd"), payment);
             ledger.append(new BusinessLedgerEntry(business.businessId(), now, "order_payment", "usd", payment,
                     newBalance, "完成销售订单 " + order.id() + "，交付 " + order.itemId() + " x" + order.quantity()
-                            + " [source=" + source + "]"));
+                            + " x" + deliveryQuantity + " [source=" + source + "]"));
             Map<String, Long> account = new HashMap<>(business.account());
             account.put("usd", newBalance);
             IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
@@ -266,13 +278,16 @@ public final class IndividualBusinessHelper {
             account.put("usd", settlement.balanceAfter());
             IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
         }
-        orderData.put(order.withDelivery(0, "completed"));
-        EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.COMPLETED, now);
-        recordTaxableIncome(player, business, business.businessId() + ":order:" + order.id(), payment, now);
+        int newRemaining = order.remaining() - deliveryQuantity;
+        String newStatus = newRemaining == 0 ? "completed" : "open";
+        BusinessOrder settledOrder = order.withDelivery(newRemaining, newStatus);
+        orderData.put(settledOrder);
+        EconomicContractBridge.businessOrderEvent(player.getServer(), settledOrder,
+                newRemaining == 0 ? ContractStatus.COMPLETED : ContractStatus.ACTIVE, now);
+        recordTaxableIncome(player, business, source, payment, now);
         TaxIncomeVoucherService.record(player.getServer(), business.ownerUuid(), business.businessId(),
                 "individual_business_income", Currencies.USD.id(), payment, now,
-                business.businessId() + ":income:" + order.id(),
-                order.itemId() + " x" + order.quantity() + " from order " + order.id());
+                source + ":income", order.itemId() + " x" + deliveryQuantity + " from order " + order.id());
         return true;
     }
 
@@ -284,8 +299,11 @@ public final class IndividualBusinessHelper {
         int recovered = 0;
         for (BusinessOrder order : orders.orders().values()) {
             if (!player.getUUID().equals(order.sellerUuid()) || !"open".equals(order.status())) continue;
-            String source = order.businessId() + ":order:" + order.id() + ":goods";
-            if (warehouse.hasConsumedSource(source) && deliverOrder(player, order.id())) recovered++;
+            String source = order.businessId() + ":order:" + order.id() + ":goods:"
+                    + (order.quantity() - order.remaining());
+            String legacySource = order.businessId() + ":order:" + order.id() + ":goods";
+            if ((warehouse.hasConsumedSource(source) || warehouse.hasConsumedSource(legacySource))
+                    && deliverOrder(player, order.id())) recovered++;
         }
         return recovered;
     }
@@ -297,10 +315,12 @@ public final class IndividualBusinessHelper {
                 || !order.businessId().equals(business.businessId()) || !"open".equals(order.status())) {
             return false;
         }
-        String goodsSource = order.businessId() + ":order:" + order.id() + ":goods";
+        String goodsSource = order.businessId() + ":order:" + order.id() + ":goods:"
+                + (order.quantity() - order.remaining());
         if (WarehouseSavedData.get(player.getServer()).hasConsumedSource(goodsSource)) return false;
         long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
-        if (!refundBuyer(player, order, payment)) return false;
+        int deliveredBefore = order.quantity() - order.remaining();
+        if (!refundBuyer(player, order, payment, Integer.toString(deliveredBefore))) return false;
         BusinessOrderSavedData.get(player.getServer()).put(order.withStatus("cancelled"));
         EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.CANCELLED,
                 player.level().getGameTime());
@@ -311,10 +331,14 @@ public final class IndividualBusinessHelper {
     }
 
     /** Returns a previously charged NPC buyer's funds exactly once. */
-    private static boolean refundBuyer(ServerPlayer player, BusinessOrder order, long paymentMajor) {
-        String source = order.businessId() + ":order:" + order.id();
+    private static boolean refundBuyer(ServerPlayer player, BusinessOrder order, long paymentMajor, String batchId) {
+        String source = order.businessId() + ":order:" + order.id() + ":batch:" + batchId;
         PopulationSavedData population = PopulationSavedData.get(player.getServer());
         String buyerId = population.chargedHousehold(source + ":buyer");
+        if (buyerId == null && "0".equals(batchId)) {
+            buyerId = population.chargedHousehold(order.businessId() + ":order:" + order.id() + ":buyer");
+            source = order.businessId() + ":order:" + order.id();
+        }
         if (buyerId == null) return true;
         long paymentMinor = ExchangeRates.convert(Money.toMinorSaturated(paymentMajor), Currencies.USD, Config.defaultCurrency());
         String refundSource = source + ":buyer:refund";

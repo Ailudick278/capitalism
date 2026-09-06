@@ -45,9 +45,13 @@ public final class EconomicContractBridge {
         EconomicContract current = data.find(order.id());
         if (current == null) { businessOrderCreated(server, order); current = data.find(order.id()); }
         if (current == null) return;
-        if (status == ContractStatus.COMPLETED) {
+        if (status == ContractStatus.ACTIVE || status == ContractStatus.COMPLETED) {
             if (current.status() == ContractStatus.OFFERED) data.transition(order.id(), ContractStatus.ACTIVE, at);
-            data.fulfill(order.id(), order.quantity());
+            current = data.find(order.id());
+            long delivered = Math.max(0L, (long) order.quantity() - order.remaining());
+            if (current != null && delivered > current.fulfilledQuantity()) {
+                data.fulfill(order.id(), delivered - current.fulfilledQuantity());
+            }
         }
         data.transition(order.id(), status, at);
     }

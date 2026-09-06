@@ -63,7 +63,11 @@ public final class BusinessCommand {
                 .then(Commands.literal("list").executes(ctx -> listOrders(ctx.getSource())))
                 .then(Commands.literal("deliver")
                         .then(Commands.argument("id", StringArgumentType.word())
-                                .executes(ctx -> deliverOrder(ctx.getSource(), StringArgumentType.getString(ctx, "id")))))
+                                .executes(ctx -> deliverOrder(ctx.getSource(), StringArgumentType.getString(ctx, "id")))
+                                .then(Commands.argument("quantity", IntegerArgumentType.integer(1))
+                                        .executes(ctx -> deliverOrder(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "id"),
+                                                IntegerArgumentType.getInteger(ctx, "quantity"))))))
                 .then(Commands.literal("cancel")
                         .then(Commands.argument("id", StringArgumentType.word())
                                 .executes(ctx -> cancelOrder(ctx.getSource(), StringArgumentType.getString(ctx, "id"))))));
@@ -247,8 +251,12 @@ public final class BusinessCommand {
     }
 
     private static int deliverOrder(CommandSourceStack source, String id) throws CommandSyntaxException {
+        return deliverOrder(source, id, Integer.MAX_VALUE);
+    }
+
+    private static int deliverOrder(CommandSourceStack source, String id, int quantity) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!IndividualBusinessHelper.deliverOrder(player, id)) {
+        if (!IndividualBusinessHelper.deliverOrder(player, id, quantity)) {
             source.sendFailure(Component.literal("订单不存在、已过期、货物不足或不属于你的个体户。"));
             return 0;
         }
