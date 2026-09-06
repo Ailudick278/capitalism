@@ -22,14 +22,15 @@ import java.util.Map;
 public record CompanyFinancialSnapshot(long cash, long inventory, long equipment,
                                        long assets, long taxLiabilities, long loanLiabilities, long payrollLiabilities,
                                        long freightPayables, long liabilities,
-                                       long equity) {
+                                       long equity, long inventoryWriteDown) {
     public static CompanyFinancialSnapshot from(MinecraftServer server, Company company) {
         if (server == null || company == null) {
-            return new CompanyFinancialSnapshot(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+            return new CompanyFinancialSnapshot(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
         }
         long cash = Math.max(0L, company.treasuryOf("usd"));
         CommoditySavedData market = CommoditySavedData.get(server);
         long inventory = 0L;
+        long inventoryWriteDown = 0L;
         CompanyInventoryCostSavedData inventoryCosts = CompanyInventoryCostSavedData.get(server);
         for (Map.Entry<String, Integer> entry : WarehouseSavedData.get(server)
                 .storage(InventoryOwner.company(company.companyId())).entrySet()) {
@@ -39,7 +40,9 @@ public record CompanyFinancialSnapshot(long cash, long inventory, long equipment
             int tracked = layer == null ? 0 : Math.min(quantity, Math.max(0, layer.quantity()));
             long trackedCost = layer == null ? 0L : proportionalCost(layer.totalCost(), tracked, layer.quantity());
             long trackedMarketValue = multiply(unitPrice, tracked);
-            inventory = add(inventory, Math.min(trackedCost, trackedMarketValue));
+            InventoryValuation.Result valuation = InventoryValuation.lowerOfCostAndNrv(trackedCost, trackedMarketValue);
+            inventory = add(inventory, valuation.carryingValue());
+            inventoryWriteDown = add(inventoryWriteDown, valuation.writeDown());
             inventory = add(inventory, multiply(unitPrice, quantity - tracked));
         }
 
@@ -69,7 +72,7 @@ public record CompanyFinancialSnapshot(long cash, long inventory, long equipment
         long liabilities = add(add(add(taxLiabilities, loanLiabilities), payrollLiabilities), freightPayables);
         return new CompanyFinancialSnapshot(cash, inventory, equipment, assets,
                 taxLiabilities, loanLiabilities, payrollLiabilities, freightPayables,
-                liabilities, assets - liabilities);
+                liabilities, assets - liabilities, inventoryWriteDown);
     }
 
     private static long add(long left, long right) {
