@@ -84,66 +84,7 @@ public class LoanCommand {
     }
 
     private static int repay(ServerPlayer borrower, String loanId, Long requestedAmount) {
-        PeerLoanSavedData data = PeerLoanSavedData.get(borrower.getServer());
-        PeerLoan loan = data.findLoan(loanId);
-        if (loan == null || !loan.borrower().equals(borrower.getUUID())) {
-            borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_not_found"));
-            return 0;
-        }
-        Currency currency = Currencies.byId(loan.currencyId());
-        if (currency == null || loan.principal() <= 0) {
-            borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_not_found"));
-            return 0;
-        }
-        long interest = loan.interestDue();
-        long total;
-        try {
-            total = Math.addExact(loan.principal(), interest);
-        } catch (ArithmeticException e) {
-            borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
-            return 0;
-        }
-        long payment = requestedAmount == null ? total : requestedAmount;
-        if (payment <= 0L || payment > total) {
-            borrower.sendSystemMessage(Component.literal("部分还款必须先支付未结利息；本次不支持部分偿还本金。"));
-            return 0;
-        }
-        var allocation = PeerLoanPaymentAllocation.forAmount(loan, payment).orElse(null);
-        if (allocation == null) {
-            borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
-            return 0;
-        }
-        long totalMinor = Money.toMinor(payment);
-        if (totalMinor <= 0 || !EconomyHelper.tryPay(borrower, currency, totalMinor)) {
-            borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
-            return 0;
-        }
-        ServerPlayer lender = borrower.getServer().getPlayerList().getPlayer(loan.lender());
-        if (lender != null) {
-            EconomyHelper.giveMoney(lender, currency, totalMinor);
-        } else {
-            MarketMailboxSavedData.get(borrower.getServer()).creditMoney(loan.lender(), currency.id(), totalMinor);
-        }
-        if (payment == total) {
-            data.removeLoan(loanId);
-        } else {
-            long paidInterest = loan.interestPaid() > Long.MAX_VALUE - allocation.interestPayment()
-                    ? Long.MAX_VALUE : loan.interestPaid() + allocation.interestPayment();
-            PeerLoan updated = loan.withInterestPaid(paidInterest)
-                    .withPrincipal(allocation.remainingPrincipal());
-            if (allocation.principalPayment() > 0L) {
-                long elapsed = Math.max(0L, (long) loan.totalDays() - loan.daysRemaining());
-                updated = updated.withInterestAccrualState(loan.totalInterestAccrued(), elapsed);
-            }
-            data.replaceLoan(updated);
-        }
-        PeerLoanPaymentSavedData.get(borrower.getServer()).append(new PeerLoanPaymentSavedData.Payment(
-                loan.id(), loan.lender(), loan.borrower(), borrower.getServer().overworld().getGameTime(),
-                payment, allocation.interestPayment(), allocation.principalPayment(),
-                allocation.remainingPrincipal(), loan.daysRemaining(), loan.isOverdue()));
-        borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",
-                payment, Component.translatable(currency.nameKey())));
-        return 1;
+        return PeerLoanHelper.repay(borrower, loanId, requestedAmount) ? 1 : 0;
     }
 
     private static int list(ServerPlayer player) {
