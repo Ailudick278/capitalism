@@ -77,13 +77,22 @@ public final class PopulationService {
                         TradeRegion.distance(household.region(), offer.region()));
                 long migrationFriction = local ? 0L : LogisticsInfrastructureSavedData.get(server)
                         .migrationFriction(household.dailyNeedMinor(), household.size(), offer.region());
+                long relocationCost = local ? 0L : HousingEconomics.migrationCost(household.dailyNeedMinor(),
+                        household.size(), destinationRent / Math.max(1, household.size()), migrationFriction);
                 boolean willingToMove = !local && household.satisfaction() <= 40
                         && offer.dailyWageMinor() >= add(add(livingCost, destinationRent), add(migrationFriction, commuteCost));
                 if (!local && !willingToMove) continue;
+                if (!local && household.cashMinor() < relocationCost) continue;
                 LaborMarketService.ensureNpcProfile(server, household.id(), household.workingAge());
+                String originalRegion = household.region();
+                boolean migrated = local || population.migrate(household.id(), offer.region(), now, relocationCost);
+                if (!migrated) continue;
                 if (LaborMarketService.hireNpc(server, offer.id(), household.id())) {
-                    if (!local) population.move(household.id(), offer.region(), now);
                     hired++; break;
+                }
+                if (!local) {
+                    population.move(household.id(), originalRegion, now);
+                    population.addCash(household.id(), relocationCost);
                 }
             }
         }

@@ -14,4 +14,11 @@ class HousingEconomicsTest {
         assertTrue(HousingEconomics.commuteCost(100L, 2, 10)
                 > HousingEconomics.commuteCost(100L, 2, 1));
     }
+
+    @Test
+    void relocationCostIncludesLivingRentAndFriction() {
+        assertEquals(4_000L, HousingEconomics.migrationCost(100L, 2, 50L, 500L));
+        assertTrue(HousingEconomics.migrationCost(100L, 2, 50L, 900L)
+                > HousingEconomics.migrationCost(100L, 2, 50L, 500L));
+    }
 }

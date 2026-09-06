@@ -26,6 +26,14 @@ public final class PopulationSavedData extends SavedData {
     public boolean addCash(String id, long amount) { Household h = find(id); if (h == null || amount <= 0L) return false; upsert(h.withCash(add(h.cashMinor(), amount))); return true; }
     public boolean addCashOnce(String id, long amount, String source) { if (source == null || source.isBlank() || creditedSources.contains(source)) return false; if (!addCash(id, amount)) return false; creditedSources.add(source); while (creditedSources.size() > 8192) creditedSources.remove(creditedSources.iterator().next()); setDirty(); return true; }
     public boolean move(String id, String region, long day) { Household h = find(id); if (h == null || region == null || region.isBlank() || h.region().equals(region)) return false; upsert(h.withRegion(region, day)); return true; }
+    /** Charges a one-time relocation cost and changes region atomically. */
+    public boolean migrate(String id, String region, long day, long cost) {
+        Household h = find(id);
+        if (h == null || region == null || region.isBlank() || h.region().equals(region)
+                || cost < 0L || h.cashMinor() < cost) return false;
+        upsert(h.withCash(h.cashMinor() - cost).withRegion(region, day));
+        return true;
+    }
     public boolean remove(String id) { if (id == null || id.isBlank()) return false; boolean removed = households.removeIf(h -> h.id().equals(id)); if (removed) setDirty(); return removed; }
     public boolean merge(String sourceId, String targetId) {
         Household source = find(sourceId), target = find(targetId);

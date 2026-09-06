@@ -23,4 +23,25 @@ public final class HousingEconomics {
         long distance = Math.min(365L, regionDistance);
         return people > Long.MAX_VALUE / distance ? Long.MAX_VALUE : people * distance / 10L;
     }
+
+    /** One-time relocation cost: two weeks of living costs, one week of rent, plus access friction. */
+    public static long migrationCost(long dailyNeedPerResident, int householdSize,
+                                     long destinationRentPerResident, long friction) {
+        if (dailyNeedPerResident <= 0L || householdSize <= 0) return Math.max(0L, friction);
+        long dailyNeed = multiply(dailyNeedPerResident, householdSize);
+        long weeklyRent = multiply(destinationRentPerResident, householdSize);
+        long livingPart = multiply(dailyNeed, 14L);
+        long rentPart = multiply(weeklyRent, 7L);
+        return add(add(livingPart, rentPart), Math.max(0L, friction));
+    }
+
+    private static long multiply(long left, long right) {
+        try { return Math.multiplyExact(left, right); }
+        catch (ArithmeticException e) { return Long.MAX_VALUE; }
+    }
+
+    private static long add(long left, long right) {
+        try { return Math.addExact(left, right); }
+        catch (ArithmeticException e) { return Long.MAX_VALUE; }
+    }
 }
