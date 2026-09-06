@@ -46,6 +46,7 @@ public record Position(String id, UUID playerId, String itemId, int quantity, lo
                 ByteBufCodecs.VAR_LONG.encode(buf, pos.entryPrice());
                 ByteBufCodecs.VAR_LONG.encode(buf, pos.margin());
                 ByteBufCodecs.BOOL.encode(buf, pos.longSide());
+                ByteBufCodecs.VAR_LONG.encode(buf, pos.lastSettlementDay());
             },
             buf -> new Position(
                     ByteBufCodecs.STRING_UTF8.decode(buf),
@@ -54,7 +55,8 @@ public record Position(String id, UUID playerId, String itemId, int quantity, lo
                     ByteBufCodecs.VAR_INT.decode(buf),
                     ByteBufCodecs.VAR_LONG.decode(buf),
                     ByteBufCodecs.VAR_LONG.decode(buf),
-            ByteBufCodecs.BOOL.decode(buf)
+                    ByteBufCodecs.BOOL.decode(buf),
+                    ByteBufCodecs.VAR_LONG.decode(buf)
             )
     );
 
