@@ -21,7 +21,14 @@ public final class CompanyServiceDeliverySavedData extends SavedData {
 
     public record ServiceDelivery(String companyId, long timestamp, String recipeId,
                                   long revenue, long inputCost, long operatingCost,
-                                  long depreciation, int workers) {
+                                  long depreciation, int workers, String deliveryId) {
+        public ServiceDelivery(String companyId, long timestamp, String recipeId,
+                               long revenue, long inputCost, long operatingCost,
+                               long depreciation, int workers) {
+            this(companyId, timestamp, recipeId, revenue, inputCost, operatingCost,
+                    depreciation, workers, "");
+        }
+
         private static final Codec<ServiceDelivery> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("companyId").forGetter(ServiceDelivery::companyId),
                 Codec.LONG.fieldOf("timestamp").forGetter(ServiceDelivery::timestamp),
@@ -30,7 +37,8 @@ public final class CompanyServiceDeliverySavedData extends SavedData {
                 Codec.LONG.fieldOf("inputCost").forGetter(ServiceDelivery::inputCost),
                 Codec.LONG.fieldOf("operatingCost").forGetter(ServiceDelivery::operatingCost),
                 Codec.LONG.fieldOf("depreciation").forGetter(ServiceDelivery::depreciation),
-                Codec.INT.fieldOf("workers").forGetter(ServiceDelivery::workers)
+                Codec.INT.fieldOf("workers").forGetter(ServiceDelivery::workers),
+                Codec.STRING.optionalFieldOf("deliveryId", "").forGetter(ServiceDelivery::deliveryId)
         ).apply(instance, ServiceDelivery::new));
 
         public long directCost() {
@@ -72,6 +80,9 @@ public final class CompanyServiceDeliverySavedData extends SavedData {
     public void append(ServiceDelivery delivery) {
         if (delivery == null || delivery.companyId() == null || delivery.companyId().isBlank()
                 || delivery.recipeId() == null || delivery.recipeId().isBlank()) return;
+        if (delivery.deliveryId() != null && !delivery.deliveryId().isBlank()
+                && deliveries.values().stream().flatMap(List::stream)
+                .anyMatch(existing -> delivery.deliveryId().equals(existing.deliveryId()))) return;
         List<ServiceDelivery> history = deliveries.computeIfAbsent(delivery.companyId(), ignored -> new ArrayList<>());
         history.add(delivery);
         while (history.size() > MAX_PER_COMPANY) history.remove(0);
@@ -88,7 +99,7 @@ public final class CompanyServiceDeliverySavedData extends SavedData {
         for (ServiceDelivery delivery : source) {
             target.add(new ServiceDelivery(targetId, delivery.timestamp(), delivery.recipeId(),
                     delivery.revenue(), delivery.inputCost(), delivery.operatingCost(),
-                    delivery.depreciation(), delivery.workers()));
+                    delivery.depreciation(), delivery.workers(), delivery.deliveryId()));
         }
         target.sort(java.util.Comparator.comparingLong(ServiceDelivery::timestamp));
         while (target.size() > MAX_PER_COMPANY) target.remove(0);

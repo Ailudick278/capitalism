@@ -48,10 +48,12 @@ public final class CompanyProductionTickHandler {
             long failed = state.failedCycles();
             Map<String, Long> failureReasons = state.failureReasons();
             for (int i = 0; i < cycles; i++) {
+                long cycleTick = state.lastProcessedTick() + (long) (i + 1) * cycleTicks;
                 int capacity = Math.max(1, CompanyHelper.parallelCapacity(server, company));
                 boolean anySuccess = false;
                 for (int batch = 0; batch < capacity; batch++) {
-                    CompanyHelper.ProductionCycleResult result = CompanyHelper.runProductionCycleResult(server, company);
+                    String cycleKey = company.companyId() + ":" + cycleTick + ":" + batch;
+                    CompanyHelper.ProductionCycleResult result = CompanyHelper.runProductionCycleResult(server, company, cycleKey);
                     if (result.success()) {
                         successful = increment(Math.max(0L, successful));
                         anySuccess = true;

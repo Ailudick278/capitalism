@@ -428,6 +428,12 @@ public final class CompanyHelper {
 
     /** Runs one batch and reports why a non-mutating precondition failed. */
     public static ProductionCycleResult runProductionCycleResult(MinecraftServer server, Company company) {
+        return runProductionCycleResult(server, company, null);
+    }
+
+    /** Runs a batch with an optional stable cycle key for audit and tax linkage. */
+    public static ProductionCycleResult runProductionCycleResult(MinecraftServer server, Company company,
+                                                                  String cycleKey) {
         if (server == null || company == null || company.registeredCapital() <= 0) {
             return ProductionCycleResult.failure("invalid_company");
         }
@@ -510,14 +516,17 @@ public final class CompanyHelper {
         if (!inputConsumption.success()) {
             return ProductionCycleResult.failure("input_reservation");
         }
+        long occurredAt = server.overworld().getGameTime();
+        String serviceSource = serviceCycle
+                ? "service_cycle:" + company.companyId() + ":"
+                + (cycleKey == null || cycleKey.isBlank() ? occurredAt + ":" + UUID.randomUUID() : cycleKey)
+                : "";
         if (serviceCycle) {
-            long occurredAt = server.overworld().getGameTime();
             if (!creditTreasury(server, company.companyId(), Currencies.USD.id(), recipe.income())) {
                 return ProductionCycleResult.failure("service_income");
             }
             Company current = CompanySavedData.get(server).get(company.companyId());
             if (current != null) {
-                String serviceSource = "service_cycle:" + company.companyId() + ":" + occurredAt + ":" + UUID.randomUUID();
                 recordTaxableIncome(server, current,
                         serviceSource, recipe.income(),
                         Currencies.USD.id(), occurredAt);
@@ -546,7 +555,7 @@ public final class CompanyHelper {
                     new CompanyServiceDeliverySavedData.ServiceDelivery(
                             company.companyId(), server.overworld().getGameTime(), recipe.id(),
                             recipe.income(), inputConsumption.cost(), cost,
-                            Math.max(0L, equipmentDepreciation), recipe.workersPerCycle()));
+                            Math.max(0L, equipmentDepreciation), recipe.workersPerCycle(), serviceSource));
         }
         if (equipmentDepreciation > 0L) {
             Company current = CompanySavedData.get(server).get(company.companyId());
