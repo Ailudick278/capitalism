@@ -7,6 +7,7 @@ import com.ailudick.capitalismmod.company.CompanyPayrollService;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.population.PopulationSavedData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -33,9 +34,14 @@ public final class LaborPayrollService {
             long paid = Math.min(available, due);
             if (paid > 0L && CompanyHelper.debitTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), paid,
                     "employment_payroll", "Employment wage payment")) {
-                ServerPlayer worker = server.getPlayerList().getPlayer(java.util.UUID.fromString(employment.workerId()));
-                if (worker != null) EconomyHelper.giveMoney(worker, Currencies.USD, paid);
-                else MarketMailboxSavedData.get(server).creditMoney(java.util.UUID.fromString(employment.workerId()), Currencies.USD.id(), paid);
+                try {
+                    java.util.UUID workerId = java.util.UUID.fromString(employment.workerId());
+                    ServerPlayer worker = server.getPlayerList().getPlayer(workerId);
+                    if (worker != null) EconomyHelper.giveMoney(worker, Currencies.USD, paid);
+                    else MarketMailboxSavedData.get(server).creditMoney(workerId, Currencies.USD.id(), paid);
+                } catch (IllegalArgumentException npcWorker) {
+                    PopulationSavedData.get(server).addCash(employment.workerId(), paid);
+                }
             } else paid = 0L;
             payroll.settle(employment.id(), day, due - paid);
         }

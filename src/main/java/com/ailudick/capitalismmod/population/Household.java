@@ -16,4 +16,5 @@ public record Household(String id, String region, int size, int workingAge,
         return new Household(id, nextRegion, size, workingAge, Math.max(0L, cash), dailyNeedMinor,
                 Math.max(0, Math.min(100, satisfaction)), day);
     }
+    public Household withCash(long cash) { return new Household(id, region, size, workingAge, Math.max(0L, cash), dailyNeedMinor, satisfaction, lastSettlementDay); }
 }

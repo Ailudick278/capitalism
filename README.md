@@ -21,6 +21,7 @@
 - 土地与税务：区块、租赁、转让、用途、租金、土地税和税务记录。
 - 金融市场：股票、债券、期货、企业贷款和风险基础。
 - 劳动力与合同：岗位发布、技能匹配、雇佣、工资、欠薪，以及货运合同的履约状态。
+- 人口与家庭：持久化家庭、NPC 劳动力、基本消费、福利和区域人口需求。
 
 ## 常用命令
 
@@ -38,6 +39,8 @@
 /labor hire <offerId> <worker>   录用玩家
 /labor contracts                 查看雇佣合同
 /labor end <employmentId>        结束雇佣
+/population info [region]        查看区域人口和基本需求
+/population seed <region> <count> 管理员生成 NPC 家庭
 ```
 
 ## 配置与数据

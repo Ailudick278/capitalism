@@ -26,6 +26,14 @@ public final class LaborMarketService {
         data.registerProfile(new LaborProfile(actor(player), skills, 100, 0L));
     }
 
+    public static void ensureNpcProfile(MinecraftServer server, String id, int workingAge) {
+        LaborMarketSavedData data = LaborMarketSavedData.get(server);
+        if (data.profile(id) != null) return;
+        EnumMap<LaborSkill, Integer> skills = new EnumMap<>(LaborSkill.class);
+        skills.put(LaborSkill.FOUNDATION, 45);
+        data.registerProfile(new LaborProfile(id, skills, workingAge > 0 ? 100 : 0, 100L));
+    }
+
     public static boolean post(ServerPlayer player, String companyName, String role, int vacancies,
                                long dailyWageMinor, LaborSkill skill, int minimumSkill, int durationDays) {
         Company company = CompanyHelper.getCompany(player, companyName);
@@ -55,6 +63,17 @@ public final class LaborMarketService {
             return data.hire(new EmploymentRecord(UUID.randomUUID().toString(), actor(worker), offer.employerId(),
                     offer.role(), offer.dailyWageMinor(), employer.getServer().overworld().getGameTime(), 0L, true));
         } catch (RuntimeException e) { return false; }
+    }
+
+    public static boolean hireNpc(MinecraftServer server, String offerId, String npcId) {
+        if (server == null || npcId == null || npcId.isBlank()) return false;
+        LaborMarketSavedData data = LaborMarketSavedData.get(server); JobOffer offer = data.offer(offerId);
+        LaborProfile profile = data.profile(npcId);
+        if (offer == null || profile == null || profile.participation() <= 0 || profile.skill(offer.requiredSkill()) < offer.minimumSkill()
+                || offer.dailyWageMinor() < profile.reservationWageMinor() || !data.activeForWorker(npcId).isEmpty()) return false;
+        if (!data.reserveVacancy(offerId)) return false;
+        return data.hire(new EmploymentRecord(java.util.UUID.randomUUID().toString(), npcId, offer.employerId(), offer.role(),
+                offer.dailyWageMinor(), server.overworld().getGameTime(), 0L, true));
     }
 
     public static boolean end(ServerPlayer player, String employmentId) {

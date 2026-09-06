@@ -20,6 +20,7 @@ public final class PopulationSavedData extends SavedData {
     public List<Household> households() { return List.copyOf(households); }
     public Household find(String id) { return households.stream().filter(h -> h.id().equals(id)).findFirst().orElse(null); }
     public void upsert(Household household) { if (household == null) return; households.removeIf(h -> h.id().equals(household.id())); households.add(household); while (households.size() > MAX_HOUSEHOLDS) households.remove(0); setDirty(); }
+    public boolean addCash(String id, long amount) { Household h = find(id); if (h == null || amount <= 0L) return false; upsert(h.withCash(add(h.cashMinor(), amount))); return true; }
     public int population(String region) { return households.stream().filter(h -> h.region().equals(region)).mapToInt(Household::size).sum(); }
     public long dailyDemand(String region) { return households.stream().filter(h -> h.region().equals(region)).mapToLong(h -> h.dailyNeedMinor() * (long) h.size()).reduce(0L, PopulationSavedData::add); }
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) { ListTag list = new ListTag(); for (Household h : households) { CompoundTag e = new CompoundTag(); e.putString("id",h.id()); e.putString("region",h.region()); e.putInt("size",h.size()); e.putInt("workingAge",h.workingAge()); e.putLong("cash",h.cashMinor()); e.putLong("need",h.dailyNeedMinor()); e.putInt("satisfaction",h.satisfaction()); e.putLong("day",h.lastSettlementDay()); list.add(e); } tag.put("households",list); return tag; }

@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.command;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -14,7 +15,11 @@ public final class PopulationCommand {
         d.register(Commands.literal("population").then(Commands.literal("info")
                 .executes(c -> info(c.getSource(), "spawn"))
                 .then(Commands.argument("region", StringArgumentType.word())
-                        .executes(c -> info(c.getSource(), StringArgumentType.getString(c, "region"))))));
+                        .executes(c -> info(c.getSource(), StringArgumentType.getString(c, "region")))))
+                .then(Commands.literal("seed").requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("region", StringArgumentType.word())
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 10000))
+                                        .executes(c -> seed(c.getSource(), StringArgumentType.getString(c, "region"), IntegerArgumentType.getInteger(c, "count")))))));
     }
     private static int info(CommandSourceStack source, String region) {
         PopulationSavedData data = PopulationSavedData.get(source.getServer());
@@ -23,5 +28,10 @@ public final class PopulationCommand {
         long demand = data.dailyDemand(region);
         source.sendSuccess(() -> Component.literal("population region=" + region + " households=" + households + " residents=" + population + " dailyNeedMinor=" + demand), false);
         return households;
+    }
+    private static int seed(CommandSourceStack source, String region, int count) {
+        int created = com.ailudick.capitalismmod.population.PopulationService.seedNpc(source.getServer(), region, count);
+        source.sendSuccess(() -> Component.literal("seeded npc households=" + created + " region=" + region), true);
+        return created;
     }
 }

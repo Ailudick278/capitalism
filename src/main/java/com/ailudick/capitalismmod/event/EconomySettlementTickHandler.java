@@ -89,6 +89,7 @@ public final class EconomySettlementTickHandler {
         loans.setDirty();
 
         CompanyPayrollService.settleDaily(server, settlementDay);
+        PopulationService.matchResidents(server, settlementDay);
         LaborPayrollService.settleDaily(server, settlementDay);
         PopulationService.settleDaily(server, settlementDay);
         EconomicContractBridge.syncFreight(server);
