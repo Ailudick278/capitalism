@@ -564,7 +564,7 @@ public final class CompanyHelper {
                 + (cycleKey == null || cycleKey.isBlank() ? occurredAt + ":" + UUID.randomUUID() : cycleKey)
                 : "";
         if (serviceCycle) {
-            if (!creditTreasury(server, company.companyId(), Currencies.USD.id(), recipe.income())) {
+            if (!creditTreasuryOnce(server, company.companyId(), Currencies.USD.id(), recipe.income(), serviceSource)) {
                 return ProductionCycleResult.failure("service_income");
             }
             Company current = CompanySavedData.get(server).get(company.companyId());
