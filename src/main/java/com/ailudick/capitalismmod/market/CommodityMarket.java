@@ -211,7 +211,7 @@ public final class CommodityMarket {
             long supply = data.supply(id);
             long householdDemand = PopulationSavedData.get(server).demandUnits(id, oldPrice);
             supply = householdDemand >= supply ? -Math.min(1_000_000L, householdDemand - supply) : supply - householdDemand;
-            long newPrice = Math.max(1, oldPrice + (fundamental - oldPrice) / 10 + (netVolume + supply) / 10);
+            long newPrice = CommodityPriceEconomics.nextPrice(oldPrice, fundamental, netVolume, supply);
             newPrice = applyPriceLimit(data, id, newPrice);
             data.putPrice(id, newPrice);
             data.resetNetVolume(id);
