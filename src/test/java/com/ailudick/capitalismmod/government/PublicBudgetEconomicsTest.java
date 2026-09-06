@@ -36,4 +36,11 @@ class PublicBudgetEconomicsTest {
         assertEquals(100, PublicBudgetEconomics.fiscalStress(0L, 100L));
         assertTrue(PublicBudgetEconomics.fiscalStress(350L, 100L) > 0);
     }
+
+    @Test
+    void highFiscalStressStopsNonEssentialExpansion() {
+        assertTrue(PublicBudgetEconomics.allowNonEssentialExpansion(74));
+        assertTrue(!PublicBudgetEconomics.allowNonEssentialExpansion(75));
+        assertTrue(!PublicBudgetEconomics.allowNonEssentialExpansion(100));
+    }
 }

@@ -13,7 +13,7 @@ public final class GovernmentPolicyService {
         GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
         long benefit = policy.dailyBenefitMinor();
         PopulationSavedData population = PopulationSavedData.get(server);
-        stimulateHousing(server, population, day);
+        stimulateHousing(server, population, policy, day);
         int paid = 0;
         for (Household household : population.households()) {
             if (household.unemploymentDays() < 3 || household.unemploymentDays() > 90
@@ -33,18 +33,26 @@ public final class GovernmentPolicyService {
         return paid;
     }
 
-    private static void stimulateHousing(MinecraftServer server, PopulationSavedData population, long day) {
+    private static void stimulateHousing(MinecraftServer server, PopulationSavedData population,
+                                         GovernmentPolicySavedData policy, long day) {
         var infrastructure = LogisticsInfrastructureSavedData.get(server);
         var construction = PublicConstructionSavedData.get(server);
         java.util.Set<String> regions = new java.util.HashSet<>(infrastructure.regions());
         population.households().forEach(h -> regions.add(h.region()));
         for (String region : regions) {
             int residents = population.population(region);
+            var households = population.households().stream().filter(h -> h.region().equals(region)).toList();
+            long dailyCosts = PublicBudgetEconomics.dailyMaintenance("housing", infrastructure.count(region, "housing"));
+            dailyCosts = add(dailyCosts, PublicBudgetEconomics.dailyMaintenance("school", infrastructure.count(region, "school")));
+            dailyCosts = add(dailyCosts, PublicBudgetEconomics.dailyMaintenance("clinic", infrastructure.count(region, "clinic")));
+            dailyCosts = add(dailyCosts, multiply(policy.dailyBenefitMinor(), households.size()));
+            boolean expandNonEssential = PublicBudgetEconomics.allowNonEssentialExpansion(
+                    PublicBudgetEconomics.fiscalStress(policy.treasuryMinor(), dailyCosts));
             startIfNeeded(construction, region, "housing", residents,
                     PublicConstructionEconomics.housingPressure(residents, infrastructure.count(region, "housing")), day);
-            startIfNeeded(construction, region, "school", residents,
+            startIfNeeded(construction, region, "school", residents, expandNonEssential &&
                     PublicConstructionEconomics.servicePressure(residents, infrastructure.count(region, "school"), 10, 70), day);
-            startIfNeeded(construction, region, "clinic", residents,
+            startIfNeeded(construction, region, "clinic", residents, expandNonEssential &&
                     PublicConstructionEconomics.servicePressure(residents, infrastructure.count(region, "clinic"), 10, 70), day);
         }
     }
@@ -53,6 +61,15 @@ public final class GovernmentPolicyService {
                                       int residents, boolean pressure, long day) {
         if (!pressure || residents <= 0 || construction.hasActiveProject(region, facility)) return;
         construction.start("auto-" + facility + ":" + day + ":" + region, region, facility, 1, day);
+    }
+
+    private static long multiply(long left, int right) {
+        if (left <= 0L || right <= 0) return 0L;
+        return left > Long.MAX_VALUE / right ? Long.MAX_VALUE : left * right;
+    }
+
+    private static long add(long left, long right) {
+        return right > Long.MAX_VALUE - left ? Long.MAX_VALUE : left + right;
     }
 
     private static boolean payOnce(GovernmentPolicySavedData policy, PopulationSavedData population,

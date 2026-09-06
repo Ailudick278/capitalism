@@ -36,4 +36,8 @@ public final class PublicBudgetEconomics {
         long coveredPercent = (long) Math.min(100D, (double) treasury * 100D / (double) weeklyCosts);
         return (int) Math.max(0L, Math.min(100L, 100L - coveredPercent));
     }
+
+    public static boolean allowNonEssentialExpansion(int fiscalStress) {
+        return fiscalStress >= 0 && fiscalStress < 75;
+    }
 }
