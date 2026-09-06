@@ -78,15 +78,25 @@ public final class FuturesMarket {
         }
         String source = "futures-margin-withdraw:" + player.getUUID() + ":" + balanceBefore + ":" + amount;
         String recoveredSource = "futures-margin-withdraw:" + player.getUUID() + ":" + (balanceBefore + amount) + ":" + amount;
-        boolean alreadyWithdrawn = data.hasMarginWithdrawal(recoveredSource);
-        if (!alreadyWithdrawn) {
-            data.addMarginBalance(player.getUUID(), -amount);
-            data.recordMarginWithdrawal(source);
-        } else {
+        if (data.hasMarginWithdrawal(recoveredSource)) {
             source = recoveredSource;
         }
+        Long start = data.marginWithdrawalStart(source);
+        if (start == null && !data.hasMarginWithdrawal(source)) {
+            data.recordMarginWithdrawalStart(source, balanceBefore);
+            start = data.marginWithdrawalStart(source);
+        }
+        if (data.hasMarginWithdrawal(source)) {
+            start = balanceBefore + amount;
+        }
+        if (start == null || (balanceBefore != start && balanceBefore != start - amount)) return false;
+        if (balanceBefore == start) data.addMarginBalance(player.getUUID(), -amount);
         var mailbox = com.ailudick.capitalismmod.market.MarketMailboxSavedData.get(player.getServer());
-        mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(amount), source);
+        boolean credited = mailbox.hasCreditSource(source)
+                || mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(amount), source);
+        if (!credited) return false;
+        data.clearMarginWithdrawalStart(source);
+        data.recordMarginWithdrawal(source);
         mailbox.redeemMoneyOnly(player);
         return true;
     }

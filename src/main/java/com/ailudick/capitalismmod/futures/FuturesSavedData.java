@@ -36,6 +36,7 @@ public final class FuturesSavedData extends SavedData {
     private final List<Position> positions = new ArrayList<>();
     private final Set<String> settlementReceipts = new HashSet<>();
     private final Set<String> marginWithdrawalReceipts = new HashSet<>();
+    private final Map<String, Long> marginWithdrawalStarts = new HashMap<>();
 
     private record State(
             Map<String, Long> futuresPrice,
@@ -46,7 +47,8 @@ public final class FuturesSavedData extends SavedData {
             List<Position> positions,
             long lastSettlementDay,
             List<String> settlementReceipts,
-            List<String> marginWithdrawalReceipts) {
+            List<String> marginWithdrawalReceipts,
+            Map<String, Long> marginWithdrawalStarts) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("futuresPrice").forGetter(State::futuresPrice),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("netVolume").forGetter(State::netVolume),
@@ -56,7 +58,8 @@ public final class FuturesSavedData extends SavedData {
                 Position.CODEC.listOf().fieldOf("positions").forGetter(State::positions),
                 Codec.LONG.optionalFieldOf("lastSettlementDay", -1L).forGetter(State::lastSettlementDay),
                 Codec.STRING.listOf().optionalFieldOf("settlementReceipts", List.of()).forGetter(State::settlementReceipts),
-                Codec.STRING.listOf().optionalFieldOf("marginWithdrawalReceipts", List.of()).forGetter(State::marginWithdrawalReceipts)
+                Codec.STRING.listOf().optionalFieldOf("marginWithdrawalReceipts", List.of()).forGetter(State::marginWithdrawalReceipts),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("marginWithdrawalStarts", Map.of()).forGetter(State::marginWithdrawalStarts)
         ).apply(instance, State::new));
     }
 
@@ -165,6 +168,26 @@ public final class FuturesSavedData extends SavedData {
         return true;
     }
 
+    /** Persists the pre-debit balance before a margin withdrawal is applied. */
+    public boolean recordMarginWithdrawalStart(String sourceId, long balanceBefore) {
+        if (sourceId == null || sourceId.isBlank() || balanceBefore < 0L
+                || marginWithdrawalStarts.containsKey(sourceId)) return false;
+        marginWithdrawalStarts.put(sourceId, balanceBefore);
+        while (marginWithdrawalStarts.size() > 8192) {
+            marginWithdrawalStarts.remove(marginWithdrawalStarts.keySet().iterator().next());
+        }
+        setDirty();
+        return true;
+    }
+
+    public Long marginWithdrawalStart(String sourceId) {
+        return sourceId == null || sourceId.isBlank() ? null : marginWithdrawalStarts.get(sourceId);
+    }
+
+    public void clearMarginWithdrawalStart(String sourceId) {
+        if (sourceId != null && marginWithdrawalStarts.remove(sourceId) != null) setDirty();
+    }
+
     public void incrementDay() {
         if (dayCounter < Long.MAX_VALUE) dayCounter++;
         setDirty();
@@ -239,7 +262,8 @@ public final class FuturesSavedData extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(futuresPrice), new HashMap<>(netVolume), new HashMap<>(expiryDay),
                 dayCounter, new HashMap<>(marginBalance), new ArrayList<>(positions), lastSettlementDay,
-                new ArrayList<>(settlementReceipts), new ArrayList<>(marginWithdrawalReceipts));
+                new ArrayList<>(settlementReceipts), new ArrayList<>(marginWithdrawalReceipts),
+                new HashMap<>(marginWithdrawalStarts));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -260,6 +284,8 @@ public final class FuturesSavedData extends SavedData {
                 while (data.settlementReceipts.size() > 16384) data.settlementReceipts.remove(data.settlementReceipts.iterator().next());
                 data.marginWithdrawalReceipts.addAll(state.marginWithdrawalReceipts());
                 while (data.marginWithdrawalReceipts.size() > 8192) data.marginWithdrawalReceipts.remove(data.marginWithdrawalReceipts.iterator().next());
+                data.marginWithdrawalStarts.putAll(state.marginWithdrawalStarts());
+                while (data.marginWithdrawalStarts.size() > 8192) data.marginWithdrawalStarts.remove(data.marginWithdrawalStarts.keySet().iterator().next());
             });
         }
         return data;
