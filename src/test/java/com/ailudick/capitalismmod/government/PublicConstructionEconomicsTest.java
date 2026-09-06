@@ -62,4 +62,11 @@ class PublicConstructionEconomicsTest {
         assertTrue(PublicConstructionEconomics.housingPressure(5, 1));
         assertTrue(PublicConstructionEconomics.housingPressure(1, 0));
     }
+
+    @Test
+    void servicePressureUsesTargetCoverage() {
+        assertFalse(PublicConstructionEconomics.servicePressure(100, 7, 10, 70));
+        assertTrue(PublicConstructionEconomics.servicePressure(100, 6, 10, 70));
+        assertTrue(PublicConstructionEconomics.servicePressure(1, 0, 10, 70));
+    }
 }

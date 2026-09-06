@@ -48,4 +48,11 @@ public final class PublicConstructionEconomics {
         long capacity = Math.max(0L, housingUnits) * 4L;
         return residents > capacity;
     }
+
+    public static boolean servicePressure(int residents, int facilityUnits, int residentsPerUnit, int targetPercent) {
+        if (residents <= 0 || facilityUnits < 0 || residentsPerUnit <= 0) return false;
+        int target = Math.max(0, Math.min(100, targetPercent));
+        long capacity = Math.max(0L, facilityUnits) * residentsPerUnit * 100L;
+        return capacity < (long) residents * target;
+    }
 }

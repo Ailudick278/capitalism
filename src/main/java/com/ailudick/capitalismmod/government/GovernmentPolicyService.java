@@ -39,11 +39,20 @@ public final class GovernmentPolicyService {
         java.util.Set<String> regions = new java.util.HashSet<>(infrastructure.regions());
         population.households().forEach(h -> regions.add(h.region()));
         for (String region : regions) {
-            if (PublicConstructionEconomics.housingPressure(population.population(region),
-                    infrastructure.count(region, "housing")) && !construction.hasActiveProject(region, "housing")) {
-                construction.start("auto-housing:" + day + ":" + region, region, "housing", 1, day);
-            }
+            int residents = population.population(region);
+            startIfNeeded(construction, region, "housing", residents,
+                    PublicConstructionEconomics.housingPressure(residents, infrastructure.count(region, "housing")), day);
+            startIfNeeded(construction, region, "school", residents,
+                    PublicConstructionEconomics.servicePressure(residents, infrastructure.count(region, "school"), 10, 70), day);
+            startIfNeeded(construction, region, "clinic", residents,
+                    PublicConstructionEconomics.servicePressure(residents, infrastructure.count(region, "clinic"), 10, 70), day);
         }
+    }
+
+    private static void startIfNeeded(PublicConstructionSavedData construction, String region, String facility,
+                                      int residents, boolean pressure, long day) {
+        if (!pressure || residents <= 0 || construction.hasActiveProject(region, facility)) return;
+        construction.start("auto-" + facility + ":" + day + ":" + region, region, facility, 1, day);
     }
 
     private static boolean payOnce(GovernmentPolicySavedData policy, PopulationSavedData population,
