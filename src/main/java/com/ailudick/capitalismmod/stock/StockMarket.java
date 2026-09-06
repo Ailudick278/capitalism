@@ -224,7 +224,9 @@ public final class StockMarket {
             data.addShares(stockId, player.getUUID(), fill);
             settleStampDuty(player.getServer(), UUID.fromString(sell.ownerId()), gross);
             payTo(player.getServer(), UUID.fromString(sell.ownerId()),
-                    Money.toMinor(gross - duty(gross)));
+                    Money.toMinor(gross - duty(gross)),
+                    "stock-trade:" + sell.id() + ":" + sell.quantity() + ":" + player.getUUID()
+                            + ":" + fill + ":" + gross);
             data.addNetVolume(stockId, fill);
             spent += gross;
             remaining -= fill;
@@ -264,8 +266,9 @@ public final class StockMarket {
             }
             data.addShares(stockId, UUID.fromString(buy.ownerId()), fill);
             settleStampDuty(player.getServer(), player.getUUID(), gross);
-            EconomyHelper.giveMoney(player, Currencies.USD,
-                    Money.toMinor(gross - duty(gross)));
+            payTo(player.getServer(), player.getUUID(), Money.toMinor(gross - duty(gross)),
+                    "stock-trade:" + buy.id() + ":" + buy.quantity() + ":" + player.getUUID()
+                            + ":" + fill + ":" + gross);
             data.addNetVolume(stockId, -fill);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
@@ -358,12 +361,11 @@ public final class StockMarket {
     }
 
     /** Pays {@code amount} USD to {@code recipientId}, or parks it in the mailbox if offline. */
-    private static void payTo(MinecraftServer server, UUID recipientId, long amount) {
+    private static void payTo(MinecraftServer server, UUID recipientId, long amount, String source) {
+        if (server == null || recipientId == null || amount <= 0L || source == null || source.isBlank()) return;
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        mailbox.creditMoneyOnce(recipientId, Currencies.USD.id(), amount, source);
         ServerPlayer recipient = server.getPlayerList().getPlayer(recipientId);
-        if (recipient != null) {
-            EconomyHelper.giveMoney(recipient, Currencies.USD, amount);
-        } else {
-            MarketMailboxSavedData.get(server).creditMoney(recipientId, "usd", amount);
-        }
+        if (recipient != null) mailbox.redeemMoneyOnly(recipient);
     }
 }
