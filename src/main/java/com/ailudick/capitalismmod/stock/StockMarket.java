@@ -222,9 +222,9 @@ public final class StockMarket {
             if (gross < 0) {
                 break;
             }
-            data.addShares(stockId, player.getUUID(), fill);
             String tradeSource = "stock-trade:" + sell.id() + ":" + sell.quantity() + ":" + player.getUUID()
                     + ":" + fill + ":" + gross;
+            data.addSharesOnce(stockId, player.getUUID(), fill, tradeSource + ":shares");
             settleStampDuty(player.getServer(), UUID.fromString(sell.ownerId()), gross, tradeSource);
             payTo(player.getServer(), UUID.fromString(sell.ownerId()),
                     Money.toMinor(gross - duty(gross)),
@@ -269,9 +269,9 @@ public final class StockMarket {
             if (gross < 0) {
                 break;
             }
-            data.addShares(stockId, UUID.fromString(buy.ownerId()), fill);
             String tradeSource = "stock-trade:" + buy.id() + ":" + buy.quantity() + ":" + player.getUUID()
                     + ":" + fill + ":" + gross;
+            data.addSharesOnce(stockId, UUID.fromString(buy.ownerId()), fill, tradeSource + ":shares");
             settleStampDuty(player.getServer(), player.getUUID(), gross, tradeSource);
             payTo(player.getServer(), player.getUUID(), Money.toMinor(gross - duty(gross)),
                     tradeSource);
