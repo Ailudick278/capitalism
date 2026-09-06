@@ -93,6 +93,10 @@ public class Config {
             .comment("Opening bank capital in default-currency minor units; used once when the bank ledger is first created.")
             .defineInRange("bankInitialCapitalMinor", 1_000_000L, 0L, Long.MAX_VALUE);
 
+    public static final ModConfigSpec.IntValue BANK_BAD_DEBT_WRITE_OFF_DAYS = BUILDER
+            .comment("Days after bank-loan maturity before a long-overdue debt is written off as a realized bank loss.")
+            .defineInRange("bankBadDebtWriteOffDays", 90, 1, 3650);
+
     // Term deposit (fixed-term) interest rate per Minecraft year (0.08 = 8% per year).
     public static final ModConfigSpec.DoubleValue TERM_DEPOSIT_RATE_PER_YEAR = BUILDER
             .comment("Term deposit interest rate per Minecraft year (0.08 = 8% per year).")

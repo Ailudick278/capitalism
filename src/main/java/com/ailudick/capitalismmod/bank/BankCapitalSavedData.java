@@ -18,6 +18,8 @@ public final class BankCapitalSavedData extends SavedData {
     private boolean initialized;
     private final Set<String> injectionReceipts = new HashSet<>();
     private static final int MAX_INJECTION_RECEIPTS = 4096;
+    private final Set<String> writeOffReceipts = new HashSet<>();
+    private static final int MAX_WRITE_OFF_RECEIPTS = 4096;
 
     private BankCapitalSavedData() {}
 
@@ -47,6 +49,24 @@ public final class BankCapitalSavedData extends SavedData {
 
     public boolean hasInjection(String sourceId) {
         return sourceId != null && !sourceId.isBlank() && injectionReceipts.contains(sourceId);
+    }
+
+    /** Realizes a long-overdue debt loss once against bank equity. */
+    public boolean writeOffOnce(long amountMinor, String sourceId) {
+        if (!initialized || amountMinor <= 0L || sourceId == null || sourceId.isBlank()
+                || writeOffReceipts.contains(sourceId)) return false;
+        capitalMinor = saturatingAdd(capitalMinor, -amountMinor);
+        cumulativeProfitLossMinor = saturatingAdd(cumulativeProfitLossMinor, -amountMinor);
+        writeOffReceipts.add(sourceId);
+        while (writeOffReceipts.size() > MAX_WRITE_OFF_RECEIPTS) {
+            writeOffReceipts.remove(writeOffReceipts.iterator().next());
+        }
+        setDirty();
+        return true;
+    }
+
+    public boolean hasWriteOff(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && writeOffReceipts.contains(sourceId);
     }
 
     public void initialize(long openingCapitalMinor) {
@@ -94,6 +114,13 @@ public final class BankCapitalSavedData extends SavedData {
             injections.add(entry);
         }
         tag.put("injectionReceipts", injections);
+        net.minecraft.nbt.ListTag writeOffs = new net.minecraft.nbt.ListTag();
+        for (String source : writeOffReceipts) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("source", source);
+            writeOffs.add(entry);
+        }
+        tag.put("writeOffReceipts", writeOffs);
         return tag;
     }
 
@@ -108,6 +135,11 @@ public final class BankCapitalSavedData extends SavedData {
         for (int i = Math.max(0, injections.size() - MAX_INJECTION_RECEIPTS); i < injections.size(); i++) {
             String source = injections.getCompound(i).getString("source");
             if (!source.isBlank()) data.injectionReceipts.add(source);
+        }
+        net.minecraft.nbt.ListTag writeOffs = tag.getList("writeOffReceipts", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        for (int i = Math.max(0, writeOffs.size() - MAX_WRITE_OFF_RECEIPTS); i < writeOffs.size(); i++) {
+            String source = writeOffs.getCompound(i).getString("source");
+            if (!source.isBlank()) data.writeOffReceipts.add(source);
         }
         return data;
     }

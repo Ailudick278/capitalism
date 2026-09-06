@@ -191,6 +191,39 @@ public final class BankAccountHelper {
         player.setData(ModAttachments.LAST_BANK_SETTLEMENT_DAY, settlementDay);
     }
 
+    /** Writes off debts that have remained overdue beyond the configured recovery horizon. */
+    public static int writeOffBadDebts(ServerPlayer player, long settlementDay) {
+        if (player == null || player.getServer() == null) return 0;
+        BankCapitalSavedData capital = BankCapitalSavedData.get(player.getServer());
+        if (!capital.initialized()) capital.initialize(Config.BANK_INITIAL_CAPITAL_MINOR.get());
+        int writtenOff = 0;
+        for (BankAccount account : new ArrayList<>(getAccounts(player).values())) {
+            if (!BankBadDebtEconomics.eligible(account.loanDaysRemaining(),
+                    Config.BANK_BAD_DEBT_WRITE_OFF_DAYS.get())) continue;
+            long loss = totalDebtInBase(account);
+            if (loss <= 0L) continue;
+            String source = "bank-bad-debt:" + player.getUUID() + ":" + account.id();
+            // Capital is charged first. If the account update is interrupted,
+            // the durable receipt lets the next login finish the forgiveness.
+            if (!capital.hasWriteOff(source)) capital.writeOffOnce(loss, source);
+            if (!capital.hasWriteOff(source)) continue;
+            Map<String, Long> clearedDebts = new HashMap<>(account.debts());
+            List<BankTransaction> transactions = new ArrayList<>(account.transactions());
+            for (Map.Entry<String, Long> entry : clearedDebts.entrySet()) {
+                if (entry.getValue() > 0L) {
+                    transactions.add(BankTransaction.atTick(settlementTick(settlementDay),
+                            "bad_debt_writeoff", entry.getKey(), -entry.getValue(), source, "bank"));
+                }
+                entry.setValue(0L);
+            }
+            updateAccount(player, account.withBalancesAndDebts(
+                    new HashMap<>(account.balances()), clearedDebts)
+                    .withTransactions(transactions).withLoanDaysRemaining(0));
+            writtenOff++;
+        }
+        return writtenOff;
+    }
+
     /** Transfers {@code amount} of {@code currency} between physical items and the account. deposit=true moves items -> account. */
     public static boolean transfer(Player player, String accountId, Currency currency, long amount, boolean deposit) {
         if (amount <= 0) {
@@ -524,6 +557,10 @@ public final class BankAccountHelper {
             }
         }
         return total;
+    }
+
+    private static long settlementTick(long settlementDay) {
+        return PerpetualCalendar.ticksForDays(settlementDay);
     }
 
     private static void updateAccount(Player player, BankAccount updated) {
