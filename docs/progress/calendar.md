@@ -1,53 +1,25 @@
-﻿# Capitalism Mod - calendar progress log
-
-Consolidated on: 2026-09-06
-
-## Current system log
-
 # 万年历与时间系统开发进度
 
-最后更新：2026-09-05
+最后更新：2026-09-06
 
 ## 已实现功能
 
-- 提供独立的万年历/游戏时间换算基础类。
-- 支持按游戏时间计算日期、周期和税务周期所需的时间节点。
-- 日历命令和税务、租金、利息、市场结算等周期性逻辑已经具备接入基础。
+- 提供基于持久化 `gameTime` 的游戏日期、周期和时间换算。
+- 支持稳定历元、格里高利日期映射、Minecraft tick 到时钟的换算和安全的天数转换。
+- 税务、租金、利息、贷款、土地、企业和市场结算已具备接入统一时间源的基础。
+- `/time set` 调整显示时钟时，不会改变经济日历日期。
 
-## 当前边界与待处理问题
+## 存在的问题
 
-- 日历目前主要承担时间换算，节日、季节、月度政策和地区历法尚未扩展。
-- 各系统的周期结算仍需要统一使用同一套日历服务，避免分别计算。
+- 节日、季节、月度政策、地区历法和复杂经济周期尚未实现。
+- 部分命令和系统仍需继续检查，确保显示和结算使用同一时间源。
+- 金融期间长度目前是模组规则，尚未支持按地区或政策配置。
 
-## 后续开发方向
+## 后续方向
 
 1. 统一游戏时间、现实时间和经济周期的换算接口。
-2. 为税务、租金、利息、债券和企业账期提供统一结算日。
-3. 增加月、季、年、节日和政策事件，为经济模拟提供时间驱动。
-4. 在界面中显示当前游戏日期、周期和下一次结算时间。
+2. 为税务、租金、利息、债券和企业账期提供统一结算日服务。
+3. 增加月、季、年、节日和政策事件。
+4. 在界面显示当前日期、经济周期和下一次结算时间。
 
-## Consolidated historical entries
-
-### calendar-time-source-2026-09-05.md
-
-# Calendar time-source progress log — 2026-09-05
-
-## Implemented
-
-- Perpetual-calendar dates now derive from monotonic `gameTime`, matching the time source used by economic settlement systems.
-- `/time set` can still change the visual Minecraft clock (`dayTime`) without changing the economic calendar date.
-- Added regression tests for Gregorian day mapping and Minecraft tick-to-clock conversion.
-- Calendar command day counters now use the same `gameTime` source as the displayed date.
-- Added a shared overflow-safe `ticksForDays` conversion utility for future economic periods.
-- Company, individual-business, and annual tax-report periods now use that shared conversion utility without changing their existing 90/360-day values.
-- Land leases, land transfer windows, tax late fees, refund windows, enforcement notices, and periodic settlement handlers now reference the shared day constant/conversion utility instead of duplicating `24000`.
-
-## Design boundary
-
-- The stable epoch remains 2000-01-01.
-- Financial period lengths such as 90-day quarters and 360-day configured years were not changed in this phase.
-
-## Follow-up
-
-- Update the calendar command text so every displayed day counter explicitly uses the same game-time source.
-- Add a shared period utility for systems that currently repeat raw `24000` conversions.
+历史实现记录保留在本目录下的对应历史条目中。
