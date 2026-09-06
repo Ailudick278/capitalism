@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
+import com.ailudick.capitalismmod.economy.expansion.EconomicExpansionSavedData;
 import com.ailudick.capitalismmod.market.Commodities;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -8,6 +9,8 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+
+import java.util.Comparator;
 
 /** Operator command for deterministic, time-bounded commodity shocks. */
 public final class EconomicEventCommand {
@@ -23,7 +26,9 @@ public final class EconomicEventCommand {
         var item = Commands.argument("itemId", StringArgumentType.word()).then(shock);
         var id = Commands.argument("eventId", StringArgumentType.word()).then(item);
         var priceShock = Commands.literal("priceShock").then(id);
-        dispatcher.register(Commands.literal("economicevent").requires(s -> s.hasPermission(2)).then(priceShock));
+        var list = Commands.literal("list").executes(c -> list(c.getSource()));
+        dispatcher.register(Commands.literal("economicevent").requires(s -> s.hasPermission(2))
+                .then(priceShock).then(list));
     }
 
     private static int create(CommandSourceStack source, String eventId, String itemId, int shockBps, int days) {
@@ -35,5 +40,19 @@ public final class EconomicEventCommand {
         if (!EconomicEventService.addCommodityPriceShock(source.getServer(), eventId, itemId, shockBps, now, days)) return 0;
         source.sendSuccess(() -> Component.literal("Economic price shock created: " + eventId), true);
         return 1;
+    }
+
+    private static int list(CommandSourceStack source) {
+        long now = source.getServer().overworld().getGameTime();
+        var events = EconomicExpansionSavedData.get(source.getServer()).events().stream()
+                .filter(event -> event.activeAt(now))
+                .sorted(Comparator.comparingLong(event -> event.endsAt() == 0L ? Long.MAX_VALUE : event.endsAt()))
+                .toList();
+        source.sendSuccess(() -> Component.literal("Active economic events: " + events.size()), false);
+        events.stream().limit(20).forEach(event -> source.sendSuccess(() -> Component.literal(
+                event.id() + " | " + event.type() + " | target="
+                        + (event.target() == null ? "-" : event.target().id())
+                        + " | remainingTicks=" + Math.max(0L, event.endsAt() - now)), false));
+        return events.isEmpty() ? 0 : 1;
     }
 }
