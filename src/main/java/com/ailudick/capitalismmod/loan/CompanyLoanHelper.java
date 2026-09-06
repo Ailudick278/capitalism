@@ -76,7 +76,9 @@ public final class CompanyLoanHelper {
         if (server == null || company == null) return false;
         CompanyLoanSavedData data = CompanyLoanSavedData.get(server);
         CompanyLoan loan = data.find(loanId);
-        if (loan == null || !loan.companyId().equals(company.companyId()) || !Currencies.exists(loan.currencyId())) return false;
+        CompanyLoanPaymentSavedData payments = CompanyLoanPaymentSavedData.get(server);
+        if (loan == null) return payments.hasLoan(loanId);
+        if (!loan.companyId().equals(company.companyId()) || !Currencies.exists(loan.currencyId())) return false;
         long total = EconomyMath.add(loan.principal(), loan.interestDue());
         if (total < 0L) return false;
         long payment = requestedAmount == null ? total : requestedAmount;
@@ -85,8 +87,18 @@ public final class CompanyLoanHelper {
         long interestPayment = allocation.interestPayment();
         long principalPayment = allocation.principalPayment();
         String debitSource = repaymentSource(loan, payment);
-        if (!CompanyHelper.debitTreasuryNonOperatingOnce(server, company.companyId(), loan.currencyId(), payment,
-                "loan_repayment", "Company loan repayment", debitSource)) return false;
+        long remainingPrincipal = Math.max(0L, loan.principal() - principalPayment);
+        CompanyLoanPaymentSavedData.Payment recorded = payments.findMatch(loan.id(), payment, interestPayment,
+                principalPayment, remainingPrincipal);
+        if (recorded == null) {
+            if (!CompanyHelper.debitTreasuryNonOperatingOnce(server, company.companyId(), loan.currencyId(), payment,
+                    "loan_repayment", "Company loan repayment", debitSource)) return false;
+            recorded = new CompanyLoanPaymentSavedData.Payment(
+                    loan.id(), loan.companyId(), server.overworld().getGameTime(), payment,
+                    interestPayment, principalPayment, remainingPrincipal,
+                    loan.daysRemaining(), loan.isOverdue());
+            payments.append(recorded);
+        }
         if (payment == total) {
             data.remove(loan.id());
         } else {
@@ -101,20 +113,21 @@ public final class CompanyLoanHelper {
         if (interestPayment > 0L) {
             Company current = CompanySavedData.get(server).get(company.companyId());
             if (current != null) {
-                long occurredAt = server.overworld().getGameTime();
-                CompanyHelper.recordTaxableExpense(server, current,
-                        "loan_interest:" + loan.id() + ":" + occurredAt,
-                        interestPayment, loan.currencyId(), occurredAt);
-                CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
-                        current.companyId(), occurredAt, "interest_expense", loan.currencyId(),
-                        -interestPayment, current.treasuryOf(loan.currencyId()),
-                        "Company loan interest expense"));
+                long occurredAt = recorded.timestamp();
+                String interestSource = "loan_interest:" + loan.id() + ":" + occurredAt;
+                String marker = "[source=" + interestSource + "]";
+                boolean alreadyRecorded = CompanyLedgerSavedData.get(server).entries(current.companyId()).stream()
+                        .anyMatch(entry -> entry.description() != null && entry.description().contains(marker));
+                if (!alreadyRecorded) {
+                    CompanyHelper.recordTaxableExpense(server, current, interestSource,
+                            interestPayment, loan.currencyId(), occurredAt);
+                    CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
+                            current.companyId(), occurredAt, "interest_expense", loan.currencyId(),
+                            -interestPayment, current.treasuryOf(loan.currencyId()),
+                            "Company loan interest expense " + marker));
+                }
             }
         }
-        CompanyLoanPaymentSavedData.get(server).append(new CompanyLoanPaymentSavedData.Payment(
-                loan.id(), loan.companyId(), server.overworld().getGameTime(), payment,
-                interestPayment, principalPayment, Math.max(0L, loan.principal() - principalPayment),
-                loan.daysRemaining(), loan.isOverdue()));
         return true;
     }
 

@@ -62,6 +62,18 @@ public final class CompanyLoanPaymentSavedData extends SavedData {
         return payments.stream().filter(payment -> loanId.equals(payment.loanId())).toList();
     }
 
+    public Payment findMatch(String loanId, long total, long interest, long principal, long remainingPrincipal) {
+        return payments.stream().filter(payment -> loanId.equals(payment.loanId())
+                && payment.total() == total && payment.interest() == interest
+                && payment.principal() == principal && payment.remainingPrincipal() == remainingPrincipal)
+                .findFirst().orElse(null);
+    }
+
+    public boolean hasLoan(String loanId) {
+        return loanId != null && !loanId.isBlank()
+                && payments.stream().anyMatch(payment -> loanId.equals(payment.loanId()));
+    }
+
     public List<Payment> forCompany(String companyId) {
         if (companyId == null || companyId.isBlank()) return List.of();
         return payments.stream().filter(payment -> companyId.equals(payment.companyId())).toList();
