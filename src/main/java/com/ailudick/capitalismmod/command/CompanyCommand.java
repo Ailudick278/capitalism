@@ -31,6 +31,7 @@ import com.ailudick.capitalismmod.loan.CompanyLoanHelper;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.loan.CompanyLoanPaymentSavedData;
 import com.ailudick.capitalismmod.loan.CompanyCreditSnapshot;
+import com.ailudick.capitalismmod.loan.CompanyCollateralAssessment;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
@@ -282,6 +283,10 @@ public class CompanyCommand {
         root.then(Commands.literal("operations")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> operations(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
+        root.then(Commands.literal("collateral")
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(ctx -> collateral(ctx.getSource(),
+                                StringArgumentType.getString(ctx, "name")))));
         root.then(Commands.literal("recipes")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(ctx -> recipes(ctx.getSource(), StringArgumentType.getString(ctx, "name")))));
@@ -1249,6 +1254,27 @@ public class CompanyCommand {
             source.sendSuccess(() -> Component.literal("Machine " + entry.machineType() + " x" + entry.count()
                     + " | condition " + entry.condition()), false);
         }
+        return 1;
+    }
+
+    private static int collateral(CommandSourceStack source, String name) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Company company = CompanyHelper.getCompany(player, name);
+        if (company == null) {
+            source.sendFailure(Component.literal("Company not found."));
+            return 0;
+        }
+        CompanyCollateralAssessment assessment = CompanyCollateralAssessment.from(player.getServer(), company);
+        source.sendSuccess(() -> Component.literal("Indicative collateral report for " + company.name()
+                + ": inventory USD " + assessment.inventoryValue()
+                + " (eligible " + assessment.eligibleInventory() + ")"
+                + ", equipment USD " + assessment.equipmentValue()
+                + " (eligible " + assessment.eligibleEquipment() + ")"
+                + ", eligible collateral USD " + assessment.eligibleCollateral()
+                + ", existing loan debt USD " + assessment.existingDebt()
+                + ", indicative headroom USD " + assessment.indicativeHeadroom()), false);
+        source.sendSuccess(() -> Component.literal(
+                "This is an underwriting estimate only; current loans remain unsecured."), false);
         return 1;
     }
 
