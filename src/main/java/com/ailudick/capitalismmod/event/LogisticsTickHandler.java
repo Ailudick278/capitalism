@@ -92,12 +92,22 @@ public final class LogisticsTickHandler {
                             ? null : CompanySavedData.get(server).get(shipment.buyerCompanyId());
                     boolean companyShipment = company != null && company.ownerUuid().equals(shipment.buyer());
                     if (companyShipment) {
+                        if (payout > 0L && !CompanyHelper.creditTreasuryNonOperating(server, company.companyId(),
+                                "usd", payout, "cargo_insurance_claim", "Cargo insurance indemnity")) {
+                            // Keep the shipment pending when the beneficiary cannot be credited yet.
+                            // This avoids recording a settled claim after a transient company-data failure.
+                            continue;
+                        }
                         CompanyInventoryCostSavedData.get(server).consume(company.companyId(),
                                 shipment.itemId(), shipment.quantity());
-                        CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), "usd", payout,
-                                "cargo_insurance_claim", "Cargo insurance indemnity");
                     } else {
-                        MarketMailboxSavedData.get(server).creditMoney(shipment.buyer(), "usd", Money.toMinor(payout));
+                        long payoutMinor = Money.toMinor(payout);
+                        if (payout > 0L && payoutMinor <= 0L) {
+                            // Do not discard a claim when the currency conversion overflows or rejects it.
+                            continue;
+                        }
+                        MarketMailboxSavedData.get(server).creditMoneyOnce(shipment.buyer(), "usd", payoutMinor,
+                                "logistics-claim:" + shipment.id());
                     }
                     claims.settle(new LogisticsClaimSavedData.Claim(
                             java.util.UUID.randomUUID().toString(), shipment.id(), shipment.buyer(), insuredValue,
