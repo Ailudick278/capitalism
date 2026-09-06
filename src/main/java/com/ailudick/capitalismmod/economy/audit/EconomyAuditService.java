@@ -208,6 +208,18 @@ public final class EconomyAuditService {
                     || escrow.refundedMinor() < 0L || distributed != escrow.originalMinor()) {
                 issues.add("supply escrow balance mismatch " + escrow.orderId());
             }
+            var supplyOrder = com.ailudick.capitalismmod.supply.SupplyMarketSavedData.get(server)
+                    .findOrder(escrow.orderId());
+            if (escrow.heldMinor() > 0L && supplyOrder == null) {
+                issues.add("held supply escrow has no order " + escrow.orderId());
+            } else if (supplyOrder != null) {
+                String status = com.ailudick.capitalismmod.supply.SupplyOrderAuditService
+                        .currentStatus(server, supplyOrder.id());
+                if (escrow.heldMinor() > 0L && ("RECEIVED".equals(status) || "LOST".equals(status)
+                        || "CANCELLED".equals(status) || "REFUNDED".equals(status))) {
+                    issues.add("terminal supply order still holds escrow " + supplyOrder.id());
+                }
+            }
         }
         BusinessOrderSavedData businessOrders = BusinessOrderSavedData.get(server);
         for (var escrow : BusinessOrderEscrowSavedData.get(server).escrows()) {
