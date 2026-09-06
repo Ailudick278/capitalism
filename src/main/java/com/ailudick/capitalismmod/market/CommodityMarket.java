@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.util.EconomyMath;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxType;
+import com.ailudick.capitalismmod.population.PopulationSavedData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -196,6 +197,8 @@ public final class CommodityMarket {
             }
             long netVolume = data.netVolume(id);
             long supply = data.supply(id);
+            long householdDemand = PopulationSavedData.get(server).demandUnits(id, oldPrice);
+            supply = householdDemand >= supply ? -Math.min(1_000_000L, householdDemand - supply) : supply - householdDemand;
             long newPrice = Math.max(1, oldPrice + (fundamental - oldPrice) / 10 + (netVolume + supply) / 10);
             newPrice = applyPriceLimit(data, id, newPrice);
             data.putPrice(id, newPrice);

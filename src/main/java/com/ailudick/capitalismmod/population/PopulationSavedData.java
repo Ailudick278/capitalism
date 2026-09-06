@@ -27,6 +27,24 @@ public final class PopulationSavedData extends SavedData {
     public boolean addCashOnce(String id, long amount, String source) { if (source == null || source.isBlank() || creditedSources.contains(source)) return false; if (!addCash(id, amount)) return false; creditedSources.add(source); while (creditedSources.size() > 8192) creditedSources.remove(creditedSources.iterator().next()); setDirty(); return true; }
     public int population(String region) { return households.stream().filter(h -> h.region().equals(region)).mapToInt(Household::size).sum(); }
     public long dailyDemand(String region) { return households.stream().filter(h -> h.region().equals(region)).mapToLong(h -> h.dailyNeedMinor() * (long) h.size()).reduce(0L, PopulationSavedData::add); }
+    /** Returns simulated daily unit demand for essential commodities at a major-unit price. */
+    public long demandUnits(String itemId, long priceMajor) {
+        if (itemId == null || itemId.isBlank() || !isEssential(itemId)) return 0L;
+        long unitCostMinor = Math.max(1L, Math.min(Long.MAX_VALUE / 100L, Math.max(1L, priceMajor)) * 100L);
+        long units = 0L;
+        for (Household household : households) {
+            long affordable = Math.max(0L, household.dailyNeedMinor() / unitCostMinor);
+            long weighted = affordable * (long) household.size() * household.satisfaction() / 100L;
+            units = add(units, weighted);
+        }
+        return Math.min(1_000_000L, units);
+    }
+    private static boolean isEssential(String itemId) {
+        String id = itemId.toLowerCase(java.util.Locale.ROOT);
+        return id.contains("bread") || id.contains("potato") || id.contains("carrot") || id.contains("apple")
+                || id.contains("wheat") || id.contains("beef") || id.contains("pork") || id.contains("coal")
+                || id.contains("torch") || id.contains("planks");
+    }
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) { ListTag list = new ListTag(); for (Household h : households) { CompoundTag e = new CompoundTag(); e.putString("id",h.id()); e.putString("region",h.region()); e.putInt("size",h.size()); e.putInt("workingAge",h.workingAge()); e.putLong("cash",h.cashMinor()); e.putLong("need",h.dailyNeedMinor()); e.putInt("satisfaction",h.satisfaction()); e.putLong("day",h.lastSettlementDay()); list.add(e); } tag.put("households",list); ListTag sources = new ListTag(); for (String source : creditedSources) { CompoundTag e = new CompoundTag(); e.putString("source", source); sources.add(e); } tag.put("creditedSources", sources); return tag; }
     public static PopulationSavedData load(CompoundTag tag, HolderLookup.Provider registries) { PopulationSavedData data=new PopulationSavedData(); ListTag list=tag.getList("households", Tag.TAG_COMPOUND); for(int i=Math.max(0,list.size()-MAX_HOUSEHOLDS);i<list.size();i++){CompoundTag e=list.getCompound(i); try{data.households.add(new Household(e.getString("id"),e.getString("region"),e.getInt("size"),e.getInt("workingAge"),Math.max(0L,e.getLong("cash")),Math.max(0L,e.getLong("need")),e.getInt("satisfaction"),e.getLong("day")));}catch(IllegalArgumentException ignored){}} ListTag sources=tag.getList("creditedSources",Tag.TAG_COMPOUND); for(int i=0;i<sources.size();i++){String source=sources.getCompound(i).getString("source"); if(!source.isBlank()) data.creditedSources.add(source);} return data; }
     private static long add(long a,long b){try{return Math.addExact(a,b);}catch(ArithmeticException e){return Long.MAX_VALUE;}}
