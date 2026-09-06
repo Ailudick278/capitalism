@@ -233,9 +233,10 @@ public final class StockMarket {
             if (!data.hasShareCredit(shareSource)) break;
             journal.markCompleted(tradeSource, "stock", "shares", fill, now);
             settleStampDuty(player.getServer(), UUID.fromString(sell.ownerId()), gross, tradeSource);
-            payTo(player.getServer(), UUID.fromString(sell.ownerId()),
-                    Money.toMinor(gross - duty(gross)),
-                    tradeSource);
+            if (!payTo(player.getServer(), UUID.fromString(sell.ownerId()),
+                    Money.toMinor(gross - duty(gross)), tradeSource)) {
+                break;
+            }
             data.addNetVolume(stockId, fill);
             spent += gross;
             remaining -= fill;
@@ -286,8 +287,10 @@ public final class StockMarket {
             if (!data.hasShareCredit(shareSource)) break;
             journal.markCompleted(tradeSource, "stock", "shares", fill, now);
             settleStampDuty(player.getServer(), player.getUUID(), gross, tradeSource);
-            payTo(player.getServer(), player.getUUID(), Money.toMinor(gross - duty(gross)),
-                    tradeSource);
+            if (!payTo(player.getServer(), player.getUUID(), Money.toMinor(gross - duty(gross)),
+                    tradeSource)) {
+                break;
+            }
             data.addNetVolume(stockId, -fill);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
@@ -384,17 +387,19 @@ public final class StockMarket {
     }
 
     /** Pays {@code amount} USD to {@code recipientId}, or parks it in the mailbox if offline. */
-    private static void payTo(MinecraftServer server, UUID recipientId, long amount, String source) {
-        if (server == null || recipientId == null || amount <= 0L || source == null || source.isBlank()) return;
+    private static boolean payTo(MinecraftServer server, UUID recipientId, long amount, String source) {
+        if (server == null || recipientId == null || amount < 0L || source == null || source.isBlank()) return false;
+        if (amount == 0L) return true;
         FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
         long now = server.overworld().getGameTime();
         journal.markStarted(source, "stock", "seller-payout", amount, now);
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
         boolean credited = mailbox.hasCreditSource(source)
                 || mailbox.creditMoneyOnce(recipientId, Currencies.USD.id(), amount, source);
-        if (!credited) return;
+        if (!credited) return false;
         ServerPlayer recipient = server.getPlayerList().getPlayer(recipientId);
         if (recipient != null) mailbox.redeemMoneyOnly(recipient);
         journal.markCompleted(source, "stock", "seller-payout", amount, now);
+        return true;
     }
 }
