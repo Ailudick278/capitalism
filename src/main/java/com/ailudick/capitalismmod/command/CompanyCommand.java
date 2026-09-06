@@ -1096,7 +1096,7 @@ public class CompanyCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("Company loan approved: " + id.substring(0, 8)
-                + " for USD " + amount + " at " + rate + "% annual interest."), false);
+                + " for USD " + amount + " at policy-adjusted annual interest."), false);
         return 1;
     }
 

@@ -8,6 +8,8 @@ import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
+import com.ailudick.capitalismmod.government.MonetaryPolicyEconomics;
 import com.ailudick.capitalismmod.util.EconomyMath;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
@@ -25,6 +27,8 @@ public final class CompanyLoanHelper {
         if (server == null || company == null || amount <= 0L || days <= 0
                 || days > Config.MAX_COMPANY_LOAN_TERM_DAYS.get()
                 || !Double.isFinite(ratePercent) || ratePercent < 0.0 || ratePercent > 100.0) return null;
+        double effectiveRate = MonetaryPolicyEconomics.adjustedAnnualRate(ratePercent / 100.0,
+                GovernmentPolicySavedData.get(server).policyRateBasisPoints());
         long maximumDebt = EconomyMath.multiply(company.registeredCapital(), Config.MAX_COMPANY_DEBT_MULTIPLE.get());
         if (maximumDebt < 0L) return null;
         List<CompanyLoan> existingLoans = CompanyLoanSavedData.get(server).forCompany(company.companyId());
@@ -45,14 +49,14 @@ public final class CompanyLoanHelper {
         if (!cashFlow.approved()) return null;
         CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
                 cashFlow.operatingCashFlow(), existingLoans,
-                amount, days, ratePercent / 100.0, cashFlow.hasOperatingHistory(),
+                amount, days, effectiveRate, cashFlow.hasOperatingHistory(),
                 Config.COMPANY_LOAN_MIN_COVERAGE_RATIO.get(), lookbackDays);
         if (!debtService.approved()) return null;
         if (!CompanyHelper.creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), amount,
                 "loan_proceeds", "Company loan principal received")) return null;
         String id = UUID.randomUUID().toString();
         CompanyLoanSavedData.get(server).add(new CompanyLoan(id, company.companyId(),
-                Currencies.USD.id(), amount, ratePercent / 100.0, days, days, 0L));
+                Currencies.USD.id(), amount, effectiveRate, days, days, 0L));
         return id;
     }
 
