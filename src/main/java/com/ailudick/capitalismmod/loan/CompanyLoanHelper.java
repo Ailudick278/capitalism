@@ -77,6 +77,10 @@ public final class CompanyLoanHelper {
         } else {
             CompanyLoan updated = loan.withInterestPaid(EconomyMath.add(loan.interestPaid(), interestPayment))
                     .withPrincipal(allocation.remainingPrincipal());
+            if (principalPayment > 0L) {
+                long elapsed = Math.max(0L, (long) loan.totalDays() - loan.daysRemaining());
+                updated = updated.withInterestAccrualState(loan.totalInterestAccrued(), elapsed);
+            }
             data.replace(updated);
         }
         if (interestPayment > 0L) {

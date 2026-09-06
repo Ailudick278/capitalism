@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.loan;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CompanyLoanTest {
     @Test
@@ -44,5 +45,20 @@ class CompanyLoanTest {
                 0.10, 365, -1, 0);
 
         assertEquals(4017, loan.scheduledPayment());
+    }
+
+    @Test
+    void partialPrincipalPaymentPreservesInterestAccruedBeforePayment() {
+        CompanyLoan loan = new CompanyLoan("id", "company", "usd", 3650,
+                0.10, 365, 265, 0);
+        long accruedBeforePayment = loan.totalInterestAccrued();
+        CompanyLoan reduced = loan.withInterestPaid(accruedBeforePayment)
+                .withPrincipal(1825)
+                .withInterestAccrualState(accruedBeforePayment, 100L);
+
+        assertEquals(0L, reduced.interestDue());
+        CompanyLoan threeDaysLater = reduced.withDaysRemaining(262);
+        assertTrue(threeDaysLater.interestDue() > 0L);
+        assertTrue(threeDaysLater.interestDue() < loan.interestDue() + 2L);
     }
 }
