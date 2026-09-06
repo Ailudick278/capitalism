@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.population;
 
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -64,8 +65,27 @@ public final class PrivateLandlordSavedData extends SavedData {
                 + ":" + UUID.randomUUID(), player.getServer().overworld().getGameTime(), ownerId, amount, next));
         while (withdrawals.size() > MAX_WITHDRAWALS) withdrawals.remove(0);
         setDirty();
-        EconomyHelper.giveMoney(player, Config.defaultCurrency(), amount);
+        String source = withdrawals.get(withdrawals.size() - 1).id();
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+        mailbox.creditTransferOnce(player.getUUID(), Config.defaultCurrency().id(), amount, source);
+        mailbox.redeemTransferOnly(player);
         return true;
+    }
+
+    /** Replays landlord withdrawals whose balance was reduced before cash delivery. */
+    public int recoverWithdrawals(ServerPlayer player) {
+        if (player == null || player.getServer() == null) return 0;
+        String ownerId = player.getUUID().toString();
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+        int recovered = 0;
+        for (Withdrawal withdrawal : withdrawals) {
+            if (!ownerId.equals(withdrawal.ownerId())) continue;
+            boolean credited = mailbox.hasTransferSource(withdrawal.id())
+                    || mailbox.creditTransferOnce(player.getUUID(), Config.defaultCurrency().id(), withdrawal.amount(), withdrawal.id());
+            if (credited) recovered++;
+        }
+        mailbox.redeemTransferOnly(player);
+        return recovered;
     }
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {

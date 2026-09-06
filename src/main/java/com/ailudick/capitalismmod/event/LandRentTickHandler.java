@@ -19,6 +19,7 @@ import com.ailudick.capitalismmod.land.LandOwnershipSavedData;
 import com.ailudick.capitalismmod.land.LandValuationHelper;
 import com.ailudick.capitalismmod.land.LandTaxPeriodSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseDebtService;
+import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import com.ailudick.capitalismmod.land.LandRentBillSavedData;
 import com.ailudick.capitalismmod.tax.TaxService;
 import com.ailudick.capitalismmod.tax.TaxSubject;
@@ -267,6 +268,7 @@ public final class LandRentTickHandler {
         if (!(event.getEntity() instanceof ServerPlayer tenant)) return;
         MinecraftServer server = tenant.getServer();
         MarketMailboxSavedData.get(server).redeem(tenant);
+        PrivateLandlordSavedData.get(server).recoverWithdrawals(tenant);
         LandLeaseDebtService.settleFor(tenant);
         LandSavedData data = LandSavedData.get(server);
         long now = server.overworld().getGameTime();
