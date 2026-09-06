@@ -247,6 +247,8 @@ public final class CompanyHelper {
                 || shipmentId == null || shipmentId.isBlank()) return false;
         Company company = CompanySavedData.get(server).get(companyId);
         if (company == null) return false;
+        CompanyInventoryCostSavedData inventoryCosts = CompanyInventoryCostSavedData.get(server);
+        if (!inventoryCosts.recordInventoryLoss(shipmentId)) return false;
         CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(company.companyId(),
                 server.overworld().getGameTime(), "inventory_loss", Currencies.USD.id(), -amount,
                 company.treasuryOf(Currencies.USD.id()), "运输损失：shipment " + shipmentId));

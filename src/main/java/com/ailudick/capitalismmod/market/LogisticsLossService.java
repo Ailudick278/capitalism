@@ -19,10 +19,6 @@ public final class LogisticsLossService {
         if (data.hasShipment(shipment.id())) {
             return;
         }
-        data.add(new LogisticsLossSavedData.Loss(shipment.id(), shipment.buyer(), shipment.itemId(),
-                shipment.quantity(), shipment.originRegion(), shipment.destinationRegion(), shipment.transport(),
-                shipment.disruptionCount() + 1, server.overworld().getGameTime(), false, shipment.supplyOrderId(),
-                shipment.buyerCompanyId(), shipment.unitPrice()));
         if (!shipment.buyerCompanyId().isBlank() && shipment.unitPrice() > 0L) {
             long loss;
             try {
@@ -53,6 +49,10 @@ public final class LogisticsLossService {
             SupplyOrderAuditService.record(server, shipment.supplyOrderId(), "LOST", shipment.buyer(),
                     shipment.supplierUuid(), shipment.itemId(), shipment.quantity(), amount);
         }
+        data.add(new LogisticsLossSavedData.Loss(shipment.id(), shipment.buyer(), shipment.itemId(),
+                shipment.quantity(), shipment.originRegion(), shipment.destinationRegion(), shipment.transport(),
+                shipment.disruptionCount() + 1, server.overworld().getGameTime(), false, shipment.supplyOrderId(),
+                shipment.buyerCompanyId(), shipment.unitPrice()));
         ServerPlayer player = server.getPlayerList().getPlayer(shipment.buyer());
         if (player != null) {
             player.displayClientMessage(Component.literal("物流通知：货物 " + shipment.itemId() + " x"
