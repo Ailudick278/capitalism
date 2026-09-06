@@ -20,4 +20,12 @@ class PublicConstructionEconomicsTest {
         assertFalse(PublicConstructionEconomics.validFacility("port"));
         assertEquals(0L, PublicConstructionEconomics.unitCost("port"));
     }
+
+    @Test
+    void materialBillsScaleWithFacilityComplexity() {
+        assertEquals(2, PublicConstructionEconomics.materials("housing").size());
+        assertTrue(PublicConstructionEconomics.materials("clinic").get("minecraft:stone")
+                > PublicConstructionEconomics.materials("housing").get("minecraft:stone"));
+        assertTrue(PublicConstructionEconomics.materials("clinic").containsKey("minecraft:iron_ingot"));
+    }
 }

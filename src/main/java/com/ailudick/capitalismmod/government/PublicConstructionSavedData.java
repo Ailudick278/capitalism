@@ -6,6 +6,8 @@ import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
+import com.ailudick.capitalismmod.market.InventoryOwner;
+import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -67,6 +69,11 @@ public final class PublicConstructionSavedData extends SavedData {
                 if (contractor == null || !"construction".equals(contractor.type())
                         || !CompanyLifecycleService.canOperate(server, contractor.companyId())) continue;
                 if (policy.treasuryMinor() < cost) continue;
+                InventoryOwner owner = InventoryOwner.company(contractor.companyId());
+                if (!WarehouseSavedData.get(server).canConsumeBatch(owner,
+                        PublicConstructionEconomics.materials(project.facility()))) continue;
+                if (!WarehouseSavedData.get(server).consumeBatchOnce(owner,
+                        PublicConstructionEconomics.materials(project.facility()), receipt + ":materials")) continue;
                 if (!CompanyHelper.creditTreasuryNonOperatingOnce(server, contractor.companyId(), Currencies.USD.id(),
                         cost, "public-construction-revenue", "Public construction contract payment", receipt)) continue;
             }

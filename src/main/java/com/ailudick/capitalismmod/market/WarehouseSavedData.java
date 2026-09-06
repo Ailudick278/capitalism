@@ -198,6 +198,17 @@ public final class WarehouseSavedData extends SavedData {
         return true;
     }
 
+    /** Removes a complete material batch once for a durable construction source. */
+    public boolean consumeBatchOnce(InventoryOwner owner, Map<String, Integer> requirements, String sourceId) {
+        if (owner == null || sourceId == null || sourceId.isBlank() || requirements == null) return false;
+        if (consumedSources.contains(sourceId)) return true;
+        if (!consumeBatch(owner, requirements)) return false;
+        consumedSources.add(sourceId);
+        while (consumedSources.size() > 8192) consumedSources.remove(consumedSources.iterator().next());
+        setDirty();
+        return true;
+    }
+
     /** Checks a complete material batch without changing warehouse state. */
     public boolean canConsumeBatch(InventoryOwner owner, Map<String, Integer> requirements) {
         if (owner == null || requirements == null) return false;
