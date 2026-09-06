@@ -225,6 +225,8 @@ public final class IndividualBusinessHelper {
         long now = player.level().getGameTime();
         String goodsSource = order.businessId() + ":order:" + order.id() + ":goods";
         if (now > order.deadline() && !WarehouseSavedData.get(player.getServer()).hasConsumedSource(goodsSource)) {
+            long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
+            if (!refundBuyer(player, order, payment)) return false;
             orderData.put(order.withStatus("expired"));
             EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.EXPIRED, now);
             return false;
@@ -295,6 +297,10 @@ public final class IndividualBusinessHelper {
                 || !order.businessId().equals(business.businessId()) || !"open".equals(order.status())) {
             return false;
         }
+        String goodsSource = order.businessId() + ":order:" + order.id() + ":goods";
+        if (WarehouseSavedData.get(player.getServer()).hasConsumedSource(goodsSource)) return false;
+        long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
+        if (!refundBuyer(player, order, payment)) return false;
         BusinessOrderSavedData.get(player.getServer()).put(order.withStatus("cancelled"));
         EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.CANCELLED,
                 player.level().getGameTime());
@@ -302,6 +308,18 @@ public final class IndividualBusinessHelper {
                 business.businessId(), player.level().getGameTime(), "order_cancelled", "", 0L,
                 business.balance("usd"), "取消销售订单 " + order.id()));
         return true;
+    }
+
+    /** Returns a previously charged NPC buyer's funds exactly once. */
+    private static boolean refundBuyer(ServerPlayer player, BusinessOrder order, long paymentMajor) {
+        String source = order.businessId() + ":order:" + order.id();
+        PopulationSavedData population = PopulationSavedData.get(player.getServer());
+        String buyerId = population.chargedHousehold(source + ":buyer");
+        if (buyerId == null) return true;
+        long paymentMinor = ExchangeRates.convert(Money.toMinorSaturated(paymentMajor), Currencies.USD, Config.defaultCurrency());
+        String refundSource = source + ":buyer:refund";
+        return population.hasCreditedSource(refundSource)
+                || population.addCashOnce(buyerId, paymentMinor, refundSource);
     }
 
     private static Item parseItem(String itemId) {

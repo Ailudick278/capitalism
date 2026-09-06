@@ -31,6 +31,7 @@ public final class PopulationSavedData extends SavedData {
     public Household find(String id) { return households.stream().filter(h -> h.id().equals(id)).findFirst().orElse(null); }
     public void upsert(Household household) { if (household == null) return; households.removeIf(h -> h.id().equals(household.id())); households.add(household); while (households.size() > MAX_HOUSEHOLDS) households.remove(0); setDirty(); }
     public boolean addCash(String id, long amount) { Household h = find(id); if (h == null || amount <= 0L) return false; upsert(h.withCash(add(h.cashMinor(), amount))); return true; }
+    public boolean hasCreditedSource(String source) { return source != null && creditedSources.contains(source); }
     public boolean addCashOnce(String id, long amount, String source) { if (source == null || source.isBlank() || creditedSources.contains(source)) return false; if (!addCash(id, amount)) return false; creditedSources.add(source); while (creditedSources.size() > 8192) creditedSources.remove(creditedSources.iterator().next()); setDirty(); return true; }
     /** Charges a household once and remembers which household funded the purchase for recovery. */
     public boolean chargeCashOnce(String id, long amount, String source) {
