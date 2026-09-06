@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.tax.TaxService;
 import com.ailudick.capitalismmod.tax.TaxSubject;
 import com.ailudick.capitalismmod.tax.TaxType;
@@ -102,13 +103,48 @@ public final class IndividualBusinessHelper {
         if (business == null || !business.status().equals("active") || amount <= 0 || business.balance("usd") < amount) {
             return false;
         }
-        Map<String, Long> account = new HashMap<>(business.account());
-        account.put("usd", business.balance("usd") - amount);
-        IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
-        EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(amount));
-        BusinessLedgerSavedData.get(player.getServer()).append(new BusinessLedgerEntry(
-                business.businessId(), player.level().getGameTime(), "owner_withdrawal", "usd", -amount,
-                business.balance("usd") - amount, "业主提款"));
+        String id = java.util.UUID.randomUUID().toString();
+        IndividualWithdrawalIntentSavedData intents = IndividualWithdrawalIntentSavedData.get(player.getServer());
+        intents.add(new IndividualWithdrawalIntentSavedData.Intent(id, player.getUUID(), business.businessId(), "usd",
+                business.balance("usd"), amount, false));
+        settleWithdrawal(player, intents, intents.find(id));
+        return intents.find(id) == null;
+    }
+
+    /** Replays withdrawals interrupted between the business debit and cash delivery. */
+    public static int recoverWithdrawals(ServerPlayer player) {
+        if (player == null || player.getServer() == null) return 0;
+        IndividualWithdrawalIntentSavedData data = IndividualWithdrawalIntentSavedData.get(player.getServer());
+        int recovered = 0;
+        for (IndividualWithdrawalIntentSavedData.Intent intent : data.intents()) {
+            if (!player.getUUID().equals(intent.player())) continue;
+            if (settleWithdrawal(player, data, intent)) recovered++;
+        }
+        return recovered;
+    }
+
+    private static boolean settleWithdrawal(ServerPlayer player, IndividualWithdrawalIntentSavedData data,
+                                            IndividualWithdrawalIntentSavedData.Intent intent) {
+        if (intent == null || !"usd".equals(intent.currencyId())) return false;
+        IndividualBusiness business = IndividualBusinessSavedData.get(player.getServer()).findByBusinessId(intent.businessId());
+        if (business == null || !player.getUUID().equals(business.ownerUuid())) return false;
+        long after = intent.balanceBefore() - intent.amount();
+        if (business.balance(intent.currencyId()) == intent.balanceBefore()) {
+            Map<String, Long> account = new HashMap<>(business.account());
+            account.put(intent.currencyId(), after);
+            IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
+            BusinessLedgerSavedData.get(player.getServer()).append(new BusinessLedgerEntry(
+                    business.businessId(), player.level().getGameTime(), "owner_withdrawal", intent.currencyId(),
+                    -intent.amount(), after, "业主提款 [source=" + intent.id() + "]"));
+            data.markAccountApplied(intent.id());
+        }
+        IndividualBusiness current = IndividualBusinessSavedData.get(player.getServer()).findByBusinessId(intent.businessId());
+        if (current == null || current.balance(intent.currencyId()) != after) return false;
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+        String source = "individual-withdrawal:" + intent.id();
+        if (!mailbox.hasTransferSource(source)) mailbox.creditTransferOnce(intent.player(), intent.currencyId(), Money.toMinor(intent.amount()), source);
+        mailbox.redeemTransferOnly(player);
+        data.remove(intent.id());
         return true;
     }
 
