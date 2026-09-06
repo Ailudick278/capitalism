@@ -187,14 +187,21 @@ public final class StockMarket {
                 continue;
             }
             if (order.sell()) {
-                data.addSharesOnce(order.stockId(), owner, order.quantity(),
-                        "stock-order-expiry-shares:" + order.id());
+                String refundSource = "stock-order-expiry-shares:" + order.id();
+                if (!data.hasShareCredit(refundSource)
+                        && !data.addSharesOnce(order.stockId(), owner, order.quantity(), refundSource)) {
+                    continue;
+                }
             } else {
                 long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
                 long minor = total > 0L ? Money.toMinor(total) : -1L;
                 if (minor > 0L) {
-                    MarketMailboxSavedData.get(server).creditMoneyOnce(owner, Currencies.USD.id(), minor,
-                            "stock-order-expiry-refund:" + order.id());
+                    MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+                    String refundSource = "stock-order-expiry-refund:" + order.id();
+                    if (!mailbox.hasCreditSource(refundSource)
+                            && !mailbox.creditMoneyOnce(owner, Currencies.USD.id(), minor, refundSource)) {
+                        continue;
+                    }
                 }
             }
             settlements.record(order.id());
