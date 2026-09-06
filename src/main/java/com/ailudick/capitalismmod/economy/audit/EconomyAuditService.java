@@ -31,6 +31,10 @@ import com.ailudick.capitalismmod.stock.StockBuyIntentSavedData;
 import com.ailudick.capitalismmod.stock.StockSellIntentSavedData;
 import com.ailudick.capitalismmod.stock.StockTradeIntentSavedData;
 import com.ailudick.capitalismmod.supply.SupplyOrderIntentSavedData;
+import com.ailudick.capitalismmod.bank.BankCashDepositIntentSavedData;
+import com.ailudick.capitalismmod.bank.BankRepaymentIntentSavedData;
+import com.ailudick.capitalismmod.currency.CurrencyExchangeIntentSavedData;
+import com.ailudick.capitalismmod.economy.PlayerTransferIntentSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -68,6 +72,14 @@ public final class EconomyAuditService {
                 .forEach(intent -> issues.add("pending stock trade " + intent.id()));
         SupplyOrderIntentSavedData.get(server).intents().stream().limit(100)
                 .forEach(intent -> issues.add("pending supply order " + intent.orderId()));
+        BankCashDepositIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending bank cash deposit " + intent.source()));
+        BankRepaymentIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending bank repayment " + intent.id()));
+        CurrencyExchangeIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending currency exchange " + intent.id()));
+        PlayerTransferIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending player transfer " + intent.id()));
         CompanySavedData companies = CompanySavedData.get(server);
         CompanyLedgerSavedData ledgers = CompanyLedgerSavedData.get(server);
         for (Company company : companies.companies().values()) {
