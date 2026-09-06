@@ -178,6 +178,10 @@ public class Config {
             .comment("Maximum term of a company loan in Minecraft days.")
             .defineInRange("maxCompanyLoanTermDays", 3650, 1, 3650);
 
+    public static final ModConfigSpec.IntValue COMPANY_LOAN_LIQUIDATION_GRACE_DAYS = BUILDER
+            .comment("Days a company loan may remain overdue before automatic liquidation begins.")
+            .defineInRange("companyLoanLiquidationGraceDays", 30, 1, 3650);
+
     public static final ModConfigSpec.DoubleValue COMPANY_EMPLOYER_PAYROLL_RATE = BUILDER
             .comment("Employer labor-cost contribution applied to gross daily wages; 0.10 = 10%, set 0 to disable.")
             .defineInRange("companyEmployerPayrollRate", 0.10, 0.0, 1.0);

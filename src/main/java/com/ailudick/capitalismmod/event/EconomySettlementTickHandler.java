@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.event;
 
 import com.ailudick.capitalismmod.CapitalismMod;
+import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.bank.BankAccountHelper;
 import com.ailudick.capitalismmod.bond.BondMarket;
@@ -116,6 +117,13 @@ public final class EconomySettlementTickHandler {
                     CompanyLifecycleService.forceSuspend(server, company.companyId(), "company loan overdue");
                     PeerLoanNotificationService.notify(server, company.ownerUuid(), "company-overdue:" + loan.id(),
                             "Company loan " + shortId + " is overdue. Penalty interest is now applied.");
+                }
+                if (nextDays < -Config.COMPANY_LOAN_LIQUIDATION_GRACE_DAYS.get()
+                        && CompanyLifecycleService.forceLiquidation(server, company.companyId(),
+                        "automatic liquidation after prolonged company-loan default")) {
+                    SupplyMarket.removeOffersForCompany(server, company.ownerUuid(), company.name());
+                    PeerLoanNotificationService.notify(server, company.ownerUuid(), "liquidation:" + company.companyId(),
+                            "Company entered liquidation after prolonged loan default. Settle its assets and liabilities.");
                 }
             }
             companyLoans.replace(loan.withDaysRemaining(nextDays).withLastSettlementDay(settlementDay));

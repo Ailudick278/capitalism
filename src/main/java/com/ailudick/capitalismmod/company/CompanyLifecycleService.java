@@ -66,6 +66,18 @@ public final class CompanyLifecycleService {
         return true;
     }
 
+    /** Opens liquidation after a prolonged default without requiring the owner to be online. */
+    public static boolean forceLiquidation(MinecraftServer server, String companyId, String reason) {
+        if (server == null || companyId == null || companyId.isBlank()) return false;
+        CompanyStatusSavedData data = CompanyStatusSavedData.get(server);
+        String current = data.statusOf(companyId);
+        if ("LIQUIDATING".equals(current) || "DISSOLVED".equals(current)
+                || EconomySavedData.get(server).isListed(companyId)) return false;
+        data.set(new CompanyStatusSavedData.Status(companyId, "LIQUIDATING",
+                server.overworld().getGameTime(), reason == null ? "automatic liquidation after loan default" : reason));
+        return true;
+    }
+
     public static boolean beginLiquidation(ServerPlayer player, Company company) {
         if (player == null || company == null || !company.ownerUuid().equals(player.getUUID())) return false;
         CompanyStatusSavedData data = CompanyStatusSavedData.get(player.getServer());
