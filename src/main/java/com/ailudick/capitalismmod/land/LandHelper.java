@@ -223,7 +223,8 @@ public final class LandHelper {
         } catch (ArithmeticException e) {
             return false;
         }
-        if (deposit > 0L && !EconomyHelper.tryPay(tenant, Config.defaultCurrency(), deposit)) return false;
+        String depositReference = "land-lease-deposit:" + id + ":" + targetUuid + ":" + days + ":" + rent + ":" + deposit;
+        if (deposit > 0L && !EconomyHelper.tryPayWithReference(tenant, Config.defaultCurrency(), deposit, depositReference)) return false;
         long until = player.level().getGameTime() + PerpetualCalendar.ticksForDays(days);
         LandSavedData.get(player.getServer()).put(claim.withLease(targetUuid, until, rent));
         LandLeaseDepositSavedData.get(player.getServer()).put(
