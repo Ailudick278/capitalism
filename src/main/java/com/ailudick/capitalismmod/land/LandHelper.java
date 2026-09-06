@@ -124,7 +124,8 @@ public final class LandHelper {
         if (Config.REQUIRE_ADJACENT_LAND_CLAIMS.get() && owned > 0
                 && !hasAdjacentClaim(player, chunkX, chunkZ)) return false;
         long price = Config.LAND_CLAIM_PRICE.get();
-        if (!EconomyHelper.tryPay(player, Config.defaultCurrency(), price)) return false;
+        String paymentReference = "land-claim:" + id + ":" + price;
+        if (!EconomyHelper.tryPayWithReference(player, Config.defaultCurrency(), price, paymentReference)) return false;
         long seed = Math.abs(((long) chunkX * 341873128712L) ^ ((long) chunkZ * 132897987541L));
         String[] resources = {"coal", "iron", "copper", "wheat", "wood"};
         LandClaim claim = new LandClaim(id, dimension, chunkX, chunkZ,
