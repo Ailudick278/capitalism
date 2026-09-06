@@ -36,7 +36,10 @@ public final class ContractDisputeSavedData extends SavedData {
     public boolean openOnce(String id, String contractId, long openedAt, String reason) {
         if (id == null || id.isBlank() || contractId == null || contractId.isBlank()
                 || reason == null || reason.isBlank() || activeForContract(contractId) != null) return false;
-        if (find(id) != null) return true;
+        Dispute existing = find(id);
+        if (existing != null) {
+            return existing.contractId().equals(contractId) && existing.reason().equals(reason.trim());
+        }
         disputes.add(new Dispute(id, contractId, Math.max(0L, openedAt), reason.trim(), "OPEN", 0L, ""));
         while (disputes.size() > MAX_DISPUTES) disputes.remove(0);
         setDirty(); return true;
@@ -44,11 +47,15 @@ public final class ContractDisputeSavedData extends SavedData {
 
     public boolean resolve(String id, String status, long resolvedAt, String resolution) {
         Dispute current = find(id);
-        if (current == null || !"OPEN".equals(current.status()) || status == null || status.isBlank()
+        if (current == null || !"OPEN".equals(current.status()) || !isResolutionStatus(status)
                 || resolution == null || resolution.isBlank()) return false;
         disputes.set(disputes.indexOf(current), new Dispute(current.id(), current.contractId(), current.openedAt(),
                 current.reason(), status, Math.max(0L, resolvedAt), resolution.trim()));
         setDirty(); return true;
+    }
+
+    private static boolean isResolutionStatus(String status) {
+        return "COMPLETED".equals(status) || "CANCELLED".equals(status) || "BREACHED".equals(status);
     }
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
