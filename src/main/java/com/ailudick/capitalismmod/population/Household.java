@@ -4,26 +4,34 @@ package com.ailudick.capitalismmod.population;
 public record Household(String id, String region, int size, int workingAge,
                         long cashMinor, long dailyNeedMinor, int satisfaction,
                         long lastSettlementDay, long lastMigrationDay, int health, int education,
-                        int unemploymentDays, int employmentDays, int averageAge) {
+                        int unemploymentDays, int employmentDays, int averageAge,
+                        int children, int elderly) {
     public Household(String id, String region, int size, int workingAge, long cashMinor,
                      long dailyNeedMinor, int satisfaction, long lastSettlementDay) {
-        this(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction, lastSettlementDay, -1L, 70, 0, 0, 0, 30);
+        this(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
+                lastSettlementDay, -1L, 70, 0, 0, 0, 30,
+                Math.max(0, size - workingAge), 0);
     }
     public Household(String id, String region, int size, int workingAge, long cashMinor,
-                     long dailyNeedMinor, int satisfaction, long lastSettlementDay, long lastMigrationDay) {
-        this(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction, lastSettlementDay, lastMigrationDay, 70, 0, 0, 0, 30);
+                     long dailyNeedMinor, int satisfaction, long lastSettlementDay,
+                     long lastMigrationDay) {
+        this(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
+                lastSettlementDay, lastMigrationDay, 70, 0, 0, 0, 30,
+                Math.max(0, size - workingAge), 0);
     }
     public Household(String id, String region, int size, int workingAge, long cashMinor,
                      long dailyNeedMinor, int satisfaction, long lastSettlementDay,
                      long lastMigrationDay, int health, int education) {
         this(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
-                lastSettlementDay, lastMigrationDay, health, education, 0, 0, 30);
+                lastSettlementDay, lastMigrationDay, health, education, 0, 0, 30,
+                Math.max(0, size - workingAge), 0);
     }
     public Household(String id, String region, int size, int workingAge, long cashMinor,
                      long dailyNeedMinor, int satisfaction, long lastSettlementDay,
                      long lastMigrationDay, int health, int education, int unemploymentDays) {
         this(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
-                lastSettlementDay, lastMigrationDay, health, education, unemploymentDays, 0, 30);
+                lastSettlementDay, lastMigrationDay, health, education, unemploymentDays, 0, 30,
+                Math.max(0, size - workingAge), 0);
     }
     public Household(String id, String region, int size, int workingAge, long cashMinor,
                      long dailyNeedMinor, int satisfaction, long lastSettlementDay,
@@ -31,46 +39,91 @@ public record Household(String id, String region, int size, int workingAge,
                      int employmentDays) {
         this(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
                 lastSettlementDay, lastMigrationDay, health, education, unemploymentDays,
-                employmentDays, 30);
+                employmentDays, 30, Math.max(0, size - workingAge), 0);
+    }
+    public Household(String id, String region, int size, int workingAge, long cashMinor,
+                     long dailyNeedMinor, int satisfaction, long lastSettlementDay,
+                     long lastMigrationDay, int health, int education, int unemploymentDays,
+                     int employmentDays, int averageAge) {
+        this(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
+                lastSettlementDay, lastMigrationDay, health, education, unemploymentDays,
+                employmentDays, averageAge, Math.max(0, size - workingAge), 0);
     }
     public Household {
-        id = id == null ? "" : id.trim(); region = region == null || region.isBlank() ? "spawn" : region.trim();
-        if (id.isBlank() || size <= 0 || workingAge < 0 || workingAge > size || cashMinor < 0L
-                || dailyNeedMinor < 0L || satisfaction < 0 || satisfaction > 100 || lastSettlementDay < -1L || lastMigrationDay < -1L
-                || health < 0 || health > 100 || education < 0 || education > 100
-                || unemploymentDays < 0 || unemploymentDays > 10000
-                || employmentDays < 0 || employmentDays > 10000 || averageAge < 0 || averageAge > 120) {
+        id = id == null ? "" : id.trim();
+        region = region == null || region.isBlank() ? "spawn" : region.trim();
+        if (id.isBlank() || size <= 0 || workingAge < 0 || workingAge > size
+                || cashMinor < 0L || dailyNeedMinor < 0L || satisfaction < 0 || satisfaction > 100
+                || lastSettlementDay < -1L || lastMigrationDay < -1L || health < 0 || health > 100
+                || education < 0 || education > 100 || unemploymentDays < 0 || unemploymentDays > 10000
+                || employmentDays < 0 || employmentDays > 10000 || averageAge < 0 || averageAge > 120
+                || children < 0 || elderly < 0 || children + workingAge + elderly != size) {
             throw new IllegalArgumentException("Invalid household");
         }
     }
-
-    public Household withSettlement(long day, long cash, int satisfaction, String nextRegion) {
+    public Household withSettlement(long day, long cash, int nextSatisfaction, String nextRegion) {
         return new Household(id, nextRegion, size, workingAge, Math.max(0L, cash), dailyNeedMinor,
-                Math.max(0, Math.min(100, satisfaction)), day, lastMigrationDay, health, education, unemploymentDays, employmentDays, averageAge);
+                Math.max(0, Math.min(100, nextSatisfaction)), day, lastMigrationDay, health, education,
+                unemploymentDays, employmentDays, averageAge, children, elderly);
     }
-    public Household withCash(long cash) { return new Household(id, region, size, workingAge, Math.max(0L, cash), dailyNeedMinor, satisfaction, lastSettlementDay, lastMigrationDay, health, education, unemploymentDays, employmentDays, averageAge); }
-    public Household withRegion(String nextRegion, long day) { return new Household(id, nextRegion, size, workingAge, cashMinor, dailyNeedMinor, satisfaction, lastSettlementDay, day, health, education, unemploymentDays, employmentDays, averageAge); }
+    public Household withCash(long cash) { return copy(Math.max(0L, cash), region, size, workingAge, averageAge, children, elderly); }
+    public Household withRegion(String nextRegion, long day) {
+        return new Household(id, nextRegion, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
+                lastSettlementDay, day, health, education, unemploymentDays, employmentDays, averageAge, children, elderly);
+    }
     public Household withHumanCapital(int nextHealth, int nextEducation) {
+        return copy(cashMinor, region, size, workingAge, averageAge, children, elderly)
+                .withRawHumanCapital(nextHealth, nextEducation);
+    }
+    private Household withRawHumanCapital(int nextHealth, int nextEducation) {
         return new Household(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
-                lastSettlementDay, lastMigrationDay, nextHealth, nextEducation, unemploymentDays, employmentDays, averageAge);
+                lastSettlementDay, lastMigrationDay, nextHealth, nextEducation, unemploymentDays,
+                employmentDays, averageAge, children, elderly);
     }
     public Household withEmploymentState(boolean employed) {
         int days = employed ? 0 : Math.min(10000, unemploymentDays + (workingAge > 0 ? 1 : 0));
         int worked = employed ? Math.min(10000, employmentDays + 1) : employmentDays;
         return new Household(id, region, size, workingAge, cashMinor, dailyNeedMinor, satisfaction,
-                lastSettlementDay, lastMigrationDay, health, education, days, worked, averageAge);
+                lastSettlementDay, lastMigrationDay, health, education, days, worked, averageAge, children, elderly);
     }
     public Household withDemographics(int nextSize, int nextWorkingAge, int nextAverageAge) {
         int safeSize = Math.max(1, nextSize);
-        return new Household(id, region, safeSize, Math.max(0, Math.min(safeSize, nextWorkingAge)), cashMinor,
-                dailyNeedMinor, satisfaction, lastSettlementDay, lastMigrationDay, health, education,
-                unemploymentDays, employmentDays, Math.max(0, Math.min(120, nextAverageAge)));
+        int nextChildren = Math.min(children, Math.max(0, safeSize - nextWorkingAge));
+        int nextElderly = Math.min(elderly, Math.max(0, safeSize - nextWorkingAge - nextChildren));
+        return withCohorts(nextChildren, Math.max(0, safeSize - nextChildren - nextElderly), nextElderly, nextAverageAge);
     }
     public Household withDemographics(int nextSize, int nextWorkingAge) {
         return withDemographics(nextSize, nextWorkingAge, averageAge);
     }
-    public Household withAging(long day) {
-        int nextAge = day > 0L && day % 365L == 0L ? Math.min(120, averageAge + 1) : averageAge;
-        return withDemographics(size, workingAge, nextAge);
+    public Household withCohorts(int nextChildren, int nextWorkingAge, int nextElderly, int nextAverageAge) {
+        int safeChildren = Math.max(0, nextChildren), safeWorking = Math.max(0, nextWorkingAge), safeElderly = Math.max(0, nextElderly);
+        int safeSize = safeChildren + safeWorking + safeElderly;
+        if (safeSize <= 0) return this;
+        return new Household(id, region, safeSize, safeWorking, cashMinor, dailyNeedMinor, satisfaction,
+                lastSettlementDay, lastMigrationDay, health, education, unemploymentDays, employmentDays,
+                Math.max(0, Math.min(120, nextAverageAge)), safeChildren, safeElderly);
+    }
+    public Household withAnnualAging(long day) {
+        if (day <= 0L || day % 365L != 0L) return this;
+        int childToAdult = children / 18;
+        int adultToElderly = workingAge / 45;
+        return withCohorts(children - childToAdult, workingAge + childToAdult - adultToElderly,
+                elderly + adultToElderly, Math.min(120, averageAge + 1));
+    }
+    public Household withBirth() {
+        int nextAge = (averageAge * size) / (size + 1);
+        return withCohorts(children + 1, workingAge, elderly, nextAge);
+    }
+    public Household withDeath() {
+        if (elderly > 0) return withCohorts(children, workingAge, elderly - 1, averageAge);
+        if (children > 0) return withCohorts(children - 1, workingAge, elderly, averageAge);
+        if (workingAge > 1) return withCohorts(children, workingAge - 1, elderly, averageAge);
+        return this;
+    }
+    private Household copy(long cash, String nextRegion, int nextSize, int nextWorkingAge,
+                           int nextAverageAge, int nextChildren, int nextElderly) {
+        return new Household(id, nextRegion, nextSize, nextWorkingAge, cash, dailyNeedMinor, satisfaction,
+                lastSettlementDay, lastMigrationDay, health, education, unemploymentDays, employmentDays,
+                nextAverageAge, nextChildren, nextElderly);
     }
 }

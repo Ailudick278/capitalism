@@ -32,11 +32,14 @@ public final class PopulationCommand {
         int averageAge = population <= 0 ? 0 : (int) (ageTotal / population);
         int unemployed = data.households().stream().filter(h -> h.region().equals(region)
                 && h.unemploymentDays() > 0).mapToInt(h -> h.size()).sum();
+        int children = data.households().stream().filter(h -> h.region().equals(region)).mapToInt(h -> h.children()).sum();
+        int elderly = data.households().stream().filter(h -> h.region().equals(region)).mapToInt(h -> h.elderly()).sum();
         int employed = (int) data.households().stream().filter(h -> h.region().equals(region)
                 && !LaborMarketSavedData.get(source.getServer()).activeForWorker(h.id()).isEmpty()).count();
         source.sendSuccess(() -> Component.literal("population region=" + region + " households=" + households
                 + " residents=" + population + " averageAge=" + averageAge + " employedHouseholds=" + employed
-                + " unemployedResidents=" + unemployed + " dailyNeedMinor=" + demand), false);
+                + " unemployedResidents=" + unemployed + " children=" + children + " elderly=" + elderly
+                + " dailyNeedMinor=" + demand), false);
         return households;
     }
     private static int seed(CommandSourceStack source, String region, int count) {
