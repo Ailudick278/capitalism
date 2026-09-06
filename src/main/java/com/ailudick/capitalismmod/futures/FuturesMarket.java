@@ -167,9 +167,15 @@ public final class FuturesMarket {
                     continue;
                 }
                 long pnl = pnl(position, price);
-                data.addMarginBalance(position.playerId(), pnl);
+                String pnlSource = "futures-settlement:" + position.id() + ":" + settlementDay + ":pnl";
+                if (data.recordSettlementOnce(pnlSource)) {
+                    data.addMarginBalance(position.playerId(), pnl);
+                }
                 if (expired) {
-                    data.addMarginBalance(position.playerId(), position.margin());
+                    String marginSource = "futures-settlement:" + position.id() + ":" + settlementDay + ":margin";
+                    if (data.recordSettlementOnce(marginSource)) {
+                        data.addMarginBalance(position.playerId(), position.margin());
+                    }
                     data.removePosition(position.id());
                 } else {
                     data.replacePosition(position.withEntryPrice(price).withLastSettlementDay(settlementDay));

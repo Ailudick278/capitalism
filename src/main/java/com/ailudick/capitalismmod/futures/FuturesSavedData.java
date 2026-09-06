@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -32,6 +34,7 @@ public final class FuturesSavedData extends SavedData {
     // player uuid string -> margin balance (USD major units)
     private final Map<String, Long> marginBalance = new HashMap<>();
     private final List<Position> positions = new ArrayList<>();
+    private final Set<String> settlementReceipts = new HashSet<>();
 
     private record State(
             Map<String, Long> futuresPrice,
@@ -40,7 +43,8 @@ public final class FuturesSavedData extends SavedData {
             long dayCounter,
             Map<String, Long> marginBalance,
             List<Position> positions,
-            long lastSettlementDay) {
+            long lastSettlementDay,
+            List<String> settlementReceipts) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("futuresPrice").forGetter(State::futuresPrice),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("netVolume").forGetter(State::netVolume),
@@ -48,7 +52,8 @@ public final class FuturesSavedData extends SavedData {
                 Codec.LONG.fieldOf("dayCounter").forGetter(State::dayCounter),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("marginBalance").forGetter(State::marginBalance),
                 Position.CODEC.listOf().fieldOf("positions").forGetter(State::positions),
-                Codec.LONG.optionalFieldOf("lastSettlementDay", -1L).forGetter(State::lastSettlementDay)
+                Codec.LONG.optionalFieldOf("lastSettlementDay", -1L).forGetter(State::lastSettlementDay),
+                Codec.STRING.listOf().optionalFieldOf("settlementReceipts", List.of()).forGetter(State::settlementReceipts)
         ).apply(instance, State::new));
     }
 
@@ -139,6 +144,13 @@ public final class FuturesSavedData extends SavedData {
         }
     }
 
+    public boolean recordSettlementOnce(String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || !settlementReceipts.add(sourceId)) return false;
+        while (settlementReceipts.size() > 16384) settlementReceipts.remove(settlementReceipts.iterator().next());
+        setDirty();
+        return true;
+    }
+
     public void incrementDay() {
         if (dayCounter < Long.MAX_VALUE) dayCounter++;
         setDirty();
@@ -212,7 +224,8 @@ public final class FuturesSavedData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(futuresPrice), new HashMap<>(netVolume), new HashMap<>(expiryDay),
-                dayCounter, new HashMap<>(marginBalance), new ArrayList<>(positions), lastSettlementDay);
+                dayCounter, new HashMap<>(marginBalance), new ArrayList<>(positions), lastSettlementDay,
+                new ArrayList<>(settlementReceipts));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -229,6 +242,8 @@ public final class FuturesSavedData extends SavedData {
                 data.marginBalance.putAll(state.marginBalance());
                 data.positions.addAll(state.positions());
                 data.lastSettlementDay = state.lastSettlementDay();
+                data.settlementReceipts.addAll(state.settlementReceipts());
+                while (data.settlementReceipts.size() > 16384) data.settlementReceipts.remove(data.settlementReceipts.iterator().next());
             });
         }
         return data;
