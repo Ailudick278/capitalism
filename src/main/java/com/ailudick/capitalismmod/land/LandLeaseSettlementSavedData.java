@@ -36,6 +36,10 @@ public final class LandLeaseSettlementSavedData extends SavedData {
         return settlements.stream().filter(s -> !s.completed()).toList();
     }
 
+    public List<Settlement> settlements() {
+        return List.copyOf(settlements);
+    }
+
     public boolean put(Settlement settlement) {
         if (settlement == null || settlement.id() == null || settlement.id().isBlank()
                 || settlement.landId() == null || settlement.landId().isBlank()

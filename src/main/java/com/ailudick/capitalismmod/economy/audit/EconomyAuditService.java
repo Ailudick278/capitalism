@@ -11,6 +11,8 @@ import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
 import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
+import com.ailudick.capitalismmod.land.LandLeaseDebtSavedData;
+import com.ailudick.capitalismmod.land.LandLeaseSettlementSavedData;
 import com.ailudick.capitalismmod.supply.SupplyEscrowSavedData;
 import net.minecraft.server.MinecraftServer;
 
@@ -56,6 +58,19 @@ public final class EconomyAuditService {
             issues.add("private landlord invalid receipt " + receipt.id());
         for (var withdrawal : landlords.withdrawals()) if (withdrawal.amount() <= 0L || withdrawal.balanceAfter() < 0L)
             issues.add("private landlord invalid withdrawal " + withdrawal.id());
+        for (var settlement : LandLeaseSettlementSavedData.get(server).settlements()) {
+            if (settlement.id().isBlank() || settlement.landId().isBlank() || settlement.tenantUuid() == null
+                    || settlement.ownerUuid() == null || settlement.ownerAmount() < 0L
+                    || settlement.tenantRefund() < 0L || settlement.debtAmount() < 0L) {
+                issues.add("land lease settlement invalid " + settlement.id());
+            }
+        }
+        for (var debt : LandLeaseDebtSavedData.get(server).debts()) {
+            if (debt.id().isBlank() || debt.landId().isBlank() || debt.tenantUuid() == null
+                    || debt.ownerUuid() == null || debt.amount() <= 0L) {
+                issues.add("land lease debt invalid " + debt.id());
+            }
+        }
         for (var escrow : SupplyEscrowSavedData.get(server).escrows()) {
             long distributed = safeAdd(escrow.heldMinor(), safeAdd(escrow.releasedMinor(), escrow.refundedMinor()));
             if (escrow.originalMinor() <= 0L || escrow.heldMinor() < 0L || escrow.releasedMinor() < 0L
