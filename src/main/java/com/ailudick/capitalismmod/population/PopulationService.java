@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.economy.labor.EmploymentRecord;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketService;
 import com.ailudick.capitalismmod.economy.labor.JobOffer;
+import com.ailudick.capitalismmod.economy.labor.LaborProfile;
 import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
@@ -24,7 +25,7 @@ public final class PopulationService {
         if (player == null) return;
         PopulationSavedData data = PopulationSavedData.get(player.getServer());
         String id = player.getUUID().toString();
-        if (data.find(id) == null) data.upsert(new Household(id, "spawn", 1, 1, 0L, 1000L, 100, -1L));
+        if (data.find(id) == null) data.upsert(new Household(id, "spawn", 1, 1, 0L, 1000L, 100, -1L, -1L, 80, 20));
     }
     public static void settleDaily(MinecraftServer server, long day) {
         PopulationSavedData population = PopulationSavedData.get(server);
@@ -43,7 +44,19 @@ public final class PopulationService {
             int serviceWelfare = LogisticsInfrastructureSavedData.get(server)
                     .publicServiceScore(household.region(), population.population(household.region()));
             int welfare = spendingWelfare * 70 / 100 + serviceWelfare * 30 / 100;
-            population.upsert(household.withSettlement(day, result.remainingCash(), welfare, household.region()));
+            int clinicCoverage = population.population(household.region()) <= 0 ? 100
+                    : Math.min(100, LogisticsInfrastructureSavedData.get(server).count(household.region(), "clinic")
+                    * 1000 / population.population(household.region()));
+            int schoolCoverage = population.population(household.region()) <= 0 ? 100
+                    : Math.min(100, LogisticsInfrastructureSavedData.get(server).count(household.region(), "school")
+                    * 1000 / population.population(household.region()));
+            int health = EducationHealthEconomics.nextHealth(household.health(), clinicCoverage, spendingWelfare);
+            int education = EducationHealthEconomics.nextEducation(household.education(), schoolCoverage, household.workingAge());
+            Household settled = household.withSettlement(day, result.remainingCash(), welfare, household.region())
+                    .withHumanCapital(health, education);
+            population.upsert(settled);
+            LaborProfile profile = labor.profile(household.id());
+            if (profile != null) labor.registerProfile(profile.withHealthAndEducation(health, education));
         }
     }
     public static int matchResidents(MinecraftServer server, long now) {
@@ -75,7 +88,7 @@ public final class PopulationService {
     public static int seedNpc(MinecraftServer server, String region, int count) {
         if (server == null || count <= 0 || count > 10000) return 0;
         PopulationSavedData population = PopulationSavedData.get(server); int created = 0;
-        for (int i = 0; i < count; i++) { String id = "npc-" + java.util.UUID.randomUUID(); population.upsert(new Household(id, region, 1, 1, 500L, 1000L, 70, -1L)); LaborMarketService.ensureNpcProfile(server, id, 1); created++; }
+        for (int i = 0; i < count; i++) { String id = "npc-" + java.util.UUID.randomUUID(); population.upsert(new Household(id, region, 1, 1, 500L, 1000L, 70, -1L, -1L, 70, 10)); LaborMarketService.ensureNpcProfile(server, id, 1); created++; }
         return created;
     }
     private static boolean isNpc(String id) { return id != null && id.startsWith("npc-"); }

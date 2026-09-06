@@ -23,4 +23,12 @@ public record LaborProfile(String actorId, Map<LaborSkill, Integer> skills,
     public int averageSkill() {
         return skills.isEmpty() ? 0 : (int) skills.values().stream().mapToInt(Integer::intValue).average().orElse(0);
     }
+
+    public LaborProfile withHealthAndEducation(int health, int education) {
+        EnumMap<LaborSkill, Integer> next = new EnumMap<>(LaborSkill.class);
+        next.putAll(skills);
+        int foundation = Math.min(100, Math.max(skill(LaborSkill.FOUNDATION), 45 + Math.max(0, education) / 2));
+        next.put(LaborSkill.FOUNDATION, foundation);
+        return new LaborProfile(actorId, next, Math.max(0, Math.min(100, health)), reservationWageMinor);
+    }
 }
