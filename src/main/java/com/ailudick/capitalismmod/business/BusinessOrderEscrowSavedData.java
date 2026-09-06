@@ -36,7 +36,10 @@ public final class BusinessOrderEscrowSavedData extends SavedData {
     public boolean createOnce(String orderId, String batchId, String buyerId, long amountMinor) {
         if (orderId == null || orderId.isBlank() || batchId == null || batchId.isBlank()
                 || buyerId == null || buyerId.isBlank() || amountMinor <= 0L) return false;
-        if (find(orderId, batchId) != null) return true;
+        Escrow existing = find(orderId, batchId);
+        if (existing != null) {
+            return existing.buyerId().equals(buyerId) && existing.originalMinor() == amountMinor;
+        }
         escrows.add(new Escrow(orderId, batchId, buyerId, amountMinor, amountMinor, 0L, 0L));
         while (escrows.size() > MAX_ESCROWS) escrows.remove(0);
         setDirty();
