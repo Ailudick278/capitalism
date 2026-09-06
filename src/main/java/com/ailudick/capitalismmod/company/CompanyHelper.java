@@ -140,7 +140,8 @@ public final class CompanyHelper {
                     company.companyId(), server.overworld().getGameTime(), type, currencyId,
                     -amount, balance, description));
             if (taxableExpense) {
-                recordTaxableExpense(server, company, type + ":" + server.overworld().getGameTime(),
+                recordTaxableExpense(server, company, type + ":" + server.overworld().getGameTime()
+                                + ":" + UUID.randomUUID(),
                         amount, currencyId, server.overworld().getGameTime());
             }
         }
@@ -613,7 +614,7 @@ public final class CompanyHelper {
                 com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
         if (materials == null || !warehouse.canConsumeBatch(owner, materials)) return false;
-        if (!debitTreasury(server, company.companyId(), Currencies.USD.id(), cost,
+        if (!debitTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), cost,
                 "equipment_purchase", "购买生产设备 " + type.id() + " x" + count)) return false;
         if (!warehouse.consumeBatch(owner, materials)) {
             creditTreasuryNonOperating(server, company.companyId(), Currencies.USD.id(), cost,
