@@ -11,26 +11,41 @@ public final class GovernmentPolicyService {
     public static int settleDaily(MinecraftServer server, long day) {
         GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
         long benefit = policy.dailyBenefitMinor();
-        if (benefit <= 0L) return 0;
         PopulationSavedData population = PopulationSavedData.get(server);
         int paid = 0;
         for (Household household : population.households()) {
             if (household.unemploymentDays() < 3 || household.unemploymentDays() > 90
                     || household.employmentDays() < 7 || household.satisfaction() >= 70) continue;
-            long maximum = multiply(multiply(household.dailyNeedMinor(), household.size()), 60L) / 100L;
-            long payment = Math.min(benefit, maximum);
-            if (payment <= 0L) continue;
             if (population.find(household.id()) == null) continue;
-            String source = "government-benefit:" + day + ":" + household.id();
-            // Persist the government-side receipt first. If the server stops
-            // before the household update, the next pass sees this receipt and
-            // completes the household credit without spending twice.
-            boolean alreadySpent = policy.hasSpending(source);
-            if (!alreadySpent && (policy.treasuryMinor() < payment
-                    || !policy.spend(household.id(), day, payment, source))) continue;
-            if (population.addCashOnce(household.id(), payment, source)) paid++;
+            long maximum = multiply(multiply(household.dailyNeedMinor(), household.size()), 60L) / 100L;
+            if (benefit > 0L) {
+                long payment = Math.min(benefit, maximum);
+                if (payOnce(policy, population, household, day, payment, "government-benefit:")) paid++;
+            }
+            if (policy.regionalSupportRatePercent() > 0 && regionalUnemployment(server, household.region()) >= 30) {
+                long support = multiply(multiply(household.dailyNeedMinor(), household.size()),
+                        policy.regionalSupportRatePercent()) / 100L;
+                if (payOnce(policy, population, household, day, support, "government-regional-support:")) paid++;
+            }
         }
         return paid;
+    }
+
+    private static boolean payOnce(GovernmentPolicySavedData policy, PopulationSavedData population,
+                                   Household household, long day, long payment, String prefix) {
+        if (payment <= 0L) return false;
+        String source = prefix + day + ":" + household.id();
+        boolean alreadySpent = policy.hasSpending(source);
+        if (!alreadySpent && (policy.treasuryMinor() < payment
+                || !policy.spend(household.id(), day, payment, source))) return false;
+        // Persist the government-side receipt first; the household-side source
+        // makes replay safe if the server stops between the two writes.
+        return population.addCashOnce(household.id(), payment, source);
+    }
+
+    private static int regionalUnemployment(MinecraftServer server, String region) {
+        var history = CityStatisticsSavedData.get(server).snapshots(region, 1);
+        return history.isEmpty() ? 0 : history.get(history.size() - 1).unemploymentRate();
     }
 
     private static long multiply(long a, long b) {

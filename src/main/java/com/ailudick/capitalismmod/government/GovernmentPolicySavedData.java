@@ -18,6 +18,7 @@ public final class GovernmentPolicySavedData extends SavedData {
     private static final int MAX_TRANSACTIONS = 8192;
     private long treasuryMinor;
     private long dailyBenefitMinor;
+    private int regionalSupportRatePercent = 10;
     private int policyRateBasisPoints;
     private final List<Transaction> transactions = new ArrayList<>();
     private final List<TaxRevenue> taxRevenues = new ArrayList<>();
@@ -40,6 +41,7 @@ public final class GovernmentPolicySavedData extends SavedData {
 
     public long treasuryMinor() { return treasuryMinor; }
     public long dailyBenefitMinor() { return dailyBenefitMinor; }
+    public int regionalSupportRatePercent() { return regionalSupportRatePercent; }
     public int policyRateBasisPoints() { return policyRateBasisPoints; }
     public List<Transaction> transactions() { return List.copyOf(transactions); }
     public List<TaxRevenue> taxRevenues() { return List.copyOf(taxRevenues); }
@@ -48,6 +50,11 @@ public final class GovernmentPolicySavedData extends SavedData {
     public boolean setDailyBenefit(long amount) {
         if (amount < 0L || amount > 1_000_000_000L) return false;
         dailyBenefitMinor = amount; setDirty(); return true;
+    }
+
+    public boolean setRegionalSupportRatePercent(int percent) {
+        if (percent < 0 || percent > 30) return false;
+        regionalSupportRatePercent = percent; setDirty(); return true;
     }
 
     public boolean setPolicyRateBasisPoints(int basisPoints) {
@@ -122,6 +129,7 @@ public final class GovernmentPolicySavedData extends SavedData {
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putLong("treasury", treasuryMinor); tag.putLong("benefit", dailyBenefitMinor);
+        tag.putInt("regionalSupportRate", regionalSupportRatePercent);
         tag.putInt("policyRateBps", policyRateBasisPoints);
         ListTag list = new ListTag();
         for (Transaction t : transactions) {
@@ -160,6 +168,8 @@ public final class GovernmentPolicySavedData extends SavedData {
         GovernmentPolicySavedData data = new GovernmentPolicySavedData();
         data.treasuryMinor = Math.max(0L, tag.getLong("treasury"));
         data.dailyBenefitMinor = Math.max(0L, tag.getLong("benefit"));
+        data.regionalSupportRatePercent = Math.max(0, Math.min(30, tag.contains("regionalSupportRate")
+                ? tag.getInt("regionalSupportRate") : 10));
         data.policyRateBasisPoints = Math.max(-10000, Math.min(20000, tag.getInt("policyRateBps")));
         ListTag deposits = tag.getList("depositReceipts", Tag.TAG_COMPOUND);
         for (int i = 0; i < deposits.size(); i++) {
