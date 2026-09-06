@@ -14,6 +14,7 @@ import com.ailudick.capitalismmod.tax.IndividualTaxPeriodSavedData;
 import com.ailudick.capitalismmod.tax.TaxIncomeVoucherService;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.MinecraftServer;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
@@ -240,7 +241,7 @@ public final class IndividualBusinessHelper {
         boolean legacyGoodsConsumed = deliveredBefore == 0 && warehouse.hasConsumedSource(legacyGoodsSource);
         if (now > order.deadline() && !warehouse.hasConsumedSource(goodsSource) && !legacyGoodsConsumed) {
             long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
-            if (!refundBuyer(player, order, payment, batchId)) return false;
+            if (!refundBuyer(player.getServer(), order, payment, batchId)) return false;
             orderData.put(order.withStatus("expired"));
             EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.EXPIRED, now);
             return false;
@@ -334,7 +335,7 @@ public final class IndividualBusinessHelper {
         if (WarehouseSavedData.get(player.getServer()).hasConsumedSource(goodsSource)) return false;
         long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
         int deliveredBefore = order.quantity() - order.remaining();
-        if (!refundBuyer(player, order, payment, Integer.toString(deliveredBefore))) return false;
+        if (!refundBuyer(player.getServer(), order, payment, Integer.toString(deliveredBefore))) return false;
         BusinessOrderSavedData.get(player.getServer()).put(order.withStatus("cancelled"));
         EconomicContractBridge.businessOrderEvent(player.getServer(), order, ContractStatus.CANCELLED,
                 player.level().getGameTime());
@@ -345,9 +346,9 @@ public final class IndividualBusinessHelper {
     }
 
     /** Returns a previously charged NPC buyer's funds exactly once. */
-    private static boolean refundBuyer(ServerPlayer player, BusinessOrder order, long paymentMajor, String batchId) {
+    private static boolean refundBuyer(MinecraftServer server, BusinessOrder order, long paymentMajor, String batchId) {
         String source = order.businessId() + ":order:" + order.id() + ":batch:" + batchId;
-        PopulationSavedData population = PopulationSavedData.get(player.getServer());
+        PopulationSavedData population = PopulationSavedData.get(server);
         String buyerId = population.chargedHousehold(source + ":buyer");
         if (buyerId == null && "0".equals(batchId)) {
             buyerId = population.chargedHousehold(order.businessId() + ":order:" + order.id() + ":buyer");
@@ -359,8 +360,29 @@ public final class IndividualBusinessHelper {
         boolean refunded = population.hasCreditedSource(refundSource)
                 || population.addCashOnce(buyerId, paymentMinor, refundSource);
         if (!refunded) return false;
-        return BusinessOrderEscrowSavedData.get(player.getServer())
+        return BusinessOrderEscrowSavedData.get(server)
                 .refundOnce(order.id(), batchId, paymentMinor);
+    }
+
+    /** Expires undelivered order batches even when the seller is offline. */
+    public static int expireUndeliveredOrders(MinecraftServer server, long now) {
+        if (server == null) return 0;
+        BusinessOrderSavedData orders = BusinessOrderSavedData.get(server);
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        int expired = 0;
+        for (BusinessOrder order : orders.orders().values()) {
+            if (!"open".equals(order.status()) || now <= order.deadline()) continue;
+            String batchId = Integer.toString(order.quantity() - order.remaining());
+            String goodsSource = order.businessId() + ":order:" + order.id() + ":goods:" + batchId;
+            String legacyGoodsSource = order.businessId() + ":order:" + order.id() + ":goods";
+            if (warehouse.hasConsumedSource(goodsSource) || ("0".equals(batchId) && warehouse.hasConsumedSource(legacyGoodsSource))) continue;
+            long payment = Math.multiplyExact((long) order.remaining(), order.unitPrice());
+            if (!refundBuyer(server, order, payment, batchId)) continue;
+            orders.put(order.withStatus("expired"));
+            EconomicContractBridge.businessOrderEvent(server, order, ContractStatus.EXPIRED, now);
+            expired++;
+        }
+        return expired;
     }
 
     private static Item parseItem(String itemId) {
