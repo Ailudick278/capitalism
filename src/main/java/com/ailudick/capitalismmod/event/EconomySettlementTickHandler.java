@@ -26,6 +26,7 @@ import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyPayrollService;
 import com.ailudick.capitalismmod.economy.labor.LaborPayrollService;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.population.PopulationService;
 import com.ailudick.capitalismmod.government.GovernmentPolicyService;
 import com.ailudick.capitalismmod.government.GovernmentPublicBudgetService;
@@ -97,6 +98,7 @@ public final class EconomySettlementTickHandler {
     }
 
     private static void settleOneDay(net.minecraft.server.MinecraftServer server, long settlementDay) {
+        EconomicContractSavedData.get(server).settleOverdue(server.overworld().getGameTime());
         SupplyMarket.recoverPendingOrderIntents(server);
         LogisticsLossService.recoverSupplyCompensations(server);
         FuturesMarket.recoverPendingOpenPositions(server);

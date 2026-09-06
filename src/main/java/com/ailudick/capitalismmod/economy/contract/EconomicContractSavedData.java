@@ -92,6 +92,21 @@ public final class EconomicContractSavedData extends SavedData {
         return changed;
     }
 
+    /** Applies the default overdue rule: unaccepted offers expire, active contracts breach. */
+    public int settleOverdue(long now) {
+        int changed = 0;
+        for (EconomicContract contract : List.copyOf(contracts)) {
+            if (contract.endsAt() <= 0L || now <= contract.endsAt()) continue;
+            if (contract.status() == ContractStatus.OFFERED && transition(contract.id(), ContractStatus.EXPIRED, now)) {
+                changed++;
+            } else if (contract.status() == ContractStatus.ACTIVE
+                    && breach(contract.id(), contract.agreedAmountMinor())) {
+                changed++;
+            }
+        }
+        return changed;
+    }
+
     private void trim() { while (contracts.size() > MAX_CONTRACTS) contracts.remove(0); }
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
