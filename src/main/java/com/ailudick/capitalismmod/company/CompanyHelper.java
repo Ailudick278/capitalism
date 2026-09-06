@@ -27,6 +27,7 @@ import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.data.CapitalismData;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
+import com.ailudick.capitalismmod.economy.labor.LaborProfile;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -1015,7 +1016,13 @@ public final class CompanyHelper {
 
     /** Game-scale process-quality proxy based on active skill and equipment condition. */
     private static int productionQuality(MinecraftServer server, Company company, MachineType machine) {
-        int skill = CompanyLaborSavedData.get(server).averageSkill(company.companyId());
+        int legacySkill = CompanyLaborSavedData.get(server).averageSkill(company.companyId());
+        LaborMarketSavedData laborMarket = LaborMarketSavedData.get(server);
+        int marketSkill = (int) Math.round(laborMarket.activeForEmployer(company.companyId()).stream()
+                .map(employment -> laborMarket.profile(employment.workerId()))
+                .filter(java.util.Objects::nonNull)
+                .mapToInt(LaborProfile::averageSkill).average().orElse(0.0D));
+        int skill = legacySkill <= 0 ? marketSkill : marketSkill <= 0 ? legacySkill : (legacySkill + marketSkill) / 2;
         int condition = 100;
         if (machine != null && machine != MachineType.NONE) {
             CompanyEquipmentSavedData.Equipment equipment = CompanyEquipmentSavedData.get(server)
