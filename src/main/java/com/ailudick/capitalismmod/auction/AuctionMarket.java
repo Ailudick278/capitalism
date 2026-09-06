@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.CapitalismMod;
 import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxType;
@@ -110,7 +111,8 @@ public final class AuctionMarket {
             data.removeAuction(auction.id());
             return true;
         }
-        WarehouseSavedData.get(player.getServer()).credit(player.getUUID(), commodity.getItem(), auction.quantity());
+        WarehouseSavedData.get(player.getServer()).creditOnce(InventoryOwner.player(player.getUUID()),
+                commodity.getItem(), auction.quantity(), "auction-cancel-item:" + auction.id());
         settlements.record(auction.id());
         data.removeAuction(auction.id());
         return true;
@@ -137,7 +139,8 @@ public final class AuctionMarket {
             }
             WarehouseSavedData warehouse = WarehouseSavedData.get(server);
             if (auction.currentBidder().isEmpty()) {
-                warehouse.credit(auction.seller(), item, auction.quantity());
+                warehouse.creditOnce(InventoryOwner.player(auction.seller()), item, auction.quantity(),
+                        "auction-item:" + auction.id());
             } else {
                 UUID winner;
                 try {
@@ -153,16 +156,20 @@ public final class AuctionMarket {
                             auction.id(), auction.currentBid());
                     continue;
                 }
-                warehouse.credit(winner, item, auction.quantity());
-                ServerPlayer seller = server.getPlayerList().getPlayer(auction.seller());
-                if (seller != null) {
-                    EconomyHelper.giveMoney(seller, Currencies.USD, bidMinor);
-                } else {
-                    MarketMailboxSavedData.get(server).creditMoney(auction.seller(), "usd", bidMinor);
-                }
+                warehouse.creditOnce(InventoryOwner.player(winner), item, auction.quantity(),
+                        "auction-item:" + auction.id());
+                String payoutSource = "auction-payout:" + auction.id();
+                MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+                if (!mailbox.hasCreditSource(payoutSource)
+                        && !mailbox.creditMoneyOnce(auction.seller(), Currencies.USD.id(), bidMinor, payoutSource)) continue;
                 TaxTransactionService.assess(server, TaxType.VAT, auction.seller(), Currencies.USD.id(),
                         Money.toMinorSaturated(auction.currentBid()), "auction-sale:" + auction.id(),
                         server.overworld().getGameTime());
+                ServerPlayer seller = server.getPlayerList().getPlayer(auction.seller());
+                settlements.record(auction.id());
+                data.removeAuction(auction.id());
+                if (seller != null) mailbox.redeemMoneyOnly(seller);
+                continue;
             }
             settlements.record(auction.id());
             data.removeAuction(auction.id());
