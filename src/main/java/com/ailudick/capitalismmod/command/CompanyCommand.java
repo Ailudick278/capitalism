@@ -21,6 +21,7 @@ import com.ailudick.capitalismmod.company.CompanyQualityHoldSavedData;
 import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightSettlementSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
+import com.ailudick.capitalismmod.company.CompanyFreightSettlementService;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
@@ -780,6 +781,13 @@ public class CompanyCommand {
         if (payable == null) {
             source.sendFailure(Component.literal("Freight payable not found or already settled."));
             return 0;
+        }
+        if (!payable.settled() && contract != null && "accepted".equals(contract.status())
+                && CompanyFreightSettlementService.settleIfFunded(source.getServer(), shipmentId,
+                buyer.companyId(), carrier.companyId(), now)) {
+            source.sendSuccess(() -> Component.literal("Freight settlement completed for shipment "
+                    + shipmentId + "."), false);
+            return 1;
         }
         if (payable.settled()) {
             CompanyFreightSettlementSavedData.Settlement previous = settlementData.find(shipmentId);
