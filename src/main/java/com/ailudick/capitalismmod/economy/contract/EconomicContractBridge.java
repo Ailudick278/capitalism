@@ -100,6 +100,7 @@ public final class EconomicContractBridge {
 
     public static void syncFreight(MinecraftServer server) {
         if (server == null) return;
+        long now = server.overworld().getGameTime();
         EconomicContractSavedData generic = EconomicContractSavedData.get(server);
         for (CompanyFreightContractSavedData.Contract freight : CompanyFreightContractSavedData.get(server).contracts()) {
             EconomicContract current = generic.find(freight.id());
@@ -115,9 +116,9 @@ public final class EconomicContractBridge {
             };
             if (current.status() != next) {
                 if (current.status() == ContractStatus.OFFERED && next == ContractStatus.COMPLETED) {
-                    generic.transition(current.id(), ContractStatus.ACTIVE, freight.expiresAt());
+                    generic.transition(current.id(), ContractStatus.ACTIVE, now);
                 }
-                generic.transition(current.id(), next, freight.expiresAt());
+                generic.transition(current.id(), next, now);
             }
         }
     }
