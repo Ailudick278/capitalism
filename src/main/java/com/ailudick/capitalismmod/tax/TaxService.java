@@ -133,7 +133,7 @@ public final class TaxService {
             }
             TaxBill paidBill = bill.withPayment(payment);
             ledger.replace(paidBill);
-            ledger.addPayment(new TaxPayment(UUID.randomUUID().toString(), bill.id(), player.getUUID(),
+            recordPayment(player.getServer(), paidBill, new TaxPayment(UUID.randomUUID().toString(), bill.id(), player.getUUID(),
                     bill.currencyId(), payment, player.getServer().overworld().getGameTime()));
             if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(player.getServer(), paidBill));
             left -= payment;
@@ -153,7 +153,7 @@ public final class TaxService {
         }
         TaxBill paidBill = bill.withPayment(payment);
         ledger.replace(paidBill);
-        ledger.addPayment(new TaxPayment(UUID.randomUUID().toString(), bill.id(), player.getUUID(),
+        recordPayment(player.getServer(), paidBill, new TaxPayment(UUID.randomUUID().toString(), bill.id(), player.getUUID(),
                 bill.currencyId(), payment, player.getServer().overworld().getGameTime()));
         if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(player.getServer(), paidBill));
         return true;
@@ -180,7 +180,7 @@ public final class TaxService {
         payment = Money.toMinorSaturated(majorPayment);
         TaxBill paidBill = bill.withPayment(payment);
         ledger.replace(paidBill);
-        ledger.addPayment(new TaxPayment(UUID.randomUUID().toString(), bill.id(), company.ownerUuid(),
+        recordPayment(server, paidBill, new TaxPayment(UUID.randomUUID().toString(), bill.id(), company.ownerUuid(),
                 bill.currencyId(), payment, server.overworld().getGameTime()));
         if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(server, paidBill));
         return true;
@@ -206,7 +206,7 @@ public final class TaxService {
             if (payment <= 0L) continue;
             TaxBill updated = bill.withPayment(payment);
             ledger.replace(updated);
-            ledger.addPayment(new TaxPayment(UUID.randomUUID().toString(), bill.id(),
+            recordPayment(server, updated, new TaxPayment(UUID.randomUUID().toString(), bill.id(),
                     subject.taxpayerUuid(), bill.currencyId(), payment, now));
             remaining -= payment;
             settled = addSaturated(settled, payment);
@@ -222,6 +222,11 @@ public final class TaxService {
         if (bill == null || bill.declared() || !bill.subject().taxpayerUuid().equals(player.getUUID())) return false;
         ledger.replace(bill.withDeclaration(player.getServer().overworld().getGameTime(), player.getUUID().toString()));
         return true;
+    }
+
+    private static void recordPayment(MinecraftServer server, TaxBill bill, TaxPayment payment) {
+        TaxLedgerSavedData.get(server).addPayment(payment);
+        NeoForge.EVENT_BUS.post(new TaxPaymentEvent(server, bill, payment));
     }
 
     public static TaxBill updateLateFee(MinecraftServer server, TaxBill bill, long now) {

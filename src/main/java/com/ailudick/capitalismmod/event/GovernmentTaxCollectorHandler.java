@@ -6,7 +6,7 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
-import com.ailudick.capitalismmod.tax.TaxSettledEvent;
+import com.ailudick.capitalismmod.tax.TaxPaymentEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 
@@ -16,15 +16,16 @@ public final class GovernmentTaxCollectorHandler {
     private GovernmentTaxCollectorHandler() {}
 
     @SubscribeEvent
-    public static void onTaxSettled(TaxSettledEvent event) {
+    public static void onTaxPayment(TaxPaymentEvent event) {
         var bill = event.bill();
-        if (bill == null || !bill.paid() || !Currencies.exists(bill.currencyId())) return;
-        long converted = ExchangeRates.convert(bill.totalDue(),
-                Currencies.byId(bill.currencyId()), Config.defaultCurrency());
+        var payment = event.payment();
+        if (bill == null || payment == null || !Currencies.exists(payment.currencyId())) return;
+        long converted = ExchangeRates.convert(payment.amount(),
+                Currencies.byId(payment.currencyId()), Config.defaultCurrency());
         if (converted <= 0L) return;
         GovernmentPolicySavedData.get(event.server()).collectTax(
-                bill.id(), event.server().overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY,
-                bill.subject().subjectId(), bill.subject().type().name(), bill.currencyId(),
-                bill.totalDue(), converted);
+                "tax-payment:" + payment.id(), event.server().overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY,
+                bill.subject().subjectId(), bill.subject().type().name(), payment.currencyId(),
+                payment.amount(), converted);
     }
 }
