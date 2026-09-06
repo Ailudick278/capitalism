@@ -21,6 +21,7 @@ public final class PeerLoanHelper {
             boolean sameRequestedPayment = requestedAmount != null && previous.total() == requestedAmount;
             boolean completedFullPayment = requestedAmount == null && previous.remainingPrincipal() <= 0L;
             if (sameRequestedPayment || completedFullPayment) {
+                reconcileLoanState(borrower.getServer(), previous);
                 creditLender(borrower.getServer(), previous);
                 Currency previousCurrency = Currencies.byId(previous.currencyId());
                 borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",
@@ -68,6 +69,12 @@ public final class PeerLoanHelper {
             borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
             return false;
         }
+        PeerLoanPaymentSavedData.Payment receipt = new PeerLoanPaymentSavedData.Payment(
+                loan.id(), loan.lender(), loan.borrower(), currency.id(), borrower.getServer().overworld().getGameTime(),
+                payment, allocation.interestPayment(), allocation.principalPayment(),
+                allocation.remainingPrincipal(), loan.daysRemaining(), loan.isOverdue());
+        paymentData.append(receipt);
+        reconcileLoanState(borrower.getServer(), receipt);
         if (payment == total) {
             data.removeLoan(loanId);
         } else {
@@ -81,11 +88,6 @@ public final class PeerLoanHelper {
             }
             data.replaceLoan(updated);
         }
-        PeerLoanPaymentSavedData.Payment receipt = new PeerLoanPaymentSavedData.Payment(
-                loan.id(), loan.lender(), loan.borrower(), currency.id(), borrower.getServer().overworld().getGameTime(),
-                payment, allocation.interestPayment(), allocation.principalPayment(),
-                allocation.remainingPrincipal(), loan.daysRemaining(), loan.isOverdue());
-        paymentData.append(receipt);
         creditLender(borrower.getServer(), receipt);
         borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",
                 payment, Component.translatable(currency.nameKey())));
@@ -110,8 +112,33 @@ public final class PeerLoanHelper {
     public static int recoverRecordedPayments(net.minecraft.server.MinecraftServer server) {
         int recovered = 0;
         for (PeerLoanPaymentSavedData.Payment payment : PeerLoanPaymentSavedData.get(server).forAll()) {
+            reconcileLoanState(server, payment);
             if (creditLender(server, payment)) recovered++;
         }
         return recovered;
+    }
+
+    /** Applies a persisted payment's loan-side mutation exactly once after a crash. */
+    private static void reconcileLoanState(net.minecraft.server.MinecraftServer server,
+                                           PeerLoanPaymentSavedData.Payment payment) {
+        PeerLoanSavedData loans = PeerLoanSavedData.get(server);
+        PeerLoan loan = loans.findLoan(payment.loanId());
+        if (loan == null) return;
+        if (payment.remainingPrincipal() <= 0L) {
+            if (loan.principal() == payment.principal()) loans.removeLoan(payment.loanId());
+            return;
+        }
+        if (loan.principal() == payment.remainingPrincipal()) return;
+        long expectedBefore = payment.remainingPrincipal() + payment.principal();
+        if (loan.principal() != expectedBefore) return;
+        long paidInterest = loan.interestPaid() > Long.MAX_VALUE - payment.interest()
+                ? Long.MAX_VALUE : loan.interestPaid() + payment.interest();
+        PeerLoan updated = loan.withInterestPaid(paidInterest)
+                .withPrincipal(payment.remainingPrincipal());
+        if (payment.principal() > 0L) {
+            long elapsed = Math.max(0L, (long) loan.totalDays() - loan.daysRemaining());
+            updated = updated.withInterestAccrualState(loan.totalInterestAccrued(), elapsed);
+        }
+        loans.replaceLoan(updated);
     }
 }
