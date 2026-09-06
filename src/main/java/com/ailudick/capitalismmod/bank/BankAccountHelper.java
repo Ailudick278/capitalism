@@ -241,6 +241,9 @@ public final class BankAccountHelper {
         if (account == null || !account.credit()) {
             return false;
         }
+        if (!BankLiquidityService.authorizeLoan(player.getServer(), currency.id(), amount)) {
+            return false;
+        }
 
         long newDebtInBase = EconomyMath.multiply(amount, ExchangeRateProvider.effective(currency)) / Money.MINOR_UNITS_PER_UNIT;
         if (newDebtInBase < 0) {

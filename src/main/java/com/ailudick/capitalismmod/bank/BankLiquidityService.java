@@ -36,6 +36,17 @@ public final class BankLiquidityService {
         return BankLiquiditySavedData.get(server).reserveWithdrawal(snapshot.day(), baseAmount, limit);
     }
 
+    public static boolean authorizeLoan(MinecraftServer server, String currencyId, long amount) {
+        if (server == null || amount <= 0L) return false;
+        if (!FinancialCrisisSavedData.get(server).active()) return true;
+        BankLiquiditySnapshot snapshot = settleDaily(server,
+                server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY);
+        long baseAmount = toBase(amount, currencyId);
+        long capacity = BankLiquidityEconomics.crisisLoanCapacity(snapshot.depositsMinor());
+        return baseAmount > 0L && snapshot.loanDebtMinor() <= capacity
+                && baseAmount <= capacity - snapshot.loanDebtMinor();
+    }
+
     private static long toBase(long amount, String currencyId) {
         if (amount <= 0L || !Currencies.exists(currencyId)) return 0L;
         return ExchangeRates.convert(amount, Currencies.byId(currencyId), Config.defaultCurrency());

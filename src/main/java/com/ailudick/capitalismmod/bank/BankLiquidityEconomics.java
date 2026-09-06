@@ -8,4 +8,9 @@ public final class BankLiquidityEconomics {
     public static long crisisWithdrawalLimit(long depositsMinor) {
         return depositsMinor <= 0L ? 0L : depositsMinor / 10L;
     }
+
+    /** Crisis-period aggregate credit ceiling: 80% loan-to-deposit ratio. */
+    public static long crisisLoanCapacity(long depositsMinor) {
+        return depositsMinor <= 0L ? 0L : depositsMinor / 5L * 4L;
+    }
 }
