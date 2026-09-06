@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Collections;
 
 /**
  * World-persisted mailbox for market payouts owed to offline players.
@@ -42,6 +43,27 @@ public final class MarketMailboxSavedData extends SavedData {
     public static MarketMailboxSavedData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(
                 new Factory<>(MarketMailboxSavedData::new, MarketMailboxSavedData::load), ID);
+    }
+
+    /** Read-only snapshots used by economy audits and administrative diagnostics. */
+    public Map<UUID, Map<String, Long>> moneyBalances() {
+        return copyLongBalances(money);
+    }
+
+    public Map<UUID, Map<String, Long>> transferBalances() {
+        return copyLongBalances(transferMoney);
+    }
+
+    public Map<UUID, Map<String, Integer>> itemBalances() {
+        Map<UUID, Map<String, Integer>> copy = new HashMap<>();
+        items.forEach((player, balances) -> copy.put(player, Collections.unmodifiableMap(new HashMap<>(balances))));
+        return Collections.unmodifiableMap(copy);
+    }
+
+    private static Map<UUID, Map<String, Long>> copyLongBalances(Map<UUID, Map<String, Long>> source) {
+        Map<UUID, Map<String, Long>> copy = new HashMap<>();
+        source.forEach((player, balances) -> copy.put(player, Collections.unmodifiableMap(new HashMap<>(balances))));
+        return Collections.unmodifiableMap(copy);
     }
 
     public void creditMoney(UUID playerId, String currencyId, long amount) {

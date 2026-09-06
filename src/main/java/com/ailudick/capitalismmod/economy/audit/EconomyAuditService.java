@@ -38,6 +38,10 @@ import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
 import com.ailudick.capitalismmod.market.LogisticsAuditRules;
+import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
+import com.ailudick.capitalismmod.currency.Currencies;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import com.ailudick.capitalismmod.supply.SupplyOrderIntentSavedData;
 import com.ailudick.capitalismmod.bank.BankCashDepositIntentSavedData;
 import com.ailudick.capitalismmod.bank.BankRepaymentIntentSavedData;
@@ -128,6 +132,17 @@ public final class EconomyAuditService {
                     loss.transport(), loss.disruptionCount(), loss.lostAt(), loss.unitPrice())
                     || !LogisticsAuditRules.claimUnique(shipmentIds, loss.shipmentId())) {
                 issues.add("logistics loss invalid " + loss.shipmentId());
+            }
+        }
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        auditMailboxMoney(mailbox.moneyBalances(), "market mailbox money", issues);
+        auditMailboxMoney(mailbox.transferBalances(), "market mailbox transfer", issues);
+        for (var player : mailbox.itemBalances().entrySet()) {
+            if (player.getKey() == null) issues.add("market mailbox item has no player");
+            for (var item : player.getValue().entrySet()) {
+                if (!validItemId(item.getKey()) || item.getValue() == null || item.getValue() <= 0) {
+                    issues.add("market mailbox item invalid " + item.getKey());
+                }
             }
         }
         SupplyOrderIntentSavedData.get(server).intents().stream().limit(100)
@@ -369,6 +384,29 @@ public final class EconomyAuditService {
             java.util.UUID.fromString(value);
             return true;
         } catch (IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
+    private static void auditMailboxMoney(Map<java.util.UUID, Map<String, Long>> balances,
+                                          String label, List<String> issues) {
+        for (var player : balances.entrySet()) {
+            if (player.getKey() == null) issues.add(label + " has no player");
+            for (var balance : player.getValue().entrySet()) {
+                if (!Currencies.exists(balance.getKey()) || balance.getValue() == null || balance.getValue() <= 0L) {
+                    issues.add(label + " invalid " + balance.getKey());
+                }
+            }
+        }
+    }
+
+    private static boolean validItemId(String itemId) {
+        if (itemId == null || itemId.isBlank()) return false;
+        try {
+            ResourceLocation id = ResourceLocation.tryParse(itemId);
+            return id != null && BuiltInRegistries.ITEM.containsKey(id)
+                    && BuiltInRegistries.ITEM.get(id) != net.minecraft.world.item.Items.AIR;
+        } catch (RuntimeException exception) {
             return false;
         }
     }
