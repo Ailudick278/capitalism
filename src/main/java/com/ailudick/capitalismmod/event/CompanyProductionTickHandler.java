@@ -6,7 +6,15 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyProductionSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
+import com.ailudick.capitalismmod.company.CompanyEconomy;
+import com.ailudick.capitalismmod.company.ProductionRecipe;
 import com.ailudick.capitalismmod.company.ProductionCycleIdentity;
+import com.ailudick.capitalismmod.company.ProductionPlanningEconomics;
+import com.ailudick.capitalismmod.market.CommoditySavedData;
+import com.ailudick.capitalismmod.market.InventoryOwner;
+import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.supply.PurchaseOrder;
+import com.ailudick.capitalismmod.supply.SupplyMarketSavedData;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -48,8 +56,10 @@ public final class CompanyProductionTickHandler {
             long successful = state.successfulCycles();
             long failed = state.failedCycles();
             Map<String, Long> failureReasons = state.failureReasons();
+            ProductionRecipe recipe = CompanyEconomy.recipe(company);
             for (int i = 0; i < cycles; i++) {
                 long cycleTick = state.lastProcessedTick() + (long) (i + 1) * cycleTicks;
+                if (recipe != null && !recipe.isService() && !shouldRun(company, recipe, server)) continue;
                 int capacity = Math.max(1, CompanyHelper.parallelCapacity(server, company));
                 boolean anySuccess = false;
                 for (int batch = 0; batch < capacity; batch++) {
@@ -72,6 +82,42 @@ public final class CompanyProductionTickHandler {
             production.put(new CompanyProductionSavedData.ProductionState(
                     company.companyId(), now, successful, failed, failureReasons));
         }
+    }
+
+    private static boolean shouldRun(Company company, ProductionRecipe recipe, MinecraftServer server) {
+        int backlog = 0;
+        int inventory = 0;
+        long marketPrice = 0L;
+        long fundamental = 0L;
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        CommoditySavedData commodities = CommoditySavedData.get(server);
+        SupplyMarketSavedData supply = SupplyMarketSavedData.get(server);
+        InventoryOwner owner = InventoryOwner.company(company.companyId());
+        for (Map.Entry<String, Integer> output : recipe.outputs().entrySet()) {
+            int units = Math.max(0, output.getValue());
+            inventory = saturatingInt(inventory, warehouse.count(owner, output.getKey()));
+            for (PurchaseOrder order : supply.orders()) {
+                if (order.supplierUuid().equals(company.ownerUuid())
+                        && order.companyName().equals(company.name())
+                        && order.itemId().equals(output.getKey())) {
+                    backlog = saturatingInt(backlog, order.remaining());
+                }
+            }
+            long price = commodities.price(output.getKey());
+            long base = commodities.fundamental(output.getKey());
+            marketPrice = Math.max(marketPrice, price);
+            fundamental = Math.max(fundamental, base);
+            if (units <= 0) continue;
+        }
+        int batchOutput = recipe.outputs().values().stream().mapToInt(value -> Math.max(0, value)).sum();
+        return ProductionPlanningEconomics.shouldRun(backlog, inventory, batchOutput, marketPrice,
+                fundamental, company.treasuryOf(com.ailudick.capitalismmod.currency.Currencies.USD.id()),
+                recipe.energyCost() + recipe.maintenanceCost());
+    }
+
+    private static int saturatingInt(int left, int right) {
+        long sum = (long) Math.max(0, left) + Math.max(0, right);
+        return (int) Math.min(Integer.MAX_VALUE, sum);
     }
 
     private static long increment(long value) {
