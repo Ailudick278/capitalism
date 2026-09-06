@@ -1257,7 +1257,7 @@ public final class CompanyHelper {
 
     /** Withdraws {@code amount} of {@code currencyId} from a company's treasury to the founder. */
     public static boolean withdraw(Player player, String name, String currencyId, long amount) {
-        if (!Currencies.exists(currencyId) || amount <= 0) {
+        if (!(player instanceof ServerPlayer serverPlayer) || !Currencies.exists(currencyId) || amount <= 0) {
             return false;
         }
         Company company = getCompany(player, name);
@@ -1268,14 +1268,46 @@ public final class CompanyHelper {
         if (amountMinor <= 0) {
             return false;
         }
-        EconomyHelper.giveMoney(player, Currencies.byId(currencyId), amountMinor);
+        CompanyWithdrawalIntentSavedData data = CompanyWithdrawalIntentSavedData.get(player.getServer());
+        String id = java.util.UUID.randomUUID().toString();
+        data.add(new CompanyWithdrawalIntentSavedData.Intent(id, company.ownerUuid(), company.companyId(), currencyId,
+                company.treasuryOf(currencyId), amount));
+        settleWithdrawal(serverPlayer, data, data.find(id));
+        return data.find(id) == null;
+    }
 
-        Map<String, Long> treasury = new HashMap<>(company.treasury());
-        treasury.put(currencyId, company.treasuryOf(currencyId) - amount);
-        setCompany(player, name, company.withTreasury(treasury));
-        CompanyLedgerSavedData.get(player.getServer()).append(new CompanyLedgerEntry(
-                company.companyId(), player.getServer().overworld().getGameTime(), "owner_withdrawal",
-                currencyId, -amount, company.treasuryOf(currencyId) - amount, "业主提款"));
+    /** Recovers company treasury withdrawals interrupted before owner delivery. */
+    public static int recoverWithdrawals(ServerPlayer player) {
+        if (player == null || player.getServer() == null) return 0;
+        CompanyWithdrawalIntentSavedData data = CompanyWithdrawalIntentSavedData.get(player.getServer());
+        int recovered = 0;
+        for (CompanyWithdrawalIntentSavedData.Intent intent : data.intents()) {
+            if (player.getUUID().equals(intent.owner()) && settleWithdrawal(player, data, intent)) recovered++;
+        }
+        return recovered;
+    }
+
+    private static boolean settleWithdrawal(ServerPlayer player, CompanyWithdrawalIntentSavedData data,
+                                            CompanyWithdrawalIntentSavedData.Intent intent) {
+        if (intent == null || !Currencies.exists(intent.currencyId())) return false;
+        Company company = CompanySavedData.get(player.getServer()).get(intent.companyId());
+        if (company == null || !player.getUUID().equals(company.ownerUuid())) return false;
+        long after = intent.balanceBefore() - intent.amount();
+        long current = company.treasuryOf(intent.currencyId());
+        if (current == intent.balanceBefore()) {
+            Map<String, Long> treasury = new HashMap<>(company.treasury());
+            treasury.put(intent.currencyId(), after);
+            setCompany(player, company.name(), company.withTreasury(treasury));
+            CompanyLedgerSavedData.get(player.getServer()).append(new CompanyLedgerEntry(
+                    company.companyId(), player.getServer().overworld().getGameTime(), "owner_withdrawal",
+                    intent.currencyId(), -intent.amount(), after, "业主提款 [source=" + intent.id() + "]"));
+        } else if (current != after) return false;
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+        String source = "company-withdrawal:" + intent.id();
+        if (!mailbox.hasTransferSource(source)) mailbox.creditTransferOnce(intent.owner(), intent.currencyId(),
+                Money.toMinor(intent.amount()), source);
+        mailbox.redeemTransferOnly(player);
+        data.remove(intent.id());
         return true;
     }
 
