@@ -15,7 +15,8 @@ public final class GovernmentPolicyService {
         PopulationSavedData population = PopulationSavedData.get(server);
         int paid = 0;
         for (Household household : population.households()) {
-            if (household.satisfaction() >= 50 || policy.treasuryMinor() < benefit) continue;
+            if (household.unemploymentDays() < 3 || household.satisfaction() >= 70
+                    || policy.treasuryMinor() < benefit) continue;
             String source = "government-benefit:" + day + ":" + household.id();
             if (population.addCashOnce(household.id(), benefit, source)
                     && policy.spend(household.id(), day, benefit, source)) paid++;

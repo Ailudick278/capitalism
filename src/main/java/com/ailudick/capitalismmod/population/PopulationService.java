@@ -52,7 +52,9 @@ public final class PopulationService {
                     * 1000 / population.population(household.region()));
             int health = EducationHealthEconomics.nextHealth(household.health(), clinicCoverage, spendingWelfare);
             int education = EducationHealthEconomics.nextEducation(household.education(), schoolCoverage, household.workingAge());
+            boolean employed = !labor.activeForWorker(household.id()).isEmpty();
             Household settled = household.withSettlement(day, result.remainingCash(), welfare, household.region())
+                    .withEmploymentState(employed)
                     .withHumanCapital(health, education);
             population.upsert(settled);
             LaborProfile profile = labor.profile(household.id());
