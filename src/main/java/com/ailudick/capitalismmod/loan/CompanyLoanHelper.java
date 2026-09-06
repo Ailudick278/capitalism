@@ -80,8 +80,7 @@ public final class CompanyLoanHelper {
         if (allocation == null) return false;
         long interestPayment = allocation.interestPayment();
         long principalPayment = allocation.principalPayment();
-        String debitSource = "company-loan-repayment:" + loan.id() + ":" + loan.principal()
-                + ":" + loan.interestDue() + ":" + payment;
+        String debitSource = repaymentSource(loan, payment);
         if (!CompanyHelper.debitTreasuryNonOperatingOnce(server, company.companyId(), loan.currencyId(), payment,
                 "loan_repayment", "Company loan repayment", debitSource)) return false;
         if (payment == total) {
@@ -113,6 +112,12 @@ public final class CompanyLoanHelper {
                 interestPayment, principalPayment, Math.max(0L, loan.principal() - principalPayment),
                 loan.daysRemaining(), loan.isOverdue()));
         return true;
+    }
+
+    static String repaymentSource(CompanyLoan loan, long payment) {
+        if (loan == null) return "";
+        return "company-loan-repayment:" + loan.id() + ":" + loan.principal()
+                + ":" + loan.interestDue() + ":" + payment;
     }
 
     /** Pays the current equal-payment estimate for a company loan. */

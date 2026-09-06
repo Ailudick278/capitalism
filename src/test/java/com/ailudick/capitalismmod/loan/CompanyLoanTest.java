@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.loan;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CompanyLoanTest {
@@ -60,5 +61,15 @@ class CompanyLoanTest {
         CompanyLoan threeDaysLater = reduced.withDaysRemaining(262);
         assertTrue(threeDaysLater.interestDue() > 0L);
         assertTrue(threeDaysLater.interestDue() < loan.interestDue() + 2L);
+    }
+
+    @Test
+    void repaymentSourceIsStableForRetriesAndChangesWithLoanState() {
+        CompanyLoan loan = new CompanyLoan("loan", "company", "usd", 1_000L,
+                0.05, 30, 30, 0L);
+        assertEquals(CompanyLoanHelper.repaymentSource(loan, 100L),
+                CompanyLoanHelper.repaymentSource(loan, 100L));
+        assertNotEquals(CompanyLoanHelper.repaymentSource(loan, 100L),
+                CompanyLoanHelper.repaymentSource(loan.withPrincipal(900L), 100L));
     }
 }
