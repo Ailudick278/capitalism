@@ -6,6 +6,7 @@
 - Added refurbished smartphone, television, laptop and wireless-router products.
 - Refurbishment consumes an existing device plus realistic repair/replacement parts and produces a separately valued refurbished product.
 - Refurbished products are distinct from new products, allowing the market to price them differently and preventing refurbished stock from being mistaken for factory-new goods.
+- Refurbished products can reach end of life and enter the electronics recycler with lower material recovery yields than new products.
 
 ## Industry basis
 
