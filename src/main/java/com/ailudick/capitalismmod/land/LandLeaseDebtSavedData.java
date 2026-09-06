@@ -55,6 +55,17 @@ public final class LandLeaseDebtSavedData extends SavedData {
         setDirty();
     }
 
+    public void addOnce(Debt debt) {
+        if (debt == null || debt.id() == null || debt.id().isBlank() || debt.tenantUuid() == null
+                || debt.ownerUuid() == null || debt.amount() <= 0L || debt.landId() == null || debt.landId().isBlank()
+                || debts.stream().anyMatch(current -> current.id().equals(debt.id()))) return;
+        // Keep this receipt as its own row instead of merging by parties. If the
+        // server stops after the append but before the settlement journal closes,
+        // a retry can find the exact id and cannot add the same debt again.
+        debts.add(debt);
+        setDirty();
+    }
+
     public void remove(String id) {
         if (debts.removeIf(debt -> debt.id().equals(id))) {
             setDirty();

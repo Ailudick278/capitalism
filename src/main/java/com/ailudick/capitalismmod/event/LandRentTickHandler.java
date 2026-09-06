@@ -48,6 +48,7 @@ public final class LandRentTickHandler {
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
+        LandLeaseDebtService.recover(server);
         long now = server.overworld().getGameTime();
         LandSavedData data = LandSavedData.get(server);
         if (now % 1200L == 0L) {

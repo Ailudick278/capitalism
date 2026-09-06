@@ -13,35 +13,57 @@ public final class LandLeaseDebtService {
     private LandLeaseDebtService() {}
 
     public static LandClaim endLease(MinecraftServer server, LandClaim claim) {
-        long debt = claim.leaseDebt();
-        LandLeaseDepositSavedData.Deposit deposit = LandLeaseDepositSavedData.get(server).take(claim.id());
-        if (deposit != null && deposit.amount() > 0L) {
-            long applied = Math.min(debt, deposit.amount());
-            if (applied > 0L) {
-                payOwner(server, claim.ownerUuid(), applied);
-                debt -= applied;
-            }
-            long refund = deposit.amount() - applied;
-            if (refund > 0L) payTenant(server, deposit.tenantUuid(), refund);
+        if (server == null || claim == null || claim.leaseeUuid() == null) return claim;
+        String settlementId = settlementId(claim);
+        LandLeaseSettlementSavedData settlements = LandLeaseSettlementSavedData.get(server);
+        LandLeaseSettlementSavedData.Settlement settlement = settlements.find(settlementId);
+        if (settlement == null) {
+            LandLeaseDepositSavedData.Deposit deposit = LandLeaseDepositSavedData.get(server).find(claim.id());
+            long depositAmount = deposit == null ? 0L : deposit.amount();
+            long applied = Math.min(Math.max(0L, claim.leaseDebt()), depositAmount);
+            settlement = new LandLeaseSettlementSavedData.Settlement(settlementId, claim.id(),
+                    claim.leaseeUuid(), claim.ownerUuid(), applied, depositAmount - applied,
+                    Math.max(0L, claim.leaseDebt() - applied), server.overworld().getGameTime(), false);
+            settlements.put(settlement);
         }
-        if (debt > 0L && claim.leaseeUuid() != null) {
-            LandLeaseDebtSavedData.get(server).add(new LandLeaseDebtSavedData.Debt(
-                    UUID.randomUUID().toString(), claim.id(), claim.leaseeUuid(), claim.ownerUuid(),
-                    debt, server.overworld().getGameTime()));
-        }
+        LandLeaseDepositSavedData.get(server).take(claim.id());
+        complete(server, settlement);
         return claim.clearLease();
     }
 
-    private static void payOwner(MinecraftServer server, UUID ownerUuid, long amount) {
-        ServerPlayer owner = server.getPlayerList().getPlayer(ownerUuid);
-        if (owner != null) EconomyHelper.giveMoney(owner, Config.defaultCurrency(), amount);
-        else MarketMailboxSavedData.get(server).creditMoney(ownerUuid, Config.defaultCurrencyId(), amount);
+    public static void recover(MinecraftServer server) {
+        for (LandLeaseSettlementSavedData.Settlement settlement
+                : LandLeaseSettlementSavedData.get(server).pending()) {
+            LandLeaseDepositSavedData.get(server).take(settlement.landId());
+            complete(server, settlement);
+        }
     }
 
-    private static void payTenant(MinecraftServer server, UUID tenantUuid, long amount) {
-        ServerPlayer tenant = server.getPlayerList().getPlayer(tenantUuid);
-        if (tenant != null) EconomyHelper.giveMoney(tenant, Config.defaultCurrency(), amount);
-        else MarketMailboxSavedData.get(server).creditMoney(tenantUuid, Config.defaultCurrencyId(), amount);
+    private static void complete(MinecraftServer server, LandLeaseSettlementSavedData.Settlement settlement) {
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        if (settlement.ownerAmount() > 0L) {
+            String source = settlement.id() + ":owner";
+            mailbox.creditMoneyOnce(settlement.ownerUuid(), Config.defaultCurrencyId(), settlement.ownerAmount(), source);
+            ServerPlayer owner = server.getPlayerList().getPlayer(settlement.ownerUuid());
+            if (owner != null) mailbox.redeemMoneyOnly(owner);
+        }
+        if (settlement.tenantRefund() > 0L) {
+            String source = settlement.id() + ":tenant";
+            mailbox.creditMoneyOnce(settlement.tenantUuid(), Config.defaultCurrencyId(), settlement.tenantRefund(), source);
+            ServerPlayer tenant = server.getPlayerList().getPlayer(settlement.tenantUuid());
+            if (tenant != null) mailbox.redeemMoneyOnly(tenant);
+        }
+        if (settlement.debtAmount() > 0L) {
+            LandLeaseDebtSavedData.get(server).addOnce(new LandLeaseDebtSavedData.Debt(
+                    settlement.id() + ":debt", settlement.landId(), settlement.tenantUuid(), settlement.ownerUuid(),
+                    settlement.debtAmount(), settlement.createdAt()));
+        }
+        LandLeaseSettlementSavedData.get(server).complete(settlement.id());
+    }
+
+    private static String settlementId(LandClaim claim) {
+        return "land-lease-end:" + claim.id() + ":" + claim.leaseeUuid()
+                + ":" + claim.leaseUntil() + ":" + claim.leaseRent();
     }
 
     public static void settleFor(ServerPlayer tenant) {
