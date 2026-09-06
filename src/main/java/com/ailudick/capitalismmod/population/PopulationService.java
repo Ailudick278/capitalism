@@ -36,10 +36,10 @@ public final class PopulationService {
         LaborMarketSavedData labor = LaborMarketSavedData.get(server);
         for (Household household : population.households()) {
             if (household.lastSettlementDay() >= day) continue;
-            long income = labor.employments().stream().filter(e -> e.active() && e.workerId().equals(household.id()))
-                    .mapToLong(e -> ExchangeRates.convert(e.dailyWageMinor(), Currencies.USD, Config.defaultCurrency()))
-                    .reduce(0L, PopulationService::add);
-            long cash = add(household.cashMinor(), income);
+            // LaborPayrollService is the sole wage settlement authority. It
+            // has already credited this household (or its arrears) before the
+            // household phase runs; recomputing income here would pay wages twice.
+            long cash = household.cashMinor();
             int residents = population.population(household.region());
             int housingUnits = LogisticsInfrastructureSavedData.get(server).count(household.region(), "housing");
             long livingNeed = multiply(household.dailyNeedMinor(), household.size());
