@@ -59,10 +59,27 @@ public final class FuturesMarket {
 
     /** Moves {@code amount} USD from the wallet into the futures margin account. */
     public static boolean depositMargin(ServerPlayer player, long amount) {
-        if (amount <= 0 || !EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(amount))) {
+        if (amount <= 0) {
             return false;
         }
-        FuturesSavedData.get(player.getServer()).addMarginBalance(player.getUUID(), amount);
+        FuturesSavedData data = FuturesSavedData.get(player.getServer());
+        long balanceBefore = data.marginBalance(player.getUUID());
+        String source = "futures-margin-deposit:" + player.getUUID() + ":" + balanceBefore + ":" + amount;
+        if (data.hasMarginDeposit(source)) return true;
+        Long start = data.marginDepositStart(source);
+        if (start == null) {
+            data.recordMarginDepositStart(source, balanceBefore);
+            start = data.marginDepositStart(source);
+        }
+        if (start == null) return false;
+        if (balanceBefore == start) {
+            if (!EconomyHelper.tryPayWithReference(player, Currencies.USD, Money.toMinor(amount), source)) return false;
+            data.addMarginBalance(player.getUUID(), amount);
+        } else if (balanceBefore != start + amount) {
+            return false;
+        }
+        data.clearMarginDepositStart(source);
+        data.recordMarginDeposit(source);
         return true;
     }
 

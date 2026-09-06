@@ -37,6 +37,8 @@ public final class FuturesSavedData extends SavedData {
     private final Set<String> settlementReceipts = new HashSet<>();
     private final Set<String> marginWithdrawalReceipts = new HashSet<>();
     private final Map<String, Long> marginWithdrawalStarts = new HashMap<>();
+    private final Set<String> marginDepositReceipts = new HashSet<>();
+    private final Map<String, Long> marginDepositStarts = new HashMap<>();
 
     private record State(
             Map<String, Long> futuresPrice,
@@ -48,7 +50,9 @@ public final class FuturesSavedData extends SavedData {
             long lastSettlementDay,
             List<String> settlementReceipts,
             List<String> marginWithdrawalReceipts,
-            Map<String, Long> marginWithdrawalStarts) {
+            Map<String, Long> marginWithdrawalStarts,
+            List<String> marginDepositReceipts,
+            Map<String, Long> marginDepositStarts) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("futuresPrice").forGetter(State::futuresPrice),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("netVolume").forGetter(State::netVolume),
@@ -59,7 +63,9 @@ public final class FuturesSavedData extends SavedData {
                 Codec.LONG.optionalFieldOf("lastSettlementDay", -1L).forGetter(State::lastSettlementDay),
                 Codec.STRING.listOf().optionalFieldOf("settlementReceipts", List.of()).forGetter(State::settlementReceipts),
                 Codec.STRING.listOf().optionalFieldOf("marginWithdrawalReceipts", List.of()).forGetter(State::marginWithdrawalReceipts),
-                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("marginWithdrawalStarts", Map.of()).forGetter(State::marginWithdrawalStarts)
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("marginWithdrawalStarts", Map.of()).forGetter(State::marginWithdrawalStarts),
+                Codec.STRING.listOf().optionalFieldOf("marginDepositReceipts", List.of()).forGetter(State::marginDepositReceipts),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("marginDepositStarts", Map.of()).forGetter(State::marginDepositStarts)
         ).apply(instance, State::new));
     }
 
@@ -188,6 +194,36 @@ public final class FuturesSavedData extends SavedData {
         if (sourceId != null && marginWithdrawalStarts.remove(sourceId) != null) setDirty();
     }
 
+    public boolean hasMarginDeposit(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && marginDepositReceipts.contains(sourceId);
+    }
+
+    public boolean recordMarginDepositStart(String sourceId, long balanceBefore) {
+        if (sourceId == null || sourceId.isBlank() || balanceBefore < 0L
+                || marginDepositStarts.containsKey(sourceId)) return false;
+        marginDepositStarts.put(sourceId, balanceBefore);
+        while (marginDepositStarts.size() > 8192) {
+            marginDepositStarts.remove(marginDepositStarts.keySet().iterator().next());
+        }
+        setDirty();
+        return true;
+    }
+
+    public Long marginDepositStart(String sourceId) {
+        return sourceId == null || sourceId.isBlank() ? null : marginDepositStarts.get(sourceId);
+    }
+
+    public void clearMarginDepositStart(String sourceId) {
+        if (sourceId != null && marginDepositStarts.remove(sourceId) != null) setDirty();
+    }
+
+    public boolean recordMarginDeposit(String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || !marginDepositReceipts.add(sourceId)) return false;
+        while (marginDepositReceipts.size() > 8192) marginDepositReceipts.remove(marginDepositReceipts.iterator().next());
+        setDirty();
+        return true;
+    }
+
     public void incrementDay() {
         if (dayCounter < Long.MAX_VALUE) dayCounter++;
         setDirty();
@@ -263,7 +299,8 @@ public final class FuturesSavedData extends SavedData {
         State state = new State(new HashMap<>(futuresPrice), new HashMap<>(netVolume), new HashMap<>(expiryDay),
                 dayCounter, new HashMap<>(marginBalance), new ArrayList<>(positions), lastSettlementDay,
                 new ArrayList<>(settlementReceipts), new ArrayList<>(marginWithdrawalReceipts),
-                new HashMap<>(marginWithdrawalStarts));
+                new HashMap<>(marginWithdrawalStarts), new ArrayList<>(marginDepositReceipts),
+                new HashMap<>(marginDepositStarts));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -286,6 +323,10 @@ public final class FuturesSavedData extends SavedData {
                 while (data.marginWithdrawalReceipts.size() > 8192) data.marginWithdrawalReceipts.remove(data.marginWithdrawalReceipts.iterator().next());
                 data.marginWithdrawalStarts.putAll(state.marginWithdrawalStarts());
                 while (data.marginWithdrawalStarts.size() > 8192) data.marginWithdrawalStarts.remove(data.marginWithdrawalStarts.keySet().iterator().next());
+                data.marginDepositReceipts.addAll(state.marginDepositReceipts());
+                while (data.marginDepositReceipts.size() > 8192) data.marginDepositReceipts.remove(data.marginDepositReceipts.iterator().next());
+                data.marginDepositStarts.putAll(state.marginDepositStarts());
+                while (data.marginDepositStarts.size() > 8192) data.marginDepositStarts.remove(data.marginDepositStarts.keySet().iterator().next());
             });
         }
         return data;
