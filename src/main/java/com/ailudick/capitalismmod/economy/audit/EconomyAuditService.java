@@ -24,6 +24,13 @@ import com.ailudick.capitalismmod.supply.SupplyEscrowSavedData;
 import com.ailudick.capitalismmod.business.BusinessOrderEscrowSavedData;
 import com.ailudick.capitalismmod.business.BusinessOrderSavedData;
 import com.ailudick.capitalismmod.auction.AuctionListingIntentSavedData;
+import com.ailudick.capitalismmod.market.CommodityBuyIntentSavedData;
+import com.ailudick.capitalismmod.market.CommoditySellIntentSavedData;
+import com.ailudick.capitalismmod.market.CommodityTradeIntentSavedData;
+import com.ailudick.capitalismmod.stock.StockBuyIntentSavedData;
+import com.ailudick.capitalismmod.stock.StockSellIntentSavedData;
+import com.ailudick.capitalismmod.stock.StockTradeIntentSavedData;
+import com.ailudick.capitalismmod.supply.SupplyOrderIntentSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -47,6 +54,20 @@ public final class EconomyAuditService {
         AuctionListingIntentSavedData.get(server).intents().stream().limit(100)
                 .forEach(intent -> issues.add("pending auction listing "
                         + intent.auctionId() + "/" + intent.itemId() + "/" + intent.escrowed()));
+        CommodityBuyIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending commodity buy " + intent.orderId()));
+        CommoditySellIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending commodity sell " + intent.orderId()));
+        CommodityTradeIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending commodity trade " + intent.id()));
+        StockBuyIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending stock buy " + intent.orderId()));
+        StockSellIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending stock sell " + intent.orderId()));
+        StockTradeIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending stock trade " + intent.id()));
+        SupplyOrderIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending supply order " + intent.orderId()));
         CompanySavedData companies = CompanySavedData.get(server);
         CompanyLedgerSavedData ledgers = CompanyLedgerSavedData.get(server);
         for (Company company : companies.companies().values()) {
