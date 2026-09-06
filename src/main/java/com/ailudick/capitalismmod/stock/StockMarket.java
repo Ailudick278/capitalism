@@ -182,7 +182,8 @@ public final class StockMarket {
                 continue;
             }
             if (order.sell()) {
-                data.addShares(order.stockId(), owner, order.quantity());
+                data.addSharesOnce(order.stockId(), owner, order.quantity(),
+                        "stock-order-expiry-shares:" + order.id());
             } else {
                 long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
                 long minor = total > 0L ? Money.toMinor(total) : -1L;

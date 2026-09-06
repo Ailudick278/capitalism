@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -44,6 +46,7 @@ public final class EconomySavedData extends SavedData {
     private final List<StockOrder> orders = new ArrayList<>();
     // stockId -> previous close (anchor for the daily price limit band)
     private final Map<String, Long> prevClose = new HashMap<>();
+    private final Set<String> shareCreditReceipts = new HashSet<>();
 
     /** Snapshot of a listed company, kept so its stock stays visible while the founder is offline. */
     public record Listing(String name, long registeredCapital, long totalShares) {
@@ -61,7 +64,8 @@ public final class EconomySavedData extends SavedData {
             Map<String, Map<String, Long>> shareholders,
             Map<String, Listing> listings,
             List<StockOrder> orders,
-            Map<String, Long> prevClose) {
+            Map<String, Long> prevClose,
+            List<String> shareCreditReceipts) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prices").forGetter(State::prices),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("netVolume").forGetter(State::netVolume),
@@ -69,7 +73,8 @@ public final class EconomySavedData extends SavedData {
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, Codec.LONG)).fieldOf("shareholders").forGetter(State::shareholders),
                 Codec.unboundedMap(Codec.STRING, Listing.CODEC).fieldOf("listings").forGetter(State::listings),
                 StockOrder.CODEC.listOf().fieldOf("orders").forGetter(State::orders),
-                Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prevClose").forGetter(State::prevClose)
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prevClose").forGetter(State::prevClose),
+                Codec.STRING.listOf().optionalFieldOf("shareCreditReceipts", List.of()).forGetter(State::shareCreditReceipts)
         ).apply(instance, State::new));
     }
 
@@ -235,6 +240,15 @@ public final class EconomySavedData extends SavedData {
         setDirty();
     }
 
+    /** Credits shares once for a durable settlement source. */
+    public boolean addSharesOnce(String stockId, UUID playerId, long amount, String sourceId) {
+        if (stockId == null || stockId.isBlank() || playerId == null || amount <= 0L
+                || sourceId == null || sourceId.isBlank() || !shareCreditReceipts.add(sourceId)) return false;
+        addShares(stockId, playerId, amount);
+        setDirty();
+        return true;
+    }
+
     // ---- orders ----
 
     public List<StockOrder> orders() {
@@ -286,7 +300,8 @@ public final class EconomySavedData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(prices), new HashMap<>(netVolume), new HashMap<>(history),
-                new HashMap<>(shareholders), new HashMap<>(listings), new ArrayList<>(orders), new HashMap<>(prevClose));
+                new HashMap<>(shareholders), new HashMap<>(listings), new ArrayList<>(orders), new HashMap<>(prevClose),
+                new ArrayList<>(shareCreditReceipts));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -303,6 +318,7 @@ public final class EconomySavedData extends SavedData {
                 data.listings.putAll(state.listings());
                 data.orders.addAll(state.orders());
                 data.prevClose.putAll(state.prevClose());
+                data.shareCreditReceipts.addAll(state.shareCreditReceipts());
             });
         }
         return data;
