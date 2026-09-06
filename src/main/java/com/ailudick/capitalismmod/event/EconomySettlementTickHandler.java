@@ -135,6 +135,7 @@ public final class EconomySettlementTickHandler {
         }
 
         BondMarket.settleMaturity(server, settlementDay);
+        BondMarket.recoverIssuances(server);
         FinancialRiskService.settleDaily(server, settlementDay);
         FinancialCrisisService.update(server, settlementDay);
         BankLiquidityService.settleDaily(server, settlementDay);

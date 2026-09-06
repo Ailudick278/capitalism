@@ -40,7 +40,6 @@ public final class BondMarket {
         if (total <= 0 || totalMinor < 0 || !EconomyHelper.tryPay(player, Currencies.USD, totalMinor)) {
             return false;
         }
-        BondSavedData data = BondSavedData.get(player.getServer());
         long treasuryProceeds = com.ailudick.capitalismmod.currency.ExchangeRates.convert(
                 totalMinor, Currencies.USD, Config.defaultCurrency());
         if (!GovernmentPolicySavedData.get(player.getServer()).deposit(treasuryProceeds)) {
@@ -53,10 +52,34 @@ public final class BondMarket {
                 GovernmentPolicySavedData.get(player.getServer()).policyRateBasisPoints())
                 + FinancialRiskPolicy.bondLiquidityPremium(overdueShare);
         int days = Config.BOND_MATURITY_DAYS.get();
-        for (int i = 0; i < count; i++) {
-            data.addHolding(new BondHolding(UUID.randomUUID().toString(), player.getUUID(), faceValue, rate, days, days));
-        }
+        String issuanceId = "bond-issuance:" + UUID.randomUUID();
+        BondIssuanceSavedData.get(player.getServer()).add(new BondIssuanceSavedData.Issuance(
+                issuanceId, player.getUUID(), count, faceValue, rate, days, true, false));
+        createHoldings(player.getServer(), new BondIssuanceSavedData.Issuance(
+                issuanceId, player.getUUID(), count, faceValue, rate, days, true, false));
         return true;
+    }
+
+    /** Completes all funded issuance batches using deterministic holding IDs. */
+    public static int recoverIssuances(MinecraftServer server) {
+        int recovered = 0;
+        for (BondIssuanceSavedData.Issuance issuance : BondIssuanceSavedData.get(server).pendingFunded()) {
+            createHoldings(server, issuance);
+            recovered++;
+        }
+        return recovered;
+    }
+
+    private static void createHoldings(MinecraftServer server, BondIssuanceSavedData.Issuance issuance) {
+        BondSavedData data = BondSavedData.get(server);
+        for (int i = 0; i < issuance.count(); i++) {
+            String holdingId = issuance.id() + ":" + i;
+            if (data.findHolding(holdingId) == null) {
+                data.addHolding(new BondHolding(holdingId, issuance.holder(), issuance.faceValue(),
+                        issuance.ratePerYear(), issuance.days(), issuance.days()));
+            }
+        }
+        BondIssuanceSavedData.get(server).markHoldingsCreated(issuance.id());
     }
 
     /** Redeems a bond early at face value plus accrued interest. */
