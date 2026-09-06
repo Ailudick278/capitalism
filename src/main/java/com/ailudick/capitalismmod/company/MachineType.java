@@ -30,6 +30,8 @@ public enum MachineType {
             "capitalismmod:steel_sheet", 3, "minecraft:iron_ingot", 4, "minecraft:redstone", 2)),
     INJECTION_MOLDER("injection_molder", 2600L, 7L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:electric_motor", 1, "capitalismmod:steel_sheet", 2)),
+    EXTRUSION_LINE("extrusion_line", 3000L, 8L, Map.of("capitalismmod:machine_frame", 2,
+            "capitalismmod:electric_motor", 2, "capitalismmod:steel_sheet", 3)),
     SILICON_REFINER("silicon_refiner", 4600L, 13L, Map.of("capitalismmod:machine_frame", 2,
             "capitalismmod:steel_sheet", 4, "minecraft:quartz", 2, "minecraft:redstone", 2)),
     CRYSTAL_GROWTH_FURNACE("crystal_growth_furnace", 5000L, 14L, Map.of("capitalismmod:machine_frame", 2,

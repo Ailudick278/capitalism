@@ -346,4 +346,6 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PLASTIC_CONTAINER = ITEMS.register("plastic_container",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PACKAGING_FILM = ITEMS.register("packaging_film",
+            () -> new Item(new Item.Properties().stacksTo(64)));
 }

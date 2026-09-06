@@ -161,6 +161,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.LAPTOP.get());
                         output.accept(ModItems.WIRELESS_ROUTER.get());
                         output.accept(ModItems.PLASTIC_CONTAINER.get());
+                        output.accept(ModItems.PACKAGING_FILM.get());
                     })
                     .build());
 }
