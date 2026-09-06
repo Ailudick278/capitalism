@@ -61,6 +61,12 @@ public final class EconomySettlementTickHandler {
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        // These recoveries can safely run without a player object: paid funds are
+        // delivered to persistent mailboxes, while unpaid intents wait for login.
+        if (event.getServer().overworld().getGameTime() % 20L == 0L) {
+            CurrencyExchangeService.recover(event.getServer());
+            PlayerTransferService.recover(event.getServer());
+        }
         long currentDay = event.getServer().overworld().getGameTime() / TICKS_PER_DAY;
         EconomySettlementSavedData state = EconomySettlementSavedData.get(event.getServer());
         long lastDay = state.lastSettlementDay();
