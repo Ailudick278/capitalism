@@ -173,14 +173,27 @@ public final class TaxService {
         long payment = Math.min(amount, bill.outstanding());
         long majorPayment = Math.min(Math.max(0L, company.treasuryOf(bill.currencyId())),
                 payment / Money.MINOR_UNITS_PER_UNIT);
-        if (majorPayment <= 0L || !CompanyHelper.debitTreasuryNonOperating(server, company.companyId(),
-                bill.currencyId(), majorPayment, "tax_payment", "Corporate tax payment")) {
+        if (majorPayment <= 0L) return false;
+        long paymentMinor = Money.toMinorSaturated(majorPayment);
+        String source = "tax-payment:" + bill.id() + ":" + bill.paidAmount() + ":" + majorPayment;
+        String priorSource = bill.paidAmount() >= paymentMinor
+                ? "tax-payment:" + bill.id() + ":" + (bill.paidAmount() - paymentMinor) + ":" + majorPayment : "";
+        boolean alreadyApplied = CompanyHelper.hasNonOperatingDebitSource(server, company.companyId(), priorSource);
+        if (!alreadyApplied && !CompanyHelper.debitTreasuryNonOperatingOnce(server, company.companyId(),
+                bill.currencyId(), majorPayment, "tax_payment", "Corporate tax payment", source)) {
             return false;
         }
-        payment = Money.toMinorSaturated(majorPayment);
+        payment = paymentMinor;
+        if (alreadyApplied) {
+            if (!ledger.hasPayment(source)) {
+                recordPayment(server, bill, new TaxPayment(source, bill.id(), company.ownerUuid(),
+                        bill.currencyId(), payment, server.overworld().getGameTime()));
+            }
+            return true;
+        }
         TaxBill paidBill = bill.withPayment(payment);
         ledger.replace(paidBill);
-        recordPayment(server, paidBill, new TaxPayment(UUID.randomUUID().toString(), bill.id(), company.ownerUuid(),
+        recordPayment(server, paidBill, new TaxPayment(source, bill.id(), company.ownerUuid(),
                 bill.currencyId(), payment, server.overworld().getGameTime()));
         if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(server, paidBill));
         return true;

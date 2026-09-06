@@ -28,6 +28,11 @@ public final class TaxLedgerSavedData extends SavedData {
     public List<TaxBill> bills() { return List.copyOf(bills); }
     public List<TaxPayment> payments() { return List.copyOf(payments); }
 
+    public boolean hasPayment(String paymentId) {
+        return paymentId != null && !paymentId.isBlank()
+                && payments.stream().anyMatch(payment -> payment.id().equals(paymentId));
+    }
+
     public boolean hasExternalSettlement(String sourceId) {
         return sourceId != null && externalSettlementSources.contains(sourceId);
     }

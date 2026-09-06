@@ -172,6 +172,14 @@ public final class CompanyHelper {
                 (description == null ? "" : description) + " " + marker);
     }
 
+    public static boolean hasNonOperatingDebitSource(MinecraftServer server, String companyId, String sourceId) {
+        if (server == null || companyId == null || companyId.isBlank() || sourceId == null || sourceId.isBlank()) return false;
+        String marker = "[source=" + sourceId + "]";
+        return CompanyLedgerSavedData.get(server).entries(companyId).stream()
+                .anyMatch(entry -> entry.amount() < 0L && entry.description() != null
+                        && entry.description().contains(marker));
+    }
+
     private static boolean debitTreasuryInternal(MinecraftServer server, String companyId, String currencyId,
                                                  long amount, String type, String description,
                                                  boolean taxableExpense) {
