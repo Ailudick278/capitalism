@@ -12,6 +12,7 @@ import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
@@ -124,6 +125,18 @@ public final class EconomyAuditService {
         for (var entry : labor.offers()) if (entry.vacancies() < 0 || entry.dailyWageMinor() <= 0L) issues.add("job offer " + entry.id() + " invalid vacancy or wage");
         for (var entry : labor.employments()) { var account = LaborPayrollSavedData.get(server).account(entry.id()); if (account.unpaid() < 0L) issues.add("payroll " + entry.id() + " negative arrears"); }
         EconomicContractSavedData contracts = EconomicContractSavedData.get(server);
+        for (var contract : contracts.contracts()) {
+            if (contract.agreedQuantity() > 0L && contract.fulfilledQuantity() > contract.agreedQuantity()) {
+                issues.add("contract " + contract.id() + " fulfilled quantity exceeds agreement");
+            }
+            if (contract.status() == ContractStatus.COMPLETED && contract.agreedQuantity() > 0L
+                    && contract.fulfilledQuantity() < contract.agreedQuantity()) {
+                issues.add("contract " + contract.id() + " completed before full fulfillment");
+            }
+            if (contract.status() == ContractStatus.BREACHED && contract.breachAmountMinor() <= 0L) {
+                issues.add("contract " + contract.id() + " breached without exposure amount");
+            }
+        }
         for (var dispute : ContractDisputeSavedData.get(server).disputes()) {
             var contract = contracts.find(dispute.contractId());
             if (contract == null) {
