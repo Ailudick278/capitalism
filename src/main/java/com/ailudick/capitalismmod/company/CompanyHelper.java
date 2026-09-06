@@ -1133,6 +1133,7 @@ public final class CompanyHelper {
             CompanyLaborSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyPayrollSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyFreightContractSavedData.get(server).transferCompany(source.companyId(), target.companyId());
+            CompanyFreightSettlementSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyLogisticsCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyLedgerSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyServiceDeliverySavedData.get(server).transferCompany(source.companyId(), target.companyId());

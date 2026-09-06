@@ -15,6 +15,7 @@ import com.ailudick.capitalismmod.company.CompanyProductionBatchSavedData;
 import com.ailudick.capitalismmod.company.CompanyQualityControlSavedData;
 import com.ailudick.capitalismmod.company.CompanyQualityHoldSavedData;
 import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
+import com.ailudick.capitalismmod.company.CompanyFreightSettlementSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyServiceDeliverySavedData;
@@ -737,6 +738,7 @@ public class CompanyCommand {
             return 0;
         }
         CompanyLogisticsCostSavedData data = CompanyLogisticsCostSavedData.get(source.getServer());
+        CompanyFreightSettlementSavedData settlementData = CompanyFreightSettlementSavedData.get(source.getServer());
         CompanyFreightContractSavedData contracts = CompanyFreightContractSavedData.get(source.getServer());
         long now = source.getServer().overworld().getGameTime();
         contracts.expire(now);
@@ -749,7 +751,29 @@ public class CompanyCommand {
         }
         CompanyLogisticsCostSavedData.CapitalizedCost payable = data.forCompany(buyer.companyId()).stream()
                 .filter(cost -> shipmentId.equals(cost.shipmentId())).findFirst().orElse(null);
-        if (payable == null || payable.settled()) {
+        if (payable == null) {
+            source.sendFailure(Component.literal("Freight payable not found or already settled."));
+            return 0;
+        }
+        if (payable.settled()) {
+            CompanyFreightSettlementSavedData.Settlement previous = settlementData.find(shipmentId);
+            if (previous != null && buyer.companyId().equals(previous.buyerCompanyId())
+                    && carrier.companyId().equals(previous.carrierCompanyId())
+                    && previous.amount() == payable.estimatedCost()) {
+                if (!previous.payableClosed()) settlementData.update(previous.withPayableClosed(true));
+                if (contract != null) contracts.settle(contract.id(), now);
+                CompanyHelper.recordTaxableIncome(source.getServer(), carrier, "freight:" + shipmentId,
+                        payable.estimatedCost(), Currencies.USD.id(), now);
+                TaxTransactionService.assess(source.getServer(), TaxType.VAT, carrier.ownerUuid(),
+                        Currencies.USD.id(), Money.toMinorSaturated(payable.estimatedCost()),
+                        "freight-vat:" + shipmentId, now);
+                TaxTransactionService.recordInputCredit(source.getServer(), buyer.ownerUuid(),
+                        Currencies.USD.id(), Money.toMinorSaturated(payable.estimatedCost()),
+                        "freight-vat:" + shipmentId, now);
+                source.sendSuccess(() -> Component.literal("Freight settlement already completed for shipment "
+                        + shipmentId + "."), false);
+                return 1;
+            }
             source.sendFailure(Component.literal("Freight payable not found or already settled."));
             return 0;
         }
@@ -758,32 +782,57 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Freight payable has no positive settlement amount."));
             return 0;
         }
-        if (buyer.treasuryOf(Currencies.USD.id()) < amount) {
-            source.sendFailure(Component.literal("Buyer company has insufficient USD cash."));
+        CompanyFreightSettlementSavedData.Settlement settlement = settlementData.begin(
+                shipmentId, buyer.companyId(), carrier.companyId(), amount);
+        if (settlement == null || !buyer.companyId().equals(settlement.buyerCompanyId())
+                || !carrier.companyId().equals(settlement.carrierCompanyId())
+                || settlement.amount() != amount) {
+            source.sendFailure(Component.literal("Freight settlement record is inconsistent."));
             return 0;
         }
-        if (!CompanyHelper.debitTreasuryNonOperating(source.getServer(), buyer.companyId(), Currencies.USD.id(),
-                amount, "freight_payable_settlement", "Settlement for shipment " + shipmentId)) {
-            source.sendFailure(Component.literal("Buyer treasury could not be debited."));
-            return 0;
+        if (settlement.payableClosed()) {
+            // The payable is still open, so a stale phase flag must not skip
+            // the actual close operation.
+            settlement = settlementData.update(settlement.withPayableClosed(false));
         }
-        if (!CompanyHelper.creditTreasury(source.getServer(), carrier.companyId(), Currencies.USD.id(), amount)) {
-            CompanyHelper.creditTreasuryNonOperating(source.getServer(), buyer.companyId(), Currencies.USD.id(),
-                    amount, "freight_settlement_reversal", "Reversal for failed shipment settlement " + shipmentId);
-            source.sendFailure(Component.literal("Carrier treasury could not be credited; buyer debit was reversed."));
-            return 0;
+        if (!settlement.buyerDebited()) {
+            if (buyer.treasuryOf(Currencies.USD.id()) < amount
+                    || !CompanyHelper.debitTreasuryNonOperating(source.getServer(), buyer.companyId(),
+                    Currencies.USD.id(), amount, "freight_payable_settlement",
+                    "Settlement for shipment " + shipmentId)) {
+                source.sendFailure(Component.literal("Buyer company has insufficient USD cash."));
+                return 0;
+            }
+            settlement = settlementData.update(settlement.withBuyerDebited(true));
         }
-        if (!data.settle(shipmentId, carrier.companyId(), now)) {
-            // Do not leave a successful cash transfer behind when the payable
-            // state could not be closed (for example, after a stale retry).
-            CompanyHelper.debitTreasuryNonOperating(source.getServer(), carrier.companyId(),
-                    Currencies.USD.id(), amount, "freight_settlement_reversal",
-                    "Reversal for failed payable close " + shipmentId);
-            CompanyHelper.creditTreasuryNonOperating(source.getServer(), buyer.companyId(),
-                    Currencies.USD.id(), amount, "freight_settlement_reversal",
-                    "Reversal for failed payable close " + shipmentId);
-            source.sendFailure(Component.literal("Freight payable could not be closed; cash transfer was reversed."));
-            return 0;
+        if (!settlement.carrierCredited()) {
+            if (!CompanyHelper.creditTreasury(source.getServer(), carrier.companyId(), Currencies.USD.id(), amount)) {
+                CompanyHelper.creditTreasuryNonOperating(source.getServer(), buyer.companyId(), Currencies.USD.id(),
+                        amount, "freight_settlement_reversal", "Reversal for failed shipment settlement " + shipmentId);
+                settlementData.remove(shipmentId);
+                source.sendFailure(Component.literal("Carrier treasury could not be credited; buyer debit was reversed."));
+                return 0;
+            }
+            settlement = settlementData.update(settlement.withCarrierCredited(true));
+        }
+        if (!settlement.payableClosed()) {
+            boolean closed = data.settle(shipmentId, carrier.companyId(), now);
+            if (!closed) {
+                CompanyLogisticsCostSavedData.CapitalizedCost currentPayable = data.forCompany(buyer.companyId()).stream()
+                        .filter(cost -> shipmentId.equals(cost.shipmentId())).findFirst().orElse(null);
+                if (currentPayable == null || !currentPayable.settled()) {
+                    CompanyHelper.debitTreasuryNonOperating(source.getServer(), carrier.companyId(),
+                            Currencies.USD.id(), amount, "freight_settlement_reversal",
+                            "Reversal for failed payable close " + shipmentId);
+                    CompanyHelper.creditTreasuryNonOperating(source.getServer(), buyer.companyId(),
+                            Currencies.USD.id(), amount, "freight_settlement_reversal",
+                            "Reversal for failed payable close " + shipmentId);
+                    settlementData.remove(shipmentId);
+                    source.sendFailure(Component.literal("Freight payable could not be closed; cash transfer was reversed."));
+                    return 0;
+                }
+            }
+            settlement = settlementData.update(settlement.withPayableClosed(true));
         }
         if (contract != null) contracts.settle(contract.id(), now);
         CompanyHelper.recordTaxableIncome(source.getServer(), carrier, "freight:" + shipmentId,
