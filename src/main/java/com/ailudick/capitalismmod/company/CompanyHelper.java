@@ -110,6 +110,21 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Credits a non-operating inflow once for a durable business source. */
+    public static boolean creditTreasuryNonOperatingOnce(MinecraftServer server, String companyId,
+                                                          String currencyId, long amount,
+                                                          String type, String description,
+                                                          String sourceId) {
+        if (sourceId == null || sourceId.isBlank()) return false;
+        String marker = "[source=" + sourceId + "]";
+        if (CompanyLedgerSavedData.get(server).entries(companyId).stream()
+                .anyMatch(entry -> entry.description() != null && entry.description().contains(marker))) {
+            return true;
+        }
+        String markedDescription = (description == null ? "" : description) + " " + marker;
+        return creditTreasuryNonOperating(server, companyId, currencyId, amount, type, markedDescription);
+    }
+
     /** Debits a company's treasury and records the expense before production continues. */
     public static boolean debitTreasury(MinecraftServer server, String companyId, String currencyId,
                                         long amount, String type, String description) {

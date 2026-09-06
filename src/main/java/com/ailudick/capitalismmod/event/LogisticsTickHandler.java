@@ -92,8 +92,9 @@ public final class LogisticsTickHandler {
                             ? null : CompanySavedData.get(server).get(shipment.buyerCompanyId());
                     boolean companyShipment = company != null && company.ownerUuid().equals(shipment.buyer());
                     if (companyShipment) {
-                        if (payout > 0L && !CompanyHelper.creditTreasuryNonOperating(server, company.companyId(),
-                                "usd", payout, "cargo_insurance_claim", "Cargo insurance indemnity")) {
+                        if (payout > 0L && !CompanyHelper.creditTreasuryNonOperatingOnce(server, company.companyId(),
+                                "usd", payout, "cargo_insurance_claim", "Cargo insurance indemnity",
+                                "logistics-claim:" + shipment.id())) {
                             // Keep the shipment pending when the beneficiary cannot be credited yet.
                             // This avoids recording a settled claim after a transient company-data failure.
                             continue;

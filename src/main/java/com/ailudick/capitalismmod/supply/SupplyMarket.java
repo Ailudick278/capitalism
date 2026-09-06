@@ -237,8 +237,9 @@ public final class SupplyMarket {
             if (order.buyerCompanyId() != null && !order.buyerCompanyId().isBlank()) {
                 Company buyerCompany = CompanySavedData.get(server).get(order.buyerCompanyId());
                 refundedToCompany = buyerCompany != null
-                        && CompanyHelper.creditTreasuryNonOperating(server, buyerCompany.companyId(),
-                        Currencies.USD.id(), refund, "supply_refund", "Expired undelivered supply order refund");
+                        && CompanyHelper.creditTreasuryNonOperatingOnce(server, buyerCompany.companyId(),
+                        Currencies.USD.id(), refund, "supply_refund", "Expired undelivered supply order refund",
+                        "supply-order-refund:" + order.id());
             }
             if (!refundedToCompany) {
                 MarketMailboxSavedData.get(server).creditMoneyOnce(order.buyerUuid(), Currencies.USD.id(),
@@ -280,8 +281,9 @@ public final class SupplyMarket {
         if (order.buyerCompanyId() != null && !order.buyerCompanyId().isBlank()) {
             Company company = CompanySavedData.get(server).get(order.buyerCompanyId());
             refundedToCompany = company != null && company.ownerUuid().equals(buyer.getUUID())
-                    && CompanyHelper.creditTreasuryNonOperating(server, company.companyId(),
-                    Currencies.USD.id(), refund, "supply_cancel_refund", "Cancelled undelivered supply order refund");
+                    && CompanyHelper.creditTreasuryNonOperatingOnce(server, company.companyId(),
+                    Currencies.USD.id(), refund, "supply_cancel_refund", "Cancelled undelivered supply order refund",
+                    "supply-order-refund:" + order.id());
         }
         if (!refundedToCompany) {
             MarketMailboxSavedData.get(server).creditMoneyOnce(buyer.getUUID(), Currencies.USD.id(), refundMinor,
