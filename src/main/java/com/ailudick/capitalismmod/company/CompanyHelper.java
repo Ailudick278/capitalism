@@ -683,8 +683,14 @@ public final class CompanyHelper {
         }
         if (machineCapacity <= 0) return 0;
         if (recipe.workersPerCycle() <= 0) return Math.min(10000, machineCapacity);
-        int workers = CompanyLaborSavedData.get(server).activeWorkers(company.companyId())
-                + LaborMarketSavedData.get(server).activeWorkers(company.companyId());
+        LaborMarketSavedData laborMarket = LaborMarketSavedData.get(server);
+        int effectiveMarketWorkers = laborMarket.activeForEmployer(company.companyId()).stream()
+                .map(employment -> laborMarket.profile(employment.workerId()))
+                .filter(java.util.Objects::nonNull)
+                .mapToInt(LaborProfile::participation).sum();
+        int marketWorkers = laborMarket.activeWorkers(company.companyId());
+        if (marketWorkers > 0) marketWorkers = Math.max(1, effectiveMarketWorkers / 100);
+        int workers = CompanyLaborSavedData.get(server).activeWorkers(company.companyId()) + marketWorkers;
         if (allocations.hasWorkerAllocation(company.companyId())) {
             workers = Math.min(workers, allocations.maxWorkerCount(company.companyId()));
         }
@@ -1018,10 +1024,16 @@ public final class CompanyHelper {
     private static int productionQuality(MinecraftServer server, Company company, MachineType machine) {
         int legacySkill = CompanyLaborSavedData.get(server).averageSkill(company.companyId());
         LaborMarketSavedData laborMarket = LaborMarketSavedData.get(server);
-        int marketSkill = (int) Math.round(laborMarket.activeForEmployer(company.companyId()).stream()
+        var marketEmployments = laborMarket.activeForEmployer(company.companyId());
+        int marketSkill = (int) Math.round(marketEmployments.stream()
                 .map(employment -> laborMarket.profile(employment.workerId()))
                 .filter(java.util.Objects::nonNull)
                 .mapToInt(LaborProfile::averageSkill).average().orElse(0.0D));
+        int marketHealth = (int) Math.round(marketEmployments.stream()
+                .map(employment -> laborMarket.profile(employment.workerId()))
+                .filter(java.util.Objects::nonNull)
+                .mapToInt(LaborProfile::participation).average().orElse(100.0D));
+        marketSkill = marketSkill * Math.max(0, Math.min(100, marketHealth)) / 100;
         int skill = legacySkill <= 0 ? marketSkill : marketSkill <= 0 ? legacySkill : (legacySkill + marketSkill) / 2;
         int condition = 100;
         if (machine != null && machine != MachineType.NONE) {
