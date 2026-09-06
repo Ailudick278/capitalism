@@ -119,6 +119,10 @@ public final class LogisticsTickHandler {
             }
             Item item = parseItem(shipment.itemId());
             if (item != null) {
+                if (deliveries.hasShipment(shipment.id())) {
+                    data.remove(shipment.id());
+                    continue;
+                }
                 InventoryOwner owner = shipment.buyerCompanyId().isBlank()
                         ? InventoryOwner.player(shipment.buyer())
                         : InventoryOwner.company(shipment.buyerCompanyId());

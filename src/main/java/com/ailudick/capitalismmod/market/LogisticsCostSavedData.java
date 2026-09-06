@@ -68,7 +68,8 @@ public final class LogisticsCostSavedData extends SavedData {
 
     public void record(FuelPlan plan) {
         if (plan == null || plan.shipmentId() == null || plan.shipmentId().isBlank()
-                || plan.buyer() == null || plan.quantity() <= 0 || plan.fuelUnits() <= 0) return;
+                || plan.buyer() == null || plan.quantity() <= 0 || plan.fuelUnits() <= 0
+                || find(plan.shipmentId()) != null) return;
         plans.add(plan);
         while (plans.size() > MAX_RECORDS) plans.remove(0);
         setDirty();
