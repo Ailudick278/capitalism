@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborPayrollSavedData;
 import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
+import com.ailudick.capitalismmod.economy.SettlementJournalRules;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
@@ -78,6 +79,17 @@ public final class EconomyAuditService {
         EconomicSettlementJournalSavedData.get(server).pendingEntries().stream().limit(100)
                 .forEach(entry -> issues.add("pending daily settlement "
                         + entry.day() + "/" + entry.phase()));
+        for (var entry : financialJournal.entries()) {
+            if (!SettlementJournalRules.validFinancial(entry.transactionId(), entry.instrument(), entry.phase(),
+                    entry.status(), entry.amountMinor(), entry.gameTime())) {
+                issues.add("financial settlement journal invalid " + entry.transactionId() + "/" + entry.phase());
+            }
+        }
+        for (var entry : EconomicSettlementJournalSavedData.get(server).entries()) {
+            if (!SettlementJournalRules.validDaily(entry.day(), entry.phase(), entry.status(), entry.gameTime())) {
+                issues.add("daily settlement journal invalid " + entry.day() + "/" + entry.phase());
+            }
+        }
         AuctionListingIntentSavedData.get(server).intents().stream().limit(100)
                 .forEach(intent -> issues.add("pending auction listing "
                         + intent.auctionId() + "/" + intent.itemId() + "/" + intent.escrowed()));
