@@ -308,13 +308,7 @@ public final class CapitalismData {
      */
     private static void upgradeLegacyPolymerRecipe(RecipeJson recipe) {
         if (recipe == null || recipe.id == null || recipe.outputs == null) return;
-        if ("polyethylene_pellets".equals(recipe.id)
-                && Map.of("capitalismmod:plastic_pellets", 3).equals(recipe.outputs)) {
-            recipe.outputs = new HashMap<>(Map.of("capitalismmod:polyethylene_pellets", 3));
-        } else if ("polypropylene_pellets".equals(recipe.id)
-                && Map.of("capitalismmod:plastic_pellets", 3).equals(recipe.outputs)) {
-            recipe.outputs = new HashMap<>(Map.of("capitalismmod:polypropylene_pellets", 3));
-        }
+        recipe.outputs = PolymerRecipeMigration.upgradeOutputs(recipe.id, recipe.outputs);
     }
 
     private static <T> List<T> read(Path file, Class<T[]> arrayClass, List<T> defaults) {
