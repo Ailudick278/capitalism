@@ -48,6 +48,10 @@ public final class EconomicSettlementJournalSavedData extends SavedData {
 
     private void put(Entry entry) {
         if (entry == null || entry.phase() == null || entry.phase().isBlank()) return;
+        Entry previous = entries.get(key(entry.day(), entry.phase()));
+        // A completed phase is terminal. A repeated tick or recovery pass may
+        // observe it again, but must never make diagnostics report it as started.
+        if (previous != null && SettlementPhaseState.preservesCompleted(previous.status(), entry.status())) return;
         entries.put(key(entry.day(), entry.phase()), entry);
         while (entries.size() > MAX_ENTRIES) entries.remove(entries.keySet().iterator().next());
         setDirty();
