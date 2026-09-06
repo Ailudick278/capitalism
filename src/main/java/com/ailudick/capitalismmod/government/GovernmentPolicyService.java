@@ -20,6 +20,7 @@ public final class GovernmentPolicyService {
             long maximum = multiply(multiply(household.dailyNeedMinor(), household.size()), 60L) / 100L;
             long payment = Math.min(benefit, maximum);
             if (payment <= 0L || policy.treasuryMinor() < payment) continue;
+            if (population.find(household.id()) == null) continue;
             String source = "government-benefit:" + day + ":" + household.id();
             if (population.addCashOnce(household.id(), payment, source)
                     && policy.spend(household.id(), day, payment, source)) paid++;
