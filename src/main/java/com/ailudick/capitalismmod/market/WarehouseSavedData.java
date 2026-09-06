@@ -14,7 +14,10 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -28,6 +31,7 @@ public final class WarehouseSavedData extends SavedData {
     // owner storage key (player:<uuid> or company:<companyId>) -> (item id -> count)
     private final Map<String, Map<String, Integer>> storage = new HashMap<>();
     private final java.util.List<AuditEntry> audit = new java.util.ArrayList<>();
+    private final Set<String> creditedSources = new HashSet<>();
 
     public record AuditEntry(String action, String from, String to, String itemId, int count) {
         static final Codec<AuditEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -39,11 +43,14 @@ public final class WarehouseSavedData extends SavedData {
         ).apply(instance, AuditEntry::new));
     }
 
-    private record State(Map<String, Map<String, Integer>> storage, java.util.List<AuditEntry> audit) {
+    private record State(Map<String, Map<String, Integer>> storage, java.util.List<AuditEntry> audit,
+                         List<String> creditedSources) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, Codec.INT))
                         .fieldOf("storage").forGetter(State::storage),
-                AuditEntry.CODEC.listOf().optionalFieldOf("audit", java.util.List.of()).forGetter(State::audit)
+                AuditEntry.CODEC.listOf().optionalFieldOf("audit", java.util.List.of()).forGetter(State::audit),
+                Codec.STRING.listOf().optionalFieldOf("creditedSources", java.util.List.of())
+                        .forGetter(State::creditedSources)
         ).apply(instance, State::new));
     }
 
@@ -80,6 +87,21 @@ public final class WarehouseSavedData extends SavedData {
     }
 
     public void credit(UUID playerId, Item item, int count) { credit(InventoryOwner.player(playerId), item, count); }
+
+    /** Credits warehouse stock once for a durable delivery source. */
+    public boolean creditOnce(InventoryOwner owner, Item item, int count, String sourceId) {
+        if (owner == null || sourceId == null || sourceId.isBlank() || creditedSources.contains(sourceId)) {
+            return false;
+        }
+        if (item == null || item == Items.AIR || count <= 0) return false;
+        credit(owner, item, count);
+        creditedSources.add(sourceId);
+        while (creditedSources.size() > 8192) {
+            creditedSources.remove(creditedSources.iterator().next());
+        }
+        setDirty();
+        return true;
+    }
 
     private static int saturatingAdd(int left, int right) {
         if (right > Integer.MAX_VALUE - left) {
@@ -265,7 +287,8 @@ public final class WarehouseSavedData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        State state = new State(new HashMap<>(storage), new java.util.ArrayList<>(audit));
+        State state = new State(new HashMap<>(storage), new java.util.ArrayList<>(audit),
+                new java.util.ArrayList<>(creditedSources));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -283,6 +306,10 @@ public final class WarehouseSavedData extends SavedData {
                         data.storage.put(ownerKey, new HashMap<>(v));
                     });
                     data.audit.addAll(state.audit());
+                    data.creditedSources.addAll(state.creditedSources());
+                    while (data.creditedSources.size() > 8192) {
+                        data.creditedSources.remove(data.creditedSources.iterator().next());
+                    }
             });
         }
         return data;

@@ -435,7 +435,8 @@ public final class SupplyMarket {
         if (TradeRegion.distance(origin, destination) == 0) {
             InventoryOwner owner = buyerCompanyId == null || buyerCompanyId.isBlank()
                     ? InventoryOwner.player(buyer) : InventoryOwner.company(buyerCompanyId);
-            WarehouseSavedData.get(server).credit(owner, item, quantity);
+            WarehouseSavedData.get(server).creditOnce(owner, item, quantity,
+                    "supply-local-delivery:" + dispatchKey);
             return;
         }
         long distance = TradeRegion.distance(origin, destination);
