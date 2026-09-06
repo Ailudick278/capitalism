@@ -18,16 +18,17 @@ public final class CommoditySellIntentSavedData extends SavedData {
     private final List<Intent> intents = new ArrayList<>();
 
     public record Intent(String orderId, UUID sellerUuid, String itemId, int quantity,
-                         long pricePerUnit, long createdAt, boolean escrowed) {
+                         long pricePerUnit, long createdAt, long warehouseBefore, boolean escrowed) {
         public Intent {
             orderId = orderId == null ? "" : orderId;
             itemId = itemId == null ? "" : itemId;
             quantity = Math.max(0, quantity);
             pricePerUnit = Math.max(0L, pricePerUnit);
+            warehouseBefore = Math.max(0L, warehouseBefore);
         }
 
         public Intent withEscrowed(boolean value) {
-            return new Intent(orderId, sellerUuid, itemId, quantity, pricePerUnit, createdAt, value);
+            return new Intent(orderId, sellerUuid, itemId, quantity, pricePerUnit, createdAt, warehouseBefore, value);
         }
     }
 
@@ -76,6 +77,7 @@ public final class CommoditySellIntentSavedData extends SavedData {
             value.putInt("quantity", intent.quantity());
             value.putLong("pricePerUnit", intent.pricePerUnit());
             value.putLong("createdAt", intent.createdAt());
+            value.putLong("warehouseBefore", intent.warehouseBefore());
             value.putBoolean("escrowed", intent.escrowed());
             list.add(value);
         }
@@ -93,7 +95,7 @@ public final class CommoditySellIntentSavedData extends SavedData {
                     || value.getLong("pricePerUnit") <= 0L) continue;
             data.intents.add(new Intent(value.getString("orderId"), value.getUUID("seller"),
                     value.getString("itemId"), value.getInt("quantity"), value.getLong("pricePerUnit"),
-                    value.getLong("createdAt"), value.getBoolean("escrowed")));
+                    value.getLong("createdAt"), value.getLong("warehouseBefore"), value.getBoolean("escrowed")));
         }
         return data;
     }

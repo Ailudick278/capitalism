@@ -71,7 +71,8 @@ public final class CommodityMarket {
         String orderId = UUID.randomUUID().toString();
         CommoditySellIntentSavedData intents = CommoditySellIntentSavedData.get(player.getServer());
         intents.add(new CommoditySellIntentSavedData.Intent(orderId, player.getUUID(), itemId, quantity,
-                pricePerUnit, player.getServer().overworld().getGameTime(), false));
+                pricePerUnit, player.getServer().overworld().getGameTime(),
+                warehouse.count(player.getUUID(), itemId), false));
         if (!warehouse.consume(player.getUUID(), commodity.getItem(), quantity)) {
             intents.remove(orderId);
             return false;
@@ -158,8 +159,18 @@ public final class CommodityMarket {
                     .get(net.minecraft.resources.ResourceLocation.parse(intent.itemId())));
             if (item.isEmpty()) continue;
             if (!intent.escrowed()) {
-                if (!warehouse.consume(seller.getUUID(), item.getItem(), intent.quantity())) continue;
+                long current = warehouse.count(seller.getUUID(), intent.itemId());
+                long expectedAfter = intent.warehouseBefore() >= intent.quantity()
+                        ? intent.warehouseBefore() - intent.quantity() : -1L;
+                if (current == intent.warehouseBefore()) {
+                    if (!warehouse.consume(seller.getUUID(), item.getItem(), intent.quantity())) continue;
+                } else if (current != expectedAfter) {
+                    continue;
+                }
                 intents.markEscrowed(intent.orderId());
+            } else if (warehouse.count(seller.getUUID(), intent.itemId())
+                    != intent.warehouseBefore() - intent.quantity()) {
+                continue;
             }
             orders.addOrder(new MarketOrder(intent.orderId(), intent.sellerUuid().toString(), item,
                     intent.quantity(), intent.pricePerUnit(), true, intent.createdAt()));
