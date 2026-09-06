@@ -1,5 +1,6 @@
 package com.ailudick.capitalismmod.market;
 
+import com.ailudick.capitalismmod.population.MigrationEconomics;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderLookup;
@@ -98,15 +99,12 @@ public final class LogisticsInfrastructureSavedData extends SavedData {
 
     /** Returns the daily-need-equivalent friction of moving to a region. */
     public long migrationFriction(long dailyNeedMinor, int householdSize, String destination) {
-        if (dailyNeedMinor <= 0L || householdSize <= 0) return 0L;
-        long base;
-        try {
-            base = Math.multiplyExact(dailyNeedMinor, householdSize);
-        } catch (ArithmeticException e) {
-            base = Long.MAX_VALUE;
-        }
-        long rate = 100L - accessScore(destination);
-        return base > Long.MAX_VALUE / rate ? Long.MAX_VALUE : base * rate / 100L;
+        return migrationFrictionForAccess(dailyNeedMinor, householdSize, accessScore(destination));
+    }
+
+    /** Pure arithmetic form used by tests and by future regional service models. */
+    public static long migrationFrictionForAccess(long dailyNeedMinor, int householdSize, int accessScore) {
+        return MigrationEconomics.friction(dailyNeedMinor, householdSize, accessScore);
     }
 
     @Override
