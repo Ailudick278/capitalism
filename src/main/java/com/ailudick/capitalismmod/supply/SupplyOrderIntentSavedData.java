@@ -22,6 +22,11 @@ public final class SupplyOrderIntentSavedData extends SavedData {
                          long unitPrice, long createdAt, String buyerCompanyId, int qualityScore,
                          boolean paid) {
         public Intent {
+            orderId = orderId == null ? "" : orderId;
+            companyName = companyName == null ? "" : companyName;
+            itemId = itemId == null ? "" : itemId;
+            originRegion = originRegion == null ? "unknown" : originRegion;
+            destinationRegion = destinationRegion == null ? "unknown" : destinationRegion;
             quantity = Math.max(0, quantity);
             unitPrice = Math.max(0L, unitPrice);
             buyerCompanyId = buyerCompanyId == null ? "" : buyerCompanyId;
