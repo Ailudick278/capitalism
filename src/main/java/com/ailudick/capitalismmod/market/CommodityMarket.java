@@ -11,6 +11,7 @@ import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxType;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
+import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -351,6 +352,7 @@ public final class CommodityMarket {
 
     /** Applies mean reversion and supply/demand to each commodity, recording a candle. */
     public static void updatePrices(MinecraftServer server) {
+        EconomicEventService.resolveExpired(server, server.overworld().getGameTime());
         CommoditySavedData data = CommoditySavedData.get(server);
         Set<String> ids = new LinkedHashSet<>();
         for (ItemStack stack : Commodities.ALL) {
@@ -367,6 +369,8 @@ public final class CommodityMarket {
             long householdDemand = PopulationSavedData.get(server).demandUnits(id, oldPrice);
             supply = householdDemand >= supply ? -Math.min(1_000_000L, householdDemand - supply) : supply - householdDemand;
             long newPrice = CommodityPriceEconomics.nextPrice(oldPrice, fundamental, netVolume, supply);
+            newPrice = applyShock(newPrice, EconomicEventService.commodityPriceShockBps(server, id,
+                    server.overworld().getGameTime()));
             newPrice = applyPriceLimit(data, id, newPrice);
             data.putPrice(id, newPrice);
             data.resetNetVolume(id);
@@ -374,6 +378,14 @@ public final class CommodityMarket {
             data.addCandle(id, new Candle(oldPrice, Math.max(oldPrice, newPrice), Math.min(oldPrice, newPrice), newPrice));
         }
         data.setDirty();
+    }
+
+    private static long applyShock(long price, int shockBps) {
+        if (price <= 0L || shockBps == 0) return Math.max(1L, price);
+        long delta = price * (long) shockBps / 10000L;
+        if (shockBps > 0 && delta > Long.MAX_VALUE - price) return Long.MAX_VALUE;
+        if (shockBps < 0 && delta < -price) return 1L;
+        return Math.max(1L, price + delta);
     }
 
     /** Rolls the trading day: the previous close becomes the current price for every commodity. */
