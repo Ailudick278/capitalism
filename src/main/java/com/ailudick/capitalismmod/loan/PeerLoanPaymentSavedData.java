@@ -62,6 +62,8 @@ public final class PeerLoanPaymentSavedData extends SavedData {
     public void append(Payment payment) {
         if (payment == null || payment.loanId() == null || payment.loanId().isBlank()
                 || payment.lender() == null || payment.borrower() == null || payment.total() <= 0L) return;
+        String source = payoutSource(payment);
+        if (!source.isBlank() && payments.stream().anyMatch(existing -> source.equals(payoutSource(existing)))) return;
         payments.add(payment);
         while (payments.size() > MAX_RECORDS) payments.remove(0);
         setDirty();
