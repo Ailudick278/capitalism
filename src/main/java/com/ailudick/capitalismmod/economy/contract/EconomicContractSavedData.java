@@ -96,6 +96,9 @@ public final class EconomicContractSavedData extends SavedData {
     public int settleOverdue(long now) {
         int changed = 0;
         for (EconomicContract contract : List.copyOf(contracts)) {
+            // Trade orders own their deadline, refund and inventory semantics;
+            // their domain service must emit the terminal contract event.
+            if (contract.type() == ContractType.TRADE) continue;
             if (contract.endsAt() <= 0L || now <= contract.endsAt()) continue;
             if (contract.status() == ContractStatus.OFFERED && transition(contract.id(), ContractStatus.EXPIRED, now)) {
                 changed++;
