@@ -17,6 +17,7 @@ import com.ailudick.capitalismmod.bank.BankRecoveryRules;
 import com.ailudick.capitalismmod.bank.BankExposureAuditRules;
 import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalAuditRules;
+import com.ailudick.capitalismmod.bank.BankLiquidityAuditRules;
 import com.ailudick.capitalismmod.risk.FinancialRiskAuditRules;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
@@ -302,11 +303,9 @@ public final class EconomyAuditService {
                 issues.add("financial risk snapshot invalid day " + snapshot.day());
             }
         }
-        for (var snapshot : BankLiquiditySavedData.get(server).snapshots()) {
-            if (snapshot.day() < 0L || snapshot.depositsMinor() < 0L || snapshot.loanDebtMinor() < 0L
-                    || snapshot.withdrawnMinor() < 0L || snapshot.withdrawnMinor() > snapshot.depositsMinor()) {
-                issues.add("bank liquidity snapshot invalid day " + snapshot.day());
-            }
+        var liquiditySnapshots = BankLiquiditySavedData.get(server).snapshots();
+        if (!BankLiquidityAuditRules.validHistory(liquiditySnapshots)) {
+            issues.add("bank liquidity snapshot history invalid");
         }
         BankCapitalSavedData bankCapital = BankCapitalSavedData.get(server);
         if (!BankCapitalAuditRules.validState(bankCapital.initialized(), bankCapital.capitalMinor(),
