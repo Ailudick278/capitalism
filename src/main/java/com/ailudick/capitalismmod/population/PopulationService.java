@@ -37,10 +37,20 @@ public final class PopulationService {
             long cash = add(household.cashMinor(), income);
             int residents = population.population(household.region());
             int housingUnits = LogisticsInfrastructureSavedData.get(server).count(household.region(), "housing");
-            long need = add(multiply(household.dailyNeedMinor(), household.size()),
-                    multiply(CityHousingSavedData.get(server).dailyRent(household.region(), residents, housingUnits), household.size()));
-            ConsumptionResult result = consume(server, household, cash, need, day);
-            int spendingWelfare = need <= 0L ? 100 : (int) Math.max(0L, Math.min(100L, result.spent() * 100L / need));
+            long livingNeed = multiply(household.dailyNeedMinor(), household.size());
+            long rentPerResident = CityHousingSavedData.get(server).dailyRent(household.region(), residents, housingUnits);
+            long rentDue = multiply(rentPerResident, household.size());
+            ConsumptionResult goods = consume(server, household, cash, livingNeed, day);
+            HousingLeaseSavedData.Payment rent = HousingLeaseSavedData.get(server).settleRent(household.id(),
+                    household.region(), day, rentPerResident, rentDue, goods.remainingCash());
+            if (rent.paidMinor() > 0L) {
+                com.ailudick.capitalismmod.government.GovernmentPolicySavedData.get(server)
+                        .collectRent(rent.id(), day, household.id(), household.region(), rent.paidMinor());
+            }
+            long remainingCash = Math.max(0L, goods.remainingCash() - rent.paidMinor());
+            long totalSpent = add(goods.spent(), rent.paidMinor());
+            long totalNeed = add(livingNeed, rentDue);
+            int spendingWelfare = totalNeed <= 0L ? 100 : (int) Math.max(0L, Math.min(100L, totalSpent * 100L / totalNeed));
             int serviceWelfare = LogisticsInfrastructureSavedData.get(server)
                     .publicServiceScore(household.region(), population.population(household.region()));
             int welfare = spendingWelfare * 70 / 100 + serviceWelfare * 30 / 100;
@@ -53,7 +63,7 @@ public final class PopulationService {
             int health = EducationHealthEconomics.nextHealth(household.health(), clinicCoverage, spendingWelfare);
             int education = EducationHealthEconomics.nextEducation(household.education(), schoolCoverage, household.workingAge());
             boolean employed = !labor.activeForWorker(household.id()).isEmpty();
-            Household settled = household.withSettlement(day, result.remainingCash(), welfare, household.region())
+            Household settled = household.withSettlement(day, remainingCash, welfare, household.region())
                     .withEmploymentState(employed)
                     .withHumanCapital(health, education)
                     .withAnnualAging(day);

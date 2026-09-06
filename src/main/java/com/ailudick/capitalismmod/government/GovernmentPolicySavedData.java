@@ -19,11 +19,14 @@ public final class GovernmentPolicySavedData extends SavedData {
     private int policyRateBasisPoints;
     private final List<Transaction> transactions = new ArrayList<>();
     private final List<TaxRevenue> taxRevenues = new ArrayList<>();
+    private final List<RentRevenue> rentRevenues = new ArrayList<>();
 
     public record Transaction(String id, long day, String householdId, long amount, long balanceAfter) {}
     public record TaxRevenue(String id, long day, String subject, String taxType,
                              String currencyId, long originalAmount, long convertedAmount,
                              long balanceAfter) {}
+    public record RentRevenue(String id, long day, String householdId, String region,
+                              long amount, long balanceAfter) {}
 
     private GovernmentPolicySavedData() {}
 
@@ -37,6 +40,7 @@ public final class GovernmentPolicySavedData extends SavedData {
     public int policyRateBasisPoints() { return policyRateBasisPoints; }
     public List<Transaction> transactions() { return List.copyOf(transactions); }
     public List<TaxRevenue> taxRevenues() { return List.copyOf(taxRevenues); }
+    public List<RentRevenue> rentRevenues() { return List.copyOf(rentRevenues); }
 
     public boolean setDailyBenefit(long amount) {
         if (amount < 0L || amount > 1_000_000_000L) return false;
@@ -69,6 +73,17 @@ public final class GovernmentPolicySavedData extends SavedData {
         return true;
     }
 
+    public boolean hasRent(String paymentId) { return rentRevenues.stream().anyMatch(r -> r.id().equals(paymentId)); }
+    public boolean collectRent(String paymentId, long day, String householdId, String region, long amount) {
+        if (paymentId == null || paymentId.isBlank() || householdId == null || householdId.isBlank()
+                || region == null || region.isBlank() || amount <= 0L || hasRent(paymentId)
+                || treasuryMinor > Long.MAX_VALUE - amount) return false;
+        treasuryMinor += amount;
+        rentRevenues.add(new RentRevenue(paymentId, day, householdId, region, amount, treasuryMinor));
+        while (rentRevenues.size() > MAX_TRANSACTIONS) rentRevenues.remove(0);
+        setDirty(); return true;
+    }
+
     public boolean spend(String householdId, long day, long amount, String transactionId) {
         if (householdId == null || householdId.isBlank() || amount <= 0L || amount > treasuryMinor
                 || transactionId == null || transactionId.isBlank()
@@ -97,7 +112,14 @@ public final class GovernmentPolicySavedData extends SavedData {
             e.putLong("converted", revenue.convertedAmount()); e.putLong("balance", revenue.balanceAfter());
             revenues.add(e);
         }
-        tag.put("taxRevenues", revenues); return tag;
+        tag.put("taxRevenues", revenues);
+        ListTag rents = new ListTag();
+        for (RentRevenue revenue : rentRevenues) {
+            CompoundTag e = new CompoundTag(); e.putString("id", revenue.id()); e.putLong("day", revenue.day());
+            e.putString("household", revenue.householdId()); e.putString("region", revenue.region());
+            e.putLong("amount", revenue.amount()); e.putLong("balance", revenue.balanceAfter()); rents.add(e);
+        }
+        tag.put("rentRevenues", rents); return tag;
     }
 
     public static GovernmentPolicySavedData load(CompoundTag tag, HolderLookup.Provider registries) {
@@ -122,6 +144,16 @@ public final class GovernmentPolicySavedData extends SavedData {
                 data.taxRevenues.add(new TaxRevenue(e.getString("id"), e.getLong("day"),
                         e.getString("subject"), e.getString("taxType"), e.getString("currency"),
                         e.getLong("original"), e.getLong("converted"), Math.max(0L, e.getLong("balance"))));
+            }
+        }
+        ListTag rents = tag.getList("rentRevenues", Tag.TAG_COMPOUND);
+        for (int i = Math.max(0, rents.size() - MAX_TRANSACTIONS); i < rents.size(); i++) {
+            CompoundTag e = rents.getCompound(i);
+            if (!e.getString("id").isBlank() && !e.getString("household").isBlank()
+                    && !e.getString("region").isBlank() && e.getLong("amount") > 0L) {
+                data.rentRevenues.add(new RentRevenue(e.getString("id"), e.getLong("day"),
+                        e.getString("household"), e.getString("region"), e.getLong("amount"),
+                        Math.max(0L, e.getLong("balance"))));
             }
         }
         return data;
