@@ -9,14 +9,12 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 /** Persistent invoices for scheduled land-rent installments. */
 public final class LandRentBillSavedData extends SavedData {
     private static final String ID = "capitalismmod_land_rent_bills";
     private static final int MAX_BILLS = 8192;
-    private static final Set<String> STATUSES = Set.of("PENDING", "PAID", "DEFAULTED");
     private final List<Bill> bills = new ArrayList<>();
 
     public record Bill(String id, String landId, UUID tenantUuid, UUID ownerUuid,
@@ -38,7 +36,7 @@ public final class LandRentBillSavedData extends SavedData {
     }
 
     public static boolean isValidStatus(String status) {
-        return status != null && STATUSES.contains(status);
+        return LandRentBillStatus.isValid(status);
     }
 
     public boolean create(Bill bill) {
