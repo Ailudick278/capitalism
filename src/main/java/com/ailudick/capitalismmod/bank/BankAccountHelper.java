@@ -197,6 +197,9 @@ public final class BankAccountHelper {
             if (accountBalance < amount) {
                 return false;
             }
+            if (!BankLiquidityService.authorizeWithdrawal(player.getServer(), currency.id(), amount)) {
+                return false;
+            }
             account = account.withBalance(currency.id(), accountBalance - amount)
                     .withTransaction(BankTransaction.now(player, "withdraw", currency.id(), -amount,
                             "cash_withdraw", "wallet"));
@@ -316,6 +319,9 @@ public final class BankAccountHelper {
             return false;
         }
         TermDeposit term = account.termDeposits().get(index);
+        if (!BankLiquidityService.authorizeWithdrawal(player.getServer(), term.currencyId(), term.principal())) {
+            return false;
+        }
         List<TermDeposit> terms = new ArrayList<>(account.termDeposits());
         terms.remove(index);
         account = account.withBalance(term.currencyId(), safeAdd(account.getBalance(term.currencyId()), term.principal()))
