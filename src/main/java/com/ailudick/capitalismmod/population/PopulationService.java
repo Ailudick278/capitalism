@@ -15,6 +15,7 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
+import com.ailudick.capitalismmod.Config;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 
@@ -49,7 +50,7 @@ public final class PopulationService {
                     com.ailudick.capitalismmod.government.GovernmentPolicySavedData.get(server)
                             .collectRent(rent.id(), day, household.id(), household.region(), rent.rentPaidMinor());
                 } else if (CompanySavedData.get(server).get(landlord) != null) {
-                    CompanyHelper.creditTreasuryNonOperatingOnce(server, landlord, "usd", rent.rentPaidMinor(),
+                    CompanyHelper.creditTreasuryNonOperatingOnce(server, landlord, Config.defaultCurrency().id(), rent.rentPaidMinor(),
                             "housing_rent", "Household housing rent", rent.id());
                 } else {
                     // A deleted landlord must not make household funds disappear.
