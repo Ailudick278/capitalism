@@ -63,6 +63,15 @@ public final class EconomyHelper {
 
     /** Pays {@code amount}: consumes currency items first, then falls back to bank accounts. */
     public static boolean tryPay(Player player, Currency currency, long amount) {
+        return tryPayInternal(player, currency, amount, "");
+    }
+
+    /** Pays while attaching a durable source reference to the successful payment log. */
+    public static boolean tryPayWithReference(Player player, Currency currency, long amount, String reference) {
+        return tryPayInternal(player, currency, amount, reference == null ? "" : reference);
+    }
+
+    private static boolean tryPayInternal(Player player, Currency currency, long amount, String reference) {
         if (amount < 0) {
             return false;
         }
@@ -76,7 +85,7 @@ public final class EconomyHelper {
         // 5-value coin.
         if (items >= amount && consumeItemsWithChange(player, currency, amount)) {
             postChanged(player, currency);
-            log(player, "支付", currency, amount);
+            log(player, "支付", currency, amount, reference);
             return true;
         }
         // If the physical denominations cannot make a valid payment plan,
@@ -88,7 +97,7 @@ public final class EconomyHelper {
             boolean success = trySpendFromAccounts(player, currency, amount);
             if (success) {
                 postChanged(player, currency);
-                log(player, "支付", currency, amount);
+                log(player, "支付", currency, amount, reference);
             }
             return success;
         }
@@ -105,7 +114,7 @@ public final class EconomyHelper {
         boolean success = trySpendFromAccounts(player, currency, remaining);
         if (success) {
             postChanged(player, currency);
-            log(player, "支付", currency, amount);
+            log(player, "支付", currency, amount, reference);
         }
         return success;
     }
@@ -223,9 +232,13 @@ public final class EconomyHelper {
     }
 
     private static void log(Player player, String action, Currency currency, long amount) {
+        log(player, action, currency, amount, "");
+    }
+
+    private static void log(Player player, String action, Currency currency, long amount, String reference) {
         if (player.getServer() != null) {
             EconomyLogSavedData.get(player.getServer()).append(
-                    player.getServer().overworld().getGameTime(), player.getUUID(), action, currency.id(), amount);
+                    player.getServer().overworld().getGameTime(), player.getUUID(), action, currency.id(), amount, reference);
         }
     }
 

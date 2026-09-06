@@ -17,7 +17,10 @@ public final class EconomyLogSavedData extends SavedData {
     private static final int MAX_ENTRIES = 2000;
     private final List<Entry> entries = new ArrayList<>();
 
-    public record Entry(long gameTime, UUID playerId, String action, String currencyId, long amount) {
+    public record Entry(long gameTime, UUID playerId, String action, String currencyId, long amount, String reference) {
+        public Entry(long gameTime, UUID playerId, String action, String currencyId, long amount) {
+            this(gameTime, playerId, action, currencyId, amount, "");
+        }
     }
 
     private EconomyLogSavedData() {
@@ -33,14 +36,26 @@ public final class EconomyLogSavedData extends SavedData {
     }
 
     public void append(long gameTime, UUID playerId, String action, String currencyId, long amount) {
+        append(gameTime, playerId, action, currencyId, amount, "");
+    }
+
+    public void append(long gameTime, UUID playerId, String action, String currencyId,
+                       long amount, String reference) {
         if (playerId == null || action == null || currencyId == null || amount <= 0) {
             return;
         }
-        entries.add(new Entry(gameTime, playerId, action, currencyId, amount));
+        entries.add(new Entry(gameTime, playerId, action, currencyId, amount,
+                reference == null ? "" : reference));
         if (entries.size() > MAX_ENTRIES) {
             entries.subList(0, entries.size() - MAX_ENTRIES).clear();
         }
         setDirty();
+    }
+
+    public boolean hasReference(UUID playerId, String reference) {
+        return playerId != null && reference != null && !reference.isBlank()
+                && entries.stream().anyMatch(entry -> playerId.equals(entry.playerId())
+                && reference.equals(entry.reference()));
     }
 
     @Override
@@ -53,6 +68,7 @@ public final class EconomyLogSavedData extends SavedData {
             nbt.putString("action", entry.action());
             nbt.putString("currency", entry.currencyId());
             nbt.putLong("amount", entry.amount());
+            if (!entry.reference().isBlank()) nbt.putString("reference", entry.reference());
             list.add(nbt);
         }
         tag.put("entries", list);
@@ -66,7 +82,8 @@ public final class EconomyLogSavedData extends SavedData {
             CompoundTag nbt = list.getCompound(i);
             if (nbt.hasUUID("player") && nbt.getLong("amount") > 0) {
                 data.entries.add(new Entry(nbt.getLong("time"), nbt.getUUID("player"),
-                        nbt.getString("action"), nbt.getString("currency"), nbt.getLong("amount")));
+                        nbt.getString("action"), nbt.getString("currency"), nbt.getLong("amount"),
+                        nbt.getString("reference")));
             }
         }
         return data;

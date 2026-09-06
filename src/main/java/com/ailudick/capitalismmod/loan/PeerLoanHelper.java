@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
+import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -43,7 +44,12 @@ public final class PeerLoanHelper {
             return false;
         }
         long totalMinor = Money.toMinor(payment);
-        if (totalMinor <= 0L || !EconomyHelper.tryPay(borrower, currency, totalMinor)) {
+        String debitReference = "peer-loan-debit:" + loan.id() + ":" + payment + ":"
+                + allocation.remainingPrincipal();
+        boolean alreadyDebited = EconomyLogSavedData.get(borrower.getServer())
+                .hasReference(borrower.getUUID(), debitReference);
+        if (totalMinor <= 0L || (!alreadyDebited
+                && !EconomyHelper.tryPayWithReference(borrower, currency, totalMinor, debitReference))) {
             borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
             return false;
         }
