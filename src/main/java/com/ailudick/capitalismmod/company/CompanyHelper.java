@@ -494,10 +494,7 @@ public final class CompanyHelper {
         return true;
     }
 
-    /**
-     * Automatic industry recipes are intentionally disabled. Company revenue and
-     * production will come from orders/contracts rather than a fixed recipe.
-     */
+    /** Legacy integration hook; configured production is handled by CompanyProductionTickHandler. */
     public static void accrueIncome(Player player) {
         // Kept as an integration hook for the future order settlement service.
     }
