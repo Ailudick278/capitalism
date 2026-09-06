@@ -37,11 +37,24 @@ public final class TaxRefundSavedData extends SavedData {
     }
     public Request get(String id) { return requests.stream().filter(r -> r.id().equals(id)).findFirst().orElse(null); }
     public boolean add(Request request) {
-        if ((request.amount() <= 0L && !request.status().equals("REJECTED"))
+        if (request == null || request.id() == null || request.id().isBlank()
+                || request.taxpayerUuid() == null || request.currencyId() == null || request.currencyId().isBlank()
+                || request.status() == null || request.status().isBlank()
+                || requests.stream().anyMatch(existing -> existing.id().equals(request.id()))
+                || (request.amount() <= 0L && !request.status().equals("REJECTED"))
                 || (!request.status().equals("REJECTED") && !pendingFor(request.taxpayerUuid()).isEmpty())) return false;
         requests.add(request); setDirty(); return true;
     }
-    public void replace(Request request) { for (int i = 0; i < requests.size(); i++) if (requests.get(i).id().equals(request.id())) { requests.set(i, request); setDirty(); return; } }
+    public void replace(Request request) {
+        if (request == null || request.id() == null || request.id().isBlank()
+                || request.taxpayerUuid() == null || request.currencyId() == null || request.currencyId().isBlank()
+                || request.status() == null || request.status().isBlank()) return;
+        for (int i = 0; i < requests.size(); i++) {
+            if (requests.get(i).id().equals(request.id())) {
+                requests.set(i, request); setDirty(); return;
+            }
+        }
+    }
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag list = new ListTag();
         for (Request r : requests) { CompoundTag e = new CompoundTag(); e.putString("id", r.id()); e.putUUID("taxpayer", r.taxpayerUuid()); e.putString("currency", r.currencyId()); e.putLong("amount", r.amount()); e.putLong("requestedAt", r.requestedAt()); e.putString("status", r.status()); e.putLong("reviewedAt", r.reviewedAt()); e.putString("reviewer", r.reviewer()); e.putString("reason", r.reason()); e.putString("sourceSummary", r.sourceSummary()); e.putString("allocations", r.allocations()); ListTag details = new ListTag(); r.allocationDetails().forEach(a -> { CompoundTag d = new CompoundTag(); d.putString("source", a.sourceId()); d.putString("subjectType", a.subjectType()); d.putString("subjectId", a.subjectId()); d.putLong("periodStart", a.periodStart()); d.putLong("periodEnd", a.periodEnd()); d.putLong("originalCredit", a.originalCredit()); d.putLong("refundAmount", a.refundAmount()); details.add(d); }); e.put("allocationDetails", details); list.add(e); }
