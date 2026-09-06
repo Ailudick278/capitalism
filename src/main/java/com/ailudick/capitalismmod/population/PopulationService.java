@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.population;
 import com.ailudick.capitalismmod.economy.labor.EmploymentRecord;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketService;
+import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
 import com.ailudick.capitalismmod.economy.labor.JobOffer;
 import com.ailudick.capitalismmod.economy.labor.LaborProfile;
 import com.ailudick.capitalismmod.market.Commodities;
@@ -94,6 +95,10 @@ public final class PopulationService {
     public static int matchResidents(MinecraftServer server, long now) {
         PopulationSavedData population = PopulationSavedData.get(server); LaborMarketSavedData labor = LaborMarketSavedData.get(server); int hired = 0;
         for (JobOffer offer : labor.openOffers(server.overworld().getGameTime())) {
+            int offerLimit = EconomicEventService.effectiveVacancies(offer.vacancies(),
+                    EconomicEventService.laborDemandShockBps(server, offer.region(), server.overworld().getGameTime()));
+            int offerHired = 0;
+            if (offerLimit <= 0) continue;
             for (Household household : population.households()) {
                 if (!isNpc(household.id()) || household.workingAge() <= 0 || !labor.activeForWorker(household.id()).isEmpty()) continue;
                 boolean local = household.region().equals(offer.region());
@@ -121,7 +126,9 @@ public final class PopulationService {
                 boolean migrated = local || population.migrate(household.id(), offer.region(), now, relocationCost);
                 if (!migrated) continue;
                 if (LaborMarketService.hireNpc(server, offer.id(), household.id())) {
-                    hired++; break;
+                    hired++; offerHired++;
+                    if (offerHired >= offerLimit) break;
+                    continue;
                 }
                 if (!local) {
                     population.move(household.id(), originalRegion, now);

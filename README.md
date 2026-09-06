@@ -38,6 +38,7 @@
 /economy-audit
 /economicevent priceShock <eventId> <itemId> <shockBps> <days>
 /economicevent logisticsShock <eventId> <origin> <destination> <capacityBps> <days>
+/economicevent laborShock <eventId> <region> <demandBps> <days>
 /economicevent list
 ```
 

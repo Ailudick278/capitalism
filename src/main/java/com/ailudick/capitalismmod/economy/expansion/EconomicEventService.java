@@ -77,6 +77,19 @@ public final class EconomicEventService {
         return EconomicExpansionSavedData.get(server).addOnce(event);
     }
 
+    public static boolean addLaborDemandShock(MinecraftServer server, String eventId, String region,
+                                               int shockBps, long startsAt, int durationDays) {
+        if (server == null || eventId == null || eventId.isBlank() || region == null || region.isBlank()
+                || shockBps < -9000 || shockBps > 9000 || startsAt < 0L || durationDays <= 0) return false;
+        long endsAt = startsAt + PerpetualCalendar.ticksForDays(durationDays);
+        if (endsAt <= startsAt) return false;
+        String type = shockBps >= 0 ? "labor_demand_shock_up" : "labor_demand_shock_down";
+        EconomicEvent event = new EconomicEvent(eventId, ExpansionSystem.ECONOMIC_EVENTS, type,
+                server.overworld().getGameTime(), startsAt, endsAt, null,
+                EconomicActorRef.of("region", region.trim()), Math.abs((long) shockBps), "bps", "active");
+        return EconomicExpansionSavedData.get(server).addOnce(event);
+    }
+
     public static int commodityPriceShockBps(MinecraftServer server, String itemId, long gameTime) {
         if (server == null || itemId == null || itemId.isBlank()) return 0;
         int total = 0;
@@ -100,6 +113,25 @@ public final class EconomicEventService {
             total = (int) Math.max(-9000L, Math.min(9000L, (long) total + signed));
         }
         return total;
+    }
+
+    public static int laborDemandShockBps(MinecraftServer server, String region, long gameTime) {
+        if (server == null || region == null || region.isBlank()) return 0;
+        int total = 0;
+        for (EconomicEvent event : EconomicExpansionSavedData.get(server).eventsFor(ExpansionSystem.ECONOMIC_EVENTS)) {
+            if (!event.activeAt(gameTime) || event.target() == null || !region.equals(event.target().id())) continue;
+            long signed = "labor_demand_shock_down".equals(event.type())
+                    ? -event.amountMinor() : event.amountMinor();
+            total = (int) Math.max(-9000L, Math.min(9000L, (long) total + signed));
+        }
+        return total;
+    }
+
+    public static int effectiveVacancies(int vacancies, int shockBps) {
+        if (vacancies <= 0) return 0;
+        int bounded = Math.max(-9000, Math.min(9000, shockBps));
+        long adjusted = (long) vacancies * (10_000L + bounded) / 10_000L;
+        return (int) Math.max(0L, Math.min(vacancies, adjusted));
     }
 
     public static int applyCapacityShock(int baseCapacity, int shockBps) {

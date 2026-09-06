@@ -11,6 +11,7 @@
 - `/economicevent list` 以只读方式查看当前有效事件、目标商品和剩余模拟时间。
 - `/economicevent logisticsShock <eventId> <origin> <destination> <capacityBps> <days>` 会改变指定路线的批次运力和运输时间；负值表示中断/拥堵，正值表示临时增容。
 - 路线冲击还会按同一基点幅度调整运输中断概率，并限制在 0% 到 95% 之间；因此物流损失、保险索赔和合同违约可以沿现有结算链继续发生。
+- `/economicevent laborShock <eventId> <region> <demandBps> <days>` 会按区域调整当日可吸收的招聘额度；已有就业合同不受追溯修改，负冲击会通过未就业家庭进入消费和迁移系统。
 - 当价格达到基础价值的 2.5 倍或低于 40% 时，市场会自动生成 3 天、±1000 基点的反向稳定事件；同一商品已有冲击时不会叠加新事件。
 
 ## 存在的问题

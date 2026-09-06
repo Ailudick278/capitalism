@@ -34,9 +34,16 @@ public final class EconomicEventCommand {
         var destination = Commands.argument("destination", StringArgumentType.word()).then(capacity);
         var origin = Commands.argument("origin", StringArgumentType.word()).then(destination);
         var logisticsShock = Commands.literal("logisticsShock").then(Commands.argument("eventId", StringArgumentType.word()).then(origin));
+        var laborDays = Commands.argument("days", IntegerArgumentType.integer(1, 365))
+                .executes(c -> labor(c.getSource(), StringArgumentType.getString(c, "eventId"),
+                        StringArgumentType.getString(c, "region"), IntegerArgumentType.getInteger(c, "demandBps"),
+                        IntegerArgumentType.getInteger(c, "days")));
+        var demand = Commands.argument("demandBps", IntegerArgumentType.integer(-9000, 9000)).then(laborDays);
+        var region = Commands.argument("region", StringArgumentType.word()).then(demand);
+        var laborShock = Commands.literal("laborShock").then(Commands.argument("eventId", StringArgumentType.word()).then(region));
         var list = Commands.literal("list").executes(c -> list(c.getSource()));
         dispatcher.register(Commands.literal("economicevent").requires(s -> s.hasPermission(2))
-                .then(priceShock).then(logisticsShock).then(list));
+                .then(priceShock).then(logisticsShock).then(laborShock).then(list));
     }
 
     private static int logistics(CommandSourceStack source, String eventId, String origin, String destination,
@@ -45,6 +52,13 @@ public final class EconomicEventCommand {
         if (!EconomicEventService.addLogisticsCapacityShock(source.getServer(), eventId, origin, destination,
                 capacityBps, now, days)) return 0;
         source.sendSuccess(() -> Component.literal("Logistics capacity shock created: " + eventId), true);
+        return 1;
+    }
+
+    private static int labor(CommandSourceStack source, String eventId, String region, int demandBps, int days) {
+        long now = source.getServer().overworld().getGameTime();
+        if (!EconomicEventService.addLaborDemandShock(source.getServer(), eventId, region, demandBps, now, days)) return 0;
+        source.sendSuccess(() -> Component.literal("Labor demand shock created: " + eventId), true);
         return 1;
     }
 
