@@ -147,7 +147,8 @@ public final class LandRentTickHandler {
                 }
                 String payoutKey = auction.claimId() + ":" + auction.endsAt() + ":owner-payout";
                 if (ownerPayout > 0L && !auctionJournal.has(payoutKey)) {
-                    payOwner(server, server.getPlayerList().getPlayer(auction.ownerUuid()), auction.ownerUuid(), ownerPayout);
+                    payOwner(server, server.getPlayerList().getPlayer(auction.ownerUuid()), auction.ownerUuid(), ownerPayout,
+                            "land-auction-owner-payout:" + payoutKey);
                     auctionJournal.record(payoutKey);
                 }
                 TaxTransactionService.assess(server, TaxType.LAND_TRANSFER, auction.ownerUuid(), Currencies.CNY.id(),
@@ -231,7 +232,7 @@ public final class LandRentTickHandler {
             }
             boolean paid = EconomyHelper.tryPay(tenant, Config.defaultCurrency(), totalDue);
             if (paid) {
-                payOwner(server, owner, claim.ownerUuid(), totalDue);
+                payOwner(server, owner, claim.ownerUuid(), totalDue, billId + ":owner");
                 bills.markStatus(billId, "PAID");
                 data.put(claim.withLeaseState(claim.leaseeUuid(), claim.leaseUntil(), claim.leaseRent(),
                         0L, 0L));
@@ -275,7 +276,8 @@ public final class LandRentTickHandler {
                 continue;
             }
             ServerPlayer owner = server.getPlayerList().getPlayer(claim.ownerUuid());
-            payOwner(server, owner, claim.ownerUuid(), debt);
+            payOwner(server, owner, claim.ownerUuid(), debt,
+                    "land-rent-arrears:" + claim.id() + ":" + claim.leaseUntil() + ":" + debt);
             data.put(claim.withLeaseState(claim.leaseeUuid(), claim.leaseUntil(), claim.leaseRent(), 0L, 0L));
             logLand(server, claim, "补缴租金:" + debt);
             tenant.displayClientMessage(net.minecraft.network.chat.Component.literal("已自动补缴土地租金：" + debt), true);
@@ -283,12 +285,12 @@ public final class LandRentTickHandler {
         }
     }
 
-    private static void payOwner(MinecraftServer server, ServerPlayer owner, java.util.UUID ownerUuid, long amount) {
-        if (owner != null) {
-            EconomyHelper.giveMoney(owner, Config.defaultCurrency(), amount);
-        } else {
-            MarketMailboxSavedData.get(server).creditMoney(ownerUuid, Config.defaultCurrencyId(), amount);
-        }
+    private static void payOwner(MinecraftServer server, ServerPlayer owner, java.util.UUID ownerUuid,
+                                 long amount, String source) {
+        if (amount <= 0L || ownerUuid == null || source == null || source.isBlank()) return;
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        mailbox.creditMoneyOnce(ownerUuid, Config.defaultCurrencyId(), amount, source);
+        if (owner != null) mailbox.redeemMoneyOnly(owner);
     }
 
     private static void refundAuctionBid(MinecraftServer server, LandAuctionSavedData.Auction auction,
