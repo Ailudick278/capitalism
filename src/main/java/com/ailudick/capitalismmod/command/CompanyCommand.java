@@ -564,6 +564,7 @@ public class CompanyCommand {
         var statement = com.ailudick.capitalismmod.company.CompanyFinancialSnapshot.from(player.getServer(), company);
         source.sendSuccess(() -> Component.literal("Assets: USD " + statement.assets()
                 + " (cash " + statement.cash() + ", inventory " + statement.inventory()
+                + ", inventory write-down " + statement.inventoryWriteDown()
                 + ", equipment " + statement.equipment() + ")"), false);
         source.sendSuccess(() -> Component.literal("Liabilities: USD " + statement.liabilities()
                 + " (tax " + statement.taxLiabilities() + ", loans " + statement.loanLiabilities()
