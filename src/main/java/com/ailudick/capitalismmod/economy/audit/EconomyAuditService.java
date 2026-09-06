@@ -42,5 +42,15 @@ public final class EconomyAuditService {
         for (var entry : labor.employments()) { var account = LaborPayrollSavedData.get(server).account(entry.id()); if (account.unpaid() < 0L) issues.add("payroll " + entry.id() + " negative arrears"); }
         return List.copyOf(issues);
     }
+    public static boolean isBalanceChainValid(List<CompanyLedgerEntry> entries) {
+        Map<String, Long> previous = new HashMap<>();
+        for (CompanyLedgerEntry entry : entries) {
+            if (entry == null || entry.balanceAfter() < 0L) return false;
+            Long old = previous.get(entry.currencyId());
+            if (old != null && safeAdd(old, entry.amount()) != entry.balanceAfter()) return false;
+            previous.put(entry.currencyId(), entry.balanceAfter());
+        }
+        return true;
+    }
     private static long safeAdd(long a, long b) { try { return Math.addExact(a, b); } catch (ArithmeticException e) { return Long.MIN_VALUE; } }
 }

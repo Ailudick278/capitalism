@@ -10,6 +10,8 @@ import com.ailudick.capitalismmod.economy.contract.EconomicContract;
 import com.ailudick.capitalismmod.economy.labor.LaborProfile;
 import com.ailudick.capitalismmod.economy.labor.LaborSkill;
 import com.ailudick.capitalismmod.population.Household;
+import com.ailudick.capitalismmod.company.CompanyLedgerEntry;
+import com.ailudick.capitalismmod.economy.audit.EconomyAuditService;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
@@ -67,5 +69,12 @@ class EconomicExpansionFrameworkTest {
         Household settled = household.withSettlement(4L, 200L, 40, "spawn");
         assertEquals(4L, settled.lastSettlementDay());
         assertEquals(40, settled.satisfaction());
+
+        var entries = java.util.List.of(new CompanyLedgerEntry("factory", 1L, "credit", "usd", 100L, 100L, "seed"),
+                new CompanyLedgerEntry("factory", 2L, "debit", "usd", -25L, 75L, "purchase"));
+        assertTrue(EconomyAuditService.isBalanceChainValid(entries));
+        assertTrue(!EconomyAuditService.isBalanceChainValid(java.util.List.of(
+                new CompanyLedgerEntry("factory", 1L, "credit", "usd", 100L, 100L, "seed"),
+                new CompanyLedgerEntry("factory", 2L, "debit", "usd", -25L, 80L, "bad"))));
     }
 }
