@@ -296,15 +296,11 @@ public final class SupplyMarket {
         return true;
     }
 
-    private static long proportionalInputCredit(PurchaseOrder order) {
+    static long proportionalInputCredit(PurchaseOrder order) {
         if (order == null || order.inputCreditMinor() <= 0L || order.remaining() <= 0
                 || order.originalQuantity() <= 0) return 0L;
-        try {
-            return Math.multiplyExact(order.inputCreditMinor(), (long) order.remaining())
-                    / order.originalQuantity();
-        } catch (ArithmeticException e) {
-            return order.inputCreditMinor();
-        }
+        return SupplyOrderTaxCreditCalculator.proportional(order.inputCreditMinor(),
+                order.remaining(), order.originalQuantity());
     }
 
     /** Delivers backorders to buyers from the supplier's current stock. Called after production. */
