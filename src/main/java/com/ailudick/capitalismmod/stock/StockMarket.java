@@ -220,9 +220,22 @@ public final class StockMarket {
     private static boolean placeBuyOrder(ServerPlayer player, EconomySavedData data, String stockId, int quantity, long pricePerUnit) {
         String orderId = UUID.randomUUID().toString();
         long total = EconomyMath.multiply(quantity, pricePerUnit);
-        if (total < 0 || !EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(total))) {
+        if (total < 0 || Money.toMinor(total) <= 0L) {
             return false;
         }
+        StockBuyIntentSavedData intents = StockBuyIntentSavedData.get(player.getServer());
+        intents.add(new StockBuyIntentSavedData.Intent(orderId, player.getUUID(), stockId, quantity,
+                pricePerUnit, player.getServer().overworld().getGameTime(), false));
+        String orderSource = "stock-buy-order:" + orderId;
+        if (!EconomyHelper.tryPayWithReference(player, Currencies.USD, Money.toMinor(total), orderSource)) {
+            intents.remove(orderId);
+            return false;
+        }
+        intents.markPaid(orderId);
+        long orderTime = player.getServer().overworld().getGameTime();
+        data.addOrder(new StockOrder(orderId, player.getStringUUID(), stockId, quantity, pricePerUnit,
+                false, orderTime));
+        intents.remove(orderId);
         int remaining = quantity;
         long spent = 0L;
 
@@ -254,14 +267,15 @@ public final class StockMarket {
             spent += gross;
             remaining -= fill;
             reduceOrRemove(data, sell, fill);
+            StockOrder currentBuy = data.findOrder(orderId);
+            if (currentBuy != null) {
+                if (currentBuy.quantity() <= fill) data.removeOrder(orderId);
+                else data.replaceOrder(currentBuy.withQuantity(currentBuy.quantity() - fill));
+            }
             NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, null, null,
                     fill, "usd", gross, "stock", duty(gross), stockId));
         }
 
-        if (remaining > 0) {
-            data.addOrder(new StockOrder(orderId, player.getStringUUID(),
-                    stockId, remaining, pricePerUnit, false, player.getServer().overworld().getGameTime()));
-        }
         long reserved = EconomyMath.multiply(remaining, pricePerUnit);
         long refund = total - spent - reserved;
         if (refund > 0) {
@@ -271,6 +285,36 @@ public final class StockMarket {
             mailbox.redeemMoneyOnly(player);
         }
         return true;
+    }
+
+    /** Restores paid stock buy intents whose order record was interrupted. */
+    public static int recoverPendingBuyIntents(MinecraftServer server) {
+        if (server == null) return 0;
+        EconomySavedData data = EconomySavedData.get(server);
+        StockBuyIntentSavedData intents = StockBuyIntentSavedData.get(server);
+        int recovered = 0;
+        for (StockBuyIntentSavedData.Intent intent : intents.intents()) {
+            if (data.findOrder(intent.orderId()) != null) {
+                intents.remove(intent.orderId());
+                recovered++;
+                continue;
+            }
+            ServerPlayer buyer = server.getPlayerList().getPlayer(intent.buyerUuid());
+            if (buyer == null) continue;
+            long total = EconomyMath.multiply(intent.quantity(), intent.pricePerUnit());
+            if (total < 0L || Money.toMinor(total) <= 0L) {
+                intents.remove(intent.orderId());
+                continue;
+            }
+            if (!intent.paid() && !EconomyHelper.tryPayWithReference(buyer, Currencies.USD,
+                    Money.toMinor(total), "stock-buy-order:" + intent.orderId())) continue;
+            if (!intent.paid()) intents.markPaid(intent.orderId());
+            data.addOrder(new StockOrder(intent.orderId(), intent.buyerUuid().toString(), intent.stockId(),
+                    intent.quantity(), intent.pricePerUnit(), false, intent.createdAt()));
+            intents.remove(intent.orderId());
+            recovered++;
+        }
+        return recovered;
     }
 
     private static boolean placeSellOrder(ServerPlayer player, EconomySavedData data, String stockId, int quantity, long pricePerUnit) {
