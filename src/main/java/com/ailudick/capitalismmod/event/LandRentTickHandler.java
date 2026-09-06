@@ -222,7 +222,7 @@ public final class LandRentTickHandler {
                         0L, 0L));
                 logLand(server, claim, "租金结算:" + totalDue);
                 tenant.displayClientMessage(net.minecraft.network.chat.Component.literal("已支付土地租金：" + totalDue), true);
-                owner.displayClientMessage(net.minecraft.network.chat.Component.literal("已收到土地租金：" + totalDue), true);
+                if (owner != null) owner.displayClientMessage(net.minecraft.network.chat.Component.literal("已收到土地租金：" + totalDue), true);
             } else {
                 long debt = addSaturated(claim.leaseDebt(), claim.leaseRent());
                 long graceUntil = claim.leaseGraceUntil() > 0L ? claim.leaseGraceUntil() : now + GRACE_DAYS * TICKS_PER_DAY;
@@ -230,13 +230,13 @@ public final class LandRentTickHandler {
                     data.put(LandLeaseDebtService.endLease(server, claim));
                     logLand(server, claim, "租约自动解除");
                     tenant.displayClientMessage(net.minecraft.network.chat.Component.literal("土地欠租超过宽限期，租约已解除"), true);
-                    owner.displayClientMessage(net.minecraft.network.chat.Component.literal("承租人欠租超过宽限期，租约已解除"), true);
+                    if (owner != null) owner.displayClientMessage(net.minecraft.network.chat.Component.literal("承租人欠租超过宽限期，租约已解除"), true);
                 } else {
                     data.put(claim.withLeaseState(claim.leaseeUuid(), claim.leaseUntil(), claim.leaseRent(),
                             debt, graceUntil));
                     logLand(server, claim, "产生欠租:" + debt);
                     tenant.displayClientMessage(net.minecraft.network.chat.Component.literal("土地租金余额不足，当前欠租：" + debt), true);
-                    owner.displayClientMessage(net.minecraft.network.chat.Component.literal("承租人未支付租金，当前欠租：" + debt), true);
+                    if (owner != null) owner.displayClientMessage(net.minecraft.network.chat.Component.literal("承租人未支付租金，当前欠租：" + debt), true);
                 }
             }
         }
