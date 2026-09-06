@@ -23,6 +23,7 @@ import com.ailudick.capitalismmod.land.LandRentBillSavedData;
 import com.ailudick.capitalismmod.supply.SupplyEscrowSavedData;
 import com.ailudick.capitalismmod.business.BusinessOrderEscrowSavedData;
 import com.ailudick.capitalismmod.business.BusinessOrderSavedData;
+import com.ailudick.capitalismmod.auction.AuctionListingIntentSavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -43,6 +44,9 @@ public final class EconomyAuditService {
         EconomicSettlementJournalSavedData.get(server).pendingEntries().stream().limit(100)
                 .forEach(entry -> issues.add("pending daily settlement "
                         + entry.day() + "/" + entry.phase()));
+        AuctionListingIntentSavedData.get(server).intents().stream().limit(100)
+                .forEach(intent -> issues.add("pending auction listing "
+                        + intent.auctionId() + "/" + intent.itemId() + "/" + intent.escrowed()));
         CompanySavedData companies = CompanySavedData.get(server);
         CompanyLedgerSavedData ledgers = CompanyLedgerSavedData.get(server);
         for (Company company : companies.companies().values()) {
