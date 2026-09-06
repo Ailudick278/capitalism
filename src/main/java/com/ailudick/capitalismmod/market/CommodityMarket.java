@@ -167,15 +167,19 @@ public final class CommodityMarket {
         if (order == null || !order.ownerId().equals(player.getStringUUID())) {
             return false;
         }
-        data.removeOrder(orderId);
         if (order.sell()) {
-            WarehouseSavedData.get(player.getServer()).credit(player.getUUID(), order.commodity().getItem(), order.quantity());
+            WarehouseSavedData.get(player.getServer()).creditOnce(InventoryOwner.player(player.getUUID()),
+                    order.commodity().getItem(), order.quantity(), "commodity-order-cancel-item:" + order.id());
         } else {
             long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
             if (total >= 0) {
-                EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(total));
+                MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+                mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(total),
+                        "commodity-order-cancel-money:" + order.id());
+                mailbox.redeemMoneyOnly(player);
             }
         }
+        data.removeOrder(orderId);
         data.setDirty();
         return true;
     }
@@ -242,16 +246,17 @@ public final class CommodityMarket {
                 // Leave malformed records for the explicit admin repair command.
                 continue;
             }
-            data.removeOrder(order.id());
             if (order.sell()) {
-                warehouse.credit(owner, order.commodity().getItem(), order.quantity());
+                warehouse.creditOnce(InventoryOwner.player(owner), order.commodity().getItem(), order.quantity(),
+                        "commodity-order-expiry-item:" + order.id());
             } else {
                 long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
                 if (total > 0L) {
-                    MarketMailboxSavedData.get(server).creditMoney(owner, Currencies.USD.id(),
-                            Money.toMinor(total));
+                    MarketMailboxSavedData.get(server).creditMoneyOnce(owner, Currencies.USD.id(),
+                            Money.toMinor(total), "commodity-order-expiry-money:" + order.id());
                 }
             }
+            data.removeOrder(order.id());
         }
     }
 
