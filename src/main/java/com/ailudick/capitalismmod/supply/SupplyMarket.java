@@ -23,6 +23,7 @@ import com.ailudick.capitalismmod.market.TradeRegion;
 import com.ailudick.capitalismmod.market.TransportMode;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.util.EconomyMath;
+import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxType;
@@ -237,19 +238,47 @@ public final class SupplyMarket {
     public static int recoverPendingOrderIntents(MinecraftServer server) {
         SupplyOrderIntentSavedData intents = SupplyOrderIntentSavedData.get(server);
         SupplyMarketSavedData orders = SupplyMarketSavedData.get(server);
+        SupplySettlementSavedData settlements = SupplySettlementSavedData.get(server);
+        long now = server.overworld().getGameTime();
+        long expiry = PerpetualCalendar.ticksForDays(Config.SUPPLY_ORDER_EXPIRY_DAYS.get());
         int recovered = 0;
         for (SupplyOrderIntentSavedData.Intent intent : new ArrayList<>(intents.intents())) {
             if (orders.findOrder(intent.orderId()) != null) {
                 intents.remove(intent.orderId());
                 continue;
             }
-            ServerPlayer buyer = server.getPlayerList().getPlayer(intent.buyerUuid());
-            if (buyer == null) continue;
             long total = EconomyMath.multiply(intent.unitPrice(), intent.quantity());
             long totalMinor = Money.toMinor(total);
             if (total <= 0L || totalMinor <= 0L) continue;
             String source = "supply_order:" + intent.orderId();
             boolean paid = intent.paid();
+            if (intent.createdAt() > 0L && expiry > 0L && now >= intent.createdAt()
+                    && now - intent.createdAt() >= expiry) {
+                paid = paid || hasRecordedOrderPayment(server, intent, source, totalMinor);
+                if (paid && !settlements.hasOrderRefund(intent.orderId())) {
+                    boolean refundedToCompany = false;
+                    if (intent.buyerCompanyId() != null && !intent.buyerCompanyId().isBlank()) {
+                        Company company = CompanySavedData.get(server).get(intent.buyerCompanyId());
+                        refundedToCompany = company != null && CompanyHelper.creditTreasuryNonOperatingOnce(server,
+                                company.companyId(), Currencies.USD.id(), total, "supply_intent_refund",
+                                "Expired interrupted supply order refund", "supply-intent-refund:" + intent.orderId());
+                    }
+                    if (!refundedToCompany) {
+                        MarketMailboxSavedData.get(server).creditMoneyOnce(intent.buyerUuid(),
+                                Currencies.USD.id(), totalMinor, "supply-intent-refund:" + intent.orderId());
+                    }
+                    SupplyEscrowSavedData.get(server).refundOnce(intent.orderId(), "intent-expiry:" + intent.orderId(), totalMinor);
+                    settlements.recordOrderRefund(intent.orderId());
+                    SupplyOrderAuditService.record(server, intent.orderId(),
+                            refundedToCompany ? "INTENT_EXPIRED_REFUND_COMPANY" : "INTENT_EXPIRED_REFUND",
+                            intent.buyerUuid(), intent.supplierUuid(), intent.itemId(), intent.quantity(), total);
+                }
+                intents.remove(intent.orderId());
+                recovered++;
+                continue;
+            }
+            ServerPlayer buyer = server.getPlayerList().getPlayer(intent.buyerUuid());
+            if (buyer == null) continue;
             if (!paid) {
                 if (intent.buyerCompanyId() != null && !intent.buyerCompanyId().isBlank()) {
                     Company company = CompanySavedData.get(server).get(intent.buyerCompanyId());
@@ -272,6 +301,15 @@ public final class SupplyMarket {
             fulfill(server, InventoryOwner.player(intent.supplierUuid()), intent.supplierUuid(), intent.itemId());
         }
         return recovered;
+    }
+
+    private static boolean hasRecordedOrderPayment(MinecraftServer server,
+                                                    SupplyOrderIntentSavedData.Intent intent,
+                                                    String source, long totalMinor) {
+        if (intent.buyerCompanyId() != null && !intent.buyerCompanyId().isBlank()) {
+            return CompanyHelper.hasNonOperatingDebitSource(server, intent.buyerCompanyId(), source);
+        }
+        return EconomyLogSavedData.get(server).hasPayment(intent.buyerUuid(), Currencies.USD.id(), totalMinor, source);
     }
 
     /** Expires stale paid backorders and returns the undelivered balance to the original payer. */
