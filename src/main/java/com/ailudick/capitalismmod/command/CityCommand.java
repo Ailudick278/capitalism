@@ -47,7 +47,15 @@ public final class CityCommand {
         var projectStart = Commands.literal("start")
                 .then(Commands.argument("region", StringArgumentType.word())
                         .then(Commands.argument("type", StringArgumentType.word()).then(projectCount)));
-        var project = Commands.literal("project").requires(source -> source.hasPermission(2)).then(projectStart);
+        var projectBid = Commands.literal("bid")
+                .then(Commands.argument("projectId", StringArgumentType.word())
+                        .then(Commands.argument("companyId", StringArgumentType.word())
+                                .then(Commands.argument("unitPriceMinor", LongArgumentType.longArg(1))
+                                        .executes(c -> submitBid(c.getSource(), StringArgumentType.getString(c, "projectId"),
+                                                StringArgumentType.getString(c, "companyId"),
+                                                LongArgumentType.getLong(c, "unitPriceMinor"))))));
+        var project = Commands.literal("project").requires(source -> source.hasPermission(2))
+                .then(projectStart).then(projectBid);
         var rentAmount = Commands.argument("dailyRentMinor", IntegerArgumentType.integer(0, 1000000000))
                 .executes(c -> setRent(c.getSource(), StringArgumentType.getString(c, "region"),
                         IntegerArgumentType.getInteger(c, "dailyRentMinor")));
@@ -128,6 +136,22 @@ public final class CityCommand {
                 + PublicConstructionEconomics.unitCost(type) + " contractor="
                 + (contractor.isBlank() ? "government-direct" : contractor)), true);
         return count;
+    }
+
+    private static int submitBid(CommandSourceStack source, String projectId, String companyId, long price) {
+        var company = CompanySavedData.get(source.getServer()).get(companyId);
+        if (company == null || !"construction".equals(company.type())) {
+            source.sendFailure(Component.literal("Bidder must be an existing construction company."));
+            return 0;
+        }
+        long day = source.getServer().overworld().getGameTime() / 24000L;
+        if (!PublicConstructionSavedData.get(source.getServer()).submitBid(projectId, companyId, price, day)) {
+            source.sendFailure(Component.literal("Bid rejected: project closed, duplicate, or price is invalid."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("city construction bid submitted project=" + projectId
+                + " company=" + companyId + " unitPriceMinor=" + price), true);
+        return 1;
     }
 
     private static int setRent(CommandSourceStack source, String region, int rent) {
