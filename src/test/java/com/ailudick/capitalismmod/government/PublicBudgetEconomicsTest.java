@@ -43,4 +43,9 @@ class PublicBudgetEconomicsTest {
         assertTrue(!PublicBudgetEconomics.allowNonEssentialExpansion(75));
         assertTrue(!PublicBudgetEconomics.allowNonEssentialExpansion(100));
     }
+
+    @Test
+    void unknownPriorityDoesNotCreateMaintenanceProtection() {
+        assertEquals(0, PublicBudgetEconomics.priority("unknown"));
+    }
 }

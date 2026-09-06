@@ -116,7 +116,8 @@ public final class CityCommand {
                     + " unemploymentRate=" + entry.unemploymentRate() + "% dailyRentPerResident="
                     + entry.dailyRentPerResident() + " treasuryMinor=" + entry.treasuryMinor()
                     + " maintenanceSpentMinor=" + entry.maintenanceSpentMinor()
-                    + " fiscalStress=" + entry.fiscalStress() + "% activeProjects=" + entry.activeProjects()), false);
+                    + " maintenanceCuts=" + entry.maintenanceCuts() + " fiscalStress="
+                    + entry.fiscalStress() + "% activeProjects=" + entry.activeProjects()), false);
         }
         return entries.size();
     }

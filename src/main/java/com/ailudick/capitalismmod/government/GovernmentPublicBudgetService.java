@@ -30,6 +30,8 @@ public final class GovernmentPublicBudgetService {
                     maintained++;
                 } else {
                     // One unit fails per day, keeping fiscal stress visible without deleting a city at once.
+                    PublicMaintenanceSavedData.get(server).record(new PublicMaintenanceSavedData.Cut(
+                            day, region, facility, "insufficient_treasury"));
                     infrastructure.changePublicFacility(region, facility, -1);
                 }
             }

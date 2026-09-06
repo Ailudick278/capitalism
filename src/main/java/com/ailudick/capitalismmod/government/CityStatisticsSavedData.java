@@ -23,7 +23,8 @@ public final class CityStatisticsSavedData extends SavedData {
 
     public record Snapshot(long day, String region, int residents, int housing, int school, int clinic,
                            int serviceScore, int unemploymentRate, long dailyRentPerResident,
-                           long treasuryMinor, long maintenanceSpentMinor, int fiscalStress, int activeProjects) {}
+                           long treasuryMinor, long maintenanceSpentMinor, int maintenanceCuts,
+                           int fiscalStress, int activeProjects) {}
 
     private CityStatisticsSavedData() {}
 
@@ -62,12 +63,14 @@ public final class CityStatisticsSavedData extends SavedData {
             long dailyBenefits = multiply(GovernmentPolicySavedData.get(server).dailyBenefitMinor(), households.size());
             int stress = PublicBudgetEconomics.fiscalStress(GovernmentPolicySavedData.get(server).treasuryMinor(),
                     add(maintenance, dailyBenefits));
+            int cuts = (int) PublicMaintenanceSavedData.get(server).cuts().stream()
+                    .filter(c -> c.day() == day && c.region().equals(region)).count();
             snapshots.add(new Snapshot(day, region, residents, infrastructure.count(region, "housing"),
                     infrastructure.count(region, "school"), infrastructure.count(region, "clinic"),
                     infrastructure.publicServiceScore(server, region, residents),
                     unemploymentRate,
                     CityHousingSavedData.get(server).dailyRent(region, residents, infrastructure.count(region, "housing")),
-                    GovernmentPolicySavedData.get(server).treasuryMinor(), maintenance, stress, activeProjects));
+                    GovernmentPolicySavedData.get(server).treasuryMinor(), maintenance, cuts, stress, activeProjects));
             recorded++;
         }
         if (recorded > 0) {
@@ -85,7 +88,7 @@ public final class CityStatisticsSavedData extends SavedData {
             e.putInt("school", s.school()); e.putInt("clinic", s.clinic()); e.putInt("score", s.serviceScore());
             e.putInt("unemployment", s.unemploymentRate()); e.putLong("rent", s.dailyRentPerResident());
             e.putLong("treasury", s.treasuryMinor()); e.putLong("maintenance", s.maintenanceSpentMinor());
-            e.putInt("stress", s.fiscalStress()); e.putInt("projects", s.activeProjects()); list.add(e);
+            e.putInt("cuts", s.maintenanceCuts()); e.putInt("stress", s.fiscalStress()); e.putInt("projects", s.activeProjects()); list.add(e);
         }
         tag.put("snapshots", list); return tag;
     }
@@ -101,6 +104,7 @@ public final class CityStatisticsSavedData extends SavedData {
                     Math.max(0, Math.min(100, e.getInt("score"))),
                     Math.max(0, Math.min(100, e.getInt("unemployment"))), Math.max(0L, e.getLong("rent")),
                     Math.max(0L, e.getLong("treasury")), Math.max(0L, e.getLong("maintenance")),
+                    Math.max(0, e.getInt("cuts")),
                     Math.max(0, Math.min(100, e.getInt("stress"))),
                     Math.max(0, e.getInt("projects"))));
         }
