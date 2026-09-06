@@ -236,6 +236,11 @@ public final class CompanySiteAllocationSavedData extends SavedData {
     }
 
     public void transferCompany(String sourceId, String targetId) {
+        transferCompany(sourceId, targetId, List.of());
+    }
+
+    /** Transfers only allocations whose sites survived the target's site limit. */
+    public void transferCompany(String sourceId, String targetId, List<CompanySiteSavedData.Site> allowedSites) {
         if (sourceId == null || targetId == null || sourceId.isBlank() || targetId.isBlank()
                 || sourceId.equals(targetId)) return;
         List<Allocation> source = new ArrayList<>();
@@ -247,6 +252,11 @@ public final class CompanySiteAllocationSavedData extends SavedData {
         for (Allocation incoming : source) {
             CompanySiteSavedData.Site site = new CompanySiteSavedData.Site(targetId, incoming.dimension(),
                     incoming.chunkX(), incoming.chunkZ());
+            if (!allowedSites.isEmpty() && allowedSites.stream().noneMatch(existing ->
+                    existing.dimension().equals(site.dimension()) && existing.chunkX() == site.chunkX()
+                            && existing.chunkZ() == site.chunkZ())) {
+                continue;
+            }
             Allocation existing = get(targetId, site);
             Map<String, Integer> machines = new HashMap<>(existing == null ? Map.of() : existing.machines());
             incoming.machines().forEach((type, count) -> machines.merge(type, count,

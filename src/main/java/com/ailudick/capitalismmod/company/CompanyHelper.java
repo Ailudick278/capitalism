@@ -1136,8 +1136,10 @@ public final class CompanyHelper {
             CompanyLogisticsCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyLedgerSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyServiceDeliverySavedData.get(server).transferCompany(source.companyId(), target.companyId());
-            CompanySiteSavedData.get(server).transferCompany(source.companyId(), target.companyId());
-            CompanySiteAllocationSavedData.get(server).transferCompany(source.companyId(), target.companyId());
+            CompanySiteSavedData siteData = CompanySiteSavedData.get(server);
+            siteData.transferCompany(source.companyId(), target.companyId());
+            CompanySiteAllocationSavedData.get(server).transferCompany(source.companyId(), target.companyId(),
+                    siteData.sites(target.companyId()));
             CompanyInventoryCostSavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyQualitySavedData.get(server).transferCompany(source.companyId(), target.companyId());
             CompanyProductionSavedData.get(server).mergeCompany(source.companyId(), target.companyId());

@@ -84,7 +84,9 @@ public final class CompanySiteSavedData extends SavedData {
             Site rebound = new Site(targetId, site.dimension(), site.chunkX(), site.chunkZ());
             boolean duplicate = target.stream().anyMatch(existing -> existing.dimension().equals(rebound.dimension())
                     && existing.chunkX() == rebound.chunkX() && existing.chunkZ() == rebound.chunkZ());
-            if (!duplicate) target.add(rebound);
+            if (duplicate) continue;
+            if (target.size() >= Config.MAX_COMPANY_SITES.get()) break;
+            target.add(rebound);
         }
         sites.put(targetId, target);
         setDirty();
