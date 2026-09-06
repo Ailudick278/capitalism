@@ -172,6 +172,29 @@ public final class PublicConstructionSavedData extends SavedData {
         return delivered;
     }
 
+    /** Charges the contractor for pending quality failures without new government funding. */
+    public int settleRework(MinecraftServer server, long day) {
+        var inspections = PublicConstructionInspectionSavedData.get(server);
+        var warehouse = WarehouseSavedData.get(server);
+        int completed = 0;
+        for (var inspection : inspections.pendingReworkBefore(day)) {
+            Project project = projects.stream().filter(p -> p.id().equals(inspection.projectId())).findFirst().orElse(null);
+            if (project == null || project.contractorCompanyId().isBlank()) continue;
+            Company contractor = CompanySavedData.get(server).get(project.contractorCompanyId());
+            if (contractor == null || !CompanyLifecycleService.canOperate(server, contractor.companyId())) continue;
+            long cost = PublicConstructionEconomics.reworkCost(
+                    PublicConstructionEconomics.unitCost(project.facility()));
+            if (cost <= 0L || contractor.treasuryOf(Currencies.USD.id()) < cost) continue;
+            String source = "public-rework:" + project.id() + ":" + inspection.unit();
+            InventoryOwner owner = InventoryOwner.company(contractor.companyId());
+            if (!warehouse.consumeBatchOnce(owner, PublicConstructionEconomics.materials(project.facility()), source + ":materials")) continue;
+            if (!CompanyHelper.debitTreasuryNonOperatingOnce(server, contractor.companyId(), Currencies.USD.id(),
+                    cost, "public-construction-rework", "Construction quality rework", source)) continue;
+            if (inspections.markReworkCompleted(project.id(), inspection.unit(), day)) completed++;
+        }
+        return completed;
+    }
+
     private void recordInspection(MinecraftServer server, Project project, int unit, long day) {
         var labor = LaborMarketSavedData.get(server);
         var legacy = CompanyLaborSavedData.get(server).contracts(project.contractorCompanyId()).stream()

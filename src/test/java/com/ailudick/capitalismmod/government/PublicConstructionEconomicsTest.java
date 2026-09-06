@@ -43,4 +43,10 @@ class PublicConstructionEconomicsTest {
         assertTrue(PublicConstructionEconomics.qualityScore(80, 1)
                 > PublicConstructionEconomics.qualityScore(40, 1));
     }
+
+    @Test
+    void reworkIsChargedAsAQuarterOfOriginalUnitCost() {
+        assertEquals(75_000L, PublicConstructionEconomics.reworkCost(300_000L));
+        assertEquals(0L, PublicConstructionEconomics.reworkCost(0L));
+    }
 }

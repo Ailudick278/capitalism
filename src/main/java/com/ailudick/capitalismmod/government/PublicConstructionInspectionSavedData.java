@@ -28,6 +28,24 @@ public final class PublicConstructionInspectionSavedData extends SavedData {
 
     public List<Inspection> inspections() { return List.copyOf(inspections); }
 
+    public List<Inspection> pendingReworkBefore(long day) {
+        return inspections.stream().filter(i -> "REWORK_REQUIRED".equals(i.status()) && i.day() < day).toList();
+    }
+
+    public boolean markReworkCompleted(String projectId, int unit, long day) {
+        for (int i = 0; i < inspections.size(); i++) {
+            Inspection current = inspections.get(i);
+            if (current.projectId().equals(projectId) && current.unit() == unit
+                    && "REWORK_REQUIRED".equals(current.status())) {
+                inspections.set(i, new Inspection(current.projectId(), current.unit(), current.workerDays(),
+                        current.averageSkill(), current.qualityScore(), "REWORK_COMPLETED", day));
+                setDirty();
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean record(Inspection inspection) {
         if (inspection == null || inspection.projectId().isBlank() || inspection.unit() <= 0
                 || inspection.workerDays() <= 0L || inspection.averageSkill() < 0

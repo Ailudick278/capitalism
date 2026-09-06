@@ -137,6 +137,7 @@ public final class EconomySettlementTickHandler {
         com.ailudick.capitalismmod.loan.PeerLoanHelper.recoverRecordedPayments(server);
         GovernmentPolicyService.settleDaily(server, settlementDay);
         PublicConstructionSavedData.get(server).settleDaily(server, settlementDay);
+        PublicConstructionSavedData.get(server).settleRework(server, settlementDay);
         GovernmentPublicBudgetService.settleDaily(server, settlementDay);
         PopulationService.settleDaily(server, settlementDay);
         journal.markCompleted(settlementDay, "households-and-labor", server.overworld().getGameTime());

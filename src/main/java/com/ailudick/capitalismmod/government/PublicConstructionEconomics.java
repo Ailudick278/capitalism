@@ -38,4 +38,8 @@ public final class PublicConstructionEconomics {
         if (workerDays <= 0L) return 0;
         return Math.max(0, Math.min(100, 40 + Math.max(0, Math.min(100, averageSkill)) * 60 / 100));
     }
+
+    public static long reworkCost(long unitCost) {
+        return unitCost <= 0L ? 0L : unitCost / 4L;
+    }
 }
