@@ -762,15 +762,15 @@ public class CompanyCommand {
             source.sendFailure(Component.literal("Buyer company has insufficient USD cash."));
             return 0;
         }
-        if (!CompanyHelper.creditTreasury(source.getServer(), carrier.companyId(), Currencies.USD.id(), amount)) {
-            source.sendFailure(Component.literal("Carrier treasury could not be credited."));
-            return 0;
-        }
         if (!CompanyHelper.debitTreasuryNonOperating(source.getServer(), buyer.companyId(), Currencies.USD.id(),
                 amount, "freight_payable_settlement", "Settlement for shipment " + shipmentId)) {
-            CompanyHelper.debitTreasuryNonOperating(source.getServer(), carrier.companyId(), Currencies.USD.id(),
+            source.sendFailure(Component.literal("Buyer treasury could not be debited."));
+            return 0;
+        }
+        if (!CompanyHelper.creditTreasury(source.getServer(), carrier.companyId(), Currencies.USD.id(), amount)) {
+            CompanyHelper.creditTreasuryNonOperating(source.getServer(), buyer.companyId(), Currencies.USD.id(),
                     amount, "freight_settlement_reversal", "Reversal for failed shipment settlement " + shipmentId);
-            source.sendFailure(Component.literal("Freight settlement failed before the payable was closed."));
+            source.sendFailure(Component.literal("Carrier treasury could not be credited; buyer debit was reversed."));
             return 0;
         }
         data.settle(shipmentId, carrier.companyId(), now);
