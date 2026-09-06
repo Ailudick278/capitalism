@@ -105,6 +105,15 @@ public final class CityCommand {
                 + " landlord=" + CityHousingSavedData.get(source.getServer()).landlord(region)
                 + " activeLeases=" + activeLeases + " rentArrearsMinor=" + arrears
                 + " depositsHeldMinor=" + deposits + " activeConstructionProjects=" + activeProjects), false);
+        var history = CityStatisticsSavedData.get(source.getServer()).snapshots(region, 1);
+        if (!history.isEmpty()) {
+            var latest = history.get(history.size() - 1);
+            if (latest.fiscalStress() >= 75 || latest.maintenanceCuts() > 0) {
+                source.sendFailure(Component.literal("city warning: fiscalStress=" + latest.fiscalStress()
+                        + "% maintenanceCuts=" + latest.maintenanceCuts()
+                        + " / public service capacity may decline"));
+            }
+        }
         return score;
     }
 
