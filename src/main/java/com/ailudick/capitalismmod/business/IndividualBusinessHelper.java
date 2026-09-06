@@ -253,15 +253,17 @@ public final class IndividualBusinessHelper {
         String source = legacyGoodsConsumed ? baseSource : baseSource + ":batch:" + batchId;
         String buyerSource = source + ":buyer";
         PopulationSavedData population = PopulationSavedData.get(player.getServer());
+        long paymentMinor = ExchangeRates.convert(Money.toMinorSaturated(payment), Currencies.USD, Config.defaultCurrency());
         String buyerId = population.chargedHousehold(buyerSource);
         if (buyerId == null) {
             String region = TradeRegion.of(player.blockPosition());
-            long paymentMinor = ExchangeRates.convert(Money.toMinorSaturated(payment), Currencies.USD, Config.defaultCurrency());
             buyerId = population.households().stream()
                     .filter(h -> h.id().startsWith("npc-") && region.equals(h.region()) && h.cashMinor() >= paymentMinor)
                     .map(Household::id).findFirst().orElse(null);
             if (buyerId == null || !population.chargeCashOnce(buyerId, paymentMinor, buyerSource)) return false;
         }
+        if (!BusinessOrderEscrowSavedData.get(player.getServer())
+                .createOnce(order.id(), batchId, buyerId, paymentMinor)) return false;
         if (!goodsConsumed && !warehouse.consumeOnce(InventoryOwner.player(player.getUUID()), item, deliveryQuantity, goodsSource)) return false;
         BusinessLedgerSavedData ledger = BusinessLedgerSavedData.get(player.getServer());
         BusinessLedgerEntry settlement = ledger.findSource(business.businessId(), source);
@@ -278,6 +280,7 @@ public final class IndividualBusinessHelper {
             account.put("usd", settlement.balanceAfter());
             IndividualBusinessSavedData.get(player.getServer()).put(business.withAccount(account));
         }
+        BusinessOrderEscrowSavedData.get(player.getServer()).releaseOnce(order.id(), batchId, paymentMinor);
         int newRemaining = order.remaining() - deliveryQuantity;
         String newStatus = newRemaining == 0 ? "completed" : "open";
         BusinessOrder settledOrder = order.withDelivery(newRemaining, newStatus);
@@ -342,8 +345,11 @@ public final class IndividualBusinessHelper {
         if (buyerId == null) return true;
         long paymentMinor = ExchangeRates.convert(Money.toMinorSaturated(paymentMajor), Currencies.USD, Config.defaultCurrency());
         String refundSource = source + ":buyer:refund";
-        return population.hasCreditedSource(refundSource)
+        boolean refunded = population.hasCreditedSource(refundSource)
                 || population.addCashOnce(buyerId, paymentMinor, refundSource);
+        if (!refunded) return false;
+        return BusinessOrderEscrowSavedData.get(player.getServer())
+                .refundOnce(order.id(), batchId, paymentMinor);
     }
 
     private static Item parseItem(String itemId) {
