@@ -61,21 +61,20 @@ public final class CompanyLoanHelper {
         CompanyLoanSavedData data = CompanyLoanSavedData.get(server);
         CompanyLoan loan = data.find(loanId);
         if (loan == null || !loan.companyId().equals(company.companyId()) || !Currencies.exists(loan.currencyId())) return false;
-        long interest = loan.interestDue();
-        long total = EconomyMath.add(loan.principal(), interest);
+        long total = EconomyMath.add(loan.principal(), loan.interestDue());
         if (total < 0L) return false;
         long payment = requestedAmount == null ? total : requestedAmount;
-        if (payment <= 0L || payment > total) return false;
-        long interestPayment = Math.min(payment, interest);
-        long principalPayment = payment - interestPayment;
-        if (principalPayment < 0L || principalPayment > loan.principal()) return false;
+        var allocation = CompanyLoanPaymentAllocation.forAmount(loan, payment).orElse(null);
+        if (allocation == null) return false;
+        long interestPayment = allocation.interestPayment();
+        long principalPayment = allocation.principalPayment();
         if (!CompanyHelper.debitTreasuryNonOperating(server, company.companyId(), loan.currencyId(), payment,
                 "loan_repayment", "Company loan repayment")) return false;
         if (payment == total) {
             data.remove(loan.id());
         } else {
             CompanyLoan updated = loan.withInterestPaid(EconomyMath.add(loan.interestPaid(), interestPayment))
-                    .withPrincipal(loan.principal() - principalPayment);
+                    .withPrincipal(allocation.remainingPrincipal());
             data.replace(updated);
         }
         if (interestPayment > 0L) {
