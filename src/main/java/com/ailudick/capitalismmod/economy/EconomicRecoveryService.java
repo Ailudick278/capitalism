@@ -1,12 +1,16 @@
 package com.ailudick.capitalismmod.economy;
 
 import com.ailudick.capitalismmod.auction.AuctionMarket;
+import com.ailudick.capitalismmod.bond.BondMarket;
+import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.currency.CurrencyExchangeService;
 import com.ailudick.capitalismmod.futures.FuturesMarket;
+import com.ailudick.capitalismmod.loan.PeerLoanHelper;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.market.LogisticsLossService;
 import com.ailudick.capitalismmod.stock.StockMarket;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
+import com.ailudick.capitalismmod.tax.TaxRefundService;
 import net.minecraft.server.MinecraftServer;
 
 /** Coordinates server-safe, idempotent recovery passes across economic systems. */
@@ -27,6 +31,11 @@ public final class EconomicRecoveryService {
         recovered += AuctionMarket.recoverListingIntents(server);
         recovered += CurrencyExchangeService.recover(server);
         recovered += PlayerTransferService.recover(server);
+        recovered += PeerLoanHelper.recoverOriginationIntents(server);
+        recovered += PeerLoanHelper.recoverRecordedPayments(server);
+        recovered += CompanyHelper.recoverDividendPayouts(server);
+        recovered += TaxRefundService.recoverUnfinished(server);
+        recovered += BondMarket.recoverIssuances(server);
         return recovered;
     }
 }

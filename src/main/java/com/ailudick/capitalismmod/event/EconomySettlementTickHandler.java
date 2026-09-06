@@ -148,10 +148,8 @@ public final class EconomySettlementTickHandler {
         loans.setDirty();
 
         CompanyPayrollService.settleDaily(server, settlementDay);
-        CompanyHelper.recoverDividendPayouts(server);
         PopulationService.matchResidents(server, settlementDay);
         LaborPayrollService.settleDaily(server, settlementDay);
-        com.ailudick.capitalismmod.loan.PeerLoanHelper.recoverRecordedPayments(server);
         GovernmentPolicyService.settleDaily(server, settlementDay);
         PublicConstructionSavedData.get(server).settleDaily(server, settlementDay);
         PublicConstructionSavedData.get(server).settleRework(server, settlementDay);
@@ -160,8 +158,6 @@ public final class EconomySettlementTickHandler {
             journal.markCompleted(settlementDay, "households-and-labor", server.overworld().getGameTime());
         }
         EconomicContractBridge.syncFreight(server);
-        TaxRefundService.recoverUnfinished(server);
-
         if (!journal.isCompleted(settlementDay, "credit-and-securities")) {
             CompanyLoanSavedData companyLoans = CompanyLoanSavedData.get(server);
             CompanySavedData companies = CompanySavedData.get(server);
@@ -193,7 +189,6 @@ public final class EconomySettlementTickHandler {
             }
             journal.markStarted(settlementDay, "credit-and-securities", server.overworld().getGameTime());
             BondMarket.settleMaturity(server, settlementDay);
-            BondMarket.recoverIssuances(server);
             BankCapitalService.settleDaily(server, settlementDay);
             FinancialRiskService.settleDaily(server, settlementDay);
             BankLiquidityService.settleDaily(server, settlementDay);
