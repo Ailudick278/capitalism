@@ -123,8 +123,14 @@ public final class FuturesMarket {
         }
         long price = data.price(position.itemId());
         long pnl = pnl(position, price);
-        data.addMarginBalance(player.getUUID(), safeAdd(position.margin(), pnl));
-        data.addNetVolume(position.itemId(), position.longSide() ? -position.quantity() : position.quantity());
+        if (!closes.hasMarginCredit(positionId)) {
+            data.addMarginBalance(player.getUUID(), safeAdd(position.margin(), pnl));
+            closes.recordMarginCredit(positionId);
+        }
+        if (!closes.hasVolumeAdjustment(positionId)) {
+            data.addNetVolume(position.itemId(), position.longSide() ? -position.quantity() : position.quantity());
+            closes.recordVolumeAdjustment(positionId);
+        }
         closes.record(positionId);
         data.removePosition(positionId);
         data.setDirty();
