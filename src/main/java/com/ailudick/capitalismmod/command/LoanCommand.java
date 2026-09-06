@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.loan.PeerLoan;
+import com.ailudick.capitalismmod.loan.PeerLoanPaymentAllocation;
 import com.ailudick.capitalismmod.loan.PeerLoanSavedData;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
@@ -96,9 +97,13 @@ public class LoanCommand {
             return 0;
         }
         long payment = requestedAmount == null ? total : requestedAmount;
-        if (payment <= 0L || payment > total
-                || (requestedAmount != null && payment < total && payment > interest)) {
+        if (payment <= 0L || payment > total) {
             borrower.sendSystemMessage(Component.literal("部分还款必须先支付未结利息；本次不支持部分偿还本金。"));
+            return 0;
+        }
+        var allocation = PeerLoanPaymentAllocation.forAmount(loan, payment).orElse(null);
+        if (allocation == null) {
+            borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
             return 0;
         }
         long totalMinor = Money.toMinor(payment);
@@ -115,9 +120,15 @@ public class LoanCommand {
         if (payment == total) {
             data.removeLoan(loanId);
         } else {
-            long paidInterest = loan.interestPaid() > Long.MAX_VALUE - payment
-                    ? Long.MAX_VALUE : loan.interestPaid() + payment;
-            data.replaceLoan(loan.withInterestPaid(paidInterest));
+            long paidInterest = loan.interestPaid() > Long.MAX_VALUE - allocation.interestPayment()
+                    ? Long.MAX_VALUE : loan.interestPaid() + allocation.interestPayment();
+            PeerLoan updated = loan.withInterestPaid(paidInterest)
+                    .withPrincipal(allocation.remainingPrincipal());
+            if (allocation.principalPayment() > 0L) {
+                long elapsed = Math.max(0L, (long) loan.totalDays() - loan.daysRemaining());
+                updated = updated.withInterestAccrualState(loan.totalInterestAccrued(), elapsed);
+            }
+            data.replaceLoan(updated);
         }
         borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",
                 payment, Component.translatable(currency.nameKey())));
