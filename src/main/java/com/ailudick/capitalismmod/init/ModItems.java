@@ -342,4 +342,6 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> LAPTOP = ITEMS.register("laptop",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> WIRELESS_ROUTER = ITEMS.register("wireless_router",
+            () -> new Item(new Item.Properties().stacksTo(64)));
 }

@@ -159,6 +159,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.POWER_ADAPTER.get());
                         output.accept(ModItems.TELEVISION.get());
                         output.accept(ModItems.LAPTOP.get());
+                        output.accept(ModItems.WIRELESS_ROUTER.get());
                     })
                     .build());
 }

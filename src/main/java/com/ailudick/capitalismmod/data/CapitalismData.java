@@ -413,6 +413,7 @@ public final class CapitalismData {
                 ,new CommodityJson("capitalismmod:power_adapter", 180)
                 ,new CommodityJson("capitalismmod:television", 820)
                 ,new CommodityJson("capitalismmod:laptop", 1150)
+                ,new CommodityJson("capitalismmod:wireless_router", 420)
         );
     }
 
@@ -571,7 +572,8 @@ public final class CapitalismData {
                         new RecipeJson("electric_fan", Map.of("capitalismmod:electric_motor", 1, "capitalismmod:fan_blades", 1, "capitalismmod:fan_control", 1, "capitalismmod:machine_frame", 1), Map.of("capitalismmod:electric_fan", 1), 240, "assembly_line", 3, 3, 9),
                         new RecipeJson("power_adapter", Map.of("capitalismmod:circuit_board", 1, "capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:power_adapter", 1), 180, "smt_line", 2, 4, 9),
                         new RecipeJson("television", Map.of("capitalismmod:display_panel", 1, "capitalismmod:packaged_chip", 1, "capitalismmod:circuit_board", 1, "capitalismmod:speaker_module", 1, "capitalismmod:abs_resin", 1, "capitalismmod:display_driver", 1), Map.of("capitalismmod:television", 1), 980, "electronics_assembly", 5, 8, 16),
-                        new RecipeJson("laptop", Map.of("capitalismmod:display_panel", 1, "capitalismmod:packaged_chip", 2, "capitalismmod:circuit_board", 1, "capitalismmod:battery", 1, "capitalismmod:abs_resin", 1, "capitalismmod:power_management_ic", 1, "capitalismmod:display_driver", 1), Map.of("capitalismmod:laptop", 1), 1380, "electronics_assembly", 6, 9, 18)),
+                        new RecipeJson("laptop", Map.of("capitalismmod:display_panel", 1, "capitalismmod:packaged_chip", 2, "capitalismmod:circuit_board", 1, "capitalismmod:battery", 1, "capitalismmod:abs_resin", 1, "capitalismmod:power_management_ic", 1, "capitalismmod:display_driver", 1), Map.of("capitalismmod:laptop", 1), 1380, "electronics_assembly", 6, 9, 18),
+                        new RecipeJson("wireless_router", Map.of("capitalismmod:circuit_board", 1, "capitalismmod:packaged_chip", 1, "capitalismmod:power_adapter", 1, "capitalismmod:abs_resin", 1, "capitalismmod:copper_wire", 1), Map.of("capitalismmod:wireless_router", 1), 420, "electronics_assembly", 4, 7, 14)),
                 withRecipes(new IndustryJson("utilities", Map.of("minecraft:coal", 1), Map.of(), 60),
                         new RecipeJson("coal_generation", Map.of("minecraft:coal", 1), Map.of(), 60,
                                 "none", 1, 0, 0),
