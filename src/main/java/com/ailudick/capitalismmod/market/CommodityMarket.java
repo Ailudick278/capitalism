@@ -82,10 +82,12 @@ public final class CommodityMarket {
                 break;
             }
             UUID buyerId = UUID.fromString(buy.ownerId());
-            warehouse.credit(buyerId, commodity.getItem(), fill);
-            EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(gross - commission(gross)));
+            String tradeSource = "commodity-trade:" + buy.id() + ":" + buy.quantity() + ":" + player.getUUID()
+                    + ":" + fill + ":" + gross;
+            warehouse.creditOnce(InventoryOwner.player(buyerId), commodity.getItem(), fill, tradeSource + ":goods");
+            payOrPend(player.getServer(), player, player.getUUID(), gross - commission(gross), tradeSource + ":money");
             TaxTransactionService.assess(player.getServer(), TaxType.VAT, player.getUUID(), Currencies.USD.id(),
-                    Money.toMinorSaturated(gross), "commodity-sale:" + UUID.randomUUID(),
+                    Money.toMinorSaturated(gross), "commodity-sale:" + tradeSource,
                     player.getServer().overworld().getGameTime());
             data.addNetVolume(itemId, -fill);
             remaining -= fill;
@@ -115,6 +117,7 @@ public final class CommodityMarket {
             return false;
         }
         long total = EconomyMath.multiply(quantity, pricePerUnit);
+        String orderId = UUID.randomUUID().toString();
         if (total < 0 || !EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(total))) {
             return false;
         }
@@ -131,12 +134,14 @@ public final class CommodityMarket {
             if (gross < 0) {
                 break;
             }
-            warehouse.credit(player.getUUID(), commodity.getItem(), fill);
+            String tradeSource = "commodity-trade:" + sell.id() + ":" + sell.quantity() + ":" + player.getUUID()
+                    + ":" + fill + ":" + gross;
+            warehouse.creditOnce(InventoryOwner.player(player.getUUID()), commodity.getItem(), fill, tradeSource + ":goods");
             UUID sellerId = UUID.fromString(sell.ownerId());
             ServerPlayer seller = player.getServer().getPlayerList().getPlayer(sellerId);
-            payOrPend(player.getServer(), seller, sellerId, gross - commission(gross));
+            payOrPend(player.getServer(), seller, sellerId, gross - commission(gross), tradeSource + ":money");
             TaxTransactionService.assess(player.getServer(), TaxType.VAT, sellerId, Currencies.USD.id(),
-                    Money.toMinorSaturated(gross), "commodity-sale:" + UUID.randomUUID(),
+                    Money.toMinorSaturated(gross), "commodity-sale:" + tradeSource,
                     player.getServer().overworld().getGameTime());
             data.addNetVolume(itemId, fill);
             spent += gross;
@@ -147,14 +152,17 @@ public final class CommodityMarket {
         }
 
         if (remaining > 0) {
-            data.addOrder(new MarketOrder(UUID.randomUUID().toString(), player.getStringUUID(),
+            data.addOrder(new MarketOrder(orderId, player.getStringUUID(),
                     commodity.copy(), remaining, pricePerUnit, false,
                     player.getServer().overworld().getGameTime()));
         }
         long reserved = EconomyMath.multiply(remaining, pricePerUnit);
         long refund = total - spent - reserved;
         if (refund > 0) {
-            EconomyHelper.giveMoney(player, Currencies.USD, Money.toMinor(refund));
+            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+            mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(refund),
+                    "commodity-buy-residual-refund:" + orderId);
+            mailbox.redeemMoneyOnly(player);
         }
         data.setDirty();
         return true;
@@ -328,11 +336,11 @@ public final class CommodityMarket {
     }
 
     /** Pays {@code amount} USD to {@code recipient}, or parks it in the mailbox if they are offline. */
-    private static void payOrPend(MinecraftServer server, ServerPlayer recipient, UUID recipientId, long amount) {
-        if (recipient != null) {
-            EconomyHelper.giveMoney(recipient, Currencies.USD, Money.toMinor(amount));
-        } else {
-            MarketMailboxSavedData.get(server).creditMoney(recipientId, Currencies.USD.id(), Money.toMinor(amount));
-        }
+    private static void payOrPend(MinecraftServer server, ServerPlayer recipient, UUID recipientId,
+                                  long amount, String source) {
+        if (server == null || recipientId == null || amount <= 0L || source == null || source.isBlank()) return;
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        mailbox.creditMoneyOnce(recipientId, Currencies.USD.id(), Money.toMinor(amount), source);
+        if (recipient != null) mailbox.redeemMoneyOnly(recipient);
     }
 }
