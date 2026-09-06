@@ -22,4 +22,16 @@ public final class BankLiquidityEconomics {
         long scale = 10000L - share / 2L;
         return (base / 10000L) * scale + (base % 10000L) * scale / 10000L;
     }
+
+    /** Returns whether bank loans exceed 120% of deposits, a severe balance-sheet stress signal. */
+    public static boolean solvencyStress(long depositsMinor, long loansMinor) {
+        if (loansMinor <= 0L) return false;
+        if (depositsMinor <= 0L) return true;
+        return loansMinor > depositsMinor + depositsMinor / 5L;
+    }
+
+    /** Returns whether same-day withdrawals are large enough to indicate a run. */
+    public static boolean withdrawalRunStress(long depositsMinor, long withdrawnMinor) {
+        return depositsMinor > 0L && withdrawnMinor > depositsMinor / 2L;
+    }
 }

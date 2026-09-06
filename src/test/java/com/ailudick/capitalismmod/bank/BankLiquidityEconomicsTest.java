@@ -13,5 +13,10 @@ class BankLiquidityEconomicsTest {
         assertEquals(80_000L, BankLiquidityEconomics.riskAdjustedLoanCapacity(100_000L, 0));
         assertEquals(60_000L, BankLiquidityEconomics.riskAdjustedLoanCapacity(100_000L, 5000));
         assertEquals(40_000L, BankLiquidityEconomics.riskAdjustedLoanCapacity(100_000L, 10000));
+        assertEquals(false, BankLiquidityEconomics.solvencyStress(100_000L, 120_000L));
+        assertEquals(true, BankLiquidityEconomics.solvencyStress(100_000L, 120_001L));
+        assertEquals(true, BankLiquidityEconomics.solvencyStress(0L, 1L));
+        assertEquals(false, BankLiquidityEconomics.withdrawalRunStress(100_000L, 50_000L));
+        assertEquals(true, BankLiquidityEconomics.withdrawalRunStress(100_000L, 50_001L));
     }
 }
