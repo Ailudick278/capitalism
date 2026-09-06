@@ -32,10 +32,15 @@ public final class TaxService {
                                      String sourceEventId, long periodStart, long periodEnd,
                                      long taxableBase, int rateBasisPoints) {
         if (amount <= 0L) return null;
+        TaxLedgerSavedData ledger = TaxLedgerSavedData.get(server);
+        if (sourceEventId != null && !sourceEventId.isBlank()) {
+            TaxBill existing = ledger.findBySourceEvent(sourceEventId);
+            if (existing != null) return existing;
+        }
         TaxBill bill = new TaxBill(UUID.randomUUID().toString(), subject, currencyId, amount, 0L,
                 createdAt, dueAt, graceUntil, sourceEventId, periodStart, periodEnd,
                 taxableBase, rateBasisPoints);
-        TaxLedgerSavedData.get(server).add(bill);
+        ledger.add(bill);
         return bill;
     }
 

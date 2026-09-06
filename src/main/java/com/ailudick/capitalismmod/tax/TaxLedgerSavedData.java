@@ -51,11 +51,16 @@ public final class TaxLedgerSavedData extends SavedData {
     }
 
     public void add(TaxBill bill) {
+        if (bill == null || bill.id() == null || bill.id().isBlank() || bill.subject() == null
+                || bill.currencyId() == null || bill.currencyId().isBlank() || bill.amount() <= 0L) return;
+        if (bills.stream().anyMatch(existing -> existing.id().equals(bill.id()))) return;
+        if (!bill.sourceEventId().isBlank() && findBySourceEvent(bill.sourceEventId()) != null) return;
         bills.add(bill);
         setDirty();
     }
 
     public void addPayment(TaxPayment payment) {
+        if (payment == null || payments.stream().anyMatch(existing -> existing.id().equals(payment.id()))) return;
         payments.add(payment);
         setDirty();
     }
@@ -155,22 +160,31 @@ public final class TaxLedgerSavedData extends SavedData {
             long declarationDueAt = entry.getLong("declarationDueAt");
             long declaredAt = version < 4 ? createdAt : entry.getLong("declaredAt");
             String declaredBy = version < 4 ? "legacy" : entry.getString("declaredBy");
-            data.bills.add(new TaxBill(entry.getString("id"),
+            TaxBill bill = new TaxBill(entry.getString("id"),
                     new TaxSubject(type, entry.getString("subjectId"), entry.getUUID("taxpayer")),
                     entry.getString("currency"), amount, paid,
                     createdAt, entry.getLong("dueAt"), entry.getLong("graceUntil"),
                     entry.getString("sourceEventId"), entry.getLong("periodStart"),
                     entry.getLong("periodEnd"), entry.getLong("taxableBase"), entry.getInt("rateBps"),
                     declarationDueAt, declaredAt, declaredBy, entry.getLong("lateFee"),
-                    entry.getLong("lateFeeUpdatedAt")));
+                    entry.getLong("lateFeeUpdatedAt"));
+            if (bill.id() != null && !bill.id().isBlank()
+                    && !data.bills.stream().anyMatch(existing -> existing.id().equals(bill.id()))
+                    && (bill.sourceEventId().isBlank()
+                    || data.bills.stream().noneMatch(existing -> existing.sourceEventId().equals(bill.sourceEventId())))) {
+                data.bills.add(bill);
+            }
         }
         ListTag paymentList = tag.getList("payments", 10);
         for (int i = 0; i < paymentList.size(); i++) {
             CompoundTag entry = paymentList.getCompound(i);
             if (!entry.hasUUID("taxpayer") || entry.getLong("amount") <= 0L) continue;
-            data.payments.add(new TaxPayment(entry.getString("id"), entry.getString("billId"),
+            TaxPayment payment = new TaxPayment(entry.getString("id"), entry.getString("billId"),
                     entry.getUUID("taxpayer"), entry.getString("currency"), entry.getLong("amount"),
-                    entry.getLong("paidAt")));
+                    entry.getLong("paidAt"));
+            if (data.payments.stream().noneMatch(existing -> existing.id().equals(payment.id()))) {
+                data.payments.add(payment);
+            }
         }
         ListTag settlementList = tag.getList("externalSettlements", 10);
         for (int i = 0; i < settlementList.size(); i++) {
