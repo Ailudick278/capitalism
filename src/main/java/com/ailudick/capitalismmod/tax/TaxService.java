@@ -175,9 +175,9 @@ public final class TaxService {
                 payment / Money.MINOR_UNITS_PER_UNIT);
         if (majorPayment <= 0L) return false;
         long paymentMinor = Money.toMinorSaturated(majorPayment);
-        String source = "tax-payment:" + bill.id() + ":" + bill.paidAmount() + ":" + majorPayment;
+        String source = TaxPaymentSource.company(bill.id(), bill.paidAmount(), majorPayment);
         String priorSource = bill.paidAmount() >= paymentMinor
-                ? "tax-payment:" + bill.id() + ":" + (bill.paidAmount() - paymentMinor) + ":" + majorPayment : "";
+                ? TaxPaymentSource.company(bill.id(), bill.paidAmount() - paymentMinor, majorPayment) : "";
         boolean alreadyApplied = CompanyHelper.hasNonOperatingDebitSource(server, company.companyId(), priorSource);
         if (!alreadyApplied && !CompanyHelper.debitTreasuryNonOperatingOnce(server, company.companyId(),
                 bill.currencyId(), majorPayment, "tax_payment", "Corporate tax payment", source)) {
