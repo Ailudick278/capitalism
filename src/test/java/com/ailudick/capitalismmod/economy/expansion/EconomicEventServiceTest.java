@@ -13,4 +13,11 @@ class EconomicEventServiceTest {
         assertEquals(true, event.activeAt(50L));
         assertEquals(false, event.activeAt(100L));
     }
+
+    @Test
+    void automaticCorrectionOnlyActivatesAtExtremeDeviations() {
+        assertEquals(-1000, EconomicEventService.automaticCorrectionShockBps(250, 100));
+        assertEquals(1000, EconomicEventService.automaticCorrectionShockBps(40, 100));
+        assertEquals(0, EconomicEventService.automaticCorrectionShockBps(150, 100));
+    }
 }

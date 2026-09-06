@@ -353,6 +353,7 @@ public final class CommodityMarket {
     /** Applies mean reversion and supply/demand to each commodity, recording a candle. */
     public static void updatePrices(MinecraftServer server) {
         EconomicEventService.resolveExpired(server, server.overworld().getGameTime());
+        EconomicEventService.createAutomaticMarketCorrections(server, server.overworld().getGameTime());
         CommoditySavedData data = CommoditySavedData.get(server);
         Set<String> ids = new LinkedHashSet<>();
         for (ItemStack stack : Commodities.ALL) {

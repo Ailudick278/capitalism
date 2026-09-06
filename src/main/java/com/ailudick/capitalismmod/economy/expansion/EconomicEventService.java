@@ -1,11 +1,53 @@
 package com.ailudick.capitalismmod.economy.expansion;
 
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
+import com.ailudick.capitalismmod.market.CommoditySavedData;
+import com.ailudick.capitalismmod.market.Commodities;
 import net.minecraft.server.MinecraftServer;
+
+import net.minecraft.world.item.ItemStack;
 
 /** Applies persistent, time-bounded economic-event modifiers to live systems. */
 public final class EconomicEventService {
+    private static final int AUTOMATIC_CORRECTION_BPS = 1_000;
+    private static final int HIGH_PRICE_MULTIPLE_BPS = 25_000;
+    private static final int LOW_PRICE_MULTIPLE_BPS = 4_000;
+    private static final int AUTOMATIC_CORRECTION_DAYS = 3;
+
     private EconomicEventService() {}
+
+    /**
+     * Creates a bounded, deterministic correction event for an extreme market price.
+     * The correction is deliberately weaker than the observed deviation so that
+     * production, consumption and trade remain the primary price signals.
+     */
+    public static int createAutomaticMarketCorrections(MinecraftServer server, long gameTime) {
+        if (server == null || gameTime < 0L) return 0;
+        CommoditySavedData market = CommoditySavedData.get(server);
+        int created = 0;
+        long day = PerpetualCalendar.minecraftDayAtTicks(gameTime);
+        for (ItemStack stack : Commodities.ALL) {
+            String itemId = Commodities.id(stack);
+            long fundamental = market.fundamental(itemId);
+            long price = market.price(itemId);
+            int shockBps = automaticCorrectionShockBps(price, fundamental);
+            if (shockBps == 0 || hasActiveCommodityShock(server, itemId, gameTime)) continue;
+            String direction = shockBps > 0 ? "up" : "down";
+            String eventId = "auto-market-correction:" + day + ":" + direction + ":" + itemId;
+            if (addCommodityPriceShock(server, eventId, itemId, shockBps, gameTime, AUTOMATIC_CORRECTION_DAYS)) {
+                created++;
+            }
+        }
+        return created;
+    }
+
+    /** Returns the stabilizing shock in basis points, or zero inside the normal band. */
+    public static int automaticCorrectionShockBps(long price, long fundamental) {
+        if (price <= 0L || fundamental <= 0L) return 0;
+        if (price * 10_000L >= fundamental * HIGH_PRICE_MULTIPLE_BPS) return -AUTOMATIC_CORRECTION_BPS;
+        if (price * 10_000L <= fundamental * LOW_PRICE_MULTIPLE_BPS) return AUTOMATIC_CORRECTION_BPS;
+        return 0;
+    }
 
     public static boolean addCommodityPriceShock(MinecraftServer server, String eventId, String itemId,
                                                   int shockBps, long startsAt, int durationDays) {
@@ -30,6 +72,15 @@ public final class EconomicEventService {
             total = (int) Math.max(-9000L, Math.min(9000L, (long) total + signed));
         }
         return total;
+    }
+
+    private static boolean hasActiveCommodityShock(MinecraftServer server, String itemId, long gameTime) {
+        for (EconomicEvent event : EconomicExpansionSavedData.get(server).eventsFor(ExpansionSystem.ECONOMIC_EVENTS)) {
+            if (event.activeAt(gameTime) && event.target() != null
+                    && "commodity".equals(event.target().type()) && itemId.equals(event.target().id())
+                    && event.type().startsWith("commodity_price_shock_")) return true;
+        }
+        return false;
     }
 
     public static int resolveExpired(MinecraftServer server, long gameTime) {
