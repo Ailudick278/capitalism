@@ -12,6 +12,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /** Persists logistics facilities grouped by trade region. */
 public final class LogisticsInfrastructureSavedData extends SavedData {
@@ -57,6 +58,11 @@ public final class LogisticsInfrastructureSavedData extends SavedData {
 
     public int count(String region, String facility) {
         return facilities.getOrDefault(region, Map.of()).getOrDefault(facility, 0);
+    }
+
+    /** Regions with any persisted facility, used by regional public-budget passes. */
+    public Set<String> regions() {
+        return Set.copyOf(facilities.keySet());
     }
 
     public static boolean isPublicFacility(String facility) {
