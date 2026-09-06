@@ -1331,12 +1331,19 @@ public final class CompanyHelper {
             return false;
         }
         long total = EconomyMath.multiply(offer.pricePerShare(), offer.quantity());
-        if (total < 0 || !EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(total))) {
+        String transferSource = "public-takeover:" + offer.id() + ":shares";
+        if (total < 0 || (!data.hasShareTransfer(transferSource)
+                && !EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(total)))) {
             return false;
         }
-        data.addShares(offer.stockId(), seller.getUUID(), -offer.quantity());
-        data.addShares(offer.stockId(), buyer.getUUID(), offer.quantity());
-        EconomyHelper.giveMoney(seller, Currencies.USD, Money.toMinor(total));
+        if (!data.hasShareTransfer(transferSource)
+                && !data.transferSharesOnce(offer.stockId(), seller.getUUID(), buyer.getUUID(), offer.quantity(), transferSource)) {
+            return false;
+        }
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(buyer.getServer());
+        String payoutSource = "public-takeover:" + offer.id() + ":payout";
+        mailbox.creditMoneyOnce(seller.getUUID(), Currencies.USD.id(), Money.toMinor(total), payoutSource);
+        mailbox.redeemMoneyOnly(seller);
         TaxTransactionService.assess(buyer.getServer(), TaxType.CAPITAL_GAINS, seller.getUUID(), Currencies.USD.id(),
                 Money.toMinorSaturated(total), "public-takeover:" + offer.id(),
                 buyer.getServer().overworld().getGameTime());
