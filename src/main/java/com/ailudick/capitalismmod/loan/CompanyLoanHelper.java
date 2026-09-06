@@ -80,8 +80,10 @@ public final class CompanyLoanHelper {
         if (allocation == null) return false;
         long interestPayment = allocation.interestPayment();
         long principalPayment = allocation.principalPayment();
-        if (!CompanyHelper.debitTreasuryNonOperating(server, company.companyId(), loan.currencyId(), payment,
-                "loan_repayment", "Company loan repayment")) return false;
+        String debitSource = "company-loan-repayment:" + loan.id() + ":" + loan.principal()
+                + ":" + loan.interestDue() + ":" + payment;
+        if (!CompanyHelper.debitTreasuryNonOperatingOnce(server, company.companyId(), loan.currencyId(), payment,
+                "loan_repayment", "Company loan repayment", debitSource)) return false;
         if (payment == total) {
             data.remove(loan.id());
         } else {
