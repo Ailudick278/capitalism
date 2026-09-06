@@ -80,7 +80,8 @@ public final class BankAccountHelper {
                 boolean payout = source.startsWith("bank-withdrawal:") || source.startsWith("bank-loan:");
                 long amount = transaction.amount() < 0L ? -transaction.amount() : transaction.amount();
                 if (!payout || amount <= 0L || !Currencies.exists(transaction.currencyId())) continue;
-                if (mailbox.creditMoneyOnce(player.getUUID(), transaction.currencyId(), amount, source)) recovered++;
+                if (mailbox.hasCreditSource(source)
+                        || mailbox.creditMoneyOnce(player.getUUID(), transaction.currencyId(), amount, source)) recovered++;
             }
         }
         mailbox.redeemMoneyOnly(player);
