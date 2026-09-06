@@ -110,10 +110,11 @@ public final class EconomySettlementTickHandler {
         SupplyMarket.recoverPendingOrderIntents(server);
         LogisticsLossService.recoverSupplyCompensations(server);
         FuturesMarket.recoverPendingOpenPositions(server);
-        journal.markStarted(settlementDay, "households-and-labor", server.overworld().getGameTime());
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+        if (!journal.isCompleted(settlementDay, "households-and-labor")) {
+            journal.markStarted(settlementDay, "households-and-labor", server.overworld().getGameTime());
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             settlePlayerToDay(player, settlementDay);
-        }
+            }
 
         PeerLoanSavedData loans = PeerLoanSavedData.get(server);
         for (PeerLoan loan : new ArrayList<>(loans.loans())) {
@@ -145,13 +146,15 @@ public final class EconomySettlementTickHandler {
         PublicConstructionSavedData.get(server).settleRework(server, settlementDay);
         GovernmentPublicBudgetService.settleDaily(server, settlementDay);
         PopulationService.settleDaily(server, settlementDay);
-        journal.markCompleted(settlementDay, "households-and-labor", server.overworld().getGameTime());
+            journal.markCompleted(settlementDay, "households-and-labor", server.overworld().getGameTime());
+        }
         EconomicContractBridge.syncFreight(server);
         TaxRefundService.recoverUnfinished(server);
 
-        CompanyLoanSavedData companyLoans = CompanyLoanSavedData.get(server);
-        CompanySavedData companies = CompanySavedData.get(server);
-        for (CompanyLoan loan : new ArrayList<>(companyLoans.loans())) {
+        if (!journal.isCompleted(settlementDay, "credit-and-securities")) {
+            CompanyLoanSavedData companyLoans = CompanyLoanSavedData.get(server);
+            CompanySavedData companies = CompanySavedData.get(server);
+            for (CompanyLoan loan : new ArrayList<>(companyLoans.loans())) {
             if (loan.lastSettlementDay() >= settlementDay) {
                 continue;
             }
@@ -176,20 +179,21 @@ public final class EconomySettlementTickHandler {
                 }
             }
             companyLoans.replace(loan.withDaysRemaining(nextDays).withLastSettlementDay(settlementDay));
+            }
+            journal.markStarted(settlementDay, "credit-and-securities", server.overworld().getGameTime());
+            BondMarket.settleMaturity(server, settlementDay);
+            BondMarket.recoverIssuances(server);
+            BankCapitalService.settleDaily(server, settlementDay);
+            FinancialRiskService.settleDaily(server, settlementDay);
+            BankLiquidityService.settleDaily(server, settlementDay);
+            // Build the current-day liquidity snapshot before evaluating crisis
+            // state, so balance-sheet and run stress are not delayed by one day.
+            FinancialCrisisService.update(server, settlementDay);
+            journal.markCompleted(settlementDay, "credit-and-securities", server.overworld().getGameTime());
         }
-
-        journal.markStarted(settlementDay, "credit-and-securities", server.overworld().getGameTime());
-        BondMarket.settleMaturity(server, settlementDay);
-        BondMarket.recoverIssuances(server);
-        BankCapitalService.settleDaily(server, settlementDay);
-        FinancialRiskService.settleDaily(server, settlementDay);
-        BankLiquidityService.settleDaily(server, settlementDay);
-        // Build the current-day liquidity snapshot before evaluating crisis
-        // state, so balance-sheet and run stress are not delayed by one day.
-        FinancialCrisisService.update(server, settlementDay);
-        journal.markCompleted(settlementDay, "credit-and-securities", server.overworld().getGameTime());
-        journal.markStarted(settlementDay, "markets-and-close", server.overworld().getGameTime());
-        FuturesMarket.settleDay(server, settlementDay);
+        if (!journal.isCompleted(settlementDay, "markets-and-close")) {
+            journal.markStarted(settlementDay, "markets-and-close", server.overworld().getGameTime());
+            FuturesMarket.settleDay(server, settlementDay);
         CommodityMarket.expireOrders(server, server.overworld().getGameTime());
         StockMarket.expireOrders(server, server.overworld().getGameTime());
         SupplyMarket.expireOrders(server, server.overworld().getGameTime());
@@ -199,7 +203,8 @@ public final class EconomySettlementTickHandler {
         InflationService.settleDaily(server, settlementDay);
         MoneySupplyService.settleDaily(server, settlementDay);
         CityStatisticsSavedData.get(server).recordDaily(server, settlementDay);
-        journal.markCompleted(settlementDay, "markets-and-close", server.overworld().getGameTime());
+            journal.markCompleted(settlementDay, "markets-and-close", server.overworld().getGameTime());
+        }
     }
 
     private static void settlePlayerToDay(ServerPlayer player, long targetDay) {
