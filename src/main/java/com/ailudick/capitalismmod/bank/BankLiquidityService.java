@@ -24,7 +24,8 @@ public final class BankLiquidityService {
             loans = add(loans, value.loanDebtMinor());
         }
         boolean limited = FinancialCrisisSavedData.get(server).active();
-        BankLiquiditySnapshot snapshot = new BankLiquiditySnapshot(day, deposits, loans, data.withdrawnToday(day), limited);
+        BankLiquiditySnapshot snapshot = new BankLiquiditySnapshot(day, deposits, loans,
+                data.withdrawalsForAssessment(day), limited);
         data.record(snapshot); return snapshot;
     }
 

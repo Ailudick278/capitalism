@@ -26,6 +26,11 @@ public final class BankLiquiditySavedData extends SavedData {
     public List<BankLiquiditySnapshot> snapshots() { return List.copyOf(snapshots); }
     public BankLiquiditySnapshot latest() { return snapshots.isEmpty() ? null : snapshots.get(snapshots.size() - 1); }
     public long withdrawnToday(long day) { return currentDay == day ? withdrawnToday : 0L; }
+    /** Reads the withdrawals accumulated during the day being closed or the current day. */
+    public long withdrawalsForAssessment(long day) {
+        if (currentDay == day || currentDay == day - 1L) return withdrawnToday;
+        return 0L;
+    }
     public boolean reserveWithdrawal(long day, long amount, long limit) {
         if (amount <= 0L || limit <= 0L || amount > limit) return false;
         if (currentDay != day) { currentDay = day; withdrawnToday = 0L; }
