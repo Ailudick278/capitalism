@@ -268,6 +268,8 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PET_BOTTLE = ITEMS.register("pet_bottle",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RECYCLED_PET_FLAKES = ITEMS.register("recycled_pet_flakes",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FAN_BLADES = ITEMS.register("fan_blades",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> FAN_CONTROL = ITEMS.register("fan_control",

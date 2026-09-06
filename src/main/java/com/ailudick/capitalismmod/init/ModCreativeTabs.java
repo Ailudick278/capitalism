@@ -122,6 +122,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.TEREPHTHALIC_ACID.get());
                         output.accept(ModItems.PET_RESIN.get());
                         output.accept(ModItems.PET_BOTTLE.get());
+                        output.accept(ModItems.RECYCLED_PET_FLAKES.get());
                         output.accept(ModItems.FAN_BLADES.get());
                         output.accept(ModItems.FAN_CONTROL.get());
                         output.accept(ModItems.POLYSILICON.get());
