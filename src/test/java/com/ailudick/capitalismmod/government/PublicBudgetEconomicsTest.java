@@ -48,4 +48,12 @@ class PublicBudgetEconomicsTest {
     void unknownPriorityDoesNotCreateMaintenanceProtection() {
         assertEquals(0, PublicBudgetEconomics.priority("unknown"));
     }
+
+    @Test
+    void laborShockActivatesCappedAutomaticStabilizer() {
+        assertEquals(10, PublicBudgetEconomics.effectiveRegionalSupportRate(10, 0));
+        assertEquals(15, PublicBudgetEconomics.effectiveRegionalSupportRate(10, -5000));
+        assertEquals(30, PublicBudgetEconomics.effectiveRegionalSupportRate(25, -9000));
+        assertEquals(10, PublicBudgetEconomics.effectiveRegionalSupportRate(10, 5000));
+    }
 }

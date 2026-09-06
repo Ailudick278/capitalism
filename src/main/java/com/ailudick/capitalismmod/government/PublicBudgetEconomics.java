@@ -40,4 +40,12 @@ public final class PublicBudgetEconomics {
     public static boolean allowNonEssentialExpansion(int fiscalStress) {
         return fiscalStress >= 0 && fiscalStress < 75;
     }
+
+    /** Automatic stabilizer: a negative labor-demand shock raises regional support, capped at 30%. */
+    public static int effectiveRegionalSupportRate(int configuredPercent, int laborDemandShockBps) {
+        int base = Math.max(0, Math.min(30, configuredPercent));
+        int shock = Math.max(-9000, Math.min(9000, laborDemandShockBps));
+        int supplement = shock < 0 ? Math.min(10, (-shock) / 1000) : 0;
+        return Math.min(30, base + supplement);
+    }
 }

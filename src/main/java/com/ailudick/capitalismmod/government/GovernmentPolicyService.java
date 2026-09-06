@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.government;
 import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
+import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
 import net.minecraft.server.MinecraftServer;
 
 /** Applies one idempotent fiscal-transfer pass per simulated day. */
@@ -25,9 +26,11 @@ public final class GovernmentPolicyService {
                 long payment = Math.min(benefit, maximum);
                 if (payOnce(policy, population, household, day, payment, "government-benefit:")) paid++;
             }
-            if (policy.regionalSupportRatePercent() > 0 && regionalUnemployment(server, household.region()) >= 30) {
+            int supportRate = PublicBudgetEconomics.effectiveRegionalSupportRate(policy.regionalSupportRatePercent(),
+                    EconomicEventService.laborDemandShockBps(server, household.region(), server.overworld().getGameTime()));
+            if (supportRate > 0 && regionalUnemployment(server, household.region()) >= 30) {
                 long support = multiply(multiply(household.dailyNeedMinor(), household.size()),
-                        policy.regionalSupportRatePercent()) / 100L;
+                        supportRate) / 100L;
                 if (payOnce(policy, population, household, day, support, "government-regional-support:")) paid++;
             }
         }
