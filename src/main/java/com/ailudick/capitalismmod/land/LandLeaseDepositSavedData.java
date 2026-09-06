@@ -35,7 +35,13 @@ public final class LandLeaseDepositSavedData extends SavedData {
                 || deposit.tenantUuid() == null || deposit.ownerUuid() == null || deposit.amount() < 0L) {
             return;
         }
-        deposits.removeIf(current -> current.landId().equals(deposit.landId()));
+        for (int i = 0; i < deposits.size(); i++) {
+            if (!deposits.get(i).landId().equals(deposit.landId())) continue;
+            if (deposit.amount() == 0L) deposits.remove(i);
+            else deposits.set(i, deposit);
+            setDirty();
+            return;
+        }
         if (deposit.amount() > 0L) {
             if (deposits.size() >= MAX_DEPOSITS) return;
             deposits.add(deposit);
