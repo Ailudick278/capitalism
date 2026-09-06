@@ -312,6 +312,10 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> DISPLAY_PANEL = ITEMS.register("display_panel",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DISPLAY_GLASS_SUBSTRATE = ITEMS.register("display_glass_substrate",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BACKLIGHT_MODULE = ITEMS.register("backlight_module",
+            () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PHONE_CASING = ITEMS.register("phone_casing",
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> CAMERA_MODULE = ITEMS.register("camera_module",

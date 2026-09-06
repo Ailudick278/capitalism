@@ -390,4 +390,6 @@
   ,"item.capitalismmod.keyboard_module": "键盘模组"
   ,"item.capitalismmod.storage_module": "存储模组"
   ,"item.capitalismmod.wireless_module": "无线通信模组"
+  ,"item.capitalismmod.display_glass_substrate": "显示玻璃基板"
+  ,"item.capitalismmod.backlight_module": "背光模组"
 }

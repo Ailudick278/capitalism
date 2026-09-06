@@ -259,6 +259,7 @@ public final class CapitalismData {
                         ? new ArrayList<>() : new ArrayList<>(j.recipes);
                 for (RecipeJson recipe : configured) {
                     upgradeLegacyPolymerRecipe(recipe);
+                    upgradeLegacyDisplayRecipe(recipe);
                 }
                 Set<String> configuredIds = new java.util.HashSet<>();
                 for (RecipeJson recipe : configured) {
@@ -309,6 +310,30 @@ public final class CapitalismData {
     private static void upgradeLegacyPolymerRecipe(RecipeJson recipe) {
         if (recipe == null || recipe.id == null || recipe.outputs == null) return;
         recipe.outputs = PolymerRecipeMigration.upgradeOutputs(recipe.id, recipe.outputs);
+    }
+
+    /** Upgrade only the original built-in display recipe, preserving custom recipes. */
+    private static void upgradeLegacyDisplayRecipe(RecipeJson recipe) {
+        if (recipe == null || !"display_panel".equals(recipe.id)
+                || recipe.inputs == null || recipe.outputs == null) return;
+        Map<String, Integer> legacyInputs = Map.of(
+                "minecraft:glass", 1,
+                "capitalismmod:silicon_wafer", 1,
+                "capitalismmod:copper_wire", 1,
+                "capitalismmod:plastic_pellets", 1);
+        if (legacyInputs.equals(recipe.inputs)
+                && Map.of("capitalismmod:display_panel", 1).equals(recipe.outputs)) {
+            recipe.inputs = new HashMap<>(Map.of(
+                    "capitalismmod:display_glass_substrate", 1,
+                    "capitalismmod:backlight_module", 1,
+                    "capitalismmod:display_driver", 1,
+                    "capitalismmod:plastic_pellets", 1));
+            recipe.income = 390;
+            recipe.machine_type = "electronics_assembly";
+            recipe.workers_per_cycle = 4;
+            recipe.energy_cost = 8;
+            recipe.maintenance_cost = 15;
+        }
     }
 
     private static <T> List<T> read(Path file, Class<T[]> arrayClass, List<T> defaults) {
@@ -410,6 +435,8 @@ public final class CapitalismData {
                 new CommodityJson("capitalismmod:power_management_ic", 260),
                 new CommodityJson("capitalismmod:display_driver", 285),
                 new CommodityJson("capitalismmod:display_panel", 330),
+                new CommodityJson("capitalismmod:display_glass_substrate", 145),
+                new CommodityJson("capitalismmod:backlight_module", 190),
                 new CommodityJson("capitalismmod:phone_casing", 75),
                 new CommodityJson("capitalismmod:camera_module", 180),
                 new CommodityJson("capitalismmod:speaker_module", 85),
@@ -578,7 +605,9 @@ public final class CapitalismData {
                         new RecipeJson("display_driver", Map.of("capitalismmod:packaged_chip", 1, "capitalismmod:passive_components", 1, "capitalismmod:copper_wire", 1), Map.of("capitalismmod:display_driver", 1), 350, "smt_line", 3, 6, 12),
                         new RecipeJson("printed_circuit_board", Map.of("capitalismmod:pcb_substrate", 1, "capitalismmod:copper_foil", 1, "capitalismmod:solder", 1, "capitalismmod:smd_components", 1, "capitalismmod:packaged_chip", 1), Map.of("capitalismmod:circuit_board", 1), 340, "pcb_assembly_line", 4, 7, 14),
                         new RecipeJson("assembled_fabricated_pcb", Map.of("capitalismmod:solder_masked_pcb", 1, "capitalismmod:solder", 1, "capitalismmod:smd_components", 1, "capitalismmod:packaged_chip", 1), Map.of("capitalismmod:circuit_board", 1), 390, "pcb_assembly_line", 4, 8, 15),
-                        new RecipeJson("display_panel", Map.of("minecraft:glass", 1, "capitalismmod:silicon_wafer", 1, "capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:display_panel", 1), 330, "electronics_assembly", 4, 7, 13),
+                        new RecipeJson("display_glass_substrate", Map.of("minecraft:glass", 2), Map.of("capitalismmod:display_glass_substrate", 1), 145, "glass_furnace", 2, 4, 8),
+                        new RecipeJson("backlight_module", Map.of("capitalismmod:packaged_chip", 1, "capitalismmod:copper_wire", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:backlight_module", 1), 210, "electronics_assembly", 3, 6, 11),
+                        new RecipeJson("display_panel", Map.of("capitalismmod:display_glass_substrate", 1, "capitalismmod:backlight_module", 1, "capitalismmod:display_driver", 1, "capitalismmod:plastic_pellets", 1), Map.of("capitalismmod:display_panel", 1), 390, "electronics_assembly", 4, 8, 15),
                         new RecipeJson("phone_casing", Map.of("capitalismmod:abs_resin", 1), Map.of("capitalismmod:phone_casing", 1), 145, "injection_molder", 2, 3, 8),
                         new RecipeJson("plastic_container", Map.of("capitalismmod:polyethylene_pellets", 2), Map.of("capitalismmod:plastic_container", 1), 125, "injection_molder", 2, 3, 8),
                         new RecipeJson("packaging_film", Map.of("capitalismmod:polyethylene_pellets", 1), Map.of("capitalismmod:packaging_film", 4), 95, "extrusion_line", 2, 3, 8),
