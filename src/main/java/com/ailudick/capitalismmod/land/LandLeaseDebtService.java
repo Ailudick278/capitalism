@@ -75,13 +75,11 @@ public final class LandLeaseDebtService {
                         "已结束租约的待缴租金：" + debt.amount()), true);
                 continue;
             }
+            MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+            mailbox.creditMoneyOnce(debt.ownerUuid(), Config.defaultCurrencyId(), debt.amount(),
+                    "land-rent-debt-payment:" + debt.id());
             ServerPlayer owner = server.getPlayerList().getPlayer(debt.ownerUuid());
-            if (owner != null) {
-                EconomyHelper.giveMoney(owner, Config.defaultCurrency(), debt.amount());
-            } else {
-                MarketMailboxSavedData.get(server).creditMoney(debt.ownerUuid(),
-                        Config.defaultCurrencyId(), debt.amount());
-            }
+            if (owner != null) mailbox.redeemMoneyOnly(owner);
             data.remove(debt.id());
             tenant.displayClientMessage(net.minecraft.network.chat.Component.literal(
                     "已补缴已结束租约的欠租：" + debt.amount()), true);
