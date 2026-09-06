@@ -42,6 +42,7 @@ import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
+import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -243,6 +244,8 @@ public final class EconomyAuditService {
             }
             if (CompanySavedData.get(server).get(employment.employerId()) == null) {
                 issues.add("employment employer has no company " + employment.id());
+            } else if (!CompanyLifecycleService.canOperate(server, employment.employerId())) {
+                issues.add("inactive company has active employment " + employment.id());
             }
         }
         for (var offer : labor.offers()) {
