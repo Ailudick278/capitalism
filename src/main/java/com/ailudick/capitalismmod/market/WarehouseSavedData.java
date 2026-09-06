@@ -120,6 +120,10 @@ public final class WarehouseSavedData extends SavedData {
                 ? 0 : Math.max(0, creditedSourceQuantities.getOrDefault(sourceId, 0));
     }
 
+    public boolean hasCreditSource(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && creditedSources.contains(sourceId);
+    }
+
     /** Removes warehouse stock once for a durable consumption source. */
     public boolean consumeOnce(InventoryOwner owner, Item item, int count, String sourceId) {
         if (owner == null || sourceId == null || sourceId.isBlank() || count <= 0) return false;

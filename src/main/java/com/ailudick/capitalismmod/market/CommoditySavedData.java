@@ -126,6 +126,10 @@ public final class CommoditySavedData extends SavedData {
         return true;
     }
 
+    public boolean hasNetVolumeSource(String source) {
+        return source != null && !source.isBlank() && netVolumeSources.contains(source);
+    }
+
     public void resetNetVolume(String itemId) {
         netVolume.put(itemId, 0L);
         setDirty();

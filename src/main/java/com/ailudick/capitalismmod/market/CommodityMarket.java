@@ -72,6 +72,7 @@ public final class CommodityMarket {
             return false;
         }
 
+        String settlementId = UUID.randomUUID().toString();
         int remaining = quantity;
         for (MarketOrder buy : crossingBuys(data, itemId, pricePerUnit, player.getStringUUID())) {
             if (remaining <= 0) {
@@ -83,16 +84,31 @@ public final class CommodityMarket {
                 break;
             }
             UUID buyerId = UUID.fromString(buy.ownerId());
-            String tradeSource = "commodity-trade:" + buy.id() + ":" + buy.quantity() + ":" + player.getUUID()
+            String tradeSource = "commodity-trade:" + settlementId + ":" + buy.id()
                     + ":" + fill + ":" + gross;
-            if (!payOrPend(player.getServer(), player, player.getUUID(), gross - commission(gross), tradeSource + ":money")) {
+            FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
+            long now = player.getServer().overworld().getGameTime();
+            journal.markStarted(tradeSource, "commodity", "seller-payout", Money.toMinorSaturated(gross), now);
+            if (!journal.isCompleted(tradeSource, "seller-payout")
+                    && !payOrPend(player.getServer(), player, player.getUUID(), gross - commission(gross), tradeSource + ":money")) {
                 break;
             }
-            warehouse.creditOnce(InventoryOwner.player(buyerId), commodity.getItem(), fill, tradeSource + ":goods");
+            journal.markCompleted(tradeSource, "commodity", "seller-payout", Money.toMinorSaturated(gross), now);
+            String goodsSource = tradeSource + ":goods";
+            journal.markStarted(tradeSource, "commodity", "goods-delivery", fill, now);
+            if (!journal.isCompleted(tradeSource, "goods-delivery")
+                    && !warehouse.hasCreditSource(goodsSource)
+                    && !warehouse.creditOnce(InventoryOwner.player(buyerId), commodity.getItem(), fill, goodsSource)) break;
+            journal.markCompleted(tradeSource, "commodity", "goods-delivery", fill, now);
+            journal.markStarted(tradeSource, "commodity", "tax", Money.toMinorSaturated(gross), now);
             TaxTransactionService.assess(player.getServer(), TaxType.VAT, player.getUUID(), Currencies.USD.id(),
-                    Money.toMinorSaturated(gross), "commodity-sale:" + tradeSource,
-                    player.getServer().overworld().getGameTime());
-            data.addNetVolume(itemId, -fill);
+                    Money.toMinorSaturated(gross), "commodity-sale:" + tradeSource, now);
+            journal.markCompleted(tradeSource, "commodity", "tax", Money.toMinorSaturated(gross), now);
+            String volumeSource = tradeSource + ":volume";
+            if (!journal.isCompleted(tradeSource, "volume")) {
+                if (!data.hasNetVolumeSource(volumeSource)) data.addNetVolumeOnce(itemId, -fill, volumeSource);
+                journal.markCompleted(tradeSource, "commodity", "volume", fill, now);
+            }
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
             NeoForge.EVENT_BUS.post(new TradeCompletedEvent(null, player, commodity, fill, "usd", gross,
@@ -155,18 +171,33 @@ public final class CommodityMarket {
             if (gross < 0) {
                 break;
             }
-            String tradeSource = "commodity-trade:" + sell.id() + ":" + sell.quantity() + ":" + player.getUUID()
+            String tradeSource = "commodity-trade:" + orderId + ":" + sell.id()
                     + ":" + fill + ":" + gross;
             UUID sellerId = UUID.fromString(sell.ownerId());
             ServerPlayer seller = player.getServer().getPlayerList().getPlayer(sellerId);
-            if (!payOrPend(player.getServer(), seller, sellerId, gross - commission(gross), tradeSource + ":money")) {
+            long now = player.getServer().overworld().getGameTime();
+            journal.markStarted(tradeSource, "commodity", "seller-payout", Money.toMinorSaturated(gross), now);
+            if (!journal.isCompleted(tradeSource, "seller-payout")
+                    && !payOrPend(player.getServer(), seller, sellerId, gross - commission(gross), tradeSource + ":money")) {
                 break;
             }
-            warehouse.creditOnce(InventoryOwner.player(player.getUUID()), commodity.getItem(), fill, tradeSource + ":goods");
+            journal.markCompleted(tradeSource, "commodity", "seller-payout", Money.toMinorSaturated(gross), now);
+            String goodsSource = tradeSource + ":goods";
+            journal.markStarted(tradeSource, "commodity", "goods-delivery", fill, now);
+            if (!journal.isCompleted(tradeSource, "goods-delivery")
+                    && !warehouse.hasCreditSource(goodsSource)
+                    && !warehouse.creditOnce(InventoryOwner.player(player.getUUID()), commodity.getItem(), fill, goodsSource)) break;
+            journal.markCompleted(tradeSource, "commodity", "goods-delivery", fill, now);
+            journal.markStarted(tradeSource, "commodity", "tax", Money.toMinorSaturated(gross), now);
             TaxTransactionService.assess(player.getServer(), TaxType.VAT, sellerId, Currencies.USD.id(),
                     Money.toMinorSaturated(gross), "commodity-sale:" + tradeSource,
-                    player.getServer().overworld().getGameTime());
-            data.addNetVolume(itemId, fill);
+                    now);
+            journal.markCompleted(tradeSource, "commodity", "tax", Money.toMinorSaturated(gross), now);
+            String volumeSource = tradeSource + ":volume";
+            if (!journal.isCompleted(tradeSource, "volume")) {
+                if (!data.hasNetVolumeSource(volumeSource)) data.addNetVolumeOnce(itemId, fill, volumeSource);
+                journal.markCompleted(tradeSource, "commodity", "volume", fill, now);
+            }
             spent += gross;
             remaining -= fill;
             reduceOrRemove(data, sell, fill);
