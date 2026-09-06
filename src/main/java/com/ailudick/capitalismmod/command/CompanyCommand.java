@@ -1302,6 +1302,7 @@ public class CompanyCommand {
         CompanyCollateralAssessment assessment = CompanyCollateralAssessment.from(player.getServer(), company);
         source.sendSuccess(() -> Component.literal("Indicative collateral report for " + company.name()
                 + ": inventory USD " + assessment.inventoryValue()
+                + " (restricted " + assessment.restrictedInventoryValue() + ")"
                 + " (eligible " + assessment.eligibleInventory() + ")"
                 + ", equipment USD " + assessment.equipmentValue()
                 + " (eligible " + assessment.eligibleEquipment() + ")"
