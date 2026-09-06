@@ -38,4 +38,16 @@ class CompanyDebtServiceAssessmentTest {
 
         assertTrue(assessment.approved());
     }
+
+    @Test
+    void configurableCoverageRatioCanTightenApproval() {
+        CompanyDebtServiceAssessment standard = CompanyDebtServiceAssessment.evaluate(
+                1_000L, List.of(), 2_000L, 3650, 0.10, true, 1.25);
+        CompanyDebtServiceAssessment stricter = CompanyDebtServiceAssessment.evaluate(
+                1_000L, List.of(), 2_000L, 3650, 0.10, true, 12.00);
+
+        assertTrue(standard.approved());
+        assertFalse(stricter.approved());
+        assertTrue(stricter.coverageRatio() < 12.00);
+    }
 }
