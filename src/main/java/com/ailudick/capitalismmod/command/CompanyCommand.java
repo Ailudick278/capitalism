@@ -1418,7 +1418,8 @@ public class CompanyCommand {
         AcquisitionSavedData data = AcquisitionSavedData.get(source.getServer());
         AcquisitionSavedData.Offer offer = new AcquisitionSavedData.Offer(
                 java.util.UUID.randomUUID().toString().substring(0, 8), buyer.getUUID(), seller.getUUID(), company,
-                price, source.getServer().overworld().getGameTime());
+                price, source.getServer().overworld().getGameTime(), false,
+                CompanyHelper.getCompany(seller, company).companyId());
         data.add(offer);
         buyer.sendSystemMessage(Component.literal("Acquisition offer sent: " + offer.id()));
         seller.sendSystemMessage(Component.literal("You received an acquisition offer " + offer.id()
@@ -1448,8 +1449,10 @@ public class CompanyCommand {
         AcquisitionSavedData data = AcquisitionSavedData.get(source.getServer());
         AcquisitionSavedData.Offer offer = data.find(id);
         ServerPlayer buyer = offer == null ? null : source.getServer().getPlayerList().getPlayer(offer.buyerUuid());
-        if (offer == null || !offer.sellerUuid().equals(seller.getUUID()) || buyer == null
-                || !CompanyHelper.acquire(seller, buyer, offer)) {
+        boolean completed = offer != null && offer.sellerUuid().equals(seller.getUUID())
+                && (buyer != null ? CompanyHelper.acquire(seller, buyer, offer)
+                : CompanyHelper.acquirePaidOfflineBuyer(seller, offer));
+        if (!completed) {
             source.sendFailure(Component.literal("Offer invalid, buyer offline, company changed, or funds are insufficient."));
             return 0;
         }

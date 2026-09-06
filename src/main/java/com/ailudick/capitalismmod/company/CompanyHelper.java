@@ -60,11 +60,35 @@ public final class CompanyHelper {
         Map<String, Company> result = new HashMap<>();
         for (Map.Entry<String, String> entry : getConglomerate(player).companies().entrySet()) {
             Company company = registry.get(entry.getValue());
-            if (company != null) {
+            if (company != null && player.getUUID().equals(company.ownerUuid())) {
                 result.put(entry.getKey(), company);
             }
         }
         return result;
+    }
+
+    /** Reconciles the player attachment from the authoritative world company registry after login. */
+    public static int syncRegistryOwnership(ServerPlayer player) {
+        if (player == null || player.getServer() == null) return 0;
+        Conglomerate current = getConglomerate(player);
+        Map<String, String> repaired = new HashMap<>();
+        for (Map.Entry<String, String> entry : current.companies().entrySet()) {
+            Company company = CompanySavedData.get(player.getServer()).get(entry.getValue());
+            if (company != null && player.getUUID().equals(company.ownerUuid())) {
+                repaired.put(entry.getKey(), entry.getValue());
+            }
+        }
+        int added = 0;
+        for (Company company : CompanySavedData.get(player.getServer()).companies().values()) {
+            if (player.getUUID().equals(company.ownerUuid()) && !repaired.containsValue(company.companyId())) {
+                repaired.put(company.name(), company.companyId());
+                added++;
+            }
+        }
+        if (!repaired.equals(current.companies())) {
+            player.setData(ModAttachments.CONGLOMERATE, new Conglomerate(current.name(), repaired));
+        }
+        return added;
     }
 
     public static Company getCompany(Player player, String name) {
@@ -1271,6 +1295,42 @@ public final class CompanyHelper {
         return true;
     }
 
+    /** Completes a previously paid acquisition while the buyer is offline. */
+    public static boolean acquirePaidOfflineBuyer(ServerPlayer seller, AcquisitionSavedData.Offer offer) {
+        if (seller == null || offer == null || !offer.buyerPaid()
+                || !offer.sellerUuid().equals(seller.getUUID())
+                || offer.buyerUuid().equals(seller.getUUID()) || offer.price() <= 0) return false;
+        MinecraftServer server = seller.getServer();
+        Company existing = findCompany(server, offer.buyerUuid(), offer.companyName());
+        Company company = getCompany(seller, offer.companyName());
+        if (company == null && existing != null && !offer.companyId().isBlank()
+                && offer.companyId().equals(existing.companyId())) {
+            settleAcquisitionPayout(server, seller, offer);
+            return true;
+        }
+        if (company == null || isListed(seller, offer.companyName())) return false;
+        if (existing != null && !existing.companyId().equals(company.companyId())) return false;
+        if (existing == null) {
+            CompanySavedData.get(server).put(company.withIdentity(company.companyId(), offer.buyerUuid()));
+            detachCompany(seller, offer.companyName());
+        } else if (!offer.buyerUuid().equals(existing.ownerUuid())) {
+            return false;
+        }
+        settleAcquisitionPayout(server, seller, offer);
+        return true;
+    }
+
+    private static void settleAcquisitionPayout(MinecraftServer server, ServerPlayer seller,
+                                                  AcquisitionSavedData.Offer offer) {
+        String payoutSource = "company-acquisition:" + offer.id() + ":seller-payout";
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        mailbox.creditMoneyOnce(seller.getUUID(), Currencies.USD.id(), Money.toMinor(offer.price()), payoutSource);
+        mailbox.redeemMoneyOnly(seller);
+        TaxTransactionService.assess(server, TaxType.CAPITAL_GAINS, seller.getUUID(), Currencies.USD.id(),
+                Money.toMinorSaturated(offer.price()), "company-acquisition:" + offer.id(),
+                server.overworld().getGameTime());
+    }
+
     /** Merges two unlisted companies owned by one player; both must use the same industry. */
     public static boolean merge(Player player, String sourceName, String targetName) {
         if (sourceName.equals(targetName)) {
@@ -1445,5 +1505,12 @@ public final class CompanyHelper {
             CompanySiteAllocationSavedData.get(player.getServer()).remove(removed);
             CompanySavedData.get(player.getServer()).remove(removed);
         }
+    }
+
+    private static void detachCompany(Player player, String name) {
+        Conglomerate conglomerate = getConglomerate(player);
+        Map<String, String> companies = new HashMap<>(conglomerate.companies());
+        companies.remove(name);
+        player.setData(ModAttachments.CONGLOMERATE, new Conglomerate(conglomerate.name(), companies));
     }
 }

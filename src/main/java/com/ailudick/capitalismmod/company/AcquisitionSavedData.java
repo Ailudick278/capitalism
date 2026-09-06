@@ -18,9 +18,9 @@ public final class AcquisitionSavedData extends SavedData {
     private final List<Offer> offers = new ArrayList<>();
 
     public record Offer(String id, UUID buyerUuid, UUID sellerUuid, String companyName, long price,
-                        long createdTick, boolean buyerPaid) {
+                        long createdTick, boolean buyerPaid, String companyId) {
         public Offer(String id, UUID buyerUuid, UUID sellerUuid, String companyName, long price, long createdTick) {
-            this(id, buyerUuid, sellerUuid, companyName, price, createdTick, false);
+            this(id, buyerUuid, sellerUuid, companyName, price, createdTick, false, "");
         }
         private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
         public static final Codec<Offer> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -30,7 +30,8 @@ public final class AcquisitionSavedData extends SavedData {
                 Codec.STRING.fieldOf("companyName").forGetter(Offer::companyName),
                 Codec.LONG.fieldOf("price").forGetter(Offer::price),
                 Codec.LONG.fieldOf("createdTick").forGetter(Offer::createdTick),
-                Codec.BOOL.optionalFieldOf("buyerPaid", false).forGetter(Offer::buyerPaid)
+                Codec.BOOL.optionalFieldOf("buyerPaid", false).forGetter(Offer::buyerPaid),
+                Codec.STRING.optionalFieldOf("companyId", "").forGetter(Offer::companyId)
         ).apply(instance, Offer::new));
     }
 
@@ -79,7 +80,7 @@ public final class AcquisitionSavedData extends SavedData {
             Offer offer = offers.get(i);
             if (offer.id().equals(id) && !offer.buyerPaid()) {
                 offers.set(i, new Offer(offer.id(), offer.buyerUuid(), offer.sellerUuid(), offer.companyName(),
-                        offer.price(), offer.createdTick(), true));
+                        offer.price(), offer.createdTick(), true, offer.companyId()));
                 setDirty();
                 return true;
             }

@@ -66,6 +66,7 @@ public final class EconomySettlementTickHandler {
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            CompanyHelper.syncRegistryOwnership(player);
             PopulationService.ensurePlayerHousehold(player);
             BankAccountHelper.recoverCashPayouts(player);
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
