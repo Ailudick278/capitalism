@@ -38,6 +38,9 @@ import com.ailudick.capitalismmod.economy.PlayerTransferIntentSavedData;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.bond.BondSavedData;
 import com.ailudick.capitalismmod.population.HouseholdConsumptionSavedData;
+import com.ailudick.capitalismmod.bank.BankExposureSavedData;
+import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
+import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -103,6 +106,29 @@ public final class EconomyAuditService {
                     || holding.ratePerYear() < 0.0 || holding.totalDays() <= 0
                     || holding.daysToMaturity() < 0 || holding.daysToMaturity() > holding.totalDays()) {
                 issues.add("bond holding invalid " + holding.id());
+            }
+        }
+        for (var entry : BankExposureSavedData.get(server).exposures().entrySet()) {
+            var exposure = entry.getValue();
+            if (entry.getKey() == null || exposure.depositsMinor() < 0L || exposure.loanDebtMinor() < 0L
+                    || exposure.overdueDebtMinor() < 0L || exposure.overdueDebtMinor() > exposure.loanDebtMinor()
+                    || exposure.overdueAccounts() < 0 || exposure.syncedAt() < 0L) {
+                issues.add("bank exposure invalid " + entry.getKey());
+            }
+        }
+        for (var snapshot : FinancialRiskSavedData.get(server).snapshots()) {
+            if (snapshot.day() < 0L || snapshot.companyDebtMinor() < 0L || snapshot.peerDebtMinor() < 0L
+                    || snapshot.bankDebtMinor() < 0L || snapshot.bondLiabilityMinor() < 0L
+                    || snapshot.overdueDebtMinor() < 0L || snapshot.overdueLoanCount() < 0
+                    || snapshot.overdueShareBasisPoints() < 0 || snapshot.overdueShareBasisPoints() > 10000
+                    || snapshot.overdueDebtMinor() > snapshot.totalDebtMinor()) {
+                issues.add("financial risk snapshot invalid day " + snapshot.day());
+            }
+        }
+        for (var snapshot : BankLiquiditySavedData.get(server).snapshots()) {
+            if (snapshot.day() < 0L || snapshot.depositsMinor() < 0L || snapshot.loanDebtMinor() < 0L
+                    || snapshot.withdrawnMinor() < 0L || snapshot.withdrawnMinor() > snapshot.depositsMinor()) {
+                issues.add("bank liquidity snapshot invalid day " + snapshot.day());
             }
         }
         CompanySavedData companies = CompanySavedData.get(server);
