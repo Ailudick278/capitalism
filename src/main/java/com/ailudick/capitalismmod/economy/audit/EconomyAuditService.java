@@ -75,7 +75,7 @@ public final class EconomyAuditService {
         for (var bill : LandRentBillSavedData.get(server).bills()) {
             if (bill.id().isBlank() || bill.landId().isBlank() || bill.tenantUuid() == null
                     || bill.ownerUuid() == null || bill.amount() <= 0L || bill.dueAt() < 0L
-                    || bill.status().isBlank()) issues.add("land rent bill invalid " + bill.id());
+                    || !LandRentBillSavedData.isValidStatus(bill.status())) issues.add("land rent bill invalid " + bill.id());
         }
         for (var escrow : SupplyEscrowSavedData.get(server).escrows()) {
             long distributed = safeAdd(escrow.heldMinor(), safeAdd(escrow.releasedMinor(), escrow.refundedMinor()));
