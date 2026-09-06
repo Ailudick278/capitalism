@@ -179,7 +179,7 @@ public final class LandCommand {
         if (deposit != null && (claim.ownerUuid().equals(player.getUUID())
                 || claim.leaseeUuid() != null && claim.leaseeUuid().equals(player.getUUID())
                 || player.hasPermissions(2))) {
-            source.sendSuccess(() -> Component.literal("绉熺害淇濊瘉閲戯細" + deposit.amount()
+            source.sendSuccess(() -> Component.literal("租赁保证金：" + deposit.amount()
                     + " | 租户 " + deposit.tenantUuid().toString().substring(0, 8)), false);
         }
         return 1;
