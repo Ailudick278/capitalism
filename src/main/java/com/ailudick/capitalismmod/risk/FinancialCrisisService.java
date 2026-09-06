@@ -22,8 +22,9 @@ public final class FinancialCrisisService {
             crisis.enter(day); return true;
         }
         if (crisis.active() && recovered) {
-            crisis.recover(day); return true;
+            crisis.observeRecovery(day); return crisis.active();
         }
+        if (crisis.active()) crisis.resetRecoveryObservation();
         return crisis.active();
     }
 }

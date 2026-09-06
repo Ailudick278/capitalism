@@ -11,6 +11,9 @@ public final class FinancialCrisisSavedData extends SavedData {
     private boolean active;
     private long startedDay = -1L;
     private long lastTransitionDay = -1L;
+    private long lastRecoveryObservationDay = -1L;
+    private int recoveryStreak;
+    private static final int REQUIRED_RECOVERY_DAYS = 3;
 
     private FinancialCrisisSavedData() {}
 
@@ -25,17 +28,43 @@ public final class FinancialCrisisSavedData extends SavedData {
 
     public void enter(long day) {
         if (active) return;
-        active = true; startedDay = day; lastTransitionDay = day; setDirty();
+        active = true; startedDay = day; lastTransitionDay = day;
+        recoveryStreak = 0; lastRecoveryObservationDay = -1L; setDirty();
     }
 
     public void recover(long day) {
         if (!active) return;
-        active = false; lastTransitionDay = day; setDirty();
+        active = false; lastTransitionDay = day;
+        recoveryStreak = 0; lastRecoveryObservationDay = -1L; setDirty();
     }
+
+    /** Records one daily recovery observation and releases the crisis after three consecutive days. */
+    public boolean observeRecovery(long day) {
+        if (!active || day == lastRecoveryObservationDay) return false;
+        if (lastRecoveryObservationDay == day - 1L) recoveryStreak++;
+        else recoveryStreak = 1;
+        lastRecoveryObservationDay = day;
+        setDirty();
+        if (recoveryStreak < REQUIRED_RECOVERY_DAYS) return false;
+        recover(day);
+        return true;
+    }
+
+    public void resetRecoveryObservation() {
+        if (!active || (recoveryStreak == 0 && lastRecoveryObservationDay < 0L)) return;
+        recoveryStreak = 0;
+        lastRecoveryObservationDay = -1L;
+        setDirty();
+    }
+
+    public int recoveryStreak() { return recoveryStreak; }
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putBoolean("active", active); tag.putLong("startedDay", startedDay);
-        tag.putLong("lastTransitionDay", lastTransitionDay); return tag;
+        tag.putLong("lastTransitionDay", lastTransitionDay);
+        tag.putLong("lastRecoveryObservationDay", lastRecoveryObservationDay);
+        tag.putInt("recoveryStreak", recoveryStreak);
+        return tag;
     }
 
     public static FinancialCrisisSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
@@ -43,6 +72,8 @@ public final class FinancialCrisisSavedData extends SavedData {
         data.active = tag.getBoolean("active");
         data.startedDay = tag.getLong("startedDay");
         data.lastTransitionDay = tag.getLong("lastTransitionDay");
+        data.lastRecoveryObservationDay = tag.getLong("lastRecoveryObservationDay");
+        data.recoveryStreak = Math.max(0, tag.getInt("recoveryStreak"));
         return data;
     }
 }
