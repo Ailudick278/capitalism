@@ -399,6 +399,34 @@ public final class BankAccountHelper {
         BankAccount to = getAccount(target, targetAccountId);
         long fee = transferFee(amount);
         long total = EconomyMath.add(amount, fee);
+        String transferReference = requestId == null ? "bank_transfer" : "bank_transfer:" + requestId;
+        boolean senderMoved = hasTransfer(from, transferReference, "transfer_out", -amount);
+        boolean targetReceived = hasTransfer(to, transferReference, "transfer_in", amount);
+        if (requestId != null && (senderMoved || targetReceived)) {
+            if (senderMoved && !targetReceived) {
+                if (to == null || fee < 0L || total < 0L
+                        || EconomyMath.add(to.getBalance(currencyId), amount) < 0L) return false;
+                updateAccount(target, to.withBalance(currencyId, EconomyMath.add(to.getBalance(currencyId), amount))
+                        .withTransaction(BankTransaction.now(sender, "transfer_in", currencyId, amount,
+                                transferReference, fromAccountId)));
+                targetReceived = true;
+            } else if (!senderMoved && targetReceived) {
+                if (from == null || fee < 0L || total < 0L || from.getBalance(currencyId) < total) return false;
+                BankAccount repaired = from.withBalance(currencyId, from.getBalance(currencyId) - total)
+                        .withTransaction(BankTransaction.now(sender, "transfer_out", currencyId, -amount,
+                                transferReference, targetAccountId));
+                if (fee > 0L) repaired = repaired.withTransaction(BankTransaction.now(sender, "transfer_fee",
+                        currencyId, -fee, "transfer_fee", "bank"));
+                updateAccount(sender, repaired);
+                senderMoved = true;
+            }
+            if (senderMoved && targetReceived) {
+                transferReceipts.record(new EconomyTransferSavedData.Receipt(requestId, sender.getUUID(),
+                        fromAccountId, targetAccountId, currencyId, amount,
+                        sender.getServer().overworld().getGameTime()));
+                return true;
+            }
+        }
         long targetBalance = to == null ? -1L : EconomyMath.add(to.getBalance(currencyId), amount);
         if (from == null || to == null || fee < 0L || total < 0L
                 || targetBalance < 0L || from.getBalance(currencyId) < total) {
@@ -406,7 +434,7 @@ public final class BankAccountHelper {
         }
         BankAccount senderUpdated = from.withBalance(currencyId, from.getBalance(currencyId) - total)
                 .withTransaction(BankTransaction.now(sender, "transfer_out", currencyId, -amount,
-                        "bank_transfer", targetAccountId));
+                        transferReference, targetAccountId));
         if (fee > 0L) {
             senderUpdated = senderUpdated.withTransaction(BankTransaction.now(sender, "transfer_fee", currencyId, -fee,
                     "transfer_fee", "bank"));
@@ -414,13 +442,19 @@ public final class BankAccountHelper {
         updateAccount(sender, senderUpdated);
         updateAccount(target, to.withBalance(currencyId, targetBalance)
                 .withTransaction(BankTransaction.now(sender, "transfer_in", currencyId, amount,
-                        "bank_transfer", fromAccountId)));
+                        transferReference, fromAccountId)));
         if (transferReceipts != null) {
             transferReceipts.record(new EconomyTransferSavedData.Receipt(requestId, sender.getUUID(),
                     fromAccountId, targetAccountId, currencyId, amount,
                     sender.getServer().overworld().getGameTime()));
         }
         return true;
+    }
+
+    private static boolean hasTransfer(BankAccount account, String reference, String type, long amount) {
+        if (account == null || reference == null) return false;
+        return account.transactions().stream().anyMatch(transaction -> type.equals(transaction.type())
+                && reference.equals(transaction.reference()) && transaction.amount() == amount);
     }
 
     private static long transferFee(long amount) {
