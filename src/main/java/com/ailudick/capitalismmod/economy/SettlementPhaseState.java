@@ -8,4 +8,8 @@ public final class SettlementPhaseState {
     public static boolean preservesCompleted(String previousStatus, String nextStatus) {
         return "completed".equals(previousStatus) && "started".equals(nextStatus);
     }
+
+    public static boolean isDayComplete(boolean households, boolean credit, boolean markets) {
+        return households && credit && markets;
+    }
 }

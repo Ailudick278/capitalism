@@ -36,6 +36,12 @@ public final class EconomicSettlementJournalSavedData extends SavedData {
         return entry != null && "completed".equals(entry.status());
     }
 
+    /** A completed day can be safely advanced after a crash before the day marker was written. */
+    public boolean isDayComplete(long day) {
+        return SettlementPhaseState.isDayComplete(isCompleted(day, "households-and-labor"),
+                isCompleted(day, "credit-and-securities"), isCompleted(day, "markets-and-close"));
+    }
+
     public void markStarted(long day, String phase, long gameTime) {
         put(new Entry(day, phase, "started", gameTime));
     }

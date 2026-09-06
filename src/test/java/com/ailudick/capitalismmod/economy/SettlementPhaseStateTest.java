@@ -12,4 +12,10 @@ class SettlementPhaseStateTest {
         assertFalse(SettlementPhaseState.preservesCompleted("started", "completed"));
         assertFalse(SettlementPhaseState.preservesCompleted("completed", "completed"));
     }
+
+    @Test
+    void dayCompletesOnlyAfterAllPhasesAreDurable() {
+        assertTrue(SettlementPhaseState.isDayComplete(true, true, true));
+        assertFalse(SettlementPhaseState.isDayComplete(true, true, false));
+    }
 }
