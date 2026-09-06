@@ -19,6 +19,7 @@ import com.ailudick.capitalismmod.land.LandOwnershipSavedData;
 import com.ailudick.capitalismmod.land.LandValuationHelper;
 import com.ailudick.capitalismmod.land.LandTaxPeriodSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseDebtService;
+import com.ailudick.capitalismmod.land.LandRentBillSavedData;
 import com.ailudick.capitalismmod.tax.TaxService;
 import com.ailudick.capitalismmod.tax.TaxSubject;
 import com.ailudick.capitalismmod.tax.TaxType;
@@ -216,15 +217,29 @@ public final class LandRentTickHandler {
             }
             long totalDue = claim.leaseRent() > Long.MAX_VALUE - claim.leaseDebt()
                     ? Long.MAX_VALUE : claim.leaseRent() + claim.leaseDebt();
+            String billId = "land-rent:" + claim.id() + ":" + claim.leaseUntil() + ":" + now;
+            LandRentBillSavedData bills = LandRentBillSavedData.get(server);
+            LandRentBillSavedData.Bill bill = bills.find(billId);
+            if (bill == null) {
+                bill = new LandRentBillSavedData.Bill(billId, claim.id(), claim.leaseeUuid(),
+                        claim.ownerUuid(), totalDue, now, "PENDING", now);
+                if (!bills.create(bill)) continue;
+            }
+            if ("PAID".equals(bill.status())) {
+                data.put(claim.withLeaseState(claim.leaseeUuid(), claim.leaseUntil(), claim.leaseRent(), 0L, 0L));
+                continue;
+            }
             boolean paid = EconomyHelper.tryPay(tenant, Config.defaultCurrency(), totalDue);
             if (paid) {
                 payOwner(server, owner, claim.ownerUuid(), totalDue);
+                bills.markStatus(billId, "PAID");
                 data.put(claim.withLeaseState(claim.leaseeUuid(), claim.leaseUntil(), claim.leaseRent(),
                         0L, 0L));
                 logLand(server, claim, "租金结算:" + totalDue);
                 tenant.displayClientMessage(net.minecraft.network.chat.Component.literal("已支付土地租金：" + totalDue), true);
                 if (owner != null) owner.displayClientMessage(net.minecraft.network.chat.Component.literal("已收到土地租金：" + totalDue), true);
             } else {
+                bills.markStatus(billId, "DEFAULTED");
                 long debt = addSaturated(claim.leaseDebt(), claim.leaseRent());
                 long graceUntil = claim.leaseGraceUntil() > 0L ? claim.leaseGraceUntil() : now + GRACE_DAYS * TICKS_PER_DAY;
                 if (now >= graceUntil) {
