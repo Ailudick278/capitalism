@@ -18,14 +18,26 @@ public final class PeerLoanPaymentSavedData extends SavedData {
     private static final int MAX_RECORDS = 2048;
     private final List<Payment> payments = new ArrayList<>();
 
-    public record Payment(String loanId, UUID lender, UUID borrower, long timestamp, long total,
+    public record Payment(String loanId, UUID lender, UUID borrower, String currencyId, long timestamp, long total,
                           long interest, long principal, long remainingPrincipal,
                           int daysRemaining, boolean overdue) {
+        public Payment(String loanId, UUID lender, UUID borrower, long timestamp, long total,
+                       long interest, long principal, long remainingPrincipal,
+                       int daysRemaining, boolean overdue) {
+            this(loanId, lender, borrower, "", timestamp, total, interest, principal,
+                    remainingPrincipal, daysRemaining, overdue);
+        }
+
+        public Payment {
+            currencyId = currencyId == null ? "" : currencyId;
+        }
+
         private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
         private static final Codec<Payment> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("loanId").forGetter(Payment::loanId),
                 UUID_CODEC.fieldOf("lender").forGetter(Payment::lender),
                 UUID_CODEC.fieldOf("borrower").forGetter(Payment::borrower),
+                Codec.STRING.optionalFieldOf("currencyId", "").forGetter(Payment::currencyId),
                 Codec.LONG.fieldOf("timestamp").forGetter(Payment::timestamp),
                 Codec.LONG.fieldOf("total").forGetter(Payment::total),
                 Codec.LONG.fieldOf("interest").forGetter(Payment::interest),
@@ -55,6 +67,12 @@ public final class PeerLoanPaymentSavedData extends SavedData {
         setDirty();
     }
 
+    public static String payoutSource(Payment payment) {
+        if (payment == null || payment.currencyId().isBlank()) return "";
+        return "peer-loan-payout:" + payment.loanId() + ":" + payment.timestamp() + ":"
+                + payment.total() + ":" + payment.remainingPrincipal();
+    }
+
     public List<Payment> forLoan(String loanId) {
         if (loanId == null || loanId.isBlank()) return List.of();
         return payments.stream().filter(payment -> loanId.equals(payment.loanId())).toList();
@@ -65,6 +83,8 @@ public final class PeerLoanPaymentSavedData extends SavedData {
         return payments.stream().filter(payment -> playerId.equals(payment.lender())
                 || playerId.equals(payment.borrower())).toList();
     }
+
+    public List<Payment> forAll() { return List.copyOf(payments); }
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {

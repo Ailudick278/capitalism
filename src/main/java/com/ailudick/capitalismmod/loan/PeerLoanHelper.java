@@ -47,12 +47,6 @@ public final class PeerLoanHelper {
             borrower.sendSystemMessage(Component.translatable("command.capitalismmod.insufficient"));
             return false;
         }
-        ServerPlayer lender = borrower.getServer().getPlayerList().getPlayer(loan.lender());
-        if (lender != null) {
-            EconomyHelper.giveMoney(lender, currency, totalMinor);
-        } else {
-            MarketMailboxSavedData.get(borrower.getServer()).creditMoney(loan.lender(), currency.id(), totalMinor);
-        }
         if (payment == total) {
             data.removeLoan(loanId);
         } else {
@@ -66,12 +60,37 @@ public final class PeerLoanHelper {
             }
             data.replaceLoan(updated);
         }
-        PeerLoanPaymentSavedData.get(borrower.getServer()).append(new PeerLoanPaymentSavedData.Payment(
-                loan.id(), loan.lender(), loan.borrower(), borrower.getServer().overworld().getGameTime(),
+        PeerLoanPaymentSavedData.Payment receipt = new PeerLoanPaymentSavedData.Payment(
+                loan.id(), loan.lender(), loan.borrower(), currency.id(), borrower.getServer().overworld().getGameTime(),
                 payment, allocation.interestPayment(), allocation.principalPayment(),
-                allocation.remainingPrincipal(), loan.daysRemaining(), loan.isOverdue()));
+                allocation.remainingPrincipal(), loan.daysRemaining(), loan.isOverdue());
+        PeerLoanPaymentSavedData.get(borrower.getServer()).append(receipt);
+        creditLender(borrower.getServer(), receipt);
         borrower.sendSystemMessage(Component.translatable("command.capitalismmod.loan_repaid",
                 payment, Component.translatable(currency.nameKey())));
         return true;
+    }
+
+    /** Completes a durable lender credit for a previously recorded repayment. */
+    public static boolean creditLender(net.minecraft.server.MinecraftServer server,
+                                       PeerLoanPaymentSavedData.Payment payment) {
+        if (server == null || payment == null || payment.currencyId().isBlank()) return false;
+        String source = PeerLoanPaymentSavedData.payoutSource(payment);
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+        if (!mailbox.hasCreditSource(source)
+                && !mailbox.creditMoneyOnce(payment.lender(), payment.currencyId(), Money.toMinor(payment.total()), source)) {
+            return false;
+        }
+        ServerPlayer lender = server.getPlayerList().getPlayer(payment.lender());
+        if (lender != null) mailbox.redeemMoneyOnly(lender);
+        return true;
+    }
+
+    public static int recoverRecordedPayments(net.minecraft.server.MinecraftServer server) {
+        int recovered = 0;
+        for (PeerLoanPaymentSavedData.Payment payment : PeerLoanPaymentSavedData.get(server).forAll()) {
+            if (creditLender(server, payment)) recovered++;
+        }
+        return recovered;
     }
 }

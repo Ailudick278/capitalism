@@ -97,6 +97,7 @@ public final class EconomySettlementTickHandler {
         CompanyPayrollService.settleDaily(server, settlementDay);
         PopulationService.matchResidents(server, settlementDay);
         LaborPayrollService.settleDaily(server, settlementDay);
+        com.ailudick.capitalismmod.loan.PeerLoanHelper.recoverRecordedPayments(server);
         GovernmentPolicyService.settleDaily(server, settlementDay);
         GovernmentPublicBudgetService.settleDaily(server, settlementDay);
         PopulationService.settleDaily(server, settlementDay);
