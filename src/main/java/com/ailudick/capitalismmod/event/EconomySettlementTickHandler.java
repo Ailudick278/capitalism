@@ -18,6 +18,7 @@ import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyPayrollService;
 import com.ailudick.capitalismmod.economy.labor.LaborPayrollService;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
+import com.ailudick.capitalismmod.population.PopulationService;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
@@ -56,6 +57,7 @@ public final class EconomySettlementTickHandler {
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            PopulationService.ensurePlayerHousehold(player);
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
             PeerLoanNotificationService.deliver(player);
         }
@@ -88,6 +90,7 @@ public final class EconomySettlementTickHandler {
 
         CompanyPayrollService.settleDaily(server, settlementDay);
         LaborPayrollService.settleDaily(server, settlementDay);
+        PopulationService.settleDaily(server, settlementDay);
         EconomicContractBridge.syncFreight(server);
         TaxRefundService.recoverUnfinished(server);
 

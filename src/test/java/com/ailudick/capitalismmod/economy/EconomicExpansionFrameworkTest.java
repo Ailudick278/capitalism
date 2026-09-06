@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.economy.contract.ContractType;
 import com.ailudick.capitalismmod.economy.contract.EconomicContract;
 import com.ailudick.capitalismmod.economy.labor.LaborProfile;
 import com.ailudick.capitalismmod.economy.labor.LaborSkill;
+import com.ailudick.capitalismmod.population.Household;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
@@ -61,5 +62,10 @@ class EconomicExpansionFrameworkTest {
                 Map.of(LaborSkill.FOUNDATION, 80, LaborSkill.TECHNICAL, 60), 75, 100L);
         assertEquals(80, profile.skill(LaborSkill.FOUNDATION));
         assertEquals(70, profile.averageSkill());
+
+        Household household = new Household("household-1", "spawn", 3, 2, 500L, 100L, 100, -1L);
+        Household settled = household.withSettlement(4L, 200L, 40, "spawn");
+        assertEquals(4L, settled.lastSettlementDay());
+        assertEquals(40, settled.satisfaction());
     }
 }
