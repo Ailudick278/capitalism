@@ -27,7 +27,8 @@ public final class LogisticsLossService {
                 loss = Long.MAX_VALUE;
             }
             CompanyInventoryCostSavedData.Consumption tracked = CompanyInventoryCostSavedData.get(server)
-                    .consume(shipment.buyerCompanyId(), shipment.itemId(), shipment.quantity());
+                    .consumeOnce(shipment.buyerCompanyId(), shipment.itemId(), shipment.quantity(),
+                            "logistics-loss:" + shipment.id());
             if (tracked.quantity() > 0) {
                 long fallback;
                 try {

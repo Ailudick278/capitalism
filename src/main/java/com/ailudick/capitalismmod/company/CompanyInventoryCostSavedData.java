@@ -30,6 +30,7 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     private final Set<String> inventorySaleSources = new HashSet<>();
     private final Set<String> inventoryLossSources = new HashSet<>();
     private final Set<String> inventoryConsumptionSources = new HashSet<>();
+    private final Map<String, Consumption> inventoryConsumptionReceipts = new HashMap<>();
 
     public record CostLayer(int quantity, long totalCost) {
         private static final Codec<CostLayer> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -41,11 +42,17 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     public record Consumption(int quantity, long cost) {
     }
 
+    private static final Codec<Consumption> CONSUMPTION_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.INT.fieldOf("quantity").forGetter(Consumption::quantity),
+            Codec.LONG.fieldOf("cost").forGetter(Consumption::cost)
+    ).apply(instance, Consumption::new));
+
     private record State(Map<String, Map<String, CostLayer>> layers,
                          Map<String, Map<String, List<FifoInventoryCost.Batch>>> batches,
                          Set<String> freightSources, Set<String> inboundSources,
                          Set<String> inventorySaleSources, Set<String> inventoryLossSources,
-                         Set<String> inventoryConsumptionSources) {
+                         Set<String> inventoryConsumptionSources,
+                         Map<String, Consumption> inventoryConsumptionReceipts) {
         private static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, CostLayer.CODEC))
                         .fieldOf("layers").forGetter(State::layers),
@@ -70,7 +77,10 @@ public final class CompanyInventoryCostSavedData extends SavedData {
                 Codec.STRING.listOf().xmap(values -> (Set<String>) new HashSet<String>(values),
                         values -> new ArrayList<>(values))
                         .optionalFieldOf("inventoryConsumptionSources", Set.of())
-                        .forGetter(State::inventoryConsumptionSources)
+                        .forGetter(State::inventoryConsumptionSources),
+                Codec.unboundedMap(Codec.STRING, CONSUMPTION_CODEC)
+                        .optionalFieldOf("inventoryConsumptionReceipts", Map.of())
+                        .forGetter(State::inventoryConsumptionReceipts)
         ).apply(instance, State::new));
     }
 
@@ -175,12 +185,21 @@ public final class CompanyInventoryCostSavedData extends SavedData {
 
     /** Consumes tracked inventory cost at most once for a durable external source. */
     public Consumption consumeOnce(String companyId, String itemId, int requested, String sourceId) {
-        if (sourceId == null || sourceId.isBlank() || inventoryConsumptionSources.contains(sourceId)) {
+        if (sourceId == null || sourceId.isBlank()) {
             return new Consumption(0, 0L);
         }
+        Consumption recorded = inventoryConsumptionReceipts.get(sourceId);
+        if (recorded != null) return recorded;
+        // Compatibility with saves written before result receipts existed.
+        if (inventoryConsumptionSources.contains(sourceId)) return new Consumption(0, 0L);
         Consumption result = consume(companyId, itemId, requested);
         inventoryConsumptionSources.add(sourceId);
+        inventoryConsumptionReceipts.put(sourceId, result);
         trimSources(inventoryConsumptionSources);
+        while (inventoryConsumptionReceipts.size() > 8192) {
+            String first = inventoryConsumptionReceipts.keySet().iterator().next();
+            inventoryConsumptionReceipts.remove(first);
+        }
         setDirty();
         return result;
     }
@@ -255,7 +274,8 @@ public final class CompanyInventoryCostSavedData extends SavedData {
         Map<String, Map<String, List<FifoInventoryCost.Batch>>> savedBatches = new HashMap<>();
         batches.forEach((companyId, values) -> savedBatches.put(companyId, new HashMap<>(values)));
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers, savedBatches, freightSources, inboundSources,
-                inventorySaleSources, inventoryLossSources, inventoryConsumptionSources)).result()
+                inventorySaleSources, inventoryLossSources, inventoryConsumptionSources,
+                inventoryConsumptionReceipts)).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
     }
@@ -278,6 +298,11 @@ public final class CompanyInventoryCostSavedData extends SavedData {
                 data.inventoryLossSources.addAll(state.inventoryLossSources());
                 data.inventoryConsumptionSources.addAll(state.inventoryConsumptionSources());
                 trimSources(data.inventoryConsumptionSources);
+                data.inventoryConsumptionReceipts.putAll(state.inventoryConsumptionReceipts());
+                while (data.inventoryConsumptionReceipts.size() > 8192) {
+                    String first = data.inventoryConsumptionReceipts.keySet().iterator().next();
+                    data.inventoryConsumptionReceipts.remove(first);
+                }
             });
         }
         return data;
