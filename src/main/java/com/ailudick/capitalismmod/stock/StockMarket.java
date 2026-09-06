@@ -321,7 +321,16 @@ public final class StockMarket {
         if (data.holdings(stockId, player.getUUID()) < quantity) {
             return false;
         }
+        String orderId = UUID.randomUUID().toString();
+        StockSellIntentSavedData intents = StockSellIntentSavedData.get(player.getServer());
+        intents.add(new StockSellIntentSavedData.Intent(orderId, player.getUUID(), stockId, quantity,
+                pricePerUnit, player.getServer().overworld().getGameTime(), false));
         data.addShares(stockId, player.getUUID(), -quantity);
+        intents.markSharesEscrowed(orderId);
+        long orderTime = player.getServer().overworld().getGameTime();
+        data.addOrder(new StockOrder(orderId, player.getStringUUID(), stockId, quantity, pricePerUnit,
+                true, orderTime));
+        intents.remove(orderId);
         int remaining = quantity;
 
         List<StockOrder> buys = crossingBuys(data, stockId, pricePerUnit, player.getStringUUID());
@@ -334,7 +343,7 @@ public final class StockMarket {
             if (gross < 0) {
                 break;
             }
-            String tradeSource = "stock-trade:" + buy.id() + ":" + buy.quantity() + ":" + player.getUUID()
+            String tradeSource = "stock-trade:" + orderId + ":" + buy.id()
                     + ":" + fill + ":" + gross;
             FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
             long now = player.getServer().overworld().getGameTime();
@@ -351,15 +360,43 @@ public final class StockMarket {
             data.addNetVolume(stockId, -fill);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
+            StockOrder currentSell = data.findOrder(orderId);
+            if (currentSell != null) {
+                if (currentSell.quantity() <= fill) data.removeOrder(orderId);
+                else data.replaceOrder(currentSell.withQuantity(currentSell.quantity() - fill));
+            }
             NeoForge.EVENT_BUS.post(new TradeCompletedEvent(null, player, null,
                     fill, "usd", gross, "stock", duty(gross), stockId));
         }
 
-        if (remaining > 0) {
-            data.addOrder(new StockOrder(UUID.randomUUID().toString(), player.getStringUUID(),
-                    stockId, remaining, pricePerUnit, true, player.getServer().overworld().getGameTime()));
-        }
         return true;
+    }
+
+    /** Restores escrowed stock sell intents whose order record was interrupted. */
+    public static int recoverPendingSellIntents(MinecraftServer server) {
+        if (server == null) return 0;
+        EconomySavedData data = EconomySavedData.get(server);
+        StockSellIntentSavedData intents = StockSellIntentSavedData.get(server);
+        int recovered = 0;
+        for (StockSellIntentSavedData.Intent intent : intents.intents()) {
+            if (data.findOrder(intent.orderId()) != null) {
+                intents.remove(intent.orderId());
+                recovered++;
+                continue;
+            }
+            ServerPlayer seller = server.getPlayerList().getPlayer(intent.sellerUuid());
+            if (seller == null) continue;
+            if (!intent.sharesEscrowed()) {
+                if (data.holdings(intent.stockId(), seller.getUUID()) < intent.quantity()) continue;
+                data.addShares(intent.stockId(), seller.getUUID(), -intent.quantity());
+                intents.markSharesEscrowed(intent.orderId());
+            }
+            data.addOrder(new StockOrder(intent.orderId(), intent.sellerUuid().toString(), intent.stockId(),
+                    intent.quantity(), intent.pricePerUnit(), true, intent.createdAt()));
+            intents.remove(intent.orderId());
+            recovered++;
+        }
+        return recovered;
     }
 
     /** Sell orders for {@code stockId} with ask ≤ {@code limit}, best (lowest) ask first. */
