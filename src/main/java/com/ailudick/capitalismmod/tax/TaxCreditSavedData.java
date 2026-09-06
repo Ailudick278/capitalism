@@ -229,9 +229,16 @@ public final class TaxCreditSavedData extends SavedData {
         ListTag lotList = tag.getList("lots", 10);
         for (int i = 0; i < lotList.size(); i++) {
             CompoundTag entry = lotList.getCompound(i);
-            if (entry.hasUUID("taxpayer") && entry.getLong("amount") > 0L) data.lots.add(new CreditLot(entry.getUUID("taxpayer"), entry.getString("currency"),
-                    entry.getString("subjectType"), entry.getString("subjectId"), entry.getString("source"), entry.getLong("periodStart"),
-                    entry.getLong("periodEnd"), entry.getLong("createdAt"), entry.getLong("amount")));
+            if (entry.hasUUID("taxpayer") && entry.getLong("amount") > 0L) {
+                CreditLot lot = new CreditLot(entry.getUUID("taxpayer"), entry.getString("currency"),
+                        entry.getString("subjectType"), entry.getString("subjectId"), entry.getString("source"),
+                        entry.getLong("periodStart"), entry.getLong("periodEnd"), entry.getLong("createdAt"), entry.getLong("amount"));
+                boolean duplicateSource = !lot.sourceId().isBlank() && data.lots.stream().anyMatch(existing ->
+                        existing.taxpayerUuid().equals(lot.taxpayerUuid())
+                                && existing.currencyId().equals(lot.currencyId())
+                                && existing.sourceId().equals(lot.sourceId()));
+                if (!duplicateSource) data.lots.add(lot);
+            }
         }
         ListTag sourceList = tag.getList("appliedSources", 10);
         for (int i = 0; i < sourceList.size(); i++) {

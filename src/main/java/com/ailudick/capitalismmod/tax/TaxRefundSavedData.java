@@ -62,7 +62,24 @@ public final class TaxRefundSavedData extends SavedData {
     }
     public static TaxRefundSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         TaxRefundSavedData data = new TaxRefundSavedData(); ListTag list = tag.getList("requests", 10);
-        for (int i = 0; i < list.size(); i++) { CompoundTag e = list.getCompound(i); if (e.hasUUID("taxpayer")) { List<TaxRefundAllocation> details = new java.util.ArrayList<>(); ListTag detailList = e.getList("allocationDetails", 10); for (int j = 0; j < detailList.size(); j++) { CompoundTag d = detailList.getCompound(j); details.add(new TaxRefundAllocation(d.getString("source"), d.getString("subjectType"), d.getString("subjectId"), d.getLong("periodStart"), d.getLong("periodEnd"), d.getLong("originalCredit"), d.getLong("refundAmount"))); } data.requests.add(new Request(e.getString("id"), e.getUUID("taxpayer"), e.getString("currency"), e.getLong("amount"), e.getLong("requestedAt"), e.getString("status"), e.getLong("reviewedAt"), e.getString("reviewer"), e.getString("reason"), e.getString("sourceSummary"), e.getString("allocations"), details)); } }
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag e = list.getCompound(i);
+            String id = e.getString("id");
+            if (!e.hasUUID("taxpayer") || id.isBlank()
+                    || data.requests.stream().anyMatch(existing -> existing.id().equals(id))) continue;
+            List<TaxRefundAllocation> details = new java.util.ArrayList<>();
+            ListTag detailList = e.getList("allocationDetails", 10);
+            for (int j = 0; j < detailList.size(); j++) {
+                CompoundTag d = detailList.getCompound(j);
+                details.add(new TaxRefundAllocation(d.getString("source"), d.getString("subjectType"),
+                        d.getString("subjectId"), d.getLong("periodStart"), d.getLong("periodEnd"),
+                        d.getLong("originalCredit"), d.getLong("refundAmount")));
+            }
+            data.requests.add(new Request(id, e.getUUID("taxpayer"), e.getString("currency"), e.getLong("amount"),
+                    e.getLong("requestedAt"), e.getString("status"), e.getLong("reviewedAt"),
+                    e.getString("reviewer"), e.getString("reason"), e.getString("sourceSummary"),
+                    e.getString("allocations"), details));
+        }
         return data;
     }
 }

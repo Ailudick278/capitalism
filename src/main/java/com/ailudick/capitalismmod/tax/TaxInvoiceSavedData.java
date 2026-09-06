@@ -71,10 +71,13 @@ public final class TaxInvoiceSavedData extends SavedData {
         for (int i = 0; i < list.size(); i++) {
             CompoundTag entry = list.getCompound(i);
             if (!entry.hasUUID("taxpayer") || entry.getString("source").isBlank()) continue;
-            data.invoices.add(new Invoice(entry.getString("id"), entry.getString("source"),
+            Invoice invoice = new Invoice(entry.getString("id"), entry.getString("source"),
                     entry.getUUID("taxpayer"), entry.getString("currency"), entry.getLong("gross"),
                     entry.getLong("tax"), entry.getLong("credit"), entry.getLong("issuedAt"),
-                    entry.getString("direction")));
+                    entry.getString("direction"));
+            if (data.invoices.stream().noneMatch(existing -> existing.sourceEventId().equals(invoice.sourceEventId()))) {
+                data.invoices.add(invoice);
+            }
         }
         return data;
     }
