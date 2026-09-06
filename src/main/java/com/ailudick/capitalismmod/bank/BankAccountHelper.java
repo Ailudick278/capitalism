@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.bank;
 
 import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Currency;
 import com.ailudick.capitalismmod.currency.ExchangeRateProvider;
@@ -89,6 +90,7 @@ public final class BankAccountHelper {
         }
 
         Map<String, BankAccount> updated = new HashMap<>(accounts);
+        long settlementTick = PerpetualCalendar.ticksForDays(settlementDay);
         boolean changed = false;
         for (BankAccount account : new HashMap<>(accounts).values()) {
             Map<String, Long> newBalances = new HashMap<>(account.balances());
@@ -111,7 +113,7 @@ public final class BankAccountHelper {
                 long interest = accrual.wholeMinorUnits();
                 if (interest > 0) {
                     entry.setValue(safeAdd(entry.getValue(), interest));
-                    txs.add(BankTransaction.now(player, "interest", entry.getKey(), interest));
+                    txs.add(BankTransaction.atTick(settlementTick, "interest", entry.getKey(), interest));
                     changed = true;
                 }
             }
@@ -134,7 +136,7 @@ public final class BankAccountHelper {
                 long interest = accrual.wholeMinorUnits();
                 if (interest > 0) {
                     entry.setValue(safeAdd(entry.getValue(), interest));
-                    txs.add(BankTransaction.now(player, "interest", entry.getKey(), -interest));
+                    txs.add(BankTransaction.atTick(settlementTick, "interest", entry.getKey(), -interest));
                     changed = true;
                 }
             }
@@ -146,7 +148,7 @@ public final class BankAccountHelper {
                     long payout = safeAdd(term.principal(), term.interest());
                     long balance = newBalances.getOrDefault(term.currencyId(), 0L);
                     newBalances.put(term.currencyId(), safeAdd(balance, payout));
-                    txs.add(BankTransaction.now(player, "term_maturity", term.currencyId(), payout));
+                    txs.add(BankTransaction.atTick(settlementTick, "term_maturity", term.currencyId(), payout));
                 } else {
                     newTerms.add(ticked);
                 }

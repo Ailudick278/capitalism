@@ -36,4 +36,13 @@ class BankAccountTest {
         assertTrue(cleared.depositInterestRemainders().isEmpty());
         assertTrue(cleared.loanInterestRemainders().isEmpty());
     }
+
+    @Test
+    void historicalSettlementTransactionsKeepTheirSettlementTick() {
+        BankTransaction transaction = BankTransaction.atTick(48_000L, "interest", "usd", 3L);
+
+        assertEquals(48_000L, transaction.occurredAt());
+        assertEquals("interest", transaction.type());
+        assertEquals(3L, transaction.amount());
+    }
 }

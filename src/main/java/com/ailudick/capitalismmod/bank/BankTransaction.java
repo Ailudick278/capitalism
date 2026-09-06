@@ -33,6 +33,16 @@ public record BankTransaction(String type, String currencyId, long amount, long 
     public static BankTransaction now(Player player, String type, String currencyId, long amount,
                                       String reference, String counterparty) {
         long tick = player == null || player.level() == null ? -1L : player.level().getGameTime();
+        return atTick(tick, type, currencyId, amount, reference, counterparty);
+    }
+
+    /** Creates an entry for a historical settlement period, rather than wall-clock execution time. */
+    public static BankTransaction atTick(long tick, String type, String currencyId, long amount) {
+        return atTick(tick, type, currencyId, amount, type, "bank");
+    }
+
+    public static BankTransaction atTick(long tick, String type, String currencyId, long amount,
+                                         String reference, String counterparty) {
         return new BankTransaction(type, currencyId, amount, tick, reference, counterparty);
     }
 
