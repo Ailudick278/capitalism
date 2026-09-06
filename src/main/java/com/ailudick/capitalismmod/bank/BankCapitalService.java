@@ -14,16 +14,29 @@ public final class BankCapitalService {
         if (capital.lastSettlementDay() >= day) return capital;
         long income = 0L;
         long expense = 0L;
+        long overdueDebt = 0L;
         long settlementTick = com.ailudick.capitalismmod.calendar.PerpetualCalendar.ticksForDays(day);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            BankExposureSavedData.get(server).sync(player);
             for (BankAccount account : BankAccountHelper.getAccounts(player).values()) {
                 for (BankTransaction transaction : account.transactions()) {
-                    if (transaction.occurredAt() != settlementTick || !"interest".equals(transaction.type())) continue;
-                    if (transaction.amount() < 0L) income = add(income, -transaction.amount());
-                    else expense = add(expense, transaction.amount());
+                    if (transaction.occurredAt() != settlementTick) continue;
+                    if ("interest".equals(transaction.type())) {
+                        if (transaction.amount() < 0L) income = add(income, -transaction.amount());
+                        else expense = add(expense, transaction.amount());
+                    } else if ("transfer_fee".equals(transaction.type()) && transaction.amount() < 0L) {
+                        income = add(income, -transaction.amount());
+                    }
                 }
             }
         }
+        for (BankExposureSavedData.Exposure exposure : BankExposureSavedData.get(server).exposures().values()) {
+            overdueDebt = add(overdueDebt, exposure.overdueDebtMinor());
+        }
+        long provisionDelta = capital.adjustLossProvision(
+                BankCapitalEconomics.lossProvisionTarget(overdueDebt));
+        if (provisionDelta >= 0L) expense = add(expense, provisionDelta);
+        else income = add(income, -provisionDelta);
         capital.applyDailyResult(day, income, expense);
         return capital;
     }

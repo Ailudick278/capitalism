@@ -20,4 +20,10 @@ public final class BankCapitalEconomics {
         if (whole > Long.MAX_VALUE / 100L) return Long.MAX_VALUE;
         return whole * 100L + remainder * 100L / 8L;
     }
+
+    /** Conservative 50% loss provision against overdue loan exposure. */
+    public static long lossProvisionTarget(long overdueDebtMinor) {
+        if (overdueDebtMinor <= 0L) return 0L;
+        return overdueDebtMinor / 2L + overdueDebtMinor % 2L;
+    }
 }
