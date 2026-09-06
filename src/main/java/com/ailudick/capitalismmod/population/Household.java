@@ -120,10 +120,37 @@ public record Household(String id, String region, int size, int workingAge,
         if (workingAge > 1) return withCohorts(children, workingAge - 1, elderly, averageAge);
         return this;
     }
+    /** Merges another household into this household using population-weighted state. */
+    public Household mergeWith(Household other) {
+        if (other == null || !region.equals(other.region) || id.equals(other.id)) return null;
+        int mergedSize = Math.addExact(size, other.size);
+        long mergedCash = add(cashMinor, other.cashMinor);
+        long mergedNeed = weightedAverage(dailyNeedMinor, size, other.dailyNeedMinor, other.size, mergedSize);
+        int mergedSatisfaction = (int) weightedAverage(satisfaction, size, other.satisfaction, other.size, mergedSize);
+        int mergedHealth = (int) weightedAverage(health, size, other.health, other.size, mergedSize);
+        int mergedEducation = (int) weightedAverage(education, size, other.education, other.size, mergedSize);
+        int mergedAge = (int) weightedAverage(averageAge, size, other.averageAge, other.size, mergedSize);
+        int mergedWorkingAge = Math.addExact(workingAge, other.workingAge);
+        int mergedChildren = Math.addExact(children, other.children);
+        int mergedElderly = Math.addExact(elderly, other.elderly);
+        return new Household(id, region, mergedSize, mergedWorkingAge, mergedCash, mergedNeed,
+                mergedSatisfaction, Math.max(lastSettlementDay, other.lastSettlementDay),
+                Math.max(lastMigrationDay, other.lastMigrationDay), mergedHealth, mergedEducation,
+                Math.min(unemploymentDays, other.unemploymentDays), Math.max(employmentDays, other.employmentDays),
+                mergedAge, mergedChildren, mergedElderly);
+    }
     private Household copy(long cash, String nextRegion, int nextSize, int nextWorkingAge,
                            int nextAverageAge, int nextChildren, int nextElderly) {
         return new Household(id, nextRegion, nextSize, nextWorkingAge, cash, dailyNeedMinor, satisfaction,
                 lastSettlementDay, lastMigrationDay, health, education, unemploymentDays, employmentDays,
                 nextAverageAge, nextChildren, nextElderly);
+    }
+    private static long add(long left, long right) {
+        return right > Long.MAX_VALUE - left ? Long.MAX_VALUE : left + right;
+    }
+    private static long weightedAverage(long left, int leftWeight, long right, int rightWeight, int totalWeight) {
+        long leftPart = left > Long.MAX_VALUE / leftWeight ? Long.MAX_VALUE : left * leftWeight;
+        long rightPart = right > Long.MAX_VALUE / rightWeight ? Long.MAX_VALUE : right * rightWeight;
+        return add(leftPart, rightPart) / totalWeight;
     }
 }

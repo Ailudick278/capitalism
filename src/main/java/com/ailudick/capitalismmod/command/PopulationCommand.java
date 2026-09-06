@@ -9,7 +9,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 
-/** Read-only population overview for the first simulation layer. */
+/** Population overview and controlled administrative actions. */
 public final class PopulationCommand {
     private PopulationCommand() {}
     public static void register(CommandDispatcher<CommandSourceStack> d) {
@@ -20,7 +20,12 @@ public final class PopulationCommand {
                 .then(Commands.literal("seed").requires(source -> source.hasPermission(2))
                         .then(Commands.argument("region", StringArgumentType.word())
                                 .then(Commands.argument("count", IntegerArgumentType.integer(1, 10000))
-                                        .executes(c -> seed(c.getSource(), StringArgumentType.getString(c, "region"), IntegerArgumentType.getInteger(c, "count")))))));
+                                        .executes(c -> seed(c.getSource(), StringArgumentType.getString(c, "region"), IntegerArgumentType.getInteger(c, "count"))))))
+                .then(Commands.literal("merge").requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("source", StringArgumentType.word())
+                                .then(Commands.argument("target", StringArgumentType.word())
+                                        .executes(c -> merge(c.getSource(), StringArgumentType.getString(c, "source"),
+                                                StringArgumentType.getString(c, "target")))))));
     }
     private static int info(CommandSourceStack source, String region) {
         PopulationSavedData data = PopulationSavedData.get(source.getServer());
@@ -46,5 +51,13 @@ public final class PopulationCommand {
         int created = com.ailudick.capitalismmod.population.PopulationService.seedNpc(source.getServer(), region, count);
         source.sendSuccess(() -> Component.literal("seeded npc households=" + created + " region=" + region), true);
         return created;
+    }
+    private static int merge(CommandSourceStack source, String sourceId, String targetId) {
+        if (!PopulationSavedData.get(source.getServer()).merge(sourceId, targetId)) {
+            source.sendFailure(Component.literal("NPC households must be distinct and in the same region."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("merged NPC household " + sourceId + " into " + targetId), true);
+        return 1;
     }
 }
