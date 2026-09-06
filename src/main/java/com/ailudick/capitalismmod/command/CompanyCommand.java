@@ -977,7 +977,8 @@ public class CompanyCommand {
             return 0;
         }
         if ("released".equalsIgnoreCase(status)) {
-            CompanyQualityHoldSavedData.get(player.getServer()).releaseBatch(company.companyId(), batchId);
+            int released = CompanyHelper.releaseQualityBatch(player.getServer(), company, batchId);
+            source.sendSuccess(() -> Component.literal("Released approved batch quantity: " + released), false);
         } else if ("rejected".equalsIgnoreCase(status)) {
             long loss = CompanyHelper.disposeQualityBatch(player.getServer(), company, batchId);
             source.sendSuccess(() -> Component.literal("Rejected batch disposed; recognized inventory loss USD " + loss), false);

@@ -282,6 +282,27 @@ public final class CompanyHelper {
         return loss;
     }
 
+    /** Releases a held batch into the market only after an explicit quality approval. */
+    public static int releaseQualityBatch(MinecraftServer server, Company company, String batchId) {
+        if (server == null || company == null || batchId == null || batchId.isBlank()) return 0;
+        CompanyQualityHoldSavedData holds = CompanyQualityHoldSavedData.get(server);
+        var held = holds.forBatch(company.companyId(), batchId);
+        if (held.isEmpty()) return 0;
+        if (!holds.releaseBatch(company.companyId(), batchId)) return 0;
+        CommoditySavedData commodities = CommoditySavedData.get(server);
+        int released = 0;
+        for (CompanyQualityHoldSavedData.Hold hold : held) {
+            if (hold.quantity() <= 0 || parseItem(hold.itemId()) == null) continue;
+            commodities.ensureCommodity(hold.itemId(),
+                    Math.max(1L, CapitalismData.getCommodityPrices().getOrDefault(hold.itemId(), 1L)));
+            commodities.addSupply(hold.itemId(), hold.quantity());
+            SupplyMarket.fulfill(server, InventoryOwner.company(company.companyId()),
+                    company.ownerUuid(), hold.itemId());
+            released = Math.min(Integer.MAX_VALUE, released + hold.quantity());
+        }
+        return released;
+    }
+
     public static boolean exists(Player player, String name) {
         return getCompanies(player).containsKey(name);
     }
