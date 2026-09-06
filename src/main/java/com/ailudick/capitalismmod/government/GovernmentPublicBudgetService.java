@@ -19,7 +19,11 @@ public final class GovernmentPublicBudgetService {
                 long cost = PublicBudgetEconomics.dailyMaintenance(facility, count);
                 if (count <= 0 || cost <= 0L) continue;
                 String transactionId = "public-maintenance:" + day + ":" + region + ":" + facility;
-                if (policy.spend("public-service:" + region, day, cost, transactionId)) {
+                if (policy.hasSpending(transactionId)) {
+                    // A repeated settlement observes the existing receipt; it
+                    // must not interpret the idempotency hit as a budget failure.
+                    maintained++;
+                } else if (policy.spend("public-service:" + region, day, cost, transactionId)) {
                     maintained++;
                 } else {
                     // One unit fails per day, keeping fiscal stress visible without deleting a city at once.
