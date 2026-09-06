@@ -9,6 +9,7 @@ import com.ailudick.capitalismmod.tax.TaxSubject;
 import com.ailudick.capitalismmod.tax.TaxType;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.MinecraftServer;
@@ -162,10 +163,16 @@ public final class LandHelper {
         LandClaim claim = LandSavedData.get(player.getServer()).get(id);
         if (claim == null || !claim.ownerUuid().equals(player.getUUID()) || isTaxFrozen(player, claim)
                 || claim.leaseeUuid() != null || claim.leaseDebt() > 0L) return false;
+        long refund = Math.round(Config.LAND_CLAIM_PRICE.get() * Config.LAND_RELEASE_REFUND_RATE.get());
+        String refundSource = "land-release:" + id + ":" + refund;
+        MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
+        mailbox.creditMoneyOnce(player.getUUID(), Config.defaultCurrencyId(), refund, refundSource);
+        mailbox.redeemMoneyOnly(player);
+        // Remove ownership only after the durable refund receipt exists. If the
+        // server stops between these steps, the same source prevents a duplicate
+        // refund while the next attempt can finish releasing the claim.
         LandSavedData.get(player.getServer()).remove(id);
         LandPermissionSavedData.get(player.getServer()).remove(id);
-        long refund = Math.round(Config.LAND_CLAIM_PRICE.get() * Config.LAND_RELEASE_REFUND_RATE.get());
-        EconomyHelper.giveMoney(player, Config.defaultCurrency(), refund);
         LandOperationLogSavedData.get(player.getServer()).record(player.level().getGameTime(), player.getUUID(),
                 "释放土地", claim.dimension(), chunkX, chunkZ);
         return true;
