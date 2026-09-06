@@ -19,6 +19,8 @@ import com.ailudick.capitalismmod.company.CompanyInventoryCostSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
+import com.ailudick.capitalismmod.economy.contract.ContractStatus;
+import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import com.ailudick.capitalismmod.market.LogisticsCostSavedData;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -116,10 +118,12 @@ public final class LogisticsTickHandler {
                             java.util.UUID.randomUUID().toString(), shipment.id(), shipment.buyer(), insuredValue,
                             actualLoss, payout, now, "settled", carrierCompanyId, deductible));
                     CompanyFreightContractSavedData.get(server).closeForLoss(shipment.id());
+                    markFreightBreached(server, shipment.id(), now);
                     data.remove(shipment.id());
                 } else if (shipment.disruptionCount() + 1 >= Config.LOGISTICS_MAX_DISRUPTIONS.get()) {
                     LogisticsLossService.record(server, shipment);
                     CompanyFreightContractSavedData.get(server).closeForLoss(shipment.id());
+                    markFreightBreached(server, shipment.id(), now);
                     data.remove(shipment.id());
                 } else {
                     data.replace(new LogisticsSavedData.Shipment(shipment.id(), shipment.buyer(), shipment.itemId(),
@@ -166,11 +170,26 @@ public final class LogisticsTickHandler {
                             shipment.buyer(), shipment.supplierUuid(), shipment.itemId(), shipment.quantity(),
                             shipmentValue(shipment), shipment.id());
                 }
+                settleFreightContract(server, shipment.id(), now);
                 deliveries.record(new LogisticsDeliverySavedData.Delivery(shipment.id(), shipment.buyer(),
                         shipment.itemId(), shipment.quantity(), now));
             }
             data.remove(shipment.id());
         }
+    }
+
+    private static void settleFreightContract(MinecraftServer server, String shipmentId, long now) {
+        CompanyFreightContractSavedData contracts = CompanyFreightContractSavedData.get(server);
+        CompanyFreightContractSavedData.Contract contract = contracts.activeForShipment(shipmentId);
+        if (contract != null && "accepted".equals(contract.status()) && contracts.settle(contract.id(), now)) {
+            EconomicContractBridge.status(server, contract.id(), ContractStatus.COMPLETED, now);
+        }
+    }
+
+    private static void markFreightBreached(MinecraftServer server, String shipmentId, long now) {
+        CompanyFreightContractSavedData.Contract contract =
+                CompanyFreightContractSavedData.get(server).findByShipment(shipmentId);
+        if (contract != null) EconomicContractBridge.status(server, contract.id(), ContractStatus.BREACHED, now);
     }
 
     private static long insuranceDeductible(long insuredValue, long coveredLoss) {

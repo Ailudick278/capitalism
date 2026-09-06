@@ -78,6 +78,16 @@ public final class CompanyFreightContractSavedData extends SavedData {
         return null;
     }
 
+    /** Returns the latest contract for a shipment, including closed contracts. */
+    public Contract findByShipment(String shipmentId) {
+        if (shipmentId == null || shipmentId.isBlank()) return null;
+        for (int i = contracts.size() - 1; i >= 0; i--) {
+            Contract contract = contracts.get(i);
+            if (shipmentId.equals(contract.shipmentId())) return contract;
+        }
+        return null;
+    }
+
     public List<Contract> forCompany(String companyId) {
         if (companyId == null || companyId.isBlank()) return List.of();
         return contracts.stream().filter(contract -> companyId.equals(contract.buyerCompanyId())
