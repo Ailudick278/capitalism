@@ -29,4 +29,11 @@ class PublicBudgetEconomicsTest {
         assertTrue(PublicBudgetEconomics.priority("clinic") > PublicBudgetEconomics.priority("school"));
         assertEquals(0, PublicBudgetEconomics.priority("port"));
     }
+
+    @Test
+    void fiscalStressMeasuresSevenDayCoverage() {
+        assertEquals(0, PublicBudgetEconomics.fiscalStress(700L, 100L));
+        assertEquals(100, PublicBudgetEconomics.fiscalStress(0L, 100L));
+        assertTrue(PublicBudgetEconomics.fiscalStress(350L, 100L) > 0);
+    }
 }

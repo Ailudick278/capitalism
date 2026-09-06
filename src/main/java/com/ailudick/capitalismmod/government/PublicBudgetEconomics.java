@@ -26,4 +26,14 @@ public final class PublicBudgetEconomics {
             default -> 0;
         };
     }
+
+    /** 0 means at least a week of projected costs is covered; 100 means none. */
+    public static int fiscalStress(long treasury, long dailyCosts) {
+        if (dailyCosts <= 0L) return 0;
+        long weeklyCosts = dailyCosts > Long.MAX_VALUE / 7L ? Long.MAX_VALUE : dailyCosts * 7L;
+        if (treasury <= 0L) return 100;
+        if (treasury >= weeklyCosts) return 0;
+        long coveredPercent = (long) Math.min(100D, (double) treasury * 100D / (double) weeklyCosts);
+        return (int) Math.max(0L, Math.min(100L, 100L - coveredPercent));
+    }
 }
