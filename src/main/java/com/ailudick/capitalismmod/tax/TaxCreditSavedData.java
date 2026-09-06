@@ -118,12 +118,20 @@ public final class TaxCreditSavedData extends SavedData {
 
     public void add(TaxSubject subject, String currencyId, long amount, String sourceId,
                     long periodStart, long periodEnd, long createdAt) {
-        if (amount <= 0L) return;
+        if (subject == null || currencyId == null || currencyId.isBlank() || amount <= 0L) return;
+        String normalizedSource = sourceId == null ? "" : sourceId;
+        // The source marker is written after the lot for historical reasons.
+        // Make the lot itself idempotent so a restart between those writes
+        // cannot create the same input VAT credit twice.
+        if (!normalizedSource.isBlank() && lots.stream().anyMatch(lot ->
+                subject.taxpayerUuid().equals(lot.taxpayerUuid())
+                        && currencyId.equals(lot.currencyId())
+                        && normalizedSource.equals(lot.sourceId()))) return;
         String key = key(subject, currencyId);
         long old = credits.getOrDefault(key, 0L);
         credits.put(key, old > Long.MAX_VALUE - amount ? Long.MAX_VALUE : old + amount);
         lots.add(new CreditLot(subject.taxpayerUuid(), currencyId, subject.type().id(), subject.subjectId(),
-                sourceId == null ? "" : sourceId, periodStart, periodEnd, createdAt, amount));
+                normalizedSource, periodStart, periodEnd, createdAt, amount));
         setDirty();
     }
 
