@@ -22,10 +22,12 @@ public final class BankCapitalService {
                 for (BankTransaction transaction : account.transactions()) {
                     if (transaction.occurredAt() != settlementTick) continue;
                     if ("interest".equals(transaction.type())) {
-                        if (transaction.amount() < 0L) income = add(income, -transaction.amount());
+                        if (transaction.amount() < 0L) {
+                            income = add(income, BankCapitalEconomics.positiveMagnitude(transaction.amount()));
+                        }
                         else expense = add(expense, transaction.amount());
                     } else if ("transfer_fee".equals(transaction.type()) && transaction.amount() < 0L) {
-                        income = add(income, -transaction.amount());
+                        income = add(income, BankCapitalEconomics.positiveMagnitude(transaction.amount()));
                     }
                 }
             }

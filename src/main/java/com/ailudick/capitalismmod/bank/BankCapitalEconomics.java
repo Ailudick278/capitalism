@@ -26,4 +26,9 @@ public final class BankCapitalEconomics {
         if (overdueDebtMinor <= 0L) return 0L;
         return overdueDebtMinor / 2L + overdueDebtMinor % 2L;
     }
+
+    /** Positive magnitude that remains representable for signed 64-bit values. */
+    public static long positiveMagnitude(long value) {
+        return value == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(value);
+    }
 }

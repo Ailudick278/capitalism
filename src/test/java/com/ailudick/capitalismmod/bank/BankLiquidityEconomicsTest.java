@@ -27,5 +27,7 @@ class BankLiquidityEconomicsTest {
         assertEquals(false, BankCapitalEconomics.capitalStress(800L, 10_000L));
         assertEquals(501L, BankCapitalEconomics.lossProvisionTarget(1_001L));
         assertEquals(0L, BankCapitalEconomics.lossProvisionTarget(0L));
+        assertEquals(Long.MAX_VALUE, BankCapitalEconomics.positiveMagnitude(Long.MIN_VALUE));
+        assertEquals(7L, BankCapitalEconomics.positiveMagnitude(-7L));
     }
 }
