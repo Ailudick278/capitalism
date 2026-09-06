@@ -18,7 +18,8 @@ public final class BondIssuanceSavedData extends SavedData {
     private final List<Issuance> issuances = new ArrayList<>();
 
     public record Issuance(String id, UUID holder, int count, long faceValue,
-                           double ratePerYear, int days, boolean funded, boolean holdingsCreated) {}
+                           double ratePerYear, int days, boolean paymentConfirmed,
+                           boolean funded, boolean holdingsCreated) {}
 
     private BondIssuanceSavedData() {}
 
@@ -36,8 +37,34 @@ public final class BondIssuanceSavedData extends SavedData {
         setDirty();
     }
 
+    public void replace(Issuance issuance) {
+        if (issuance == null || issuance.id() == null || issuance.id().isBlank()) return;
+        for (int i = 0; i < issuances.size(); i++) {
+            if (issuances.get(i).id().equals(issuance.id())) {
+                issuances.set(i, issuance);
+                setDirty();
+                return;
+            }
+        }
+    }
+
     public List<Issuance> pendingFunded() {
         return issuances.stream().filter(issuance -> issuance.funded() && !issuance.holdingsCreated()).toList();
+    }
+
+    public List<Issuance> pendingPayment() {
+        return issuances.stream().filter(issuance -> issuance.paymentConfirmed() && !issuance.funded()).toList();
+    }
+
+    public void markFunded(String id) {
+        for (int i = 0; i < issuances.size(); i++) {
+            Issuance current = issuances.get(i);
+            if (!current.id().equals(id) || current.funded()) continue;
+            issuances.set(i, new Issuance(current.id(), current.holder(), current.count(), current.faceValue(),
+                    current.ratePerYear(), current.days(), current.paymentConfirmed(), true, current.holdingsCreated()));
+            setDirty();
+            return;
+        }
     }
 
     public void markHoldingsCreated(String id) {
@@ -45,7 +72,7 @@ public final class BondIssuanceSavedData extends SavedData {
             Issuance current = issuances.get(i);
             if (!current.id().equals(id) || current.holdingsCreated()) continue;
             issuances.set(i, new Issuance(current.id(), current.holder(), current.count(), current.faceValue(),
-                    current.ratePerYear(), current.days(), current.funded(), true));
+                    current.ratePerYear(), current.days(), current.paymentConfirmed(), current.funded(), true));
             setDirty();
             return;
         }
@@ -62,6 +89,7 @@ public final class BondIssuanceSavedData extends SavedData {
             entry.putLong("faceValue", issuance.faceValue());
             entry.putDouble("rate", issuance.ratePerYear());
             entry.putInt("days", issuance.days());
+            entry.putBoolean("paymentConfirmed", issuance.paymentConfirmed());
             entry.putBoolean("funded", issuance.funded());
             entry.putBoolean("holdingsCreated", issuance.holdingsCreated());
             list.add(entry);
@@ -78,7 +106,8 @@ public final class BondIssuanceSavedData extends SavedData {
             if (!entry.hasUUID("holder") || entry.getString("id").isBlank()) continue;
             data.issuances.add(new Issuance(entry.getString("id"), entry.getUUID("holder"),
                     entry.getInt("count"), entry.getLong("faceValue"), entry.getDouble("rate"),
-                    entry.getInt("days"), entry.getBoolean("funded"), entry.getBoolean("holdingsCreated")));
+                    entry.getInt("days"), entry.getBoolean("paymentConfirmed"), entry.getBoolean("funded"),
+                    entry.getBoolean("holdingsCreated")));
         }
         return data;
     }

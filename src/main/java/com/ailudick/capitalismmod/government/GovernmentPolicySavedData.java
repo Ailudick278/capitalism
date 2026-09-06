@@ -73,6 +73,10 @@ public final class GovernmentPolicySavedData extends SavedData {
         return true;
     }
 
+    public boolean hasDeposit(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && depositReceipts.contains(sourceId);
+    }
+
     /** Collects a tax bill in the government's base currency, once per bill. */
     public boolean collectTax(String billId, long day, String subject, String taxType,
                               String currencyId, long originalAmount, long convertedAmount) {

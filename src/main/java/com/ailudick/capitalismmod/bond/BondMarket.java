@@ -38,31 +38,49 @@ public final class BondMarket {
         }
         long totalMinor = Money.toMinor(total);
         String issuanceId = "bond-issuance:" + UUID.randomUUID();
-        if (total <= 0 || totalMinor < 0 || !EconomyHelper.tryPay(player, Currencies.USD, totalMinor)) {
-            return false;
-        }
-        long treasuryProceeds = com.ailudick.capitalismmod.currency.ExchangeRates.convert(
-                totalMinor, Currencies.USD, Config.defaultCurrency());
-        if (!GovernmentPolicySavedData.get(player.getServer()).depositOnce(treasuryProceeds, issuanceId)) {
-            EconomyHelper.giveMoney(player, Currencies.USD, totalMinor);
-            return false;
-        }
         var risk = FinancialRiskSavedData.get(player.getServer()).latest();
         int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
         double rate = MonetaryPolicyEconomics.adjustedAnnualRate(Config.BOND_RATE_PER_YEAR.get(),
                 GovernmentPolicySavedData.get(player.getServer()).policyRateBasisPoints())
                 + FinancialRiskPolicy.bondLiquidityPremium(overdueShare);
         int days = Config.BOND_MATURITY_DAYS.get();
-        BondIssuanceSavedData.get(player.getServer()).add(new BondIssuanceSavedData.Issuance(
-                issuanceId, player.getUUID(), count, faceValue, rate, days, true, false));
+        if (total <= 0 || totalMinor < 0 || !EconomyHelper.tryPay(player, Currencies.USD, totalMinor)) {
+            return false;
+        }
+        long treasuryProceeds = com.ailudick.capitalismmod.currency.ExchangeRates.convert(
+                totalMinor, Currencies.USD, Config.defaultCurrency());
+        BondIssuanceSavedData issuanceData = BondIssuanceSavedData.get(player.getServer());
+        issuanceData.add(new BondIssuanceSavedData.Issuance(
+                issuanceId, player.getUUID(), count, faceValue, rate, days, true, false, false));
+        if (!GovernmentPolicySavedData.get(player.getServer()).depositOnce(treasuryProceeds, issuanceId)) {
+            EconomyHelper.giveMoney(player, Currencies.USD, totalMinor);
+            return false;
+        }
+        issuanceData.markFunded(issuanceId);
         createHoldings(player.getServer(), new BondIssuanceSavedData.Issuance(
-                issuanceId, player.getUUID(), count, faceValue, rate, days, true, false));
+                issuanceId, player.getUUID(), count, faceValue, rate, days, true, true, false));
         return true;
     }
 
     /** Completes all funded issuance batches using deterministic holding IDs. */
     public static int recoverIssuances(MinecraftServer server) {
         int recovered = 0;
+        BondIssuanceSavedData issuanceData = BondIssuanceSavedData.get(server);
+        GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
+        for (BondIssuanceSavedData.Issuance issuance : issuanceData.pendingPayment()) {
+            long proceeds;
+            try {
+                proceeds = ExchangeRates.convert(Money.toMinor(
+                        Math.multiplyExact(issuance.faceValue(), issuance.count())),
+                        Currencies.USD, Config.defaultCurrency());
+            } catch (ArithmeticException exception) {
+                continue;
+            }
+            String source = issuance.id();
+            if (!policy.hasDeposit(source) && !policy.depositOnce(proceeds, source)) continue;
+            issuanceData.markFunded(source);
+            recovered++;
+        }
         for (BondIssuanceSavedData.Issuance issuance : BondIssuanceSavedData.get(server).pendingFunded()) {
             createHoldings(server, issuance);
             recovered++;
