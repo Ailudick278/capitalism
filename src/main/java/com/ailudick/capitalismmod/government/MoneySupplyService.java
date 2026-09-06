@@ -19,6 +19,7 @@ public final class MoneySupplyService {
         long company = 0L;
         for (var c : CompanySavedData.get(server).companies().values()) company = add(company, c.treasuryOf(Currencies.USD.id()));
         BankExposureSavedData exposure = BankExposureSavedData.get(server);
+        for (var player : server.getPlayerList().getPlayers()) exposure.sync(player);
         long deposits = 0L, credit = 0L;
         for (var value : exposure.exposures().values()) {
             deposits = add(deposits, value.depositsMinor());
