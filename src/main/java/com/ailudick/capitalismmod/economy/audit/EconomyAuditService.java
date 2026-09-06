@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.economy.SettlementJournalRules;
 import com.ailudick.capitalismmod.economy.RecoveryIntentRules;
 import com.ailudick.capitalismmod.loan.PeerLoanOriginationIntentSavedData;
 import com.ailudick.capitalismmod.loan.PeerLoanPaymentSavedData;
+import com.ailudick.capitalismmod.bank.BankRecoveryRules;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
@@ -241,6 +242,21 @@ public final class EconomyAuditService {
                     payment.principal(), payment.remainingPrincipal(), payment.daysRemaining(),
                     Currencies.exists(payment.currencyId()))) {
                 issues.add("peer loan payment invalid " + payment.loanId());
+            }
+        }
+        Set<String> bankIntentIds = new HashSet<>();
+        for (var intent : BankCashDepositIntentSavedData.get(server).intents()) {
+            if (!bankIntentIds.add("deposit:" + intent.source())
+                    || !BankRecoveryRules.validCashDeposit(intent.source(), intent.playerUuid(), intent.accountId(),
+                    intent.currencyId(), intent.amount(), intent.physicalBefore(), Currencies.exists(intent.currencyId()))) {
+                issues.add("bank cash deposit intent invalid " + intent.source());
+            }
+        }
+        for (var intent : BankRepaymentIntentSavedData.get(server).intents()) {
+            if (!bankIntentIds.add("repayment:" + intent.id())
+                    || !BankRecoveryRules.validRepayment(intent.id(), intent.player(), intent.accountId(),
+                    intent.currencyId(), intent.debtBefore(), intent.amount(), Currencies.exists(intent.currencyId()))) {
+                issues.add("bank repayment intent invalid " + intent.id());
             }
         }
         GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);
