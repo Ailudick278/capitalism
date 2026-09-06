@@ -44,6 +44,9 @@ public final class EconomyLogSavedData extends SavedData {
         if (playerId == null || action == null || currencyId == null || amount <= 0) {
             return;
         }
+        if (reference != null && !reference.isBlank() && hasReference(playerId, reference)) {
+            return;
+        }
         entries.add(new Entry(gameTime, playerId, action, currencyId, amount,
                 reference == null ? "" : reference));
         if (entries.size() > MAX_ENTRIES) {
