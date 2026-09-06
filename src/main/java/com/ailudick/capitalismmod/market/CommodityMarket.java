@@ -10,6 +10,7 @@ import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.tax.TaxType;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -120,10 +121,28 @@ public final class CommodityMarket {
         }
         long total = EconomyMath.multiply(quantity, pricePerUnit);
         String orderId = UUID.randomUUID().toString();
-        if (total < 0 || !EconomyHelper.tryPay(player, Currencies.USD, Money.toMinor(total))) {
+        if (total < 0 || Money.toMinor(total) <= 0L) {
             return false;
         }
+        CommodityBuyIntentSavedData intents = CommodityBuyIntentSavedData.get(player.getServer());
+        intents.add(new CommodityBuyIntentSavedData.Intent(orderId, player.getUUID(), itemId, quantity,
+                pricePerUnit, player.getServer().overworld().getGameTime(), false));
+        String orderSource = "commodity-buy-order:" + orderId;
+        if (!EconomyHelper.tryPayWithReference(player, Currencies.USD, Money.toMinor(total), orderSource)) {
+            intents.remove(orderId);
+            return false;
+        }
+        intents.markPaid(orderId);
         WarehouseSavedData warehouse = WarehouseSavedData.get(player.getServer());
+
+        MarketOrder pendingOrder = new MarketOrder(orderId, player.getStringUUID(), commodity.copy(), quantity,
+                pricePerUnit, false, player.getServer().overworld().getGameTime());
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
+        long settlementTime = player.getServer().overworld().getGameTime();
+        journal.markStarted(orderId, "commodity", "order-record", quantity, settlementTime);
+        data.addOrder(pendingOrder);
+        journal.markCompleted(orderId, "commodity", "order-record", quantity, settlementTime);
+        intents.remove(orderId);
 
         int remaining = quantity;
         long spent = 0L;
@@ -151,15 +170,21 @@ public final class CommodityMarket {
             spent += gross;
             remaining -= fill;
             reduceOrRemove(data, sell, fill);
+            MarketOrder currentBuy = data.findOrder(orderId);
+            if (currentBuy != null) {
+                if (currentBuy.quantity() <= fill) {
+                    data.removeOrder(orderId);
+                } else {
+                    data.replaceOrder(currentBuy.withQuantity(currentBuy.quantity() - fill));
+                }
+            }
             NeoForge.EVENT_BUS.post(new TradeCompletedEvent(player, seller, commodity, fill, "usd", gross,
                     "commodity", commission(gross)));
         }
 
-        if (remaining > 0) {
-            data.addOrder(new MarketOrder(orderId, player.getStringUUID(),
-                    commodity.copy(), remaining, pricePerUnit, false,
-                    player.getServer().overworld().getGameTime()));
-        }
+        // The buy order was persisted before matching. Update or remove that
+        // escrow record as fills complete, so a restart never loses the paid
+        // residual order.
         long reserved = EconomyMath.multiply(remaining, pricePerUnit);
         long refund = total - spent - reserved;
         if (refund > 0) {
@@ -170,6 +195,42 @@ public final class CommodityMarket {
         }
         data.setDirty();
         return true;
+    }
+
+    /** Restores paid commodity buy intents whose order record was interrupted. */
+    public static int recoverPendingBuyIntents(MinecraftServer server) {
+        if (server == null) return 0;
+        CommoditySavedData orders = CommoditySavedData.get(server);
+        CommodityBuyIntentSavedData intents = CommodityBuyIntentSavedData.get(server);
+        int recovered = 0;
+        for (CommodityBuyIntentSavedData.Intent intent : intents.intents()) {
+            if (orders.findOrder(intent.orderId()) != null) {
+                intents.remove(intent.orderId());
+                recovered++;
+                continue;
+            }
+            ServerPlayer buyer = server.getPlayerList().getPlayer(intent.buyerUuid());
+            if (buyer == null) continue;
+            String orderSource = "commodity-buy-order:" + intent.orderId();
+            long total = EconomyMath.multiply(intent.quantity(), intent.pricePerUnit());
+            if (total < 0L || Money.toMinor(total) <= 0L) {
+                intents.remove(intent.orderId());
+                continue;
+            }
+            if (!intent.paid()) {
+                if (!EconomyHelper.tryPayWithReference(buyer, Currencies.USD,
+                        Money.toMinor(total), orderSource)) continue;
+                intents.markPaid(intent.orderId());
+            }
+            ItemStack item = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM
+                    .get(net.minecraft.resources.ResourceLocation.parse(intent.itemId())));
+            if (item.isEmpty()) continue;
+            orders.addOrder(new MarketOrder(intent.orderId(), intent.buyerUuid().toString(), item,
+                    intent.quantity(), intent.pricePerUnit(), false, intent.createdAt()));
+            intents.remove(intent.orderId());
+            recovered++;
+        }
+        return recovered;
     }
 
     /** Cancels the player's own order, returning the escrowed commodity or money. */

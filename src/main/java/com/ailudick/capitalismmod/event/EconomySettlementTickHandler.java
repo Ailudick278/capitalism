@@ -72,6 +72,7 @@ public final class EconomySettlementTickHandler {
             SupplyMarket.recoverPendingOrderIntents(player.getServer());
             LogisticsLossService.recoverSupplyCompensations(player.getServer());
             FuturesMarket.recoverPendingOpenPositions(player.getServer());
+            CommodityMarket.recoverPendingBuyIntents(player.getServer());
             BankAccountHelper.recoverCashPayouts(player);
             settlePlayerToDay(player, player.getServer().overworld().getGameTime() / TICKS_PER_DAY);
             PeerLoanNotificationService.deliver(player);
