@@ -28,6 +28,9 @@ import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.data.CapitalismData;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborProfile;
+import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
+import com.ailudick.capitalismmod.market.TradeRegion;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -643,7 +646,7 @@ public final class CompanyHelper {
         conversionCost = EconomyMath.add(Math.max(0L, conversionCost), equipmentDepreciation);
         if (conversionCost < 0L) conversionCost = Long.MAX_VALUE;
         if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return ProductionCycleResult.failure("oil_reservation");
-        int qualityScore = productionQuality(server, company, machine);
+        int qualityScore = productionQuality(server, company, machine, operatingSite);
         produceOutputs(server, company, recipe, conversionCost, qualityScore, operatingSite, cycleKey, stableBatchId);
         if (serviceCycle) {
             CompanyServiceDeliverySavedData.get(server).append(
@@ -1021,7 +1024,8 @@ public final class CompanyHelper {
     }
 
     /** Game-scale process-quality proxy based on active skill and equipment condition. */
-    private static int productionQuality(MinecraftServer server, Company company, MachineType machine) {
+    private static int productionQuality(MinecraftServer server, Company company, MachineType machine,
+                                         CompanySiteSavedData.Site operatingSite) {
         int legacySkill = CompanyLaborSavedData.get(server).averageSkill(company.companyId());
         LaborMarketSavedData laborMarket = LaborMarketSavedData.get(server);
         var marketEmployments = laborMarket.activeForEmployer(company.companyId());
@@ -1041,7 +1045,15 @@ public final class CompanyHelper {
                     .get(company.companyId(), machine);
             condition = equipment == null ? 0 : Math.max(0, Math.min(100, equipment.condition()));
         }
-        return Math.max(0, Math.min(100, 40 + skill * 40 / 100 + condition * 20 / 100));
+        int quality = 40 + skill * 40 / 100 + condition * 20 / 100;
+        if (operatingSite != null) {
+            String region = TradeRegion.of(new net.minecraft.core.BlockPos(operatingSite.chunkX() * 16, 0,
+                    operatingSite.chunkZ() * 16));
+            int population = PopulationSavedData.get(server).population(region);
+            int services = LogisticsInfrastructureSavedData.get(server).publicServiceScore(region, population);
+            quality = quality * (70 + Math.max(0, Math.min(100, services)) * 30 / 100) / 100;
+        }
+        return Math.max(0, Math.min(100, quality));
     }
 
     private static boolean canProduceOutputs(MinecraftServer server, Company company) {
