@@ -16,8 +16,7 @@ public final class EconomicContractBridge {
     }
     public static void status(MinecraftServer server, String id, ContractStatus status, long at) {
         if (server == null || id == null || status == null) return;
-        EconomicContractSavedData data = EconomicContractSavedData.get(server); EconomicContract c = data.find(id);
-        if (c != null) data.replace(c.withStatus(status));
+        EconomicContractSavedData.get(server).transition(id, status, at);
     }
 
     public static void syncFreight(MinecraftServer server) {
@@ -35,7 +34,12 @@ public final class EconomicContractBridge {
                 case "loss" -> ContractStatus.BREACHED;
                 default -> ContractStatus.OFFERED;
             };
-            if (current.status() != next) generic.replace(current.withStatus(next));
+            if (current.status() != next) {
+                if (current.status() == ContractStatus.OFFERED && next == ContractStatus.COMPLETED) {
+                    generic.transition(current.id(), ContractStatus.ACTIVE, freight.expiresAt());
+                }
+                generic.transition(current.id(), next, freight.expiresAt());
+            }
         }
     }
 }

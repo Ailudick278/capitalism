@@ -51,6 +51,12 @@ public final class EconomicContractSavedData extends SavedData {
         return false;
     }
 
+    public boolean transition(String id, ContractStatus next, long at) {
+        EconomicContract current = find(id);
+        if (current == null || !ContractEconomics.canTransition(current.status(), next)) return false;
+        return replace(current.withStatus(next));
+    }
+
     public int expire(long now) {
         int changed = 0;
         for (int i = 0; i < contracts.size(); i++) {
