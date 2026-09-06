@@ -251,6 +251,12 @@ public final class CompanyHelper {
 
         CompanyInventoryCostSavedData inventoryCosts = CompanyInventoryCostSavedData.get(server);
         if (inventoryCosts.hasInventorySale(sourceId)) return 0L;
+        String accountingSource = "inventory_cogs:" + sourceId;
+        String ledgerMarker = "[source=" + accountingSource + "]";
+        if (CompanyLedgerSavedData.get(server).entries(companyId).stream()
+                .anyMatch(entry -> entry.description() != null && entry.description().contains(ledgerMarker))) {
+            return 0L;
+        }
         CompanyInventoryCostSavedData.Consumption tracked =
                 inventoryCosts.consume(companyId, itemId, quantity);
         CompanyQualitySavedData.get(server).consume(companyId, itemId, quantity);
@@ -264,7 +270,6 @@ public final class CompanyHelper {
         }
 
         long occurredAt = server.overworld().getGameTime();
-        String accountingSource = "inventory_cogs:" + sourceId;
         recordTaxableExpense(server, company, accountingSource,
                 cost, Currencies.USD.id(), occurredAt);
         // Cost of goods sold is non-cash: the inventory asset is exchanged for
@@ -273,7 +278,8 @@ public final class CompanyHelper {
         CompanyLedgerSavedData.get(server).append(new CompanyLedgerEntry(
                 company.companyId(), occurredAt, "cost_of_goods_sold", Currencies.USD.id(),
                 -cost, company.treasuryOf(Currencies.USD.id()),
-                "Inventory cost of goods sold: " + itemId + " x" + quantity));
+                "Inventory cost of goods sold: " + itemId + " x" + quantity
+                        + " [source=" + accountingSource + "]"));
         inventoryCosts.recordInventorySale(sourceId);
         return cost;
     }
