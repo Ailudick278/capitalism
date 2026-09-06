@@ -17,12 +17,23 @@ public final class CompanyEquipmentSavedData extends SavedData {
     private static final String ID = "capitalismmod_company_equipment";
     private final Map<String, Map<String, Equipment>> equipment = new HashMap<>();
 
-    public record Equipment(String machineType, int count, int condition) {
+    public record Equipment(String machineType, int count, int condition, int usageRemainder) {
         private static final Codec<Equipment> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("machineType").forGetter(Equipment::machineType),
                 Codec.INT.fieldOf("count").forGetter(Equipment::count),
-                Codec.INT.fieldOf("condition").forGetter(Equipment::condition)
+                Codec.INT.fieldOf("condition").forGetter(Equipment::condition),
+                Codec.INT.optionalFieldOf("usageRemainder", 0).forGetter(Equipment::usageRemainder)
         ).apply(instance, Equipment::new));
+
+        public Equipment(String machineType, int count, int condition) {
+            this(machineType, count, condition, 0);
+        }
+
+        public Equipment {
+            count = Math.max(0, count);
+            condition = Math.max(0, Math.min(100, condition));
+            usageRemainder = count <= 0 ? 0 : Math.max(0, Math.min(count - 1, usageRemainder));
+        }
     }
 
     private record State(Map<String, Map<String, Equipment>> equipment) {
@@ -80,16 +91,15 @@ public final class CompanyEquipmentSavedData extends SavedData {
         return true;
     }
 
-    /** Applies one production-cycle wear to the installed machine group. */
+    /** Records one batch of group usage and applies wear after every machine has served once. */
     public boolean use(String companyId, MachineType type) {
         return useAndMeasureBookValueLoss(companyId, type) >= 0L;
     }
 
     /**
-     * Applies one production-cycle wear and returns the resulting book-value
-     * loss. The condition percentage is used as a units-of-production proxy;
-     * the difference between the pre- and post-use carrying values preserves
-     * the full asset cost over the machine's useful life.
+     * Applies one batch of group usage and returns any resulting book-value
+     * loss. A group of N identical machines is worn by one condition point
+     * after N batches, preventing parallel capacity from multiplying wear.
      */
     public long useAndMeasureBookValueLoss(String companyId, MachineType type) {
         if (type == null || type == MachineType.NONE) return 0L;
@@ -99,12 +109,16 @@ public final class CompanyEquipmentSavedData extends SavedData {
         long gross = EconomyMath.multiply(Math.max(0L, type.purchasePrice()), current.count());
         if (gross < 0L) gross = Long.MAX_VALUE;
         long before = carryingValue(gross, current.condition());
-        int nextCondition = Math.max(0, current.condition() - 1);
-        long after = carryingValue(gross, nextCondition);
-        company.put(type.id(), new Equipment(type.id(), current.count(), nextCondition));
+        int uses = current.usageRemainder() + 1;
+        boolean completeUnitOfGroupUse = uses >= current.count();
+        int nextRemainder = completeUnitOfGroupUse ? 0 : uses;
+        int nextCondition = completeUnitOfGroupUse
+                ? Math.max(0, current.condition() - 1) : current.condition();
+        long loss = completeUnitOfGroupUse ? Math.max(0L, before - carryingValue(gross, nextCondition)) : 0L;
+        company.put(type.id(), new Equipment(type.id(), current.count(), nextCondition, nextRemainder));
         equipment.put(companyId, company);
         setDirty();
-        return Math.max(0L, before - after);
+        return loss;
     }
 
     private static long carryingValue(long gross, int condition) {
@@ -123,7 +137,7 @@ public final class CompanyEquipmentSavedData extends SavedData {
         Equipment current = company.get(type.id());
         if (current == null || current.count() <= 0) return false;
         int restored = Math.max(0, Math.min(100, targetCondition));
-        company.put(type.id(), new Equipment(type.id(), current.count(), restored));
+        company.put(type.id(), new Equipment(type.id(), current.count(), restored, 0));
         equipment.put(companyId, company);
         setDirty();
         return true;
@@ -144,7 +158,9 @@ public final class CompanyEquipmentSavedData extends SavedData {
             int count = (int) Math.min(Integer.MAX_VALUE, combined);
             int condition = existing == null ? incoming.condition()
                     : Math.min(existing.condition(), incoming.condition());
-            target.put(incoming.machineType(), new Equipment(incoming.machineType(), count, condition));
+            int remainder = count <= 0 ? 0 : Math.min(count - 1,
+                    Math.max(existing == null ? 0 : existing.usageRemainder(), incoming.usageRemainder()));
+            target.put(incoming.machineType(), new Equipment(incoming.machineType(), count, condition, remainder));
         }
         equipment.remove(sourceId);
         if (target.isEmpty()) equipment.remove(targetId);
