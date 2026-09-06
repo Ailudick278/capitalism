@@ -13,6 +13,7 @@ import com.ailudick.capitalismmod.government.MonetaryPolicyEconomics;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
 import com.ailudick.capitalismmod.risk.FinancialRiskPolicy;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -44,9 +45,15 @@ public final class BondMarket {
                 GovernmentPolicySavedData.get(player.getServer()).policyRateBasisPoints())
                 + FinancialRiskPolicy.bondLiquidityPremium(overdueShare);
         int days = Config.BOND_MATURITY_DAYS.get();
-        if (total <= 0 || totalMinor < 0 || !EconomyHelper.tryPay(player, Currencies.USD, totalMinor)) {
+        if (total <= 0 || totalMinor < 0) {
             return false;
         }
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
+        long now = player.getServer().overworld().getGameTime();
+        journal.markStarted(issuanceId, "bond", "payment", totalMinor, now);
+        String paymentReference = issuanceId + ":buyer-payment";
+        if (!EconomyHelper.tryPayWithReference(player, Currencies.USD, totalMinor, paymentReference)) return false;
+        journal.markCompleted(issuanceId, "bond", "payment", totalMinor, now);
         long treasuryProceeds = com.ailudick.capitalismmod.currency.ExchangeRates.convert(
                 totalMinor, Currencies.USD, Config.defaultCurrency());
         BondIssuanceSavedData issuanceData = BondIssuanceSavedData.get(player.getServer());
@@ -57,6 +64,7 @@ public final class BondMarket {
             return false;
         }
         issuanceData.markFunded(issuanceId);
+        journal.markCompleted(issuanceId, "bond", "treasury", treasuryProceeds, now);
         createHoldings(player.getServer(), new BondIssuanceSavedData.Issuance(
                 issuanceId, player.getUUID(), count, faceValue, rate, days, true, true, false));
         return true;
@@ -79,10 +87,14 @@ public final class BondMarket {
             String source = issuance.id();
             if (!policy.hasDeposit(source) && !policy.depositOnce(proceeds, source)) continue;
             issuanceData.markFunded(source);
+            FinancialSettlementJournalSavedData.get(server).markCompleted(source, "bond", "treasury",
+                    proceeds, server.overworld().getGameTime());
             recovered++;
         }
         for (BondIssuanceSavedData.Issuance issuance : BondIssuanceSavedData.get(server).pendingFunded()) {
             createHoldings(server, issuance);
+            FinancialSettlementJournalSavedData.get(server).markCompleted(issuance.id(), "bond", "holdings",
+                    issuance.count(), server.overworld().getGameTime());
             recovered++;
         }
         return recovered;
@@ -124,14 +136,19 @@ public final class BondMarket {
         }
         long basePayout = ExchangeRates.convert(payoutMinor, Currencies.USD, Config.defaultCurrency());
         String spendingId = "bond-redeem:" + holdingId;
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
+        long now = player.getServer().overworld().getGameTime();
+        journal.markStarted(holdingId, "bond", "redemption-funding", basePayout, now);
         GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(player.getServer());
         if (!policy.hasSpending(spendingId) && !policy.spend(
                 "bond-holder:" + player.getUUID(), player.getServer().overworld().getGameTime()
-                        / PerpetualCalendar.TICKS_PER_DAY, basePayout, spendingId)) return false;
+                / PerpetualCalendar.TICKS_PER_DAY, basePayout, spendingId)) return false;
+        journal.markCompleted(holdingId, "bond", "redemption-funding", basePayout, now);
         String payoutSource = "bond-payout:" + holdingId;
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
         if (!mailbox.hasCreditSource(payoutSource)
                 && !mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), payoutMinor, payoutSource)) return false;
+        journal.markCompleted(holdingId, "bond", "redemption-payout", payoutMinor, now);
         settlements.record(holdingId);
         data.removeHolding(holdingId);
         mailbox.redeemMoneyOnly(player);
@@ -171,13 +188,18 @@ public final class BondMarket {
             }
             long basePayout = ExchangeRates.convert(payoutMinor, Currencies.USD, Config.defaultCurrency());
             String spendingId = "bond-maturity:" + holding.id();
+            FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+            long now = server.overworld().getGameTime();
+            journal.markStarted(holding.id(), "bond", "maturity-funding", basePayout, now);
             GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
             if (!policy.hasSpending(spendingId) && !policy.spend(
                     "bond-holder:" + holding.holder(), settlementDay, basePayout, spendingId)) continue;
+            journal.markCompleted(holding.id(), "bond", "maturity-funding", basePayout, now);
             String payoutSource = "bond-payout:" + holding.id();
             MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
             if (!mailbox.hasCreditSource(payoutSource)
                     && !mailbox.creditMoneyOnce(holding.holder(), Currencies.USD.id(), payoutMinor, payoutSource)) continue;
+            journal.markCompleted(holding.id(), "bond", "maturity-payout", payoutMinor, now);
             settlements.record(holding.id());
             data.removeHolding(holding.id());
             ServerPlayer holder = server.getPlayerList().getPlayer(holding.holder());
