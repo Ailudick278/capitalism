@@ -19,6 +19,7 @@ import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.risk.FinancialRiskPolicy;
 import com.ailudick.capitalismmod.risk.FinancialCrisisSavedData;
+import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -107,6 +108,11 @@ public final class EconomyStatsCommand {
         source.sendSuccess(() -> Component.literal("成交记录: " + tradeData.trades().size()
                 + "  成交数量: " + finalTradeQuantity + "  成交额: " + finalTradeVolume), false);
         source.sendSuccess(() -> Component.literal("总手续费: " + finalTradeFees), false);
+        var bankCapital = BankCapitalSavedData.get(server);
+        source.sendSuccess(() -> Component.literal("银行资本: " + bankCapital.capitalMinor()
+                + "  累计损益: " + bankCapital.cumulativeProfitLossMinor()
+                + "  损失准备: " + bankCapital.lossProvisionMinor()
+                + "  资本结算日: " + bankCapital.lastSettlementDay()), false);
         var risk = FinancialRiskSavedData.get(server).latest();
         if (risk != null) {
             source.sendSuccess(() -> Component.literal("financial risk day=" + risk.day()
