@@ -249,7 +249,7 @@ public final class StockMarket {
             if (gross < 0) {
                 break;
             }
-            String tradeSource = "stock-trade:" + sell.id() + ":" + sell.quantity() + ":" + player.getUUID()
+            String tradeSource = "stock-trade:" + orderId + ":" + sell.id()
                     + ":" + fill + ":" + gross;
             FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
             long now = player.getServer().overworld().getGameTime();
@@ -263,7 +263,7 @@ public final class StockMarket {
                     Money.toMinor(gross - duty(gross)), tradeSource)) {
                 break;
             }
-            data.addNetVolume(stockId, fill);
+            data.addNetVolumeOnce(stockId, fill, tradeSource);
             spent += gross;
             remaining -= fill;
             reduceOrRemove(data, sell, fill);
@@ -357,7 +357,7 @@ public final class StockMarket {
                     tradeSource)) {
                 break;
             }
-            data.addNetVolume(stockId, -fill);
+            data.addNetVolumeOnce(stockId, -fill, tradeSource);
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
             StockOrder currentSell = data.findOrder(orderId);
