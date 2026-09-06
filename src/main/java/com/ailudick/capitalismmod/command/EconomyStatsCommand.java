@@ -7,6 +7,7 @@ import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
 import com.ailudick.capitalismmod.economy.EconomySettlementSavedData;
+import com.ailudick.capitalismmod.economy.EconomicSettlementJournalSavedData;
 import com.ailudick.capitalismmod.economy.MarketTradeSavedData;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.market.MarketOrder;
@@ -113,6 +114,12 @@ public final class EconomyStatsCommand {
                 + "  累计损益: " + bankCapital.cumulativeProfitLossMinor()
                 + "  损失准备: " + bankCapital.lossProvisionMinor()
                 + "  资本结算日: " + bankCapital.lastSettlementDay()), false);
+        var journal = EconomicSettlementJournalSavedData.get(server);
+        long journalDay = settlementDay;
+        source.sendSuccess(() -> Component.literal("日结阶段 " + journalDay + ": household="
+                + status(journal, journalDay, "households-and-labor") + " credit="
+                + status(journal, journalDay, "credit-and-securities") + " markets="
+                + status(journal, journalDay, "markets-and-close")), false);
         var risk = FinancialRiskSavedData.get(server).latest();
         if (risk != null) {
             source.sendSuccess(() -> Component.literal("financial risk day=" + risk.day()
@@ -132,5 +139,10 @@ public final class EconomyStatsCommand {
             return Long.MAX_VALUE;
         }
         return left + right;
+    }
+
+    private static String status(EconomicSettlementJournalSavedData journal, long day, String phase) {
+        var entry = journal.entry(day, phase);
+        return entry == null ? "未开始" : entry.status();
     }
 }
