@@ -68,11 +68,24 @@ public final class CommodityMarket {
             return false;
         }
         WarehouseSavedData warehouse = WarehouseSavedData.get(player.getServer());
+        String orderId = UUID.randomUUID().toString();
+        CommoditySellIntentSavedData intents = CommoditySellIntentSavedData.get(player.getServer());
+        intents.add(new CommoditySellIntentSavedData.Intent(orderId, player.getUUID(), itemId, quantity,
+                pricePerUnit, player.getServer().overworld().getGameTime(), false));
         if (!warehouse.consume(player.getUUID(), commodity.getItem(), quantity)) {
+            intents.remove(orderId);
             return false;
         }
+        intents.markEscrowed(orderId);
+        MarketOrder pendingOrder = new MarketOrder(orderId, player.getStringUUID(), commodity.copy(), quantity,
+                pricePerUnit, true, player.getServer().overworld().getGameTime());
+        FinancialSettlementJournalSavedData orderJournal = FinancialSettlementJournalSavedData.get(player.getServer());
+        long orderTime = player.getServer().overworld().getGameTime();
+        orderJournal.markStarted(orderId, "commodity", "order-record", quantity, orderTime);
+        data.addOrder(pendingOrder);
+        orderJournal.markCompleted(orderId, "commodity", "order-record", quantity, orderTime);
+        intents.remove(orderId);
 
-        String settlementId = UUID.randomUUID().toString();
         int remaining = quantity;
         for (MarketOrder buy : crossingBuys(data, itemId, pricePerUnit, player.getStringUUID())) {
             if (remaining <= 0) {
@@ -84,7 +97,7 @@ public final class CommodityMarket {
                 break;
             }
             UUID buyerId = UUID.fromString(buy.ownerId());
-            String tradeSource = "commodity-trade:" + settlementId + ":" + buy.id()
+            String tradeSource = "commodity-trade:" + orderId + ":" + buy.id()
                     + ":" + fill + ":" + gross;
             FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
             long now = player.getServer().overworld().getGameTime();
@@ -111,17 +124,49 @@ public final class CommodityMarket {
             }
             remaining -= fill;
             reduceOrRemove(data, buy, fill);
+            MarketOrder currentSell = data.findOrder(orderId);
+            if (currentSell != null) {
+                if (currentSell.quantity() <= fill) data.removeOrder(orderId);
+                else data.replaceOrder(currentSell.withQuantity(currentSell.quantity() - fill));
+            }
             NeoForge.EVENT_BUS.post(new TradeCompletedEvent(null, player, commodity, fill, "usd", gross,
                     "commodity", commission(gross)));
         }
 
-        if (remaining > 0) {
-            data.addOrder(new MarketOrder(UUID.randomUUID().toString(), player.getStringUUID(),
-                    commodity.copy(), remaining, pricePerUnit, true,
-                    player.getServer().overworld().getGameTime()));
-        }
+        // The sell order was persisted before matching; each fill updates its
+        // residual escrow quantity instead of creating it after the fact.
         data.setDirty();
         return true;
+    }
+
+    /** Restores escrowed commodity sell intents whose order record was interrupted. */
+    public static int recoverPendingSellIntents(MinecraftServer server) {
+        if (server == null) return 0;
+        CommoditySavedData orders = CommoditySavedData.get(server);
+        CommoditySellIntentSavedData intents = CommoditySellIntentSavedData.get(server);
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        int recovered = 0;
+        for (CommoditySellIntentSavedData.Intent intent : intents.intents()) {
+            if (orders.findOrder(intent.orderId()) != null) {
+                intents.remove(intent.orderId());
+                recovered++;
+                continue;
+            }
+            ServerPlayer seller = server.getPlayerList().getPlayer(intent.sellerUuid());
+            if (seller == null) continue;
+            ItemStack item = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM
+                    .get(net.minecraft.resources.ResourceLocation.parse(intent.itemId())));
+            if (item.isEmpty()) continue;
+            if (!intent.escrowed()) {
+                if (!warehouse.consume(seller.getUUID(), item.getItem(), intent.quantity())) continue;
+                intents.markEscrowed(intent.orderId());
+            }
+            orders.addOrder(new MarketOrder(intent.orderId(), intent.sellerUuid().toString(), item,
+                    intent.quantity(), intent.pricePerUnit(), true, intent.createdAt()));
+            intents.remove(intent.orderId());
+            recovered++;
+        }
+        return recovered;
     }
 
     /** Places a buy order, matching immediately against crossing sell orders. */
