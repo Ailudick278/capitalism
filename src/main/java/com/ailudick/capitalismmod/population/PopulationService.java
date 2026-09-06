@@ -15,8 +15,6 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
-import com.ailudick.capitalismmod.company.CompanySavedData;
-import com.ailudick.capitalismmod.company.CompanyHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 
