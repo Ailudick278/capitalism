@@ -8,6 +8,8 @@ import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
+import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
+import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -68,6 +70,9 @@ public final class PublicConstructionSavedData extends SavedData {
                 contractor = CompanySavedData.get(server).get(project.contractorCompanyId());
                 if (contractor == null || !"construction".equals(contractor.type())
                         || !CompanyLifecycleService.canOperate(server, contractor.companyId())) continue;
+                int legacyWorkers = CompanyLaborSavedData.get(server).activeWorkers(contractor.companyId());
+                int marketWorkers = LaborMarketSavedData.get(server).activeWorkers(contractor.companyId());
+                if (legacyWorkers + marketWorkers <= 0) continue;
                 if (policy.treasuryMinor() < cost) continue;
                 InventoryOwner owner = InventoryOwner.company(contractor.companyId());
                 if (!WarehouseSavedData.get(server).canConsumeBatch(owner,
