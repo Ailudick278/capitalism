@@ -31,6 +31,7 @@ import com.ailudick.capitalismmod.network.ServerPayloadHandler;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
+import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -230,7 +231,9 @@ public final class LandRentTickHandler {
                 data.put(claim.withLeaseState(claim.leaseeUuid(), claim.leaseUntil(), claim.leaseRent(), 0L, 0L));
                 continue;
             }
-            boolean paid = EconomyHelper.tryPay(tenant, Config.defaultCurrency(), totalDue);
+            String paymentReference = billId + ":tenant-payment";
+            boolean paid = EconomyLogSavedData.get(server).hasReference(tenant.getUUID(), paymentReference)
+                    || EconomyHelper.tryPayWithReference(tenant, Config.defaultCurrency(), totalDue, paymentReference);
             if (paid) {
                 payOwner(server, owner, claim.ownerUuid(), totalDue, billId + ":owner");
                 bills.markStatus(billId, "PAID");
@@ -271,7 +274,10 @@ public final class LandRentTickHandler {
             if (claim.leaseeUuid() == null || !claim.leaseeUuid().equals(tenant.getUUID()) || claim.leaseDebt() <= 0L) continue;
             if (claim.leaseUntil() <= now) continue;
             long debt = claim.leaseDebt();
-            if (!EconomyHelper.tryPay(tenant, Config.defaultCurrency(), debt)) {
+            String paymentReference = "land-rent-arrears-payment:" + claim.id() + ":"
+                    + claim.leaseUntil() + ":" + debt;
+            if (!EconomyLogSavedData.get(server).hasReference(tenant.getUUID(), paymentReference)
+                    && !EconomyHelper.tryPayWithReference(tenant, Config.defaultCurrency(), debt, paymentReference)) {
                 tenant.displayClientMessage(net.minecraft.network.chat.Component.literal("租约待缴租金：" + debt), true);
                 continue;
             }
