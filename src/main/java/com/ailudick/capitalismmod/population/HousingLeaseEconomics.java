@@ -30,6 +30,14 @@ public final class HousingLeaseEconomics {
         return new Settlement(totalDue, paid, arrears, missedDays, noticeDay);
     }
 
+    public record Termination(long refund, long residualArrears) {}
+
+    public static Termination terminate(long depositHeld, long arrears) {
+        long deposit = Math.max(0L, depositHeld);
+        long debt = Math.max(0L, arrears);
+        return new Termination(Math.max(0L, deposit - debt), Math.max(0L, debt - deposit));
+    }
+
     private static long add(long left, long right) {
         try { return Math.addExact(left, right); } catch (ArithmeticException e) { return Long.MAX_VALUE; }
     }

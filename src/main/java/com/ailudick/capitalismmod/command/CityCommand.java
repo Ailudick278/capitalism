@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.command;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.CityHousingSavedData;
+import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -37,7 +38,10 @@ public final class CityCommand {
         var rentRegion = Commands.argument("region", StringArgumentType.word()).then(rentAmount);
         var rentSet = Commands.literal("set").then(rentRegion);
         var rent = Commands.literal("rent").requires(source -> source.hasPermission(2)).then(rentSet);
-        dispatcher.register(Commands.literal("city").then(info).then(facility).then(rent));
+        var terminateHousing = Commands.literal("terminate").then(Commands.argument("household", StringArgumentType.word())
+                .executes(c -> terminateHousing(c.getSource(), StringArgumentType.getString(c, "household"))));
+        var housing = Commands.literal("housing").requires(source -> source.hasPermission(2)).then(terminateHousing);
+        dispatcher.register(Commands.literal("city").then(info).then(facility).then(rent).then(housing));
     }
 
     private static int info(CommandSourceStack source, String region) {
@@ -70,6 +74,23 @@ public final class CityCommand {
         }
         source.sendSuccess(() -> Component.literal("city base daily rent set region=" + region
                 + " rentMinor=" + rent), true);
+        return 1;
+    }
+
+    private static int terminateHousing(CommandSourceStack source, String householdId) {
+        PopulationSavedData population = PopulationSavedData.get(source.getServer());
+        if (population.find(householdId) == null) {
+            source.sendFailure(Component.literal("Household not found.")); return 0;
+        }
+        HousingLeaseSavedData.Termination termination = HousingLeaseSavedData.get(source.getServer())
+                .terminate(householdId, source.getServer().overworld().getGameTime() / 24000L, "admin_termination");
+        if (termination == null) {
+            source.sendFailure(Component.literal("Lease is not eligible for termination.")); return 0;
+        }
+        if (termination.depositReleasedMinor() > 0L) population.addCash(householdId, termination.depositReleasedMinor());
+        source.sendSuccess(() -> Component.literal("housing lease terminated household=" + householdId
+                + " depositRefundMinor=" + termination.depositReleasedMinor()
+                + " residualArrearsMinor=" + termination.residualArrearsMinor()), true);
         return 1;
     }
 }

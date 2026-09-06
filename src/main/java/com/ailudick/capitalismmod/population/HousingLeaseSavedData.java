@@ -14,8 +14,10 @@ import java.util.List;
 public final class HousingLeaseSavedData extends SavedData {
     private static final String ID = "capitalismmod_housing_leases";
     private static final int MAX_PAYMENTS = 16384;
+    private static final int MAX_TERMINATIONS = 4096;
     private final List<Lease> leases = new ArrayList<>();
     private final List<Payment> payments = new ArrayList<>();
+    private final List<Termination> terminations = new ArrayList<>();
 
     public record Lease(String householdId, String region, long dailyRentMinor,
                         long arrearsMinor, long lastPaymentDay, int missedDays, long noticeDay,
@@ -30,6 +32,8 @@ public final class HousingLeaseSavedData extends SavedData {
     public record Payment(String id, long day, String householdId, String region,
                           long dueMinor, long paidMinor, long rentPaidMinor,
                           long depositPaidMinor, long arrearsAfter) {}
+    public record Termination(String id, long day, String householdId, String region,
+                              long depositReleasedMinor, long residualArrearsMinor, String reason) {}
 
     private HousingLeaseSavedData() {}
 
@@ -40,10 +44,28 @@ public final class HousingLeaseSavedData extends SavedData {
 
     public List<Lease> leases() { return List.copyOf(leases); }
     public List<Payment> payments() { return List.copyOf(payments); }
+    public List<Termination> terminations() { return List.copyOf(terminations); }
     public Lease lease(String householdId) { return leases.stream()
             .filter(l -> l.householdId().equals(householdId)).findFirst().orElse(null); }
     public Payment payment(String id) { return payments.stream()
             .filter(p -> p.id().equals(id)).findFirst().orElse(null); }
+
+    /** Ends only a lease that has reached the 90-day termination threshold. */
+    public Termination terminate(String householdId, long day, String reason) {
+        Lease lease = lease(householdId);
+        if (lease == null || lease.missedDays() < 90) return null;
+        HousingLeaseEconomics.Termination result = HousingLeaseEconomics.terminate(
+                lease.depositHeldMinor(), lease.arrearsMinor());
+        Termination termination = new Termination("lease-end:" + householdId + ":" + day,
+                day, householdId, lease.region(), result.refund(), result.residualArrears(),
+                reason == null || reason.isBlank() ? "arrears" : reason);
+        leases.removeIf(l -> l.householdId().equals(householdId));
+        terminations.removeIf(t -> t.householdId().equals(householdId));
+        terminations.add(termination);
+        while (terminations.size() > MAX_TERMINATIONS) terminations.remove(0);
+        setDirty();
+        return termination;
+    }
 
     /** Records one rent attempt and returns the existing result when retried. */
     public Payment settleRent(String householdId, String region, long day,
@@ -93,7 +115,13 @@ public final class HousingLeaseSavedData extends SavedData {
             e.putString("household", p.householdId()); e.putString("region", p.region()); e.putLong("due", p.dueMinor());
             e.putLong("paid", p.paidMinor()); e.putLong("rentPaid", p.rentPaidMinor());
             e.putLong("depositPaid", p.depositPaidMinor()); e.putLong("arrears", p.arrearsAfter()); paymentList.add(e); }
-        tag.put("payments", paymentList); return tag;
+        tag.put("payments", paymentList);
+        ListTag terminationList = new ListTag();
+        for (Termination t : terminations) { CompoundTag e = new CompoundTag(); e.putString("id", t.id());
+            e.putLong("day", t.day()); e.putString("household", t.householdId()); e.putString("region", t.region());
+            e.putLong("refund", t.depositReleasedMinor()); e.putLong("residualArrears", t.residualArrearsMinor());
+            e.putString("reason", t.reason()); terminationList.add(e); }
+        tag.put("terminations", terminationList); return tag;
     }
 
     public static HousingLeaseSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
@@ -112,6 +140,12 @@ public final class HousingLeaseSavedData extends SavedData {
                     Math.max(0L, e.getLong("due")), Math.max(0L, e.getLong("paid")),
                     Math.max(0L, e.contains("rentPaid") ? e.getLong("rentPaid") : e.getLong("paid")),
                     Math.max(0L, e.getLong("depositPaid")), Math.max(0L, e.getLong("arrears")))); }
+        ListTag ts = tag.getList("terminations", Tag.TAG_COMPOUND);
+        for (int i = Math.max(0, ts.size() - MAX_TERMINATIONS); i < ts.size(); i++) { CompoundTag e = ts.getCompound(i);
+            if (!e.getString("id").isBlank() && !e.getString("household").isBlank()) data.terminations.add(new Termination(
+                    e.getString("id"), e.getLong("day"), e.getString("household"), e.getString("region"),
+                    Math.max(0L, e.getLong("refund")), Math.max(0L, e.getLong("residualArrears")),
+                    e.getString("reason"))); }
         return data;
     }
 
