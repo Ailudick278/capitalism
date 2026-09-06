@@ -26,6 +26,7 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     private final Map<String, Map<String, CostLayer>> layers = new HashMap<>();
     private final Map<String, Map<String, ArrayList<FifoInventoryCost.Batch>>> batches = new HashMap<>();
     private final Set<String> freightSources = new HashSet<>();
+    private final Set<String> inboundSources = new HashSet<>();
     private final Set<String> inventorySaleSources = new HashSet<>();
     private final Set<String> inventoryLossSources = new HashSet<>();
 
@@ -41,7 +42,7 @@ public final class CompanyInventoryCostSavedData extends SavedData {
 
     private record State(Map<String, Map<String, CostLayer>> layers,
                          Map<String, Map<String, List<FifoInventoryCost.Batch>>> batches,
-                         Set<String> freightSources,
+                         Set<String> freightSources, Set<String> inboundSources,
                          Set<String> inventorySaleSources, Set<String> inventoryLossSources) {
         private static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, CostLayer.CODEC))
@@ -52,6 +53,10 @@ public final class CompanyInventoryCostSavedData extends SavedData {
                                 values -> new ArrayList<>(values))
                         .optionalFieldOf("freightSources", Set.of())
                         .forGetter(State::freightSources),
+                Codec.STRING.listOf().xmap(values -> (Set<String>) new HashSet<String>(values),
+                        values -> new ArrayList<>(values))
+                        .optionalFieldOf("inboundSources", Set.of())
+                        .forGetter(State::inboundSources),
                 Codec.STRING.listOf().xmap(values -> (Set<String>) new HashSet<String>(values),
                         values -> new ArrayList<>(values))
                         .optionalFieldOf("inventorySaleSources", Set.of())
@@ -105,6 +110,19 @@ public final class CompanyInventoryCostSavedData extends SavedData {
                 .put(itemId, new ArrayList<>(next));
         rebuildLayer(companyId, itemId, next);
         setDirty();
+    }
+
+    /** Adds an inbound inventory cost layer once for a durable delivery source. */
+    public boolean addInboundOnce(String companyId, String itemId, int quantity, long totalCost,
+                                  String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || inboundSources.contains(sourceId)
+                || companyId == null || companyId.isBlank() || itemId == null || itemId.isBlank()
+                || quantity <= 0 || totalCost < 0L) return false;
+        add(companyId, itemId, quantity, totalCost);
+        inboundSources.add(sourceId);
+        trimSources(inboundSources);
+        setDirty();
+        return true;
     }
 
     /** Adds an inbound freight estimate exactly once for a shipment. */
@@ -205,6 +223,10 @@ public final class CompanyInventoryCostSavedData extends SavedData {
         return result < 0L ? Long.MAX_VALUE : result;
     }
 
+    private static void trimSources(Set<String> sources) {
+        while (sources.size() > 8192) sources.remove(sources.iterator().next());
+    }
+
     private static int safeQuantity(int left, int right) {
         return right > Integer.MAX_VALUE - Math.max(0, left)
                 ? Integer.MAX_VALUE : Math.max(0, left) + Math.max(0, right);
@@ -214,8 +236,8 @@ public final class CompanyInventoryCostSavedData extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         Map<String, Map<String, List<FifoInventoryCost.Batch>>> savedBatches = new HashMap<>();
         batches.forEach((companyId, values) -> savedBatches.put(companyId, new HashMap<>(values)));
-        State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers, savedBatches, freightSources, inventorySaleSources,
-                inventoryLossSources)).result()
+        State.CODEC.encodeStart(NbtOps.INSTANCE, new State(layers, savedBatches, freightSources, inboundSources,
+                inventorySaleSources, inventoryLossSources)).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
     }
@@ -232,6 +254,8 @@ public final class CompanyInventoryCostSavedData extends SavedData {
                     data.batches.put(companyId, company);
                 });
                 data.freightSources.addAll(state.freightSources());
+                data.inboundSources.addAll(state.inboundSources());
+                trimSources(data.inboundSources);
                 data.inventorySaleSources.addAll(state.inventorySaleSources());
                 data.inventoryLossSources.addAll(state.inventoryLossSources());
             });

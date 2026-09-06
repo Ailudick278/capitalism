@@ -178,8 +178,8 @@ public final class SupplyMarket {
             deliverOrShip(buyer.getServer(), buyer.getUUID(), item, filled, offer.region(),
                     destination, supplyOrderId, buyerCompanyId, offer.price(), offer.ownerUuid(), orderSource);
             if (!buyerCompanyId.isBlank()) {
-                CompanyInventoryCostSavedData.get(buyer.getServer()).add(buyerCompanyId, offer.itemId(), filled,
-                        EconomyMath.multiply(offer.price(), filled));
+                CompanyInventoryCostSavedData.get(buyer.getServer()).addInboundOnce(buyerCompanyId, offer.itemId(),
+                        filled, EconomyMath.multiply(offer.price(), filled), orderSource);
             }
             SupplyOrderAuditService.record(buyer.getServer(), supplyOrderId,
                     TradeRegion.distance(offer.region(), destination) == 0 ? "DELIVERED" : "DISPATCHED",
@@ -369,8 +369,8 @@ public final class SupplyMarket {
             deliverOrShip(server, order.buyerUuid(), item, deliver, order.originRegion(), order.destinationRegion(),
                     order.id(), order.buyerCompanyId(), order.unitPrice(), order.supplierUuid(), deliveryKey);
             if (!order.buyerCompanyId().isBlank()) {
-                CompanyInventoryCostSavedData.get(server).add(order.buyerCompanyId(), order.itemId(), deliver,
-                        EconomyMath.multiply(order.unitPrice(), deliver));
+                CompanyInventoryCostSavedData.get(server).addInboundOnce(order.buyerCompanyId(), order.itemId(),
+                        deliver, EconomyMath.multiply(order.unitPrice(), deliver), deliveryKey);
             }
             int newRemaining = order.remaining() - deliver;
             // Buyer funds for a backorder are held until this portion is
