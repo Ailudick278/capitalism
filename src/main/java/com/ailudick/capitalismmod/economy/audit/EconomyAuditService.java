@@ -57,6 +57,7 @@ import com.ailudick.capitalismmod.auction.AuctionListingIntentSavedData;
 import com.ailudick.capitalismmod.auction.AuctionBidSavedData;
 import com.ailudick.capitalismmod.auction.AuctionSettlementAuditRules;
 import com.ailudick.capitalismmod.supply.SupplySettlementAuditRules;
+import com.ailudick.capitalismmod.business.BusinessEscrowAuditRules;
 import com.ailudick.capitalismmod.currency.Currencies;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -480,17 +481,21 @@ public final class EconomyAuditService {
             }
         }
         BusinessOrderSavedData businessOrders = BusinessOrderSavedData.get(server);
+        Set<String> businessEscrowKeys = new HashSet<>();
         for (var escrow : BusinessOrderEscrowSavedData.get(server).escrows()) {
             long distributed = safeAdd(escrow.heldMinor(), safeAdd(escrow.releasedMinor(), escrow.refundedMinor()));
             if (escrow.orderId().isBlank() || escrow.batchId().isBlank() || escrow.buyerId().isBlank()
                     || escrow.originalMinor() <= 0L || escrow.heldMinor() < 0L
                     || escrow.releasedMinor() < 0L || escrow.refundedMinor() < 0L
-                    || distributed != escrow.originalMinor()) {
+                    || distributed != escrow.originalMinor()
+                    || !businessEscrowKeys.add(escrow.orderId() + ":" + escrow.batchId())) {
                 issues.add("business order escrow balance mismatch " + escrow.orderId() + "/" + escrow.batchId());
             }
             var order = businessOrders.get(escrow.orderId());
             if (order == null) {
                 issues.add("business order escrow has no order " + escrow.orderId());
+            } else if (!BusinessEscrowAuditRules.validBatch(escrow.batchId(), order.quantity())) {
+                issues.add("business order escrow batch invalid " + escrow.orderId() + "/" + escrow.batchId());
             } else if (population.find(escrow.buyerId()) == null) {
                 issues.add("business order escrow has no buyer household " + escrow.orderId() + "/" + escrow.batchId());
             } else if ("completed".equals(order.status()) && escrow.heldMinor() != 0L) {
