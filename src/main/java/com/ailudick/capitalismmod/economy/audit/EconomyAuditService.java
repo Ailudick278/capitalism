@@ -57,6 +57,7 @@ import com.ailudick.capitalismmod.auction.AuctionListingIntentSavedData;
 import com.ailudick.capitalismmod.auction.AuctionBidSavedData;
 import com.ailudick.capitalismmod.auction.AuctionSettlementAuditRules;
 import com.ailudick.capitalismmod.supply.SupplySettlementAuditRules;
+import com.ailudick.capitalismmod.supply.SupplyEscrowAuditRules;
 import com.ailudick.capitalismmod.business.BusinessEscrowAuditRules;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
@@ -464,10 +465,12 @@ public final class EconomyAuditService {
                     || bill.ownerUuid() == null || bill.amount() <= 0L || bill.dueAt() < 0L
                     || !LandRentBillSavedData.isValidStatus(bill.status())) issues.add("land rent bill invalid " + bill.id());
         }
+        Set<String> supplyEscrowIds = new HashSet<>();
         for (var escrow : SupplyEscrowSavedData.get(server).escrows()) {
             long distributed = safeAdd(escrow.heldMinor(), safeAdd(escrow.releasedMinor(), escrow.refundedMinor()));
             if (escrow.originalMinor() <= 0L || escrow.heldMinor() < 0L || escrow.releasedMinor() < 0L
-                    || escrow.refundedMinor() < 0L || distributed != escrow.originalMinor()) {
+                    || escrow.refundedMinor() < 0L || distributed != escrow.originalMinor()
+                    || !supplyEscrowIds.add(escrow.orderId())) {
                 issues.add("supply escrow balance mismatch " + escrow.orderId());
             }
             var supplyOrder = com.ailudick.capitalismmod.supply.SupplyMarketSavedData.get(server)

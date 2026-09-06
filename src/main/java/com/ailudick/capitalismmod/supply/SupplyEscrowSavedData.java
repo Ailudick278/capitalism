@@ -41,7 +41,8 @@ public final class SupplyEscrowSavedData extends SavedData {
     public boolean createOnce(String orderId, int quantity, long amountMinor) {
         if (orderId == null || orderId.isBlank() || amountMinor <= 0L) return false;
         if (quantity < 0) return false;
-        if (escrow(orderId) != null) return true;
+        Escrow existing = escrow(orderId);
+        if (existing != null) return SupplyEscrowAuditRules.creationMatches(existing, quantity, amountMinor);
         escrows.add(new Escrow(orderId, quantity, amountMinor, amountMinor, 0L, 0L));
         while (escrows.size() > MAX_ORDERS) escrows.remove(0);
         setDirty(); return true;
