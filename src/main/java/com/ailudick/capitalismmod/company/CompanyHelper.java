@@ -20,6 +20,7 @@ import com.ailudick.capitalismmod.tax.TaxableIncomeEvent;
 import com.ailudick.capitalismmod.tax.CorporateTaxPeriodSavedData;
 import com.ailudick.capitalismmod.tax.CorporateTaxAnnualSavedData;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
+import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.tax.TaxExpenseService;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
@@ -1246,7 +1247,12 @@ public final class CompanyHelper {
             return false;
         }
         String payoutSource = "company-acquisition:" + offer.id() + ":seller-payout";
-        if (!alreadyTransferred && !EconomyHelper.tryPay(buyer, Currencies.USD, Money.toMinor(offer.price()))) {
+        String debitReference = "company-acquisition:" + offer.id() + ":buyer-payment";
+        boolean alreadyDebited = EconomyLogSavedData.get(buyer.getServer())
+                .hasReference(buyer.getUUID(), debitReference);
+        if (!alreadyTransferred && !alreadyDebited
+                && !EconomyHelper.tryPayWithReference(buyer, Currencies.USD,
+                Money.toMinor(offer.price()), debitReference)) {
             return false;
         }
         if (!alreadyTransferred) {
