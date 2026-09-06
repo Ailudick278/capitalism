@@ -42,4 +42,10 @@ public final class PublicConstructionEconomics {
     public static long reworkCost(long unitCost) {
         return unitCost <= 0L ? 0L : unitCost / 4L;
     }
+
+    public static boolean housingPressure(int residents, int housingUnits) {
+        if (residents <= 0) return false;
+        long capacity = Math.max(0L, housingUnits) * 4L;
+        return residents > capacity;
+    }
 }

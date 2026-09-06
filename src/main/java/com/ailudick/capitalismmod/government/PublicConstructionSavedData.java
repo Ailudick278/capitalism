@@ -49,6 +49,11 @@ public final class PublicConstructionSavedData extends SavedData {
     public List<Project> projects() { return List.copyOf(projects); }
     public List<Bid> bids() { return List.copyOf(bids); }
 
+    public boolean hasActiveProject(String region, String facility) {
+        return projects.stream().anyMatch(p -> p.region().equals(region) && p.facility().equals(facility)
+                && p.completedUnits() < p.units());
+    }
+
     public Project start(String id, String region, String facility, int units, long day) {
         return start(id, region, facility, units, "", day);
     }

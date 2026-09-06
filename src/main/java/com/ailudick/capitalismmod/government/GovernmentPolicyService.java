@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.government;
 
 import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import net.minecraft.server.MinecraftServer;
 
 /** Applies one idempotent fiscal-transfer pass per simulated day. */
@@ -12,6 +13,7 @@ public final class GovernmentPolicyService {
         GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
         long benefit = policy.dailyBenefitMinor();
         PopulationSavedData population = PopulationSavedData.get(server);
+        stimulateHousing(server, population, day);
         int paid = 0;
         for (Household household : population.households()) {
             if (household.unemploymentDays() < 3 || household.unemploymentDays() > 90
@@ -29,6 +31,19 @@ public final class GovernmentPolicyService {
             }
         }
         return paid;
+    }
+
+    private static void stimulateHousing(MinecraftServer server, PopulationSavedData population, long day) {
+        var infrastructure = LogisticsInfrastructureSavedData.get(server);
+        var construction = PublicConstructionSavedData.get(server);
+        java.util.Set<String> regions = new java.util.HashSet<>(infrastructure.regions());
+        population.households().forEach(h -> regions.add(h.region()));
+        for (String region : regions) {
+            if (PublicConstructionEconomics.housingPressure(population.population(region),
+                    infrastructure.count(region, "housing")) && !construction.hasActiveProject(region, "housing")) {
+                construction.start("auto-housing:" + day + ":" + region, region, "housing", 1, day);
+            }
+        }
     }
 
     private static boolean payOnce(GovernmentPolicySavedData policy, PopulationSavedData population,

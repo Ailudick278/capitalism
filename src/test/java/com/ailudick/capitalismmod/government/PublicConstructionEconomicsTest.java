@@ -55,4 +55,11 @@ class PublicConstructionEconomicsTest {
         assertTrue(PublicConstructionEconomics.qualityScore(10, 1) < 50);
         assertTrue(PublicConstructionEconomics.qualityScore(50, 1) >= 50);
     }
+
+    @Test
+    void housingPressureStartsOnlyWhenCapacityIsExceeded() {
+        assertFalse(PublicConstructionEconomics.housingPressure(4, 1));
+        assertTrue(PublicConstructionEconomics.housingPressure(5, 1));
+        assertTrue(PublicConstructionEconomics.housingPressure(1, 0));
+    }
 }
