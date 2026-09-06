@@ -50,17 +50,22 @@ public final class BondMarket {
         }
         FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(player.getServer());
         long now = player.getServer().overworld().getGameTime();
+        BondIssuanceSavedData issuanceData = BondIssuanceSavedData.get(player.getServer());
+        BondIssuanceSavedData.Issuance pending = new BondIssuanceSavedData.Issuance(
+                issuanceId, player.getUUID(), count, faceValue, rate, days, false, false, false);
+        issuanceData.add(pending);
         journal.markStarted(issuanceId, "bond", "payment", totalMinor, now);
         String paymentReference = issuanceId + ":buyer-payment";
-        if (!EconomyHelper.tryPayWithReference(player, Currencies.USD, totalMinor, paymentReference)) return false;
+        if (!EconomyHelper.tryPayWithReference(player, Currencies.USD, totalMinor, paymentReference)) {
+            issuanceData.remove(issuanceId);
+            return false;
+        }
+        issuanceData.replace(new BondIssuanceSavedData.Issuance(
+                issuanceId, player.getUUID(), count, faceValue, rate, days, true, false, false));
         journal.markCompleted(issuanceId, "bond", "payment", totalMinor, now);
         long treasuryProceeds = com.ailudick.capitalismmod.currency.ExchangeRates.convert(
                 totalMinor, Currencies.USD, Config.defaultCurrency());
-        BondIssuanceSavedData issuanceData = BondIssuanceSavedData.get(player.getServer());
-        issuanceData.add(new BondIssuanceSavedData.Issuance(
-                issuanceId, player.getUUID(), count, faceValue, rate, days, true, false, false));
         if (!GovernmentPolicySavedData.get(player.getServer()).depositOnce(treasuryProceeds, issuanceId)) {
-            EconomyHelper.giveMoney(player, Currencies.USD, totalMinor);
             return false;
         }
         issuanceData.markFunded(issuanceId);
@@ -76,6 +81,19 @@ public final class BondMarket {
         BondIssuanceSavedData issuanceData = BondIssuanceSavedData.get(server);
         GovernmentPolicySavedData policy = GovernmentPolicySavedData.get(server);
         for (BondIssuanceSavedData.Issuance issuance : issuanceData.pendingPayment()) {
+            if (!issuance.paymentConfirmed()) {
+                ServerPlayer holder = server.getPlayerList().getPlayer(issuance.holder());
+                long amountMinor;
+                try {
+                    amountMinor = Money.toMinor(Math.multiplyExact(issuance.faceValue(), issuance.count()));
+                } catch (ArithmeticException exception) {
+                    continue;
+                }
+                if (holder == null || !EconomyHelper.tryPayWithReference(holder, Currencies.USD,
+                        amountMinor, issuance.id() + ":buyer-payment")) continue;
+                issuanceData.replace(new BondIssuanceSavedData.Issuance(issuance.id(), issuance.holder(), issuance.count(),
+                        issuance.faceValue(), issuance.ratePerYear(), issuance.days(), true, false, false));
+            }
             long proceeds;
             try {
                 proceeds = ExchangeRates.convert(Money.toMinor(

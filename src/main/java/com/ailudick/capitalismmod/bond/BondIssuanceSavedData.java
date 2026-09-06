@@ -48,12 +48,16 @@ public final class BondIssuanceSavedData extends SavedData {
         }
     }
 
+    public void remove(String id) {
+        if (id != null && issuances.removeIf(issuance -> id.equals(issuance.id()))) setDirty();
+    }
+
     public List<Issuance> pendingFunded() {
         return issuances.stream().filter(issuance -> issuance.funded() && !issuance.holdingsCreated()).toList();
     }
 
     public List<Issuance> pendingPayment() {
-        return issuances.stream().filter(issuance -> issuance.paymentConfirmed() && !issuance.funded()).toList();
+        return issuances.stream().filter(issuance -> !issuance.funded()).toList();
     }
 
     public void markFunded(String id) {
