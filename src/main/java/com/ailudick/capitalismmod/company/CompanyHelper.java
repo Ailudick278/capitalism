@@ -317,6 +317,13 @@ public final class CompanyHelper {
         int improvedScore = Math.min(100, batch.qualityScore() + 10);
         if (!CompanyQualityControlSavedData.get(server).reinspect(company.companyId(), batchId,
                 improvedScore, server.overworld().getGameTime())) return -1;
+        int scoreDelta = Math.max(0, improvedScore - batch.qualityScore());
+        if (scoreDelta > 0) {
+            for (Map.Entry<String, Integer> output : batch.outputs().entrySet()) {
+                CompanyQualitySavedData.get(server).improve(company.companyId(), output.getKey(),
+                        Math.max(0, output.getValue()), scoreDelta);
+            }
+        }
         return improvedScore;
     }
 

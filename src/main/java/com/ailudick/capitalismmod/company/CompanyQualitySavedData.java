@@ -96,6 +96,19 @@ public final class CompanyQualitySavedData extends SavedData {
         setDirty();
     }
 
+    /** Applies a positive quality improvement to units that have been reworked. */
+    public void improve(String companyId, String itemId, int units, int scoreDelta) {
+        if (companyId == null || itemId == null || units <= 0 || scoreDelta <= 0) return;
+        Map<String, ProductQuality> company = products.get(companyId);
+        if (company == null) return;
+        ProductQuality previous = company.get(itemId);
+        if (previous == null || previous.units() <= 0L) return;
+        long delta = multiplySaturated(units, scoreDelta);
+        company.put(itemId, new ProductQuality(previous.units(),
+                addSaturated(previous.qualityTotal(), delta)));
+        setDirty();
+    }
+
     /** Transfers weighted quality history during a company merger. */
     public void transferCompany(String sourceId, String targetId) {
         if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
