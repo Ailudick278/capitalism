@@ -13,6 +13,12 @@ public final class HousingLeaseEconomics {
 
     private HousingLeaseEconomics() {}
 
+    public static long securityDeposit(long dailyRent) {
+        if (dailyRent <= 0L) return 0L;
+        try { return Math.multiplyExact(dailyRent, 30L); }
+        catch (ArithmeticException e) { return Long.MAX_VALUE; }
+    }
+
     public static Settlement settle(long priorArrears, int priorMissedDays, long priorNoticeDay,
                                     long day, long currentDue, long available) {
         long totalDue = add(Math.max(0L, priorArrears), Math.max(0L, currentDue));

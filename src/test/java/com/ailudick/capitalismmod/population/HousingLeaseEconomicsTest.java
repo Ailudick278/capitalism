@@ -6,6 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class HousingLeaseEconomicsTest {
     @Test
+    void securityDepositIsThirtyDaysOfRent() {
+        assertEquals(3_000L, HousingLeaseEconomics.securityDeposit(100L));
+    }
+
+    @Test
     void paymentsClearOldArrearsBeforeCurrentRent() {
         HousingLeaseEconomics.Settlement settlement = HousingLeaseEconomics.settle(
                 300L, 4, 6L, 10L, 100L, 250L);

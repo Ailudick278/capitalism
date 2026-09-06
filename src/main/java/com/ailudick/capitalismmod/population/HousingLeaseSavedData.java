@@ -18,7 +18,8 @@ public final class HousingLeaseSavedData extends SavedData {
     private final List<Payment> payments = new ArrayList<>();
 
     public record Lease(String householdId, String region, long dailyRentMinor,
-                        long arrearsMinor, long lastPaymentDay, int missedDays, long noticeDay) {
+                        long arrearsMinor, long lastPaymentDay, int missedDays, long noticeDay,
+                        long depositDueMinor, long depositHeldMinor) {
         public String status() {
             if (missedDays >= 90) return "termination_eligible";
             if (missedDays >= 30) return "notice";
@@ -27,7 +28,8 @@ public final class HousingLeaseSavedData extends SavedData {
         }
     }
     public record Payment(String id, long day, String householdId, String region,
-                          long dueMinor, long paidMinor, long arrearsAfter) {}
+                          long dueMinor, long paidMinor, long rentPaidMinor,
+                          long depositPaidMinor, long arrearsAfter) {}
 
     private HousingLeaseSavedData() {}
 
@@ -51,20 +53,29 @@ public final class HousingLeaseSavedData extends SavedData {
         if (existing != null) return existing;
         Lease previous = lease(householdId);
         long priorArrears = previous == null ? 0L : previous.arrearsMinor();
+        long safeDailyRent = Math.max(0L, dailyRentMinor);
+        long depositDue = previous == null ? HousingLeaseEconomics.securityDeposit(safeDailyRent)
+                : Math.max(0L, previous.depositDueMinor() - previous.depositHeldMinor());
+        long rentDue = Math.max(0L, dueMinor);
+        long available = Math.max(0L, availableMinor);
+        long rentTotalDue = add(priorArrears, rentDue);
+        long depositPaid = depositDue > 0L && available >= add(depositDue, rentTotalDue) ? depositDue : 0L;
         HousingLeaseEconomics.Settlement settlement = HousingLeaseEconomics.settle(priorArrears,
                 previous == null ? 0 : previous.missedDays(),
-                previous == null ? -1L : previous.noticeDay(), day, dueMinor, availableMinor);
+                previous == null ? -1L : previous.noticeDay(), day, rentDue, available - depositPaid);
         long paid = settlement.paid();
         long arrears = settlement.arrears();
         int missedDays = settlement.missedDays();
         long noticeDay = settlement.noticeDay();
         Payment result = new Payment(paymentId, day, householdId, region,
-                settlement.totalDue(), paid, arrears);
+                add(depositDue, settlement.totalDue()), add(depositPaid, paid), paid, depositPaid, arrears);
         payments.add(result);
         while (payments.size() > MAX_PAYMENTS) payments.remove(0);
         leases.removeIf(l -> l.householdId().equals(householdId));
-        leases.add(new Lease(householdId, region, Math.max(0L, dailyRentMinor), arrears, paid > 0L ? day :
-                (previous == null ? -1L : previous.lastPaymentDay()), missedDays, noticeDay));
+        leases.add(new Lease(householdId, region, safeDailyRent, arrears, paid > 0L ? day :
+                (previous == null ? -1L : previous.lastPaymentDay()), missedDays, noticeDay,
+                previous == null ? depositDue : previous.depositDueMinor(),
+                add(previous == null ? 0L : previous.depositHeldMinor(), depositPaid)));
         setDirty();
         return result;
     }
@@ -74,12 +85,14 @@ public final class HousingLeaseSavedData extends SavedData {
         for (Lease l : leases) { CompoundTag e = new CompoundTag(); e.putString("household", l.householdId());
             e.putString("region", l.region()); e.putLong("rent", l.dailyRentMinor());
             e.putLong("arrears", l.arrearsMinor()); e.putLong("lastPayment", l.lastPaymentDay());
-            e.putInt("missedDays", l.missedDays()); e.putLong("noticeDay", l.noticeDay()); leaseList.add(e); }
+            e.putInt("missedDays", l.missedDays()); e.putLong("noticeDay", l.noticeDay());
+            e.putLong("depositDue", l.depositDueMinor()); e.putLong("depositHeld", l.depositHeldMinor()); leaseList.add(e); }
         tag.put("leases", leaseList);
         ListTag paymentList = new ListTag();
         for (Payment p : payments) { CompoundTag e = new CompoundTag(); e.putString("id", p.id()); e.putLong("day", p.day());
             e.putString("household", p.householdId()); e.putString("region", p.region()); e.putLong("due", p.dueMinor());
-            e.putLong("paid", p.paidMinor()); e.putLong("arrears", p.arrearsAfter()); paymentList.add(e); }
+            e.putLong("paid", p.paidMinor()); e.putLong("rentPaid", p.rentPaidMinor());
+            e.putLong("depositPaid", p.depositPaidMinor()); e.putLong("arrears", p.arrearsAfter()); paymentList.add(e); }
         tag.put("payments", paymentList); return tag;
     }
 
@@ -90,12 +103,19 @@ public final class HousingLeaseSavedData extends SavedData {
             if (!e.getString("household").isBlank() && !e.getString("region").isBlank()) data.leases.add(new Lease(
                     e.getString("household"), e.getString("region"), Math.max(0L, e.getLong("rent")),
                     Math.max(0L, e.getLong("arrears")), e.getLong("lastPayment"),
-                    Math.max(0, e.getInt("missedDays")), e.contains("noticeDay") ? e.getLong("noticeDay") : -1L)); }
+                    Math.max(0, e.getInt("missedDays")), e.contains("noticeDay") ? e.getLong("noticeDay") : -1L,
+                    Math.max(0L, e.getLong("depositDue")), Math.max(0L, e.getLong("depositHeld")))); }
         ListTag ps = tag.getList("payments", Tag.TAG_COMPOUND);
         for (int i = Math.max(0, ps.size() - MAX_PAYMENTS); i < ps.size(); i++) { CompoundTag e = ps.getCompound(i);
             if (!e.getString("id").isBlank() && !e.getString("household").isBlank()) data.payments.add(new Payment(
                     e.getString("id"), e.getLong("day"), e.getString("household"), e.getString("region"),
-                    Math.max(0L, e.getLong("due")), Math.max(0L, e.getLong("paid")), Math.max(0L, e.getLong("arrears")))); }
+                    Math.max(0L, e.getLong("due")), Math.max(0L, e.getLong("paid")),
+                    Math.max(0L, e.contains("rentPaid") ? e.getLong("rentPaid") : e.getLong("paid")),
+                    Math.max(0L, e.getLong("depositPaid")), Math.max(0L, e.getLong("arrears")))); }
         return data;
+    }
+
+    private static long add(long left, long right) {
+        try { return Math.addExact(left, right); } catch (ArithmeticException e) { return Long.MAX_VALUE; }
     }
 }

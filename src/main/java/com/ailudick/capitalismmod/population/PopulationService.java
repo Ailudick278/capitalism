@@ -43,9 +43,9 @@ public final class PopulationService {
             ConsumptionResult goods = consume(server, household, cash, livingNeed, day);
             HousingLeaseSavedData.Payment rent = HousingLeaseSavedData.get(server).settleRent(household.id(),
                     household.region(), day, rentPerResident, rentDue, goods.remainingCash());
-            if (rent.paidMinor() > 0L) {
+            if (rent.rentPaidMinor() > 0L) {
                 com.ailudick.capitalismmod.government.GovernmentPolicySavedData.get(server)
-                        .collectRent(rent.id(), day, household.id(), household.region(), rent.paidMinor());
+                        .collectRent(rent.id(), day, household.id(), household.region(), rent.rentPaidMinor());
             }
             long remainingCash = Math.max(0L, goods.remainingCash() - rent.paidMinor());
             long totalSpent = add(goods.spent(), rent.paidMinor());
