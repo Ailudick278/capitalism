@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.auction;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.currency.Money;
 import com.ailudick.capitalismmod.CapitalismMod;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
@@ -143,9 +144,14 @@ public final class AuctionMarket {
                 continue;
             }
             WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+            FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+            String transactionId = "auction:" + auction.id();
+            long settlementTime = server.overworld().getGameTime();
             if (auction.currentBidder().isEmpty()) {
+                journal.markStarted(transactionId, "auction", "goods-return", auction.quantity(), settlementTime);
                 warehouse.creditOnce(InventoryOwner.player(auction.seller()), item, auction.quantity(),
                         "auction-item:" + auction.id());
+                journal.markCompleted(transactionId, "auction", "goods-return", auction.quantity(), settlementTime);
             } else {
                 UUID winner;
                 try {
@@ -161,15 +167,21 @@ public final class AuctionMarket {
                             auction.id(), auction.currentBid());
                     continue;
                 }
+                journal.markStarted(transactionId, "auction", "goods-delivery", auction.quantity(), settlementTime);
                 warehouse.creditOnce(InventoryOwner.player(winner), item, auction.quantity(),
                         "auction-item:" + auction.id());
+                journal.markCompleted(transactionId, "auction", "goods-delivery", auction.quantity(), settlementTime);
                 String payoutSource = "auction-payout:" + auction.id();
                 MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
+                journal.markStarted(transactionId, "auction", "seller-payout", bidMinor, settlementTime);
                 if (!mailbox.hasCreditSource(payoutSource)
                         && !mailbox.creditMoneyOnce(auction.seller(), Currencies.USD.id(), bidMinor, payoutSource)) continue;
+                journal.markCompleted(transactionId, "auction", "seller-payout", bidMinor, settlementTime);
+                journal.markStarted(transactionId, "auction", "sale-tax", Money.toMinorSaturated(auction.currentBid()), settlementTime);
                 TaxTransactionService.assess(server, TaxType.VAT, auction.seller(), Currencies.USD.id(),
                         Money.toMinorSaturated(auction.currentBid()), "auction-sale:" + auction.id(),
                         server.overworld().getGameTime());
+                journal.markCompleted(transactionId, "auction", "sale-tax", Money.toMinorSaturated(auction.currentBid()), settlementTime);
                 ServerPlayer seller = server.getPlayerList().getPlayer(auction.seller());
                 settlements.record(auction.id());
                 data.removeAuction(auction.id());
