@@ -10,6 +10,7 @@ import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.company.CompanyLaborSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
 import com.ailudick.capitalismmod.economy.contract.ContractType;
 import com.ailudick.capitalismmod.economy.expansion.EconomicActorRef;
@@ -135,6 +136,7 @@ public final class PublicConstructionSavedData extends SavedData {
             long cost = project.contractPriceMinor() > 0L ? project.contractPriceMinor()
                     : PublicConstructionEconomics.unitCost(project.facility());
             String receipt = "public-construction:" + project.id() + ":" + day;
+            FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
             Company contractor = null;
             if (!project.contractorCompanyId().isBlank()) {
                 contractor = CompanySavedData.get(server).get(project.contractorCompanyId());
@@ -151,14 +153,32 @@ public final class PublicConstructionSavedData extends SavedData {
                 InventoryOwner owner = InventoryOwner.company(contractor.companyId());
                 if (!WarehouseSavedData.get(server).canConsumeBatch(owner,
                         PublicConstructionEconomics.materials(project.facility()))) continue;
+                journal.markStarted(receipt, "public-construction", "materials", 0L,
+                        server.overworld().getGameTime());
                 if (!WarehouseSavedData.get(server).consumeBatchOnce(owner,
                         PublicConstructionEconomics.materials(project.facility()), receipt + ":materials")) continue;
+                journal.markCompleted(receipt, "public-construction", "materials", 0L,
+                        server.overworld().getGameTime());
+                journal.markStarted(receipt, "public-construction", "contractor-payment", cost,
+                        server.overworld().getGameTime());
                 if (!CompanyHelper.creditTreasuryNonOperatingOnce(server, contractor.companyId(), Currencies.USD.id(),
                         cost, "public-construction-revenue", "Public construction contract payment", receipt)) continue;
+                journal.markCompleted(receipt, "public-construction", "contractor-payment", cost,
+                        server.overworld().getGameTime());
             }
+            journal.markStarted(receipt, "public-construction", "government-spending", cost,
+                    server.overworld().getGameTime());
             if (!policy.hasSpending(receipt) && !policy.spend("public-construction:" + project.region(), day,
                     cost, receipt)) continue;
-            if (!infrastructure.changePublicFacility(project.region(), project.facility(), 1)) continue;
+            journal.markCompleted(receipt, "public-construction", "government-spending", cost,
+                    server.overworld().getGameTime());
+            if (!journal.isCompleted(receipt, "facility")) {
+                journal.markStarted(receipt, "public-construction", "facility", 1L,
+                        server.overworld().getGameTime());
+                if (!infrastructure.changePublicFacility(project.region(), project.facility(), 1)) continue;
+                journal.markCompleted(receipt, "public-construction", "facility", 1L,
+                        server.overworld().getGameTime());
+            }
             projects.set(i, new Project(project.id(), project.region(), project.facility(), project.units(),
                     project.completedUnits() + 1, project.contractorCompanyId(), project.contractPriceMinor(),
                     project.startDay(), day));
