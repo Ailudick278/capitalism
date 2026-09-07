@@ -85,6 +85,9 @@ import com.ailudick.capitalismmod.tax.TaxIncomeVoucherLedgerSavedData;
 import com.ailudick.capitalismmod.tax.TaxIncomeVoucherAuditRules;
 import com.ailudick.capitalismmod.tax.TaxInvoiceSavedData;
 import com.ailudick.capitalismmod.tax.TaxInvoiceAuditRules;
+import com.ailudick.capitalismmod.tax.TaxInvoiceLinkRules;
+import com.ailudick.capitalismmod.tax.TaxLedgerSavedData;
+import com.ailudick.capitalismmod.tax.TaxBill;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -574,6 +577,11 @@ public final class EconomyAuditService {
                     invoice.currencyId(), invoice.grossAmount(), invoice.taxAmount(), invoice.creditApplied(),
                     invoice.issuedAt(), invoice.direction(), Currencies.exists(invoice.currencyId()))) {
                 issues.add("tax invoice invalid " + invoice.sourceEventId());
+            }
+            TaxBill bill = TaxLedgerSavedData.get(server).findBySourceEvent(invoice.sourceEventId());
+            if (!TaxInvoiceLinkRules.matchesBill(invoice.direction(), invoice.grossAmount(), invoice.taxAmount(),
+                    invoice.creditApplied(), invoice.taxpayerUuid(), invoice.currencyId(), invoice.sourceEventId(), bill)) {
+                issues.add("tax invoice bill mismatch " + invoice.sourceEventId());
             }
         }
         PopulationSavedData population = PopulationSavedData.get(server);
