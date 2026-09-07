@@ -10,7 +10,7 @@ import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.population.NpcBankingSavedData;
 import net.minecraft.server.MinecraftServer;
 
-/** Aggregates online bank exposure and limits crisis-period withdrawals to 10% of deposits per day. */
+/** Aggregates persisted player/NPC exposure and applies capital and crisis liquidity limits. */
 public final class BankLiquidityService {
     private BankLiquidityService() {}
 

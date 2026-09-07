@@ -25,8 +25,8 @@ public final class BankLiquidityEconomics {
 
     /**
      * Crisis lending capacity after reserving a minimum 8% capital buffer.
-     * The buffer is applied to the already risk-adjusted capacity because this
-     * version of the simulation has no separate bank-equity account yet.
+     * The buffer is applied to the already risk-adjusted capacity; normal
+     * lending is additionally bounded by the persistent bank-equity ledger.
      */
     public static long capitalAdjustedLoanCapacity(long depositsMinor, int overdueShareBasisPoints) {
         long riskAdjusted = riskAdjustedLoanCapacity(depositsMinor, overdueShareBasisPoints);
