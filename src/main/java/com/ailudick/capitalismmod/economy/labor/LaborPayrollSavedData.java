@@ -14,7 +14,12 @@ import java.util.Map;
 public final class LaborPayrollSavedData extends SavedData {
     public record Account(long unpaid, long lastSettlementDay) {}
     public record Payment(String source, String employmentId, String workerId, long day,
-                          long amountMinor, String householdSource) {}
+                          long amountMinor, long taxMinor, long netMinor, String householdSource) {
+        public Payment(String source, String employmentId, String workerId, long day,
+                       long amountMinor, String householdSource) {
+            this(source, employmentId, workerId, day, amountMinor, 0L, amountMinor, householdSource);
+        }
+    }
     private static final String ID = "capitalismmod_labor_payroll";
     private final Map<String, Account> accounts = new HashMap<>();
     private final Map<String, Payment> payments = new HashMap<>();
@@ -35,7 +40,7 @@ public final class LaborPayrollSavedData extends SavedData {
         accounts.forEach((id, a) -> { CompoundTag e = new CompoundTag(); e.putString("id", id); e.putLong("unpaid", a.unpaid()); e.putLong("day", a.lastSettlementDay()); list.add(e); });
         tag.put("accounts", list);
         ListTag paymentList = new ListTag();
-        payments.values().forEach(payment -> { CompoundTag e = new CompoundTag(); e.putString("source", payment.source()); e.putString("employment", payment.employmentId()); e.putString("worker", payment.workerId()); e.putLong("day", payment.day()); e.putLong("amount", payment.amountMinor()); e.putString("householdSource", payment.householdSource()); paymentList.add(e); });
+        payments.values().forEach(payment -> { CompoundTag e = new CompoundTag(); e.putString("source", payment.source()); e.putString("employment", payment.employmentId()); e.putString("worker", payment.workerId()); e.putLong("day", payment.day()); e.putLong("amount", payment.amountMinor()); e.putLong("tax", payment.taxMinor()); e.putLong("net", payment.netMinor()); e.putString("householdSource", payment.householdSource()); paymentList.add(e); });
         tag.put("payments", paymentList);
         return tag;
     }
@@ -44,7 +49,7 @@ public final class LaborPayrollSavedData extends SavedData {
         ListTag list = tag.getList("accounts", Tag.TAG_COMPOUND);
         for (int i=0;i<list.size();i++) { CompoundTag e=list.getCompound(i); if (!e.getString("id").isBlank()) data.accounts.put(e.getString("id"), new Account(Math.max(0L,e.getLong("unpaid")), e.getLong("day"))); }
         ListTag paymentList = tag.getList("payments", Tag.TAG_COMPOUND);
-        for (int i=0;i<paymentList.size();i++) { CompoundTag e = paymentList.getCompound(i); String source = e.getString("source"); if (!source.isBlank() && e.getLong("amount") > 0L) data.payments.put(source, new Payment(source, e.getString("employment"), e.getString("worker"), e.getLong("day"), e.getLong("amount"), e.getString("householdSource"))); }
+        for (int i=0;i<paymentList.size();i++) { CompoundTag e = paymentList.getCompound(i); String source = e.getString("source"); long amount = e.getLong("amount"); long tax = Math.max(0L, e.getLong("tax")); long net = e.contains("net") ? e.getLong("net") : amount; if (!e.contains("net")) tax = 0L; if (!source.isBlank() && amount > 0L && tax >= 0L && net > 0L) data.payments.put(source, new Payment(source, e.getString("employment"), e.getString("worker"), e.getLong("day"), amount, tax, net, e.getString("householdSource"))); }
         return data;
     }
 }

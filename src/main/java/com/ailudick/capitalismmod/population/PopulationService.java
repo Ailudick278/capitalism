@@ -243,7 +243,7 @@ public final class PopulationService {
         long total = 0L;
         for (LaborPayrollSavedData.Payment payment : LaborPayrollSavedData.get(server).payments().values()) {
             if (day == payment.day() && householdId.equals(payment.workerId())) {
-                total = add(total, ExchangeRates.convert(payment.amountMinor(), Currencies.USD, Config.defaultCurrency()));
+                total = add(total, ExchangeRates.convert(payment.netMinor(), Currencies.USD, Config.defaultCurrency()));
             }
         }
         return total;

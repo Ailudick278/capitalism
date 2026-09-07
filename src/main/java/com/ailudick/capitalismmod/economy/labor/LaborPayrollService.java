@@ -14,6 +14,7 @@ import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
 import com.ailudick.capitalismmod.wallet.EconomyHelper;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractBridge;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -61,26 +62,36 @@ public final class LaborPayrollService {
             String householdSource = source;
             if (paidMajor > 0L && (previousDebit != null || CompanyHelper.debitTreasuryNonOperatingOnce(server, company.companyId(), Currencies.USD.id(), paidMajor,
                     "employment_payroll", "Employment wage payment", source))) {
+                long tax = withholdingTax(paid);
+                long net = paid - tax;
+                boolean taxCollected = tax <= 0L || GovernmentPolicySavedData.get(server)
+                        .collectWageTax(source + ":tax", day, employment.workerId(), employment.id(), paid, tax);
+                if (!taxCollected) {
+                    paid = 0L;
+                    payroll.settle(employment.id(), day, due);
+                    continue;
+                }
                 try {
                     java.util.UUID workerId = java.util.UUID.fromString(employment.workerId());
                     MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
                     boolean mailboxDelivered = mailbox.hasCreditSource(source)
-                            || mailbox.creditMoneyOnce(workerId, Currencies.USD.id(), paid, source);
+                            || mailbox.creditMoneyOnce(workerId, Currencies.USD.id(), net, source);
                     ServerPlayer worker = server.getPlayerList().getPlayer(workerId);
                     if (worker != null && mailboxDelivered) mailbox.redeemMoneyOnly(worker);
                     householdSource = source + ":household";
                     PopulationSavedData population = PopulationSavedData.get(server);
                     boolean householdDelivered = population.hasCreditedSource(householdSource)
-                            || population.addCashOnce(workerId.toString(), ExchangeRates.convert(paid, Currencies.USD, Config.defaultCurrency()), householdSource);
+                            || population.addCashOnce(workerId.toString(), ExchangeRates.convert(net, Currencies.USD, Config.defaultCurrency()), householdSource);
                     delivered = mailboxDelivered && householdDelivered;
                 } catch (IllegalArgumentException npcWorker) {
                     delivered = PopulationSavedData.get(server).hasCreditedSource(source)
                             || PopulationSavedData.get(server).addCashOnce(employment.workerId(),
-                            ExchangeRates.convert(paid, Currencies.USD, Config.defaultCurrency()), source);
+                            ExchangeRates.convert(net, Currencies.USD, Config.defaultCurrency()), source);
                 }
             }
             if (delivered) {
-                payroll.recordPayment(new LaborPayrollSavedData.Payment(source, employment.id(), employment.workerId(), day, paid, householdSource));
+                payroll.recordPayment(new LaborPayrollSavedData.Payment(source, employment.id(), employment.workerId(), day,
+                        paid, withholdingTax(paid), paid - withholdingTax(paid), householdSource));
                 payroll.settle(employment.id(), day, due - paid);
             } else {
                 paid = 0L;
@@ -148,6 +159,12 @@ public final class LaborPayrollService {
     private static long toMinor(long major) {
         return major <= 0L ? 0L : major >= Long.MAX_VALUE / Money.MINOR_UNITS_PER_UNIT
                 ? Long.MAX_VALUE : major * Money.MINOR_UNITS_PER_UNIT;
+    }
+    private static long withholdingTax(long grossMinor) {
+        if (grossMinor <= 1L || Config.INCOME_TAX_RATE.get() <= 0.0) return 0L;
+        double calculated = Math.floor(grossMinor * Config.INCOME_TAX_RATE.get());
+        if (!Double.isFinite(calculated) || calculated >= grossMinor) return grossMinor - 1L;
+        return Math.max(0L, (long) calculated);
     }
 
     private static long add(long left, long right) {

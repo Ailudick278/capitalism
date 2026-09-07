@@ -31,6 +31,7 @@ public final class GovernmentPolicySavedData extends SavedData {
     private final List<TaxRevenue> taxRevenues = new ArrayList<>();
     private final List<RentRevenue> rentRevenues = new ArrayList<>();
     private final List<ConsumptionTaxRevenue> consumptionTaxRevenues = new ArrayList<>();
+    private final List<WageTaxRevenue> wageTaxRevenues = new ArrayList<>();
     private final Set<String> depositReceipts = new HashSet<>();
 
     public record Transaction(String id, long day, String householdId, long amount, long balanceAfter) {}
@@ -41,6 +42,8 @@ public final class GovernmentPolicySavedData extends SavedData {
                               long amount, long balanceAfter) {}
     public record ConsumptionTaxRevenue(String id, long day, String householdId, String sellerId,
                                         long grossAmount, long taxAmount, long balanceAfter) {}
+    public record WageTaxRevenue(String id, long day, String householdId, String employmentId,
+                                 long grossAmount, long taxAmount, long balanceAfter) {}
 
     private GovernmentPolicySavedData() {}
 
@@ -62,6 +65,7 @@ public final class GovernmentPolicySavedData extends SavedData {
     public List<TaxRevenue> taxRevenues() { return List.copyOf(taxRevenues); }
     public List<RentRevenue> rentRevenues() { return List.copyOf(rentRevenues); }
     public List<ConsumptionTaxRevenue> consumptionTaxRevenues() { return List.copyOf(consumptionTaxRevenues); }
+    public List<WageTaxRevenue> wageTaxRevenues() { return List.copyOf(wageTaxRevenues); }
 
     public Map<GovernmentBudgetCategory, Long> spendingByCategory(long day) {
         Map<GovernmentBudgetCategory, Long> totals = new HashMap<>();
@@ -194,6 +198,26 @@ public final class GovernmentPolicySavedData extends SavedData {
         setDirty();
         return true;
     }
+    public boolean collectWageTax(String paymentId, long day, String householdId,
+                                  String employmentId, long grossAmount, long taxAmount) {
+        if (paymentId == null || paymentId.isBlank() || householdId == null || householdId.isBlank()
+                || employmentId == null || employmentId.isBlank() || grossAmount <= 0L
+                || taxAmount <= 0L || taxAmount >= grossAmount) return false;
+        WageTaxRevenue existing = wageTaxRevenues.stream()
+                .filter(revenue -> paymentId.equals(revenue.id())).findFirst().orElse(null);
+        if (existing != null) {
+            return existing.grossAmount() == grossAmount && existing.taxAmount() == taxAmount
+                    && existing.householdId().equals(householdId)
+                    && existing.employmentId().equals(employmentId);
+        }
+        if (treasuryMinor > Long.MAX_VALUE - taxAmount) return false;
+        treasuryMinor += taxAmount;
+        wageTaxRevenues.add(new WageTaxRevenue(paymentId, day, householdId, employmentId,
+                grossAmount, taxAmount, treasuryMinor));
+        while (wageTaxRevenues.size() > MAX_TRANSACTIONS) wageTaxRevenues.remove(0);
+        setDirty();
+        return true;
+    }
 
     public boolean spend(String householdId, long day, long amount, String transactionId) {
         if (householdId == null || householdId.isBlank() || amount <= 0L || amount > treasuryMinor
@@ -251,6 +275,14 @@ public final class GovernmentPolicySavedData extends SavedData {
             e.putLong("balance", revenue.balanceAfter()); consumptionTaxes.add(e);
         }
         tag.put("consumptionTaxRevenues", consumptionTaxes);
+        ListTag wageTaxes = new ListTag();
+        for (WageTaxRevenue revenue : wageTaxRevenues) {
+            CompoundTag e = new CompoundTag(); e.putString("id", revenue.id()); e.putLong("day", revenue.day());
+            e.putString("household", revenue.householdId()); e.putString("employment", revenue.employmentId());
+            e.putLong("gross", revenue.grossAmount()); e.putLong("tax", revenue.taxAmount());
+            e.putLong("balance", revenue.balanceAfter()); wageTaxes.add(e);
+        }
+        tag.put("wageTaxRevenues", wageTaxes);
         ListTag deposits = new ListTag();
         for (String source : depositReceipts) {
             CompoundTag entry = new CompoundTag();
@@ -322,6 +354,17 @@ public final class GovernmentPolicySavedData extends SavedData {
                 data.consumptionTaxRevenues.add(new ConsumptionTaxRevenue(e.getString("id"),
                         e.getLong("day"), e.getString("household"), e.getString("seller"),
                         e.getLong("gross"), e.getLong("tax"), e.getLong("balance")));
+            }
+        }
+        ListTag wageTaxes = tag.getList("wageTaxRevenues", Tag.TAG_COMPOUND);
+        for (int i = Math.max(0, wageTaxes.size() - MAX_TRANSACTIONS); i < wageTaxes.size(); i++) {
+            CompoundTag e = wageTaxes.getCompound(i);
+            if (!e.getString("id").isBlank() && !e.getString("household").isBlank()
+                    && !e.getString("employment").isBlank() && e.getLong("gross") > e.getLong("tax")
+                    && e.getLong("tax") > 0L && e.getLong("balance") >= 0L) {
+                data.wageTaxRevenues.add(new WageTaxRevenue(e.getString("id"), e.getLong("day"),
+                        e.getString("household"), e.getString("employment"), e.getLong("gross"),
+                        e.getLong("tax"), e.getLong("balance")));
             }
         }
         return data;

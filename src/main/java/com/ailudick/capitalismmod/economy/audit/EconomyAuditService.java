@@ -667,6 +667,15 @@ public final class EconomyAuditService {
                 issues.add("government consumption tax revenue invalid " + revenue.id());
             }
         }
+        Set<String> wageTaxIds = new HashSet<>();
+        for (var revenue : government.wageTaxRevenues()) {
+            if (revenue.id().isBlank() || !wageTaxIds.add(revenue.id())
+                    || revenue.day() < 0L || revenue.householdId().isBlank()
+                    || revenue.employmentId().isBlank() || revenue.grossAmount() <= revenue.taxAmount()
+                    || revenue.taxAmount() <= 0L || revenue.balanceAfter() < 0L) {
+                issues.add("government wage tax revenue invalid " + revenue.id());
+            }
+        }
         for (var holding : BondSavedData.get(server).holdings()) {
             if (holding.id().isBlank() || holding.holder() == null || holding.faceValue() <= 0L
                     || holding.ratePerYear() < 0.0 || holding.totalDays() <= 0
@@ -1142,6 +1151,9 @@ public final class EconomyAuditService {
                     && payment.householdSource() != null && !payment.householdSource().isBlank()
                     && payment.day() >= 0L && payment.amountMinor() > 0L
                     && payment.amountMinor() % Money.MINOR_UNITS_PER_UNIT == 0L
+                    && payment.taxMinor() >= 0L && payment.netMinor() > 0L
+                    && payment.taxMinor() < payment.amountMinor()
+                    && safeAdd(payment.taxMinor(), payment.netMinor()) == payment.amountMinor()
                     && employment != null && employment.workerId().equals(payment.workerId());
             if (!valid) {
                 issues.add("payroll payment invalid " + payment.source());
@@ -1152,9 +1164,21 @@ public final class EconomyAuditService {
             if (debit == null || !CompanyLedgerSourceRules.matches(debit, Currencies.USD.id(), amountMajor, false)) {
                 issues.add("payroll payment missing company debit " + payment.source());
             }
-            if (population.find(payment.workerId()) == null
-                    || !population.hasCreditedSource(payment.householdSource())) {
+            PopulationSavedData.CreditReceipt householdReceipt = population.creditedReceipt(payment.householdSource());
+            long expectedNet = ExchangeRates.convert(payment.netMinor(), Currencies.USD, Config.defaultCurrency());
+            if (population.find(payment.workerId()) == null || householdReceipt == null
+                    || !payment.workerId().equals(householdReceipt.householdId())
+                    || householdReceipt.amountMinor() != expectedNet) {
                 issues.add("payroll payment missing household credit " + payment.source());
+            }
+            if (payment.taxMinor() > 0L) {
+                boolean taxReceipt = GovernmentPolicySavedData.get(server).wageTaxRevenues().stream()
+                        .anyMatch(revenue -> (payment.source() + ":tax").equals(revenue.id())
+                                && payment.workerId().equals(revenue.householdId())
+                                && payment.employmentId().equals(revenue.employmentId())
+                                && revenue.grossAmount() == payment.amountMinor()
+                                && revenue.taxAmount() == payment.taxMinor());
+                if (!taxReceipt) issues.add("payroll payment missing wage tax receipt " + payment.source());
             }
         }
         EconomicContractSavedData contracts = EconomicContractSavedData.get(server);
