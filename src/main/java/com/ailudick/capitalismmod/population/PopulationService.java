@@ -40,6 +40,7 @@ public final class PopulationService {
     public static void settleDaily(MinecraftServer server, long day) {
         PopulationSavedData population = PopulationSavedData.get(server);
         LaborMarketSavedData labor = LaborMarketSavedData.get(server);
+        NpcBankingService.writeOffBadDebts(server, day);
         NpcBankingService.applyDailyInterest(server, day);
         for (Household household : population.households()) {
             if (household.lastSettlementDay() >= day) continue;

@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.population;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.bank.BankCapitalEconomics;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
+import com.ailudick.capitalismmod.bank.BankBadDebtEconomics;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.government.MonetaryPolicyEconomics;
 import net.minecraft.server.MinecraftServer;
@@ -39,6 +40,24 @@ public final class NpcBankingService {
             }
         }
         data.markInterestDay(day);
+    }
+
+    /** Writes off NPC debt after the configured grace period, once against bank equity. */
+    public static int writeOffBadDebts(MinecraftServer server, long day) {
+        NpcBankingSavedData data = NpcBankingSavedData.get(server);
+        BankCapitalSavedData capital = BankCapitalSavedData.get(server);
+        if (!capital.initialized()) capital.initialize(Config.BANK_INITIAL_CAPITAL_MINOR.get());
+        int writtenOff = 0;
+        for (NpcBankingSavedData.Account account : data.accounts()) {
+            if (!BankBadDebtEconomics.eligible(account.loanDaysRemaining(), Config.BANK_BAD_DEBT_WRITE_OFF_DAYS.get())
+                    || account.debtMinor() <= 0L) continue;
+            String source = "npc-bank-bad-debt:" + account.householdId() + ":" + day;
+            if (!capital.hasWriteOff(source)) capital.writeOffOnce(account.debtMinor(), source);
+            if (!capital.hasWriteOff(source)) continue;
+            if (data.transact(account.householdId(), day, "bad_debt_writeoff", 0L,
+                    -account.debtMinor(), 0) != null) writtenOff++;
+        }
+        return writtenOff;
     }
 
     public static Result prepare(MinecraftServer server, Household household, long day) {
