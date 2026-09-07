@@ -6,12 +6,17 @@ public final class HouseholdFinancialRisk {
 
     public static int score(long cashMinor, long dailyNeedMinor, long rentArrearsMinor,
                             long wageArrearsMinor, int unemploymentDays) {
+        return score(cashMinor, dailyNeedMinor, rentArrearsMinor, wageArrearsMinor, 0L, unemploymentDays);
+    }
+
+    public static int score(long cashMinor, long dailyNeedMinor, long rentArrearsMinor,
+                            long wageArrearsMinor, long bankDebtMinor, int unemploymentDays) {
         if (cashMinor < 0L || dailyNeedMinor < 0L || rentArrearsMinor < 0L
-                || wageArrearsMinor < 0L || unemploymentDays < 0) return 100;
+                || wageArrearsMinor < 0L || bankDebtMinor < 0L || unemploymentDays < 0) return 100;
         long shortfall = dailyNeedMinor > cashMinor ? dailyNeedMinor - cashMinor : 0L;
         int liquidity = dailyNeedMinor <= 0L ? 0
                 : (int) Math.min(40L, shortfall * 40L / dailyNeedMinor);
-        long debt = add(rentArrearsMinor, wageArrearsMinor);
+        long debt = add(add(rentArrearsMinor, wageArrearsMinor), bankDebtMinor);
         long monthlyNeed = dailyNeedMinor > Long.MAX_VALUE / 30L
                 ? Long.MAX_VALUE : dailyNeedMinor * 30L;
         int debtRisk = monthlyNeed <= 0L ? (debt > 0L ? 30 : 0)

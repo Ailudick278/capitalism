@@ -17,6 +17,7 @@ import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
+import com.ailudick.capitalismmod.bank.BankAccountHelper;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
@@ -292,12 +293,29 @@ public final class PopulationService {
             long usd = LaborPayrollSavedData.get(server).account(employment.id()).unpaid();
             wageArrears = add(wageArrears, ExchangeRates.convert(usd, Currencies.USD, Config.defaultCurrency()));
         }
+        long bankDebt = 0L;
+        try {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList()
+                    .getPlayer(java.util.UUID.fromString(household.id()));
+            if (player != null) {
+                for (var account : BankAccountHelper.getAccounts(player).values()) {
+                    for (var debt : account.debts().entrySet()) {
+                        if (debt.getValue() > 0L && Currencies.exists(debt.getKey())) {
+                            bankDebt = add(bankDebt, ExchangeRates.convert(debt.getValue(),
+                                    Currencies.byId(debt.getKey()), Config.defaultCurrency()));
+                        }
+                    }
+                }
+            }
+        } catch (IllegalArgumentException ignored) {
+            // NPC households do not yet have bank accounts.
+        }
         long householdNeed = multiply(household.dailyNeedMinor(), household.size());
         int score = HouseholdFinancialRisk.score(household.cashMinor(), householdNeed,
-                rentArrears, wageArrears, household.unemploymentDays());
+                rentArrears, wageArrears, bankDebt, household.unemploymentDays());
         HouseholdFinancialRiskSavedData.get(server).record(new HouseholdFinancialRiskSavedData.Assessment(
                 "household-risk:" + household.id() + ":" + day, household.id(), day, household.cashMinor(),
-                householdNeed, rentArrears, wageArrears,
+                householdNeed, rentArrears, wageArrears, bankDebt,
                 household.unemploymentDays(), score));
     }
     private static long vatFor(long netUnitPrice) {

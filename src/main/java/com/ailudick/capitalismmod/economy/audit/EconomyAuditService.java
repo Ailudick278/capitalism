@@ -956,11 +956,13 @@ public final class EconomyAuditService {
                     && assessment.householdId() != null && !assessment.householdId().isBlank()
                     && assessment.day() >= 0L && assessment.cashMinor() >= 0L
                     && assessment.dailyNeedMinor() >= 0L && assessment.rentArrearsMinor() >= 0L
-                    && assessment.wageArrearsMinor() >= 0L && assessment.unemploymentDays() >= 0
+                    && assessment.wageArrearsMinor() >= 0L && assessment.bankDebtMinor() >= 0L
+                    && assessment.unemploymentDays() >= 0
                     && assessment.score() >= 0 && assessment.score() <= 100
                     && assessment.id().equals("household-risk:" + assessment.householdId() + ":" + assessment.day());
             int expectedRisk = HouseholdFinancialRisk.score(assessment.cashMinor(), assessment.dailyNeedMinor(),
-                    assessment.rentArrearsMinor(), assessment.wageArrearsMinor(), assessment.unemploymentDays());
+                    assessment.rentArrearsMinor(), assessment.wageArrearsMinor(), assessment.bankDebtMinor(),
+                    assessment.unemploymentDays());
             if (!validRisk || expectedRisk != assessment.score()) {
                 issues.add("household financial risk invalid " + assessment.id());
             }
