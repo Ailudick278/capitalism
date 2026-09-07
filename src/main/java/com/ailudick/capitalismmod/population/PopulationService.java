@@ -98,6 +98,7 @@ public final class PopulationService {
                     openingCash, wageIncome, governmentIncome, goods.spent(), rent.rentPaidMinor(),
                     remainingCash));
             recordTaxPeriod(server, household.id(), day);
+            recordFinancialRisk(server, settled, day);
             LaborProfile profile = labor.profile(household.id());
             if (profile != null) labor.registerProfile(profile.withHealthAndEducation(health, education));
             evolveNpc(population, settled, day);
@@ -277,6 +278,24 @@ public final class PopulationService {
         HouseholdTaxPeriodSavedData.get(server).record(new HouseholdTaxPeriodSavedData.Assessment(
                 "household-tax-period:" + householdId + ":" + start + ":" + day,
                 householdId, start, day, grossWages, wageTax, consumption, consumptionTax));
+    }
+    private static void recordFinancialRisk(MinecraftServer server, Household household, long day) {
+        long rentArrears = 0L;
+        HousingLeaseSavedData.Lease lease = HousingLeaseSavedData.get(server).lease(household.id());
+        if (lease != null) rentArrears = lease.arrearsMinor();
+        long wageArrears = 0L;
+        LaborMarketSavedData labor = LaborMarketSavedData.get(server);
+        for (EmploymentRecord employment : labor.activeForWorker(household.id())) {
+            long usd = LaborPayrollSavedData.get(server).account(employment.id()).unpaid();
+            wageArrears = add(wageArrears, ExchangeRates.convert(usd, Currencies.USD, Config.defaultCurrency()));
+        }
+        long householdNeed = multiply(household.dailyNeedMinor(), household.size());
+        int score = HouseholdFinancialRisk.score(household.cashMinor(), householdNeed,
+                rentArrears, wageArrears, household.unemploymentDays());
+        HouseholdFinancialRiskSavedData.get(server).record(new HouseholdFinancialRiskSavedData.Assessment(
+                "household-risk:" + household.id() + ":" + day, household.id(), day, household.cashMinor(),
+                householdNeed, rentArrears, wageArrears,
+                household.unemploymentDays(), score));
     }
     private static long vatFor(long netUnitPrice) {
         if (netUnitPrice <= 0L || Config.VAT_RATE.get() <= 0.0) return 0L;

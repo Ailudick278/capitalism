@@ -31,6 +31,8 @@ import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
 import com.ailudick.capitalismmod.population.CityHousingSavedData;
 import com.ailudick.capitalismmod.population.HouseholdCashflowSavedData;
 import com.ailudick.capitalismmod.population.HouseholdTaxPeriodSavedData;
+import com.ailudick.capitalismmod.population.HouseholdFinancialRisk;
+import com.ailudick.capitalismmod.population.HouseholdFinancialRiskSavedData;
 import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseDebtSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseSettlementSavedData;
@@ -945,6 +947,22 @@ public final class EconomyAuditService {
                     + ":" + assessment.periodStart() + ":" + assessment.periodEnd());
             if (!validAssessment) {
                 issues.add("household tax assessment invalid " + assessment.id());
+            }
+        }
+        Set<String> riskIds = new HashSet<>();
+        for (HouseholdFinancialRiskSavedData.Assessment assessment : HouseholdFinancialRiskSavedData.get(server).assessments()) {
+            boolean validRisk = assessment.id() != null && !assessment.id().isBlank()
+                    && riskIds.add(assessment.id())
+                    && assessment.householdId() != null && !assessment.householdId().isBlank()
+                    && assessment.day() >= 0L && assessment.cashMinor() >= 0L
+                    && assessment.dailyNeedMinor() >= 0L && assessment.rentArrearsMinor() >= 0L
+                    && assessment.wageArrearsMinor() >= 0L && assessment.unemploymentDays() >= 0
+                    && assessment.score() >= 0 && assessment.score() <= 100
+                    && assessment.id().equals("household-risk:" + assessment.householdId() + ":" + assessment.day());
+            int expectedRisk = HouseholdFinancialRisk.score(assessment.cashMinor(), assessment.dailyNeedMinor(),
+                    assessment.rentArrearsMinor(), assessment.wageArrearsMinor(), assessment.unemploymentDays());
+            if (!validRisk || expectedRisk != assessment.score()) {
+                issues.add("household financial risk invalid " + assessment.id());
             }
         }
         for (var consumption : HouseholdConsumptionSavedData.get(server).records()) {
