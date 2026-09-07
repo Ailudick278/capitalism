@@ -34,6 +34,11 @@ public final class MarketOrderAuditRules {
         return paidMinor > 0L && reservedMinor > 0L && paidMinor >= reservedMinor;
     }
 
+    public static boolean coversSellEscrow(Integer escrowedQuantity, int remainingQuantity) {
+        return escrowedQuantity != null && escrowedQuantity > 0
+                && remainingQuantity > 0 && escrowedQuantity >= remainingQuantity;
+    }
+
     public static boolean validFill(String beforeId, String beforeOwnerId, Object beforeItem, int beforeQuantity,
                                     long beforePrice, boolean beforeSell, long beforeCreatedAt,
                                     String afterId, String afterOwnerId, Object afterItem, int afterQuantity,

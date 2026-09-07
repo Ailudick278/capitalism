@@ -401,7 +401,7 @@ public final class EconomyAuditService {
             String source = "commodity-sell-order:" + order.id();
             if (warehouse.hasConsumedSource(source)
                     && (!Commodities.id(order.commodity()).equals(consumedItems.get(source))
-                    || !Integer.valueOf(order.quantity()).equals(consumedQuantities.get(source)))) {
+                    || !MarketOrderAuditRules.coversSellEscrow(consumedQuantities.get(source), order.quantity()))) {
                 issues.add("commodity sell escrow differs from order " + order.id());
             }
         }

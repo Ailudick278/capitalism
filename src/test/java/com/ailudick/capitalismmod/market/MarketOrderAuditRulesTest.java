@@ -32,4 +32,11 @@ class MarketOrderAuditRulesTest {
         assertFalse(MarketOrderAuditRules.validBuyEscrow(799L, 800L));
         assertFalse(MarketOrderAuditRules.validBuyEscrow(1_000L, 0L));
     }
+
+    @Test
+    void originalSellEscrowMayCoverAPartiallyFilledOrder() {
+        assertTrue(MarketOrderAuditRules.coversSellEscrow(10, 4));
+        assertFalse(MarketOrderAuditRules.coversSellEscrow(3, 4));
+        assertFalse(MarketOrderAuditRules.coversSellEscrow(null, 4));
+    }
 }
