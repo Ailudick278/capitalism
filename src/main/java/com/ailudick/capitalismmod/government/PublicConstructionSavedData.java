@@ -149,14 +149,17 @@ public final class PublicConstructionSavedData extends SavedData {
                 long marketWorkers = LaborMarketSavedData.get(server).activeForEmployer(contractor.companyId()).stream()
                         .filter(worker -> PublicConstructionEconomics.isConstructionRole(worker.role())).count();
                 if (legacyWorkers + marketWorkers <= 0L) continue;
-                if (policy.treasuryMinor() < cost) continue;
+                if (!policy.hasSpending(receipt) && policy.treasuryMinor() < cost) continue;
                 InventoryOwner owner = InventoryOwner.company(contractor.companyId());
-                if (!WarehouseSavedData.get(server).canConsumeBatch(owner,
-                        PublicConstructionEconomics.materials(project.facility()))) continue;
+                String materialsSource = receipt + ":materials";
+                WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+                if (!journal.isCompleted(receipt, "materials")
+                        && !warehouse.hasConsumedSource(materialsSource)
+                        && !warehouse.canConsumeBatch(owner, PublicConstructionEconomics.materials(project.facility()))) continue;
                 journal.markStarted(receipt, "public-construction", "materials", 0L,
                         server.overworld().getGameTime());
-                if (!WarehouseSavedData.get(server).consumeBatchOnce(owner,
-                        PublicConstructionEconomics.materials(project.facility()), receipt + ":materials")) continue;
+                if (!warehouse.consumeBatchOnce(owner,
+                        PublicConstructionEconomics.materials(project.facility()), materialsSource)) continue;
                 journal.markCompleted(receipt, "public-construction", "materials", 0L,
                         server.overworld().getGameTime());
                 journal.markStarted(receipt, "public-construction", "contractor-payment", cost,
