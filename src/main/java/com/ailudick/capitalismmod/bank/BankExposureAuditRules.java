@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.bank;
 
 /** Pure comparison rules for authoritative account exposure and its persisted snapshot. */
 public final class BankExposureAuditRules {
+    public static final long SNAPSHOT_MAX_AGE_TICKS = 24_000L * 7L;
     private BankExposureAuditRules() {
     }
 
@@ -38,5 +39,10 @@ public final class BankExposureAuditRules {
         return validAccountSnapshot(snapshot) && transactionCount >= 0
                 && snapshot.transactionCount() == transactionCount
                 && snapshot.lastTransactionAt() == lastTransactionAt;
+    }
+
+    public static boolean isStale(long syncedAt, long currentTick, long maxAgeTicks) {
+        return syncedAt >= 0L && currentTick >= syncedAt && maxAgeTicks > 0L
+                && currentTick - syncedAt > maxAgeTicks;
     }
 }

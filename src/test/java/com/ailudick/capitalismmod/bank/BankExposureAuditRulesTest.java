@@ -28,5 +28,7 @@ class BankExposureAuditRulesTest {
         assertFalse(BankExposureAuditRules.timestampMatches(
                 new BankExposureSavedData.Exposure(100L, 80L, 20L, 1, 101L), snapshot));
         assertFalse(BankExposureAuditRules.totalsMatch(exposure, 100L, 81L, 20L, 1));
+        assertFalse(BankExposureAuditRules.isStale(100L, 100L + BankExposureAuditRules.SNAPSHOT_MAX_AGE_TICKS,  BankExposureAuditRules.SNAPSHOT_MAX_AGE_TICKS));
+        assertTrue(BankExposureAuditRules.isStale(100L, 101L + BankExposureAuditRules.SNAPSHOT_MAX_AGE_TICKS, BankExposureAuditRules.SNAPSHOT_MAX_AGE_TICKS));
     }
 }

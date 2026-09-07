@@ -518,12 +518,17 @@ public final class EconomyAuditService {
             }
         }
         BankExposureSavedData exposureData = BankExposureSavedData.get(server);
+        long currentTick = server.overworld().getGameTime();
         for (var entry : exposureData.exposures().entrySet()) {
             var exposure = entry.getValue();
             if (entry.getKey() == null || exposure.depositsMinor() < 0L || exposure.loanDebtMinor() < 0L
                     || exposure.overdueDebtMinor() < 0L || exposure.overdueDebtMinor() > exposure.loanDebtMinor()
                     || exposure.overdueAccounts() < 0 || exposure.syncedAt() < 0L) {
                 issues.add("bank exposure invalid " + entry.getKey());
+            }
+            if (BankExposureAuditRules.isStale(exposure.syncedAt(), currentTick,
+                    BankExposureAuditRules.SNAPSHOT_MAX_AGE_TICKS)) {
+                issues.add("bank exposure snapshot stale " + entry.getKey());
             }
         }
         for (var playerEntry : exposureData.accountSnapshots().entrySet()) {
