@@ -62,7 +62,8 @@ public final class BankLiquiditySavedData extends SavedData {
         ListTag list = new ListTag();
         for (BankLiquiditySnapshot s : snapshots) { CompoundTag e = new CompoundTag(); e.putLong("day", s.day());
             e.putLong("deposits", s.depositsMinor()); e.putLong("loans", s.loanDebtMinor());
-            e.putLong("withdrawn", s.withdrawnMinor()); e.putBoolean("limited", s.withdrawalLimitActive()); list.add(e); }
+            e.putLong("withdrawn", s.withdrawnMinor()); e.putBoolean("limited", s.withdrawalLimitActive());
+            e.putLong("emergencyLiquidity", s.emergencyLiquidityMinor()); list.add(e); }
         tag.put("snapshots", list); return tag;
     }
     public static BankLiquiditySavedData load(CompoundTag tag, HolderLookup.Provider registries) {
@@ -72,7 +73,8 @@ public final class BankLiquiditySavedData extends SavedData {
         ListTag list = tag.getList("snapshots", Tag.TAG_COMPOUND);
         for (int i = Math.max(0, list.size() - MAX_SNAPSHOTS); i < list.size(); i++) { CompoundTag e = list.getCompound(i);
             data.snapshots.add(new BankLiquiditySnapshot(Math.max(0L, e.getLong("day")), Math.max(0L, e.getLong("deposits")),
-                    Math.max(0L, e.getLong("loans")), Math.max(0L, e.getLong("withdrawn")), e.getBoolean("limited"))); }
+                    Math.max(0L, e.getLong("loans")), Math.max(0L, e.getLong("withdrawn")), e.getBoolean("limited"),
+                    Math.max(0L, e.getLong("emergencyLiquidity")))); }
         return data;
     }
 }

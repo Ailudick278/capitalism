@@ -34,7 +34,8 @@ public final class BankLiquidityService {
                 || BankLiquidityEconomics.withdrawalRunStress(deposits, withdrawn)
                 || BankCapitalEconomics.capitalStress(capitalData.capitalMinor(), loans);
         boolean limited = FinancialCrisisSavedData.get(server).active() || pressure;
-        BankLiquiditySnapshot snapshot = new BankLiquiditySnapshot(day, deposits, loans, withdrawn, limited);
+        BankLiquiditySnapshot snapshot = new BankLiquiditySnapshot(day, deposits, loans, withdrawn, limited,
+                BankLiquiditySavedData.get(server).emergencyLiquidityMinor());
         data.record(snapshot); return snapshot;
     }
 

@@ -13,7 +13,9 @@ public final class BankLiquidityAuditRules {
         for (BankLiquiditySnapshot snapshot : snapshots) {
             if (snapshot == null || snapshot.day() < 0L || snapshot.day() <= previousDay
                     || snapshot.depositsMinor() < 0L || snapshot.loanDebtMinor() < 0L
-                    || snapshot.withdrawnMinor() < 0L || snapshot.withdrawnMinor() > snapshot.depositsMinor()) {
+                    || snapshot.withdrawnMinor() < 0L || snapshot.emergencyLiquidityMinor() < 0L
+                    || snapshot.withdrawnMinor() > snapshot.depositsMinor()
+                    && snapshot.withdrawnMinor() - snapshot.depositsMinor() > snapshot.emergencyLiquidityMinor()) {
                 return false;
             }
             previousDay = snapshot.day();
