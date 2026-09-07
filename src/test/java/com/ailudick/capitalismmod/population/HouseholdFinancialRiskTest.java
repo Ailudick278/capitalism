@@ -28,5 +28,6 @@ class HouseholdFinancialRiskTest {
     void bankDebtAddsToDebtRisk() {
         assertEquals(0, HouseholdFinancialRisk.score(3_000L, 3_000L, 0L, 0L, 0L, 0));
         assertEquals(30, HouseholdFinancialRisk.score(3_000L, 3_000L, 0L, 0L, 90_000L, 0));
+        assertEquals(15, HouseholdFinancialRisk.score(3_000L, 3_000L, 0L, 0L, 0L, 0, true));
     }
 }

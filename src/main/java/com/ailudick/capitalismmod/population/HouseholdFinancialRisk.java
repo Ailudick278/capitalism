@@ -11,6 +11,13 @@ public final class HouseholdFinancialRisk {
 
     public static int score(long cashMinor, long dailyNeedMinor, long rentArrearsMinor,
                             long wageArrearsMinor, long bankDebtMinor, int unemploymentDays) {
+        return score(cashMinor, dailyNeedMinor, rentArrearsMinor, wageArrearsMinor,
+                bankDebtMinor, unemploymentDays, false);
+    }
+
+    public static int score(long cashMinor, long dailyNeedMinor, long rentArrearsMinor,
+                            long wageArrearsMinor, long bankDebtMinor, int unemploymentDays,
+                            boolean bankOverdue) {
         if (cashMinor < 0L || dailyNeedMinor < 0L || rentArrearsMinor < 0L
                 || wageArrearsMinor < 0L || bankDebtMinor < 0L || unemploymentDays < 0) return 100;
         long shortfall = dailyNeedMinor > cashMinor ? dailyNeedMinor - cashMinor : 0L;
@@ -22,7 +29,8 @@ public final class HouseholdFinancialRisk {
         int debtRisk = monthlyNeed <= 0L ? (debt > 0L ? 30 : 0)
                 : (int) Math.min(30L, debt * 30L / monthlyNeed);
         int unemploymentRisk = Math.min(20, unemploymentDays * 20 / 90);
-        return Math.min(100, liquidity + debtRisk + unemploymentRisk);
+        int overdueRisk = bankOverdue ? 15 : 0;
+        return Math.min(100, liquidity + debtRisk + unemploymentRisk + overdueRisk);
     }
 
     /** Annual interest-rate premium: 0% at no stress, up to 8% at maximum stress. */

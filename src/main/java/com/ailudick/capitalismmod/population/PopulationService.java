@@ -294,6 +294,7 @@ public final class PopulationService {
             wageArrears = add(wageArrears, ExchangeRates.convert(usd, Currencies.USD, Config.defaultCurrency()));
         }
         long bankDebt = 0L;
+        boolean bankOverdue = false;
         try {
             net.minecraft.server.level.ServerPlayer player = server.getPlayerList()
                     .getPlayer(java.util.UUID.fromString(household.id()));
@@ -305,6 +306,8 @@ public final class PopulationService {
                                     Currencies.byId(debt.getKey()), Config.defaultCurrency()));
                         }
                     }
+                    bankOverdue |= account.loanDaysRemaining() < 0
+                            && account.debts().values().stream().anyMatch(value -> value > 0L);
                 }
             }
         } catch (IllegalArgumentException ignored) {
@@ -316,7 +319,7 @@ public final class PopulationService {
         HouseholdFinancialRiskSavedData.get(server).record(new HouseholdFinancialRiskSavedData.Assessment(
                 "household-risk:" + household.id() + ":" + day, household.id(), day, household.cashMinor(),
                 householdNeed, rentArrears, wageArrears, bankDebt,
-                household.unemploymentDays(), score));
+                household.unemploymentDays(), score, bankOverdue));
     }
     private static long vatFor(long netUnitPrice) {
         if (netUnitPrice <= 0L || Config.VAT_RATE.get() <= 0.0) return 0L;

@@ -962,7 +962,7 @@ public final class EconomyAuditService {
                     && assessment.id().equals("household-risk:" + assessment.householdId() + ":" + assessment.day());
             int expectedRisk = HouseholdFinancialRisk.score(assessment.cashMinor(), assessment.dailyNeedMinor(),
                     assessment.rentArrearsMinor(), assessment.wageArrearsMinor(), assessment.bankDebtMinor(),
-                    assessment.unemploymentDays());
+                    assessment.unemploymentDays(), assessment.bankOverdue());
             if (!validRisk || expectedRisk != assessment.score()) {
                 issues.add("household financial risk invalid " + assessment.id());
             }
