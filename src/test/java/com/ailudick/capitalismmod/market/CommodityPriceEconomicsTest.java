@@ -31,6 +31,7 @@ class CommodityPriceEconomicsTest {
         assertEquals(120L, RegionalPriceEconomics.withLogisticsPremium(100L, 0));
         assertEquals(100L, RegionalPriceEconomics.withLogisticsPremium(100L, 100));
         assertEquals(1L, RegionalPriceEconomics.withLogisticsPremium(1L, 0));
+        assertTrue(RegionalPriceEconomics.withLogisticsPremium(100L, 100, 10_000L) > 100L);
     }
 
     @Test

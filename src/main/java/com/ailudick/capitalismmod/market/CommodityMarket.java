@@ -477,9 +477,19 @@ public final class CommodityMarket {
         java.util.Set<String> regions = new java.util.HashSet<>(PopulationSavedData.get(server).households().stream()
                 .map(com.ailudick.capitalismmod.population.Household::region).toList());
         regions.addAll(LogisticsInfrastructureSavedData.get(server).regions());
+        long now = server.overworld().getGameTime();
+        PopulationSavedData population = PopulationSavedData.get(server);
         for (String region : regions) for (String id : ids) {
+            long inTransit = LogisticsSavedData.get(server).shipments().stream()
+                    .filter(shipment -> region.equals(shipment.destinationRegion())
+                            && id.equals(shipment.itemId()) && shipment.deliveryTick() > now)
+                    .mapToLong(LogisticsSavedData.Shipment::quantity).reduce(0L, (a, b) ->
+                            b > Long.MAX_VALUE - a ? Long.MAX_VALUE : a + b);
+            long expectedDemand = Math.max(1L, (long) population.population(region) * 2L);
+            long shortageBps = Math.min(10_000L, inTransit > Long.MAX_VALUE / 10_000L
+                    ? 10_000L : inTransit * 10_000L / expectedDemand);
             data.putRegionalPrice(id, region, RegionalPriceEconomics.withLogisticsPremium(
-                    data.price(id), LogisticsInfrastructureSavedData.get(server).accessScore(region)));
+                    data.price(id), LogisticsInfrastructureSavedData.get(server).accessScore(region), shortageBps));
         }
         data.setDirty();
     }
