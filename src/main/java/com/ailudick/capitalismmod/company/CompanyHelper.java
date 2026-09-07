@@ -186,6 +186,16 @@ public final class CompanyHelper {
         return debitTreasuryInternal(server, companyId, currencyId, amount, type, description, true);
     }
 
+    /** Idempotent taxable debit used by replayable production settlements. */
+    public static boolean debitTreasuryOnce(MinecraftServer server, String companyId, String currencyId,
+                                            long amount, String type, String description, String sourceId) {
+        if (sourceId == null || sourceId.isBlank() || amount <= 0L) return false;
+        CompanyLedgerEntry existing = CompanyLedgerSavedData.get(server).findSource(companyId, sourceId);
+        if (existing != null) return CompanyLedgerSourceRules.matches(existing, currencyId, amount, false);
+        return debitTreasury(server, companyId, currencyId, amount, type,
+                (description == null ? "" : description) + " [source=" + sourceId + "]");
+    }
+
     /** Debits cash for financing or other balance-sheet transactions, not a tax-deductible expense. */
     public static boolean debitTreasuryNonOperating(MinecraftServer server, String companyId,
                                                      String currencyId, long amount,
@@ -613,11 +623,16 @@ public final class CompanyHelper {
         } catch (ArithmeticException e) {
             return ProductionCycleResult.failure("cost_overflow");
         }
-        if (!debitTreasury(server, company.companyId(),
-                Currencies.USD.id(), cost, "production_expense", "生产周期劳动力、能源与设备维护成本")) {
+        String productionSource = stableBatchId.isBlank() ? "" : "production-cost:" + stableBatchId;
+        boolean debited = productionSource.isBlank()
+                ? debitTreasury(server, company.companyId(), Currencies.USD.id(), cost,
+                "production_expense", "生产周期劳动力、能源与设备维护成本")
+                : debitTreasuryOnce(server, company.companyId(), Currencies.USD.id(), cost,
+                "production_expense", "生产周期劳动力、能源与设备维护成本", productionSource);
+        if (!debited) {
             return ProductionCycleResult.failure("insufficient_funds");
         }
-        InputConsumption inputConsumption = consumeInputs(server, company);
+        InputConsumption inputConsumption = consumeInputs(server, company, stableBatchId);
         if (!inputConsumption.success()) {
             return ProductionCycleResult.failure("input_reservation");
         }
@@ -874,7 +889,7 @@ public final class CompanyHelper {
     }
 
     /** Consumes the company's inputs from the warehouse and returns their cost. */
-    private static InputConsumption consumeInputs(MinecraftServer server, Company company) {
+    private static InputConsumption consumeInputs(MinecraftServer server, Company company, String stableBatchId) {
         if (server == null) {
             return new InputConsumption(true, 0L);
         }
@@ -882,7 +897,15 @@ public final class CompanyHelper {
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
         com.ailudick.capitalismmod.market.InventoryOwner owner =
                 com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
-        if (!warehouse.consumeBatch(owner, inputs)) return new InputConsumption(false, 0L);
+        String sourceId = stableBatchId == null || stableBatchId.isBlank()
+                ? "" : "production-input:" + stableBatchId;
+        if (!sourceId.isBlank() && warehouse.hasConsumedSource(sourceId)) {
+            return new InputConsumption(true, 0L);
+        }
+        boolean consumed = sourceId.isBlank()
+                ? warehouse.consumeBatch(owner, inputs)
+                : warehouse.consumeBatchOnce(owner, inputs, sourceId);
+        if (!consumed) return new InputConsumption(false, 0L);
         CommoditySavedData commodityData = CommoditySavedData.get(server);
         for (Map.Entry<String, Integer> input : inputs.entrySet()) {
             commodityData.addSupply(input.getKey(), -input.getValue());
@@ -1011,12 +1034,23 @@ public final class CompanyHelper {
                 com.ailudick.capitalismmod.market.InventoryOwner.company(company.companyId());
         CommoditySavedData commodityData = CommoditySavedData.get(server);
         Map<String, Integer> outputs = recipe.outputs();
+        Map<String, Integer> newlyProduced = new HashMap<>();
         for (Map.Entry<String, Integer> output : outputs.entrySet()) {
             Item item = parseItem(output.getKey());
             if (item == null || output.getValue() <= 0) {
                 continue;
             }
-            warehouse.credit(owner, item, output.getValue());
+            String outputSource = stableBatchId == null || stableBatchId.isBlank()
+                    ? "" : "production-output:" + stableBatchId + ":" + output.getKey();
+            boolean credited;
+            if (outputSource.isBlank()) {
+                warehouse.credit(owner, item, output.getValue());
+                credited = true;
+            } else {
+                credited = warehouse.creditOnce(owner, item, output.getValue(), outputSource);
+            }
+            if (!credited) continue;
+            newlyProduced.put(output.getKey(), output.getValue());
             CompanyQualitySavedData.get(server).record(company.companyId(), output.getKey(),
                     output.getValue(), qualityScore);
             if (qualityScore >= Config.COMPANY_QUALITY_RELEASE_THRESHOLD.get()) {
@@ -1028,7 +1062,7 @@ public final class CompanyHelper {
         // Cost layers must exist before fulfillment consumes any newly produced
         // stock; otherwise COGS falls back to the market price and the full
         // conversion cost remains incorrectly capitalized in inventory.
-        addProducedInventoryCosts(server, company.companyId(), outputs, conversionCost);
+        addProducedInventoryCosts(server, company.companyId(), newlyProduced, conversionCost);
         if (qualityScore >= Config.COMPANY_QUALITY_RELEASE_THRESHOLD.get()) {
             for (String itemId : outputs.keySet()) {
                 SupplyMarket.fulfill(server,
