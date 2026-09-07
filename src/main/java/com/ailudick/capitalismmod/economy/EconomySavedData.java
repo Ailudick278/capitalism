@@ -50,6 +50,7 @@ public final class EconomySavedData extends SavedData {
     // stockId -> previous close (anchor for the daily price limit band)
     private final Map<String, Long> prevClose = new HashMap<>();
     private final Set<String> shareCreditReceipts = new HashSet<>();
+    private final Set<String> shareDebitReceipts = new HashSet<>();
     private final Set<String> shareTransferReceipts = new HashSet<>();
     private final Set<String> netVolumeReceipts = new HashSet<>();
 
@@ -71,6 +72,7 @@ public final class EconomySavedData extends SavedData {
             List<StockOrder> orders,
             Map<String, Long> prevClose,
             List<String> shareCreditReceipts,
+            List<String> shareDebitReceipts,
             List<String> shareTransferReceipts,
             List<String> netVolumeReceipts) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -82,6 +84,7 @@ public final class EconomySavedData extends SavedData {
                 StockOrder.CODEC.listOf().fieldOf("orders").forGetter(State::orders),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prevClose").forGetter(State::prevClose),
                 Codec.STRING.listOf().optionalFieldOf("shareCreditReceipts", List.of()).forGetter(State::shareCreditReceipts),
+                Codec.STRING.listOf().optionalFieldOf("shareDebitReceipts", List.of()).forGetter(State::shareDebitReceipts),
                 Codec.STRING.listOf().optionalFieldOf("shareTransferReceipts", List.of()).forGetter(State::shareTransferReceipts),
                 Codec.STRING.listOf().optionalFieldOf("netVolumeReceipts", List.of()).forGetter(State::netVolumeReceipts)
         ).apply(instance, State::new));
@@ -265,6 +268,25 @@ public final class EconomySavedData extends SavedData {
         return sourceId != null && !sourceId.isBlank() && shareCreditReceipts.contains(sourceId);
     }
 
+    /** Debits escrowed shares once for a durable stock-order source. */
+    public boolean removeSharesOnce(String stockId, UUID playerId, long amount, String sourceId) {
+        if (stockId == null || stockId.isBlank() || playerId == null || amount <= 0L
+                || sourceId == null || sourceId.isBlank()) return false;
+        if (shareDebitReceipts.contains(sourceId)) return true;
+        if (holdings(stockId, playerId) < amount) return false;
+        addShares(stockId, playerId, -amount);
+        shareDebitReceipts.add(sourceId);
+        while (shareDebitReceipts.size() > MAX_SHARE_CREDIT_RECEIPTS) {
+            shareDebitReceipts.remove(shareDebitReceipts.iterator().next());
+        }
+        setDirty();
+        return true;
+    }
+
+    public boolean hasShareDebit(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && shareDebitReceipts.contains(sourceId);
+    }
+
     /** Records traded volume once for a durable settlement source. */
     public boolean addNetVolumeOnce(String stockId, long delta, String sourceId) {
         if (stockId == null || stockId.isBlank() || sourceId == null || sourceId.isBlank()) return false;
@@ -354,8 +376,8 @@ public final class EconomySavedData extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(prices), new HashMap<>(netVolume), new HashMap<>(history),
                 new HashMap<>(shareholders), new HashMap<>(listings), new ArrayList<>(orders), new HashMap<>(prevClose),
-                new ArrayList<>(shareCreditReceipts), new ArrayList<>(shareTransferReceipts),
-                new ArrayList<>(netVolumeReceipts));
+                new ArrayList<>(shareCreditReceipts), new ArrayList<>(shareDebitReceipts),
+                new ArrayList<>(shareTransferReceipts), new ArrayList<>(netVolumeReceipts));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -373,6 +395,7 @@ public final class EconomySavedData extends SavedData {
                 data.orders.addAll(state.orders());
                 data.prevClose.putAll(state.prevClose());
                 data.shareCreditReceipts.addAll(state.shareCreditReceipts());
+                data.shareDebitReceipts.addAll(state.shareDebitReceipts());
                 data.shareTransferReceipts.addAll(state.shareTransferReceipts());
                 data.netVolumeReceipts.addAll(state.netVolumeReceipts());
             });

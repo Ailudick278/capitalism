@@ -339,7 +339,11 @@ public final class StockMarket {
         intents.add(new StockSellIntentSavedData.Intent(orderId, player.getUUID(), stockId, quantity,
                 pricePerUnit, player.getServer().overworld().getGameTime(),
                 data.holdings(stockId, player.getUUID()), false));
-        data.addShares(stockId, player.getUUID(), -quantity);
+        String escrowSource = "stock-sell-order:" + orderId;
+        if (!data.removeSharesOnce(stockId, player.getUUID(), quantity, escrowSource)) {
+            intents.remove(orderId);
+            return false;
+        }
         intents.markSharesEscrowed(orderId);
         long orderTime = player.getServer().overworld().getGameTime();
         data.addOrder(new StockOrder(orderId, player.getStringUUID(), stockId, quantity, pricePerUnit,
@@ -410,15 +414,13 @@ public final class StockMarket {
             ServerPlayer seller = server.getPlayerList().getPlayer(intent.sellerUuid());
             if (seller == null) continue;
             if (!intent.sharesEscrowed()) {
-                long currentHoldings = data.holdings(intent.stockId(), seller.getUUID());
-                long expectedAfter = intent.holdingsBefore() >= intent.quantity()
-                        ? intent.holdingsBefore() - intent.quantity() : -1L;
-                if (currentHoldings == intent.holdingsBefore()) {
-                    data.addShares(intent.stockId(), seller.getUUID(), -intent.quantity());
-                } else if (currentHoldings != expectedAfter) {
-                    continue;
-                }
+                if (!data.removeSharesOnce(intent.stockId(), seller.getUUID(), intent.quantity(),
+                        "stock-sell-order:" + intent.orderId())) continue;
                 intents.markSharesEscrowed(intent.orderId());
+            } else if (!data.hasShareDebit("stock-sell-order:" + intent.orderId())
+                    && data.holdings(intent.stockId(), seller.getUUID())
+                    != intent.holdingsBefore() - intent.quantity()) {
+                continue;
             }
             data.addOrder(new StockOrder(intent.orderId(), intent.sellerUuid().toString(), intent.stockId(),
                     intent.quantity(), intent.pricePerUnit(), true, intent.createdAt()));
