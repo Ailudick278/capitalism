@@ -3,6 +3,8 @@ package com.ailudick.capitalismmod.government;
 import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
+import com.ailudick.capitalismmod.market.CommoditySavedData;
+import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
 import com.ailudick.capitalismmod.bond.BondMarket;
 import net.minecraft.server.MinecraftServer;
@@ -33,7 +35,8 @@ public final class GovernmentPolicyService {
             }
             int supportRate = PublicBudgetEconomics.effectiveRegionalSupportRate(policy.regionalSupportRatePercent(),
                     EconomicEventService.laborDemandShockBps(server, household.region(), server.overworld().getGameTime()));
-            if (supportRate > 0 && regionalUnemployment(server, household.region()) >= 30) {
+            if (supportRate > 0 && (regionalUnemployment(server, household.region()) >= 30
+                    || regionalShortage(server, household.region()))) {
                 long support = multiply(multiply(household.dailyNeedMinor(), household.size()),
                         supportRate) / 100L;
                 if (payOnce(policy, population, household, day, support, "government-regional-support:")) paid++;
@@ -120,6 +123,28 @@ public final class GovernmentPolicyService {
     private static int regionalUnemployment(MinecraftServer server, String region) {
         var history = CityStatisticsSavedData.get(server).snapshots(region, 1);
         return history.isEmpty() ? 0 : history.get(history.size() - 1).unemploymentRate();
+    }
+
+    /** A cost-of-living shock can justify regional support before mass unemployment appears. */
+    private static boolean regionalShortage(MinecraftServer server, String region) {
+        CommoditySavedData commodities = CommoditySavedData.get(server);
+        for (net.minecraft.world.item.ItemStack stack : Commodities.ALL) {
+            String itemId = Commodities.id(stack);
+            if (!isEssential(itemId)) continue;
+            long global = commodities.price(itemId);
+            long regional = commodities.regionalPrice(itemId, region);
+            long shock = Math.max(1L, global / 10L);
+            long threshold = global > Long.MAX_VALUE - shock ? Long.MAX_VALUE : global + shock;
+            if (global > 0L && regional >= threshold) return true;
+        }
+        return false;
+    }
+
+    private static boolean isEssential(String itemId) {
+        String id = itemId.toLowerCase(java.util.Locale.ROOT);
+        return id.contains("bread") || id.contains("potato") || id.contains("carrot")
+                || id.contains("apple") || id.contains("wheat") || id.contains("beef")
+                || id.contains("pork");
     }
 
     private static long multiply(long a, long b) {
