@@ -30,6 +30,8 @@ public final class CompanyLoanHelper {
                 || days > Config.MAX_COMPANY_LOAN_TERM_DAYS.get()
                 || !Double.isFinite(ratePercent) || ratePercent < 0.0 || ratePercent > 100.0) return null;
         CompanyCreditBehavior behavior = CompanyCreditBehavior.from(server, company.companyId());
+        int effectiveDays = Math.max(1, (int) Math.min(Integer.MAX_VALUE,
+                Math.floor(days * behavior.termMultiplier())));
         double requestedRate = ratePercent / 100.0 + behavior.riskPremiumRate();
         double effectiveRate = MonetaryPolicyEconomics.adjustedAnnualRate(requestedRate,
                 GovernmentPolicySavedData.get(server).policyRateBasisPoints());
@@ -59,18 +61,18 @@ public final class CompanyLoanHelper {
         if (!cashFlow.approved()) return null;
         CompanyDebtServiceAssessment debtService = CompanyDebtServiceAssessment.evaluate(
                 cashFlow.operatingCashFlow(), existingLoans,
-                amount, days, effectiveRate, cashFlow.hasOperatingHistory(),
+                amount, effectiveDays, effectiveRate, cashFlow.hasOperatingHistory(),
                 Config.COMPANY_LOAN_MIN_COVERAGE_RATIO.get(), lookbackDays);
         if (!debtService.approved()) return null;
         String source = "company-loan:" + company.companyId() + ":" + existingDebt + ":" + amount
-                + ":" + days + ":" + Double.doubleToLongBits(effectiveRate);
+                + ":" + effectiveDays + ":" + Double.doubleToLongBits(effectiveRate);
         if (!CompanyHelper.creditTreasuryNonOperatingOnce(server, company.companyId(), Currencies.USD.id(), amount,
                 "loan_proceeds", "Company loan principal received", source)) return null;
         String id = source;
         CompanyLoanSavedData loanData = CompanyLoanSavedData.get(server);
         if (loanData.find(id) == null) {
             loanData.add(new CompanyLoan(id, company.companyId(),
-                    Currencies.USD.id(), amount, effectiveRate, days, days, 0L));
+                    Currencies.USD.id(), amount, effectiveRate, effectiveDays, effectiveDays, 0L));
         }
         return id;
     }

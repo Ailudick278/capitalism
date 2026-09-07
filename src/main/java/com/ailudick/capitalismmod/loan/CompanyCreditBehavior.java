@@ -25,6 +25,16 @@ public record CompanyCreditBehavior(int payments, int onTimePayments, int overdu
         return riskPremiumRate(payments, score);
     }
 
+    /** Term multiplier: weak repayment history receives shorter maturities. */
+    public static double termMultiplier(int payments, int score) {
+        if (payments <= 0) return 1.0;
+        return 0.50 + Math.max(0, Math.min(100, score)) / 200.0;
+    }
+
+    public double termMultiplier() {
+        return termMultiplier(payments, score);
+    }
+
     public static CompanyCreditBehavior from(MinecraftServer server, String companyId) {
         if (server == null || companyId == null || companyId.isBlank()) {
             return new CompanyCreditBehavior(0, 0, 0, 0L, 0L, 0);
