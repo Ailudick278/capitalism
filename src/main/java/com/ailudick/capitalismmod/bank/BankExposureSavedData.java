@@ -14,14 +14,18 @@ import net.minecraft.world.level.saveddata.SavedData;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashMap;
 
 /** Persistent base-currency bank exposure, including players who are offline. */
 public final class BankExposureSavedData extends SavedData {
     private static final String ID = "capitalismmod_bank_exposure";
     private final Map<UUID, Exposure> exposures = new HashMap<>();
+    private final Map<UUID, Map<String, AccountSnapshot>> accountSnapshots = new HashMap<>();
 
     public record Exposure(long depositsMinor, long loanDebtMinor, long overdueDebtMinor,
                            int overdueAccounts, long syncedAt) {}
+    public record AccountSnapshot(String accountId, long depositsMinor, long loanDebtMinor,
+                                  long overdueDebtMinor, int loanDaysRemaining, long syncedAt) {}
 
     private BankExposureSavedData() {}
 
@@ -31,6 +35,11 @@ public final class BankExposureSavedData extends SavedData {
     }
 
     public Map<UUID, Exposure> exposures() { return Map.copyOf(exposures); }
+    public Map<UUID, Map<String, AccountSnapshot>> accountSnapshots() {
+        Map<UUID, Map<String, AccountSnapshot>> copy = new HashMap<>();
+        accountSnapshots.forEach((player, accounts) -> copy.put(player, Map.copyOf(accounts)));
+        return Map.copyOf(copy);
+    }
 
     public Exposure exposure(UUID playerId) {
         return playerId == null ? null : exposures.get(playerId);
@@ -39,31 +48,44 @@ public final class BankExposureSavedData extends SavedData {
     /** Replaces one player's normalized exposure from their authoritative accounts. */
     public void sync(ServerPlayer player) {
         if (player == null) return;
-        exposures.put(player.getUUID(), expected(player));
+        Map<String, AccountSnapshot> snapshots = expectedAccounts(player);
+        accountSnapshots.put(player.getUUID(), snapshots);
+        exposures.put(player.getUUID(), aggregate(snapshots, player.getServer().overworld().getGameTime()));
         setDirty();
     }
 
     /** Recomputes the normalized base-currency exposure from the player's accounts. */
     public Exposure expected(ServerPlayer player) {
         if (player == null) return null;
+        return aggregate(expectedAccounts(player), player.getServer().overworld().getGameTime());
+    }
+
+    private static Map<String, AccountSnapshot> expectedAccounts(ServerPlayer player) {
+        Map<String, AccountSnapshot> result = new HashMap<>();
+        long syncedAt = player.getServer().overworld().getGameTime();
+        for (BankAccount account : BankAccountHelper.getAccounts(player).values()) {
+            long deposits = 0L, loans = 0L;
+            for (var entry : account.balances().entrySet()) deposits = add(deposits, toBase(entry.getValue(), entry.getKey()));
+            for (var entry : account.debts().entrySet()) loans = add(loans, toBase(entry.getValue(), entry.getKey()));
+            long overdue = account.loanDaysRemaining() < 0 ? loans : 0L;
+            result.put(account.id(), new AccountSnapshot(account.id(), deposits, loans, overdue,
+                    account.loanDaysRemaining(), syncedAt));
+        }
+        return result;
+    }
+
+    private static Exposure aggregate(Map<String, AccountSnapshot> snapshots, long syncedAt) {
         long deposits = 0L, loans = 0L, overdue = 0L;
         int overdueAccounts = 0;
-        for (BankAccount account : BankAccountHelper.getAccounts(player).values()) {
-            for (var entry : account.balances().entrySet()) {
-                deposits = add(deposits, toBase(entry.getValue(), entry.getKey()));
-            }
-            long accountDebt = 0L;
-            for (var entry : account.debts().entrySet()) {
-                accountDebt = add(accountDebt, toBase(entry.getValue(), entry.getKey()));
-            }
-            loans = add(loans, accountDebt);
-            if (account.loanDaysRemaining() < 0 && accountDebt > 0L) {
-                overdue = add(overdue, accountDebt);
+        for (AccountSnapshot account : snapshots.values()) {
+            deposits = add(deposits, account.depositsMinor());
+            loans = add(loans, account.loanDebtMinor());
+            overdue = add(overdue, account.overdueDebtMinor());
+            if (account.loanDaysRemaining() < 0 && account.loanDebtMinor() > 0L) {
                 overdueAccounts++;
             }
         }
-        return new Exposure(deposits, loans, overdue, overdueAccounts,
-                player.getServer().overworld().getGameTime());
+        return new Exposure(deposits, loans, overdue, overdueAccounts, syncedAt);
     }
 
     private static long toBase(long amount, String currencyId) {
@@ -88,6 +110,19 @@ public final class BankExposureSavedData extends SavedData {
             list.add(entry);
         });
         tag.put("exposures", list);
+        ListTag accounts = new ListTag();
+        accountSnapshots.forEach((player, values) -> values.forEach((id, snapshot) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("player", player);
+            entry.putString("account", id);
+            entry.putLong("deposits", snapshot.depositsMinor());
+            entry.putLong("loans", snapshot.loanDebtMinor());
+            entry.putLong("overdue", snapshot.overdueDebtMinor());
+            entry.putInt("loanDays", snapshot.loanDaysRemaining());
+            entry.putLong("syncedAt", snapshot.syncedAt());
+            accounts.add(entry);
+        }));
+        tag.put("accountSnapshots", accounts);
         return tag;
     }
 
@@ -101,6 +136,17 @@ public final class BankExposureSavedData extends SavedData {
                     Math.max(0L, entry.getLong("deposits")), Math.max(0L, entry.getLong("loans")),
                     Math.max(0L, entry.getLong("overdue")), Math.max(0, entry.getInt("overdueAccounts")),
                     Math.max(0L, entry.getLong("syncedAt"))));
+        }
+        ListTag accounts = tag.getList("accountSnapshots", Tag.TAG_COMPOUND);
+        for (int i = 0; i < accounts.size(); i++) {
+            CompoundTag entry = accounts.getCompound(i);
+            if (!entry.hasUUID("player") || entry.getString("account").isBlank()) continue;
+            AccountSnapshot snapshot = new AccountSnapshot(entry.getString("account"),
+                    Math.max(0L, entry.getLong("deposits")), Math.max(0L, entry.getLong("loans")),
+                    Math.max(0L, entry.getLong("overdue")), entry.getInt("loanDays"),
+                    Math.max(0L, entry.getLong("syncedAt")));
+            data.accountSnapshots.computeIfAbsent(entry.getUUID("player"), ignored -> new HashMap<>())
+                    .putIfAbsent(snapshot.accountId(), snapshot);
         }
         return data;
     }

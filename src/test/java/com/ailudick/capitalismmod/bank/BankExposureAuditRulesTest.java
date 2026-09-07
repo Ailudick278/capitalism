@@ -15,4 +15,13 @@ class BankExposureAuditRulesTest {
         assertFalse(BankExposureAuditRules.matches(expected, different));
         assertFalse(BankExposureAuditRules.matches(expected, null));
     }
+
+    @Test
+    void validatesPerAccountSnapshotsAndAggregates() {
+        var snapshot = new BankExposureSavedData.AccountSnapshot("a", 100L, 80L, 20L, -1, 100L);
+        var exposure = new BankExposureSavedData.Exposure(100L, 80L, 20L, 1, 100L);
+        assertTrue(BankExposureAuditRules.validAccountSnapshot(snapshot));
+        assertTrue(BankExposureAuditRules.totalsMatch(exposure, 100L, 80L, 20L, 1));
+        assertFalse(BankExposureAuditRules.totalsMatch(exposure, 100L, 81L, 20L, 1));
+    }
 }

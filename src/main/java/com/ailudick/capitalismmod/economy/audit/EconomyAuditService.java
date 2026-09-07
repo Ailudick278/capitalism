@@ -517,7 +517,8 @@ public final class EconomyAuditService {
                 issues.add("bond holding invalid " + holding.id());
             }
         }
-        for (var entry : BankExposureSavedData.get(server).exposures().entrySet()) {
+        BankExposureSavedData exposureData = BankExposureSavedData.get(server);
+        for (var entry : exposureData.exposures().entrySet()) {
             var exposure = entry.getValue();
             if (entry.getKey() == null || exposure.depositsMinor() < 0L || exposure.loanDebtMinor() < 0L
                     || exposure.overdueDebtMinor() < 0L || exposure.overdueDebtMinor() > exposure.loanDebtMinor()
@@ -525,7 +526,25 @@ public final class EconomyAuditService {
                 issues.add("bank exposure invalid " + entry.getKey());
             }
         }
-        BankExposureSavedData exposureData = BankExposureSavedData.get(server);
+        for (var playerEntry : exposureData.accountSnapshots().entrySet()) {
+            long deposits = 0L, loans = 0L, overdue = 0L;
+            int overdueAccounts = 0;
+            Set<String> accountIds = new HashSet<>();
+            for (var account : playerEntry.getValue().values()) {
+                if (!accountIds.add(account.accountId()) || !BankExposureAuditRules.validAccountSnapshot(account)) {
+                    issues.add("bank account exposure snapshot invalid " + playerEntry.getKey());
+                    continue;
+                }
+                deposits = safeAdd(deposits, account.depositsMinor());
+                loans = safeAdd(loans, account.loanDebtMinor());
+                overdue = safeAdd(overdue, account.overdueDebtMinor());
+                if (account.loanDaysRemaining() < 0 && account.loanDebtMinor() > 0L) overdueAccounts++;
+            }
+            if (!BankExposureAuditRules.totalsMatch(BankExposureSavedData.get(server).exposure(playerEntry.getKey()),
+                    deposits, loans, overdue, overdueAccounts)) {
+                issues.add("bank account exposure totals mismatch " + playerEntry.getKey());
+            }
+        }
         for (var player : server.getPlayerList().getPlayers()) {
             if (!BankExposureAuditRules.matches(exposureData.expected(player), exposureData.exposure(player.getUUID()))) {
                 issues.add("online bank exposure differs from account state " + player.getUUID());

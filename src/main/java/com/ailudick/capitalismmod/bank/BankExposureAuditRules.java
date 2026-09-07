@@ -13,4 +13,17 @@ public final class BankExposureAuditRules {
                 && expected.overdueDebtMinor() == actual.overdueDebtMinor()
                 && expected.overdueAccounts() == actual.overdueAccounts();
     }
+
+    public static boolean validAccountSnapshot(BankExposureSavedData.AccountSnapshot snapshot) {
+        return snapshot != null && snapshot.accountId() != null && !snapshot.accountId().isBlank()
+                && snapshot.depositsMinor() >= 0L && snapshot.loanDebtMinor() >= 0L
+                && snapshot.overdueDebtMinor() >= 0L && snapshot.overdueDebtMinor() <= snapshot.loanDebtMinor()
+                && snapshot.syncedAt() >= 0L;
+    }
+
+    public static boolean totalsMatch(BankExposureSavedData.Exposure exposure,
+                                      long deposits, long loans, long overdue, int overdueAccounts) {
+        return exposure != null && deposits == exposure.depositsMinor() && loans == exposure.loanDebtMinor()
+                && overdue == exposure.overdueDebtMinor() && overdueAccounts == exposure.overdueAccounts();
+    }
 }
