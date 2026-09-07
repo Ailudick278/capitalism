@@ -547,7 +547,11 @@ public final class CompanyHelper {
         boolean serviceCycle = recipe.isService();
         if (!serviceCycle && recipe.outputs().isEmpty()) return ProductionCycleResult.failure("no_outputs");
         if (!canProduceOutputs(server, company)) return ProductionCycleResult.failure("output_capacity");
-        if (!canConsumeInputs(server, company)) return ProductionCycleResult.failure("missing_inputs");
+        if (!canConsumeInputs(server, company)) {
+            return hasRequiredFuel(server, company)
+                    ? ProductionCycleResult.failure("missing_inputs")
+                    : ProductionCycleResult.failure("missing_energy");
+        }
         if (serviceCycle) {
             Company current = CompanySavedData.get(server).get(company.companyId());
             if (current == null || EconomyMath.add(current.treasuryOf(Currencies.USD.id()), recipe.income()) < 0L) {
@@ -977,6 +981,21 @@ public final class CompanyHelper {
             }
         }
         return true;
+    }
+
+    private static boolean hasRequiredFuel(MinecraftServer server, Company company) {
+        if (server == null || company == null) return true;
+        InventoryOwner owner = InventoryOwner.company(company.companyId());
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        CompanyQualityHoldSavedData holds = CompanyQualityHoldSavedData.get(server);
+        Map<String, Integer> available = new HashMap<>();
+        for (String itemId : CompanyEconomy.inputs(company).keySet()) {
+            if (ProductionEnergyEconomics.isEnergyItem(itemId)) {
+                available.put(itemId, holds.availableUnits(company.companyId(), itemId,
+                        warehouse.count(owner, itemId)));
+            }
+        }
+        return ProductionEnergyEconomics.hasRequiredFuel(CompanyEconomy.inputs(company), available);
     }
 
     /** Deposits outputs, records their conversion cost, then fulfills backorders. */
