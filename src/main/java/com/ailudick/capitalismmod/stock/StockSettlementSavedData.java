@@ -28,6 +28,10 @@ public final class StockSettlementSavedData extends SavedData {
         return orderId != null && !orderId.isBlank() && released.contains(orderId);
     }
 
+    public Set<String> releasedOrderIds() {
+        return Set.copyOf(released);
+    }
+
     public void record(String orderId) {
         if (orderId == null || orderId.isBlank() || !released.add(orderId)) return;
         while (released.size() > MAX_RECORDS) released.remove(released.iterator().next());

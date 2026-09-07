@@ -50,8 +50,10 @@ import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.MarketOrder;
 import com.ailudick.capitalismmod.market.MarketOrderAuditRules;
 import com.ailudick.capitalismmod.market.CommoditySettlementAuditRules;
+import com.ailudick.capitalismmod.market.CommoditySettlementSavedData;
 import com.ailudick.capitalismmod.stock.StockSettlementAuditRules;
 import com.ailudick.capitalismmod.stock.StockOrderAuditRules;
+import com.ailudick.capitalismmod.stock.StockSettlementSavedData;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
@@ -265,6 +267,11 @@ public final class EconomyAuditService {
                 issues.add("commodity price history invalid " + itemId);
             }
         }
+        for (String releasedId : CommoditySettlementSavedData.get(server).releasedOrderIds()) {
+            if (commodities.findOrder(releasedId) != null) {
+                issues.add("commodity released order still active " + releasedId);
+            }
+        }
         for (var flowEntry : commodities.netVolumes().entrySet()) {
             if (Commodities.byId(flowEntry.getKey()) == null
                     || !CommodityFlowAuditRules.valid(flowEntry.getKey(), flowEntry.getValue())) {
@@ -311,6 +318,11 @@ public final class EconomyAuditService {
                 if (!escrowCovered) {
                     issues.add("stock buy order escrow missing " + order.id());
                 }
+            }
+        }
+        for (String releasedId : StockSettlementSavedData.get(server).releasedOrderIds()) {
+            if (stocks.findOrder(releasedId) != null) {
+                issues.add("stock released order still active " + releasedId);
             }
         }
         Set<String> shipmentIds = new HashSet<>();
