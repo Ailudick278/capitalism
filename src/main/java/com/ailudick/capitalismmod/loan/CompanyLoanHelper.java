@@ -29,7 +29,9 @@ public final class CompanyLoanHelper {
         if (server == null || company == null || amount <= 0L || days <= 0
                 || days > Config.MAX_COMPANY_LOAN_TERM_DAYS.get()
                 || !Double.isFinite(ratePercent) || ratePercent < 0.0 || ratePercent > 100.0) return null;
-        double effectiveRate = MonetaryPolicyEconomics.adjustedAnnualRate(ratePercent / 100.0,
+        CompanyCreditBehavior behavior = CompanyCreditBehavior.from(server, company.companyId());
+        double requestedRate = ratePercent / 100.0 + behavior.riskPremiumRate();
+        double effectiveRate = MonetaryPolicyEconomics.adjustedAnnualRate(requestedRate,
                 GovernmentPolicySavedData.get(server).policyRateBasisPoints());
         var risk = FinancialRiskSavedData.get(server).latest();
         int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
@@ -38,7 +40,6 @@ public final class CompanyLoanHelper {
         long maximumDebt = EconomyMath.multiply(company.registeredCapital(), Config.MAX_COMPANY_DEBT_MULTIPLE.get());
         if (maximumDebt < 0L) return null;
         maximumDebt = (long) Math.floor(maximumDebt * FinancialRiskPolicy.creditMultiplier(overdueShare));
-        CompanyCreditBehavior behavior = CompanyCreditBehavior.from(server, company.companyId());
         maximumDebt = (long) Math.floor(maximumDebt * behavior.underwritingMultiplier());
         List<CompanyLoan> existingLoans = CompanyLoanSavedData.get(server).forCompany(company.companyId());
         if (CompanyDebtServiceAssessment.hasOverdueLoan(existingLoans)) return null;

@@ -14,5 +14,7 @@ class CompanyCreditBehaviorTest {
     void underwritingRewardsGoodHistoryAndLimitsBadHistory() {
         assertEquals(1.0, CompanyCreditBehavior.underwritingMultiplier(10, 100), 0.0001);
         assertEquals(0.5, CompanyCreditBehavior.underwritingMultiplier(10, 0), 0.0001);
+        assertEquals(0.0, CompanyCreditBehavior.riskPremiumRate(0, 0), 0.0001);
+        assertEquals(0.05, CompanyCreditBehavior.riskPremiumRate(10, 0), 0.0001);
     }
 }

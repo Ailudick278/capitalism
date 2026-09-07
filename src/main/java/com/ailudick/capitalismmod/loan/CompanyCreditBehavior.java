@@ -15,6 +15,16 @@ public record CompanyCreditBehavior(int payments, int onTimePayments, int overdu
         return underwritingMultiplier(payments, score);
     }
 
+    /** Annual credit spread for an established business, capped at 5 points. */
+    public static double riskPremiumRate(int payments, int score) {
+        if (payments <= 0) return 0.0;
+        return (100 - Math.max(0, Math.min(100, score))) / 100.0 * 0.05;
+    }
+
+    public double riskPremiumRate() {
+        return riskPremiumRate(payments, score);
+    }
+
     public static CompanyCreditBehavior from(MinecraftServer server, String companyId) {
         if (server == null || companyId == null || companyId.isBlank()) {
             return new CompanyCreditBehavior(0, 0, 0, 0L, 0L, 0);
