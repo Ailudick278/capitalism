@@ -29,7 +29,8 @@ public final class LandValuationHelper {
                 .filter(site -> claim.dimension().equals(site.dimension()))
                 .filter(site -> region.equals(TradeRegion.of(new net.minecraft.core.BlockPos(
                 site.chunkX() * 16, 0, site.chunkZ() * 16)))).count();
-        long marketAverage = LandMarketSavedData.get(server).average(claim.dimension());
+        long marketAverage = LandMarketSavedData.get(server).averageNear(
+                claim.dimension(), claim.chunkX(), claim.chunkZ());
         int congestion = LogisticsSavedData.get(server).congestionScore(region);
         return suggestedPrice(server.overworld(), claim, residents, services, businessSites, access,
                 marketAverage, congestion);

@@ -38,6 +38,18 @@ public final class LandMarketSavedData extends SavedData {
     public long count(String dimension) { return transactions.stream().filter(t -> t.dimension().equals(dimension)).count(); }
     public long average(String dimension) { long[] values = transactions.stream().filter(t -> t.dimension().equals(dimension)).mapToLong(Transaction::price).toArray();
         if (values.length == 0) return 0L; long total = 0L; for (long value : values) total = total > Long.MAX_VALUE - value ? Long.MAX_VALUE : total + value; return total / values.length; }
+    /** Uses nearby completed sales first, falling back to the dimension average in thin markets. */
+    public long averageNear(String dimension, int chunkX, int chunkZ) {
+        long[] values = transactions.stream()
+                .filter(t -> t.dimension().equals(dimension))
+                .filter(t -> Math.abs((long) t.chunkX() - chunkX) <= 8L
+                        && Math.abs((long) t.chunkZ() - chunkZ) <= 8L)
+                .mapToLong(Transaction::price).toArray();
+        if (values.length == 0) return average(dimension);
+        long total = 0L;
+        for (long value : values) total = total > Long.MAX_VALUE - value ? Long.MAX_VALUE : total + value;
+        return total / values.length;
+    }
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) { ListTag list = new ListTag();
         for (Transaction t : transactions) { CompoundTag n = new CompoundTag(); n.putLong("time", t.time()); n.putString("dimension", t.dimension()); n.putInt("x", t.chunkX()); n.putInt("z", t.chunkZ()); n.putString("purpose", t.purpose()); n.putLong("price", t.price()); if (t.eventId() != null && !t.eventId().isBlank()) n.putString("eventId", t.eventId()); list.add(n); } tag.put("transactions", list); return tag; }
     public static LandMarketSavedData load(CompoundTag tag, HolderLookup.Provider registries) { LandMarketSavedData data = new LandMarketSavedData(); ListTag list = tag.getList("transactions", Tag.TAG_COMPOUND);
