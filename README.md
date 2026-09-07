@@ -20,6 +20,7 @@
 - 劳动与人口：岗位、技能、雇佣合同、工资、NPC 家庭、基本消费、就业和区域迁移。
 - 金融市场：股票、债券、期货、企业贷款、分红、公开收购和金融风险指标。
 - 政府与税务：税收、财政支出、政策利率、债券、银行流动性与宏观风险传导。
+- 金融可靠性：税款与财政收入逐笔对账，银行还款与钱包流水关联，离线账户敞口支持交易摘要、过期识别和保守授信。
 
 ## 常用命令
 
@@ -36,6 +37,7 @@
 /population info [region]
 /city housing terminate <household>
 /economy-audit
+/economystats
 /economicevent priceShock <eventId> <itemId> <shockBps> <days>
 /economicevent logisticsShock <eventId> <origin> <destination> <capacityBps> <days>
 /economicevent laborShock <eventId> <region> <demandBps> <days>
