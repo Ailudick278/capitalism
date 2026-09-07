@@ -386,12 +386,23 @@ public final class EconomyAuditService {
             }
         }
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        Map<String, String> consumedItems = warehouse.consumedSourceItems();
+        Map<String, Integer> consumedQuantities = warehouse.consumedSourceQuantities();
         for (var owner : warehouse.allStorage().entrySet()) {
             if (owner.getKey() == null || owner.getKey().isBlank()) issues.add("warehouse owner invalid");
             for (var item : owner.getValue().entrySet()) {
                 if (!validItemId(item.getKey()) || item.getValue() == null || item.getValue() <= 0) {
                     issues.add("warehouse stock invalid " + owner.getKey() + "/" + item.getKey());
                 }
+            }
+        }
+        for (MarketOrder order : commodities.orders()) {
+            if (!order.sell()) continue;
+            String source = "commodity-sell-order:" + order.id();
+            if (warehouse.hasConsumedSource(source)
+                    && (!Commodities.id(order.commodity()).equals(consumedItems.get(source))
+                    || !Integer.valueOf(order.quantity()).equals(consumedQuantities.get(source)))) {
+                issues.add("commodity sell escrow differs from order " + order.id());
             }
         }
         for (var consumed : warehouse.consumedSourceItems().entrySet()) {

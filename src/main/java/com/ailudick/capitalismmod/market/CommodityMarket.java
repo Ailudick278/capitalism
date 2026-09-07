@@ -74,7 +74,8 @@ public final class CommodityMarket {
         intents.add(new CommoditySellIntentSavedData.Intent(orderId, player.getUUID(), itemId, quantity,
                 pricePerUnit, player.getServer().overworld().getGameTime(),
                 warehouse.count(player.getUUID(), itemId), false));
-        if (!warehouse.consume(player.getUUID(), commodity.getItem(), quantity)) {
+        if (!warehouse.consumeOnce(InventoryOwner.player(player.getUUID()), commodity.getItem(), quantity,
+                "commodity-sell-order:" + orderId)) {
             intents.remove(orderId);
             return false;
         }
@@ -168,16 +169,11 @@ public final class CommodityMarket {
                     .get(net.minecraft.resources.ResourceLocation.parse(intent.itemId())));
             if (item.isEmpty()) continue;
             if (!intent.escrowed()) {
-                long current = warehouse.count(seller.getUUID(), intent.itemId());
-                long expectedAfter = intent.warehouseBefore() >= intent.quantity()
-                        ? intent.warehouseBefore() - intent.quantity() : -1L;
-                if (current == intent.warehouseBefore()) {
-                    if (!warehouse.consume(seller.getUUID(), item.getItem(), intent.quantity())) continue;
-                } else if (current != expectedAfter) {
-                    continue;
-                }
+                if (!warehouse.consumeOnce(InventoryOwner.player(seller.getUUID()), item.getItem(), intent.quantity(),
+                        "commodity-sell-order:" + intent.orderId())) continue;
                 intents.markEscrowed(intent.orderId());
-            } else if (warehouse.count(seller.getUUID(), intent.itemId())
+            } else if (!warehouse.hasConsumedSource("commodity-sell-order:" + intent.orderId())
+                    && warehouse.count(seller.getUUID(), intent.itemId())
                     != intent.warehouseBefore() - intent.quantity()) {
                 continue;
             }
