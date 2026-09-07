@@ -632,6 +632,15 @@ public final class EconomyAuditService {
             if (transaction.id().isBlank() || transaction.amount() <= 0L || transaction.balanceAfter() < 0L) {
                 issues.add("government spending transaction invalid " + transaction.id());
             }
+            if (transaction.id().startsWith("government-benefit:")
+                    || transaction.id().startsWith("government-regional-support:")) {
+                PopulationSavedData.CreditReceipt receipt = PopulationSavedData.get(server)
+                        .creditedReceipt(transaction.id());
+                if (receipt == null || !transaction.householdId().equals(receipt.householdId())
+                        || transaction.amount() != receipt.amountMinor()) {
+                    issues.add("government transfer missing household receipt " + transaction.id());
+                }
+            }
         }
         for (var revenue : government.taxRevenues()) {
             if (revenue.id().isBlank() || revenue.originalAmount() <= 0L
