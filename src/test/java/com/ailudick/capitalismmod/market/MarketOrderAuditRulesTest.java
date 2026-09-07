@@ -25,4 +25,11 @@ class MarketOrderAuditRulesTest {
                 12L, true, 20L, "order-1", "player-1", "minecraft:wheat", 5,
                 12L, true, 20L, 2));
     }
+
+    @Test
+    void requiresBuyEscrowToCoverResidualOrder() {
+        assertTrue(MarketOrderAuditRules.validBuyEscrow(1_000L, 800L));
+        assertFalse(MarketOrderAuditRules.validBuyEscrow(799L, 800L));
+        assertFalse(MarketOrderAuditRules.validBuyEscrow(1_000L, 0L));
+    }
 }

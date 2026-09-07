@@ -197,6 +197,7 @@ public final class EconomyAuditService {
         }
         Set<String> marketOrderIds = new HashSet<>();
         CommoditySavedData commodities = CommoditySavedData.get(server);
+        EconomyLogSavedData economyLog = EconomyLogSavedData.get(server);
         for (MarketOrder order : commodities.orders()) {
             if (!MarketOrderAuditRules.valid(order.id(), order.ownerId(),
                     com.ailudick.capitalismmod.market.Commodities.id(order.commodity()), order.quantity(),
@@ -207,6 +208,20 @@ public final class EconomyAuditService {
                     com.ailudick.capitalismmod.market.Commodities.id(order.commodity())) == null
                     || order.quantity() <= 0 || order.pricePerUnit() <= 0L || order.createdAt() < 0L) {
                 issues.add("commodity order invalid " + order.id());
+            }
+            if (order.sell() || !isUuid(order.ownerId())) {
+                continue;
+            }
+            long reservedMajor = safeMultiply(order.quantity(), order.pricePerUnit());
+            long reservedMinor = reservedMajor <= 0L ? Long.MIN_VALUE : Money.toMinorSaturated(reservedMajor);
+            String paymentReference = "commodity-buy-order:" + order.id();
+            boolean escrowCovered = economyLog.entries().stream().anyMatch(entry ->
+                    order.ownerId().equals(entry.playerId() == null ? "" : entry.playerId().toString())
+                            && Currencies.USD.id().equals(entry.currencyId())
+                            && paymentReference.equals(entry.reference())
+                            && MarketOrderAuditRules.validBuyEscrow(entry.amount(), reservedMinor));
+            if (!escrowCovered) {
+                issues.add("commodity buy order escrow missing " + order.id());
             }
         }
         for (var priceEntry : commodities.prices().entrySet()) {

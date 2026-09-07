@@ -30,6 +30,10 @@ public final class MarketOrderAuditRules {
                 && before.createdAt() == after.createdAt();
     }
 
+    public static boolean validBuyEscrow(long paidMinor, long reservedMinor) {
+        return paidMinor > 0L && reservedMinor > 0L && paidMinor >= reservedMinor;
+    }
+
     public static boolean validFill(String beforeId, String beforeOwnerId, Object beforeItem, int beforeQuantity,
                                     long beforePrice, boolean beforeSell, long beforeCreatedAt,
                                     String afterId, String afterOwnerId, Object afterItem, int afterQuantity,
