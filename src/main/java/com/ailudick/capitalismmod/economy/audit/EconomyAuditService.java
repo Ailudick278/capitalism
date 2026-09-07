@@ -83,6 +83,8 @@ import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
 import com.ailudick.capitalismmod.tax.TaxIncomeVoucherLedgerSavedData;
 import com.ailudick.capitalismmod.tax.TaxIncomeVoucherAuditRules;
+import com.ailudick.capitalismmod.tax.TaxInvoiceSavedData;
+import com.ailudick.capitalismmod.tax.TaxInvoiceAuditRules;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -562,6 +564,16 @@ public final class EconomyAuditService {
                         entry.amount() == voucher.amount() && voucher.currencyId().equals(entry.currencyId())
                                 && entry.timestamp() == voucher.occurredAt());
                 if (!ledgerEvidence) issues.add("income voucher has no ledger evidence " + voucher.sourceId());
+            }
+        }
+        Set<String> invoiceIds = new HashSet<>();
+        Set<String> invoiceSources = new HashSet<>();
+        for (var invoice : TaxInvoiceSavedData.get(server).invoices()) {
+            if (!invoiceIds.add(invoice.id()) || !invoiceSources.add(invoice.sourceEventId())
+                    || !TaxInvoiceAuditRules.valid(invoice.id(), invoice.sourceEventId(), invoice.taxpayerUuid(),
+                    invoice.currencyId(), invoice.grossAmount(), invoice.taxAmount(), invoice.creditApplied(),
+                    invoice.issuedAt(), invoice.direction(), Currencies.exists(invoice.currencyId()))) {
+                issues.add("tax invoice invalid " + invoice.sourceEventId());
             }
         }
         PopulationSavedData population = PopulationSavedData.get(server);

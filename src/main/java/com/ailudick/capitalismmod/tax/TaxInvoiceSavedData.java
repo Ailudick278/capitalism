@@ -30,6 +30,8 @@ public final class TaxInvoiceSavedData extends SavedData {
         return invoices.stream().filter(invoice -> invoice.taxpayerUuid().equals(taxpayerUuid)).toList();
     }
 
+    public List<Invoice> invoices() { return List.copyOf(invoices); }
+
     public Invoice findBySource(String sourceEventId) {
         for (Invoice invoice : invoices) {
             if (invoice.sourceEventId().equals(sourceEventId)) return invoice;
