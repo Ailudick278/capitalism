@@ -23,8 +23,10 @@ public final class PublicMaintenanceSavedData extends SavedData {
     }
     public List<Cut> cuts() { return List.copyOf(cuts); }
     public boolean record(Cut cut) {
-        if (cut == null || cut.day() < 0 || cut.region().isBlank() || cut.facility().isBlank()
-                || cut.reason().isBlank() || cuts.stream().anyMatch(c -> c.day() == cut.day()
+        if (cut == null || cut.day() < 0 || cut.region() == null || cut.region().isBlank()
+                || cut.facility() == null || cut.facility().isBlank()
+                || cut.reason() == null || cut.reason().isBlank()
+                || cuts.stream().anyMatch(c -> c.day() == cut.day()
                 && c.region().equals(cut.region()) && c.facility().equals(cut.facility()))) return false;
         cuts.add(cut); while (cuts.size() > MAX_RECORDS) cuts.remove(0); setDirty(); return true;
     }
