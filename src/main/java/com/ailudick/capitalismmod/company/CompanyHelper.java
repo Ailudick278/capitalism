@@ -546,6 +546,12 @@ public final class CompanyHelper {
         String stableBatchId = ProductionCycleIdentity.batchId(cycleKey);
         if (!stableBatchId.isBlank()
                 && CompanyProductionBatchSavedData.get(server).findById(stableBatchId) != null) {
+            FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+            long now = server.overworld().getGameTime();
+            journal.markCompleted(stableBatchId, "production", "cost", 0L, now);
+            journal.markCompleted(stableBatchId, "production", "inputs", 0L, now);
+            journal.markCompleted(stableBatchId, "production", "outputs", 0L, now);
+            journal.markCompleted(stableBatchId, "production", "batch", 0L, now);
             return ProductionCycleResult.completed();
         }
         if (!CompanyLifecycleService.canOperate(server, company.companyId())) return ProductionCycleResult.failure("company_inactive");
@@ -624,6 +630,11 @@ public final class CompanyHelper {
             return ProductionCycleResult.failure("cost_overflow");
         }
         String productionSource = stableBatchId.isBlank() ? "" : "production-cost:" + stableBatchId;
+        FinancialSettlementJournalSavedData productionJournal = stableBatchId.isBlank()
+                ? null : FinancialSettlementJournalSavedData.get(server);
+        if (productionJournal != null) {
+            productionJournal.markStarted(stableBatchId, "production", "cost", cost, server.overworld().getGameTime());
+        }
         boolean debited = cost == 0L || productionSource.isBlank()
                 ? debitTreasury(server, company.companyId(), Currencies.USD.id(), cost,
                 "production_expense", "生产周期劳动力、能源与设备维护成本")
@@ -632,9 +643,21 @@ public final class CompanyHelper {
         if (!debited) {
             return ProductionCycleResult.failure("insufficient_funds");
         }
+        if (productionJournal != null) {
+            productionJournal.markCompleted(stableBatchId, "production", "cost", cost,
+                    server.overworld().getGameTime());
+            productionJournal.markStarted(stableBatchId, "production", "inputs", 0L,
+                    server.overworld().getGameTime());
+        }
         InputConsumption inputConsumption = consumeInputs(server, company, stableBatchId);
         if (!inputConsumption.success()) {
             return ProductionCycleResult.failure("input_reservation");
+        }
+        if (productionJournal != null) {
+            productionJournal.markCompleted(stableBatchId, "production", "inputs", inputConsumption.cost(),
+                    server.overworld().getGameTime());
+            productionJournal.markStarted(stableBatchId, "production", "outputs", 0L,
+                    server.overworld().getGameTime());
         }
         long occurredAt = server.overworld().getGameTime();
         String serviceSource = serviceCycle
@@ -670,6 +693,12 @@ public final class CompanyHelper {
         if (oilField != null && !OilFieldSavedData.get(server).extract(oilField, 3L)) return ProductionCycleResult.failure("oil_reservation");
         int qualityScore = productionQuality(server, company, machine, operatingSite);
         produceOutputs(server, company, recipe, conversionCost, qualityScore, operatingSite, cycleKey, stableBatchId);
+        if (productionJournal != null) {
+            productionJournal.markCompleted(stableBatchId, "production", "outputs", conversionCost,
+                    server.overworld().getGameTime());
+            productionJournal.markCompleted(stableBatchId, "production", "batch", conversionCost,
+                    server.overworld().getGameTime());
+        }
         if (serviceCycle) {
             CompanyServiceDeliverySavedData.get(server).append(
                     new CompanyServiceDeliverySavedData.ServiceDelivery(
