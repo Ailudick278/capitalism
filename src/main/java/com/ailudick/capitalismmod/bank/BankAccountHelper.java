@@ -19,6 +19,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.common.NeoForge;
+import com.ailudick.capitalismmod.population.HouseholdFinancialRiskSavedData;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -398,7 +399,13 @@ public final class BankAccountHelper {
                 BankExposureAuditRules.SNAPSHOT_MAX_AGE_TICKS);
         CreditAssessment assessment = CreditAssessment.evaluate(account, existingDebtInBase,
                 Config.CREDIT_LIMIT.get(), exposureStale);
-        if (assessment.overdue() || combined < 0 || combined > assessment.approvedLimit()) {
+        var householdRisk = HouseholdFinancialRiskSavedData.get(player.getServer())
+                .latest(player.getUUID().toString());
+        long riskAdjustedLimit = assessment.approvedLimit();
+        if (householdRisk != null) {
+            riskAdjustedLimit = CreditAssessment.riskAdjustedLimit(riskAdjustedLimit, householdRisk.score());
+        }
+        if (assessment.overdue() || combined < 0 || combined > riskAdjustedLimit) {
             return false;
         }
 

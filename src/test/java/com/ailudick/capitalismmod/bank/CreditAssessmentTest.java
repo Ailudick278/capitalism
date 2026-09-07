@@ -38,4 +38,11 @@ class CreditAssessmentTest {
         assertTrue(assessment.overdue());
         assertTrue(assessment.score() <= 450);
     }
+
+    @Test
+    void householdRiskReducesApprovedLimitWithoutOverflow() {
+        assertEquals(82_352L, CreditAssessment.riskAdjustedLimit(82_352L, 0));
+        assertEquals(41_176L, CreditAssessment.riskAdjustedLimit(82_352L, 50));
+        assertEquals(0L, CreditAssessment.riskAdjustedLimit(Long.MAX_VALUE, 100));
+    }
 }

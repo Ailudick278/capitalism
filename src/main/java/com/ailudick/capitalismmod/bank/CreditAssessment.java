@@ -2,6 +2,12 @@ package com.ailudick.capitalismmod.bank;
 
 /** A deterministic credit assessment derived from existing account data. */
 public record CreditAssessment(int score, long utilized, long approvedLimit, boolean overdue) {
+    public static long riskAdjustedLimit(long approvedLimit, int financialRisk) {
+        long limit = Math.max(0L, approvedLimit);
+        long retained = 100L - Math.max(0, Math.min(100, financialRisk));
+        return (limit / 100L) * retained + (limit % 100L) * retained / 100L;
+    }
+
     public static CreditAssessment evaluate(BankAccount account, long debtInBase, long configuredLimit) {
         return evaluate(account, debtInBase, configuredLimit, false);
     }
