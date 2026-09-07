@@ -63,7 +63,7 @@ public final class LandRentTickHandler {
         if (now > 0L && now % TICKS_PER_DAY == 0L
                 && TaxRuleService.rate(server, TaxType.LAND, now) > 0.0) {
             for (LandClaim claim : data.claims().values()) {
-            long valuation = LandValuationHelper.suggestedPrice(server.overworld(), claim);
+            long valuation = LandValuationHelper.suggestedPrice(server, claim);
             long annualTaxMinor = TaxRuleService.taxMinor(server, TaxType.LAND,
                     Money.toMinorSaturated(valuation), now);
             long annualTax = Money.toMajorCeiling(annualTaxMinor);
@@ -178,7 +178,7 @@ public final class LandRentTickHandler {
                 long unifiedTaxOwed = LandHelper.taxOwed(server, claim);
                 if (unifiedTaxOwed > 0L && claim.taxGraceUntil() > 0L && now >= disposalAt
                         && auctions.get(claim.id()) == null) {
-                    long startPrice = Math.max(0L, Math.round(LandValuationHelper.suggestedPrice(server.overworld(), claim)
+            long startPrice = Math.max(0L, Math.round(LandValuationHelper.suggestedPrice(server, claim)
                             * Config.LAND_AUCTION_START_RATE.get()));
                     auctions.put(new LandAuctionSavedData.Auction(claim.id(), claim.ownerUuid(), claim.dimension(),
                             claim.chunkX(), claim.chunkZ(), now, unifiedTaxOwed, startPrice, 0L, null,
