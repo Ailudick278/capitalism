@@ -3,6 +3,10 @@ package com.ailudick.capitalismmod.risk;
 import net.minecraft.server.MinecraftServer;
 import com.ailudick.capitalismmod.bank.BankLiquidityEconomics;
 import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
+import com.ailudick.capitalismmod.bank.BankLiquiditySnapshot;
+import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
+import com.ailudick.capitalismmod.bank.BankCapitalService;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
 
 /** Updates crisis state from the latest risk snapshot using entry/recovery hysteresis. */
@@ -21,6 +25,7 @@ public final class FinancialCrisisService {
         boolean recovered = FinancialRiskPolicy.crisisRecovered(risk.overdueShareBasisPoints()) && !bankStress;
         if (!crisis.active() && severe) {
             crisis.enter(day);
+            automaticRecapitalization(server, day, liquidity);
             EconomicEventService.addFinancialCrisisSignal(server, day, server.overworld().getGameTime());
             return true;
         }
@@ -31,5 +36,23 @@ public final class FinancialCrisisService {
         }
         if (crisis.active()) crisis.resetRecoveryObservation();
         return crisis.active();
+    }
+
+    /** Provides a bounded, idempotent fiscal backstop when capital falls below 8%. */
+    private static void automaticRecapitalization(MinecraftServer server, long day,
+                                                  BankLiquiditySnapshot liquidity) {
+        if (liquidity == null || liquidity.loanDebtMinor() <= 0L) return;
+        BankCapitalSavedData capital = BankCapitalSavedData.get(server);
+        if (!capital.initialized()) return;
+        long required = liquidity.loanDebtMinor() / 100L * 8L
+                + (liquidity.loanDebtMinor() % 100L) * 8L / 100L;
+        long gap = required > capital.capitalMinor() ? required - capital.capitalMinor() : 0L;
+        if (gap <= 0L) return;
+        GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);
+        long limit = government.treasuryMinor() / 4L;
+        long support = Math.min(gap, limit);
+        if (support <= 0L) return;
+        BankCapitalService.injectFromTreasury(server, day, support,
+                "automatic-crisis:" + day + ":" + support);
     }
 }
