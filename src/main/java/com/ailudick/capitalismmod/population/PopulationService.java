@@ -181,13 +181,14 @@ public final class PopulationService {
             ItemStack item = findCommodity(categories[i]);
             if (item == null) continue;
             String itemId = Commodities.id(item); long priceMajor = CommoditySavedData.get(server).price(itemId);
-            long unitPrice = Math.max(1L, ExchangeRates.convert(Money.toMinorSaturated(priceMajor),
+            long netUnitPrice = Math.max(1L, ExchangeRates.convert(Money.toMinorSaturated(priceMajor),
                     Currencies.USD, Config.defaultCurrency()));
+            long taxPerUnit = vatFor(netUnitPrice);
+            long unitPrice = add(netUnitPrice, taxPerUnit);
             long budget = Math.min(remaining, need * shares[i] / 100L);
             long quantity = Math.min((long) household.size() * 4L, budget / unitPrice);
             if (quantity <= 0L) continue;
             String source = "household-consumption:" + household.id() + ":" + day + ":" + categories[i][0];
-            long cost = quantity > Long.MAX_VALUE / unitPrice ? Long.MAX_VALUE : quantity * unitPrice;
             HouseholdConsumptionSavedData consumption = HouseholdConsumptionSavedData.get(server);
             HouseholdConsumptionSavedData.Consumption previous = consumption.records().stream().filter(r -> r.id().equals(source)).findFirst().orElse(null);
             if (previous != null) { remaining -= previous.totalCostMinor(); spent = add(spent, previous.totalCostMinor()); continue; }
@@ -198,17 +199,26 @@ public final class PopulationService {
             if (purchasable <= 0) continue;
             long actualCost = purchasable > Long.MAX_VALUE / unitPrice
                     ? Long.MAX_VALUE : purchasable * unitPrice;
+            long taxAmount = taxPerUnit <= 0L ? 0L : (purchasable > Long.MAX_VALUE / taxPerUnit
+                    ? Long.MAX_VALUE : purchasable * taxPerUnit);
+            long netCost = actualCost > taxAmount ? actualCost - taxAmount : 0L;
             boolean alreadyCredited = hasCompanySource(server, seller.companyId(), source);
             if (!warehouse.consumeOnce(InventoryOwner.company(seller.companyId()), item.getItem(), purchasable,
                     source + ":goods")) continue;
-            long revenueInUsdMinor = ExchangeRates.convert(actualCost, Config.defaultCurrency(), Currencies.USD);
+            long revenueInUsdMinor = ExchangeRates.convert(netCost, Config.defaultCurrency(), Currencies.USD);
             long revenueMajor = Money.toMajorCeiling(revenueInUsdMinor);
             if (!alreadyCredited && (revenueMajor <= 0L || !CompanyHelper.creditTreasuryNonOperatingOnce(server, seller.companyId(), "usd", revenueMajor,
                     "household_sales", "Virtual household sale", source))) {
                 warehouse.credit(InventoryOwner.company(seller.companyId()), item.getItem(), purchasable);
                 continue;
             }
-            consumption.record(new HouseholdConsumptionSavedData.Consumption(source, household.id(), day, categories[i][0], itemId, purchasable, unitPrice, actualCost));
+            if (taxAmount > 0L && !GovernmentPolicySavedData.get(server).collectConsumptionTax(
+                    source, day, household.id(), seller.companyId(), actualCost, taxAmount)) {
+                warehouse.credit(InventoryOwner.company(seller.companyId()), item.getItem(), purchasable);
+                continue;
+            }
+            consumption.record(new HouseholdConsumptionSavedData.Consumption(source, household.id(), day,
+                    categories[i][0], itemId, purchasable, unitPrice, actualCost, taxAmount));
             remaining -= actualCost; spent = add(spent, actualCost);
         }
         return new ConsumptionResult(remaining, spent);
@@ -246,6 +256,12 @@ public final class PopulationService {
             }
         }
         return total;
+    }
+    private static long vatFor(long netUnitPrice) {
+        if (netUnitPrice <= 0L || Config.VAT_RATE.get() <= 0.0) return 0L;
+        double calculated = Math.ceil(netUnitPrice * Config.VAT_RATE.get());
+        return !Double.isFinite(calculated) || calculated >= Long.MAX_VALUE
+                ? Long.MAX_VALUE : Math.max(0L, (long) calculated);
     }
     private record ConsumptionResult(long remainingCash, long spent) {}
     private static long multiply(long a, long b) { try { return Math.multiplyExact(a, b); } catch (ArithmeticException e) { return Long.MAX_VALUE; } }

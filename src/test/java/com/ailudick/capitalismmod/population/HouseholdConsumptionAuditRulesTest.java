@@ -14,5 +14,9 @@ class HouseholdConsumptionAuditRulesTest {
                 "minecraft:wheat", 3L, 200L, 600L));
         assertFalse(HouseholdConsumptionAuditRules.valid("c-1", "npc-1", 4L, "food",
                 "minecraft:wheat", 3L, 200L, 500L));
+        assertTrue(HouseholdConsumptionAuditRules.valid("c-2", "npc-1", 4L, "food",
+                "minecraft:wheat", 3L, 226L, 678L, 78L));
+        assertFalse(HouseholdConsumptionAuditRules.valid("c-2", "npc-1", 4L, "food",
+                "minecraft:wheat", 3L, 226L, 678L, 678L));
     }
 }

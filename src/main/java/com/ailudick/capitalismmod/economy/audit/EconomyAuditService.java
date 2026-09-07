@@ -658,6 +658,15 @@ public final class EconomyAuditService {
                 issues.add("government tax revenue has no matching payment " + revenue.id());
             }
         }
+        Set<String> consumptionTaxIds = new HashSet<>();
+        for (var revenue : government.consumptionTaxRevenues()) {
+            if (revenue.id().isBlank() || !consumptionTaxIds.add(revenue.id())
+                    || revenue.day() < 0L || revenue.householdId().isBlank()
+                    || revenue.sellerId().isBlank() || revenue.grossAmount() <= revenue.taxAmount()
+                    || revenue.taxAmount() <= 0L || revenue.balanceAfter() < 0L) {
+                issues.add("government consumption tax revenue invalid " + revenue.id());
+            }
+        }
         for (var holding : BondSavedData.get(server).holdings()) {
             if (holding.id().isBlank() || holding.holder() == null || holding.faceValue() <= 0L
                     || holding.ratePerYear() < 0.0 || holding.totalDays() <= 0
@@ -917,7 +926,7 @@ public final class EconomyAuditService {
             if (household == null) issues.add("consumption has no household " + consumption.id());
             if (!HouseholdConsumptionAuditRules.valid(consumption.id(), consumption.householdId(), consumption.day(),
                     consumption.category(), consumption.itemId(), consumption.quantity(), consumption.unitPriceMinor(),
-                    consumption.totalCostMinor()) || expected != consumption.totalCostMinor()) {
+                    consumption.totalCostMinor(), consumption.taxMinor()) || expected != consumption.totalCostMinor()) {
                 issues.add("household consumption invalid " + consumption.id());
             }
             String goodsSource = consumption.id() + ":goods";
@@ -927,7 +936,9 @@ public final class EconomyAuditService {
                     .equals(warehouse.consumedSourceQuantities().get(goodsSource))) {
                 issues.add("household consumption missing goods evidence " + consumption.id());
             }
-            long revenueUsdMinor = ExchangeRates.convert(consumption.totalCostMinor(),
+            long netCost = consumption.totalCostMinor() > consumption.taxMinor()
+                    ? consumption.totalCostMinor() - consumption.taxMinor() : 0L;
+            long revenueUsdMinor = ExchangeRates.convert(netCost,
                     Config.defaultCurrency(), Currencies.USD);
             long revenueMajor = Money.toMajorCeiling(revenueUsdMinor);
             boolean revenueRecorded = revenueMajor > 0L && CompanySavedData.get(server).companies().keySet().stream()
@@ -935,6 +946,14 @@ public final class EconomyAuditService {
                     .anyMatch(entry -> CompanyLedgerSourceRules.matches(entry, Currencies.USD.id(), revenueMajor, true));
             if (!revenueRecorded) {
                 issues.add("household consumption missing company revenue " + consumption.id());
+            }
+            if (consumption.taxMinor() > 0L) {
+                boolean taxRecorded = GovernmentPolicySavedData.get(server).consumptionTaxRevenues().stream()
+                        .anyMatch(revenue -> consumption.id().equals(revenue.id())
+                                && consumption.householdId().equals(revenue.householdId())
+                                && revenue.grossAmount() == consumption.totalCostMinor()
+                                && revenue.taxAmount() == consumption.taxMinor());
+                if (!taxRecorded) issues.add("household consumption missing VAT receipt " + consumption.id());
             }
         }
         HousingLeaseSavedData housing = HousingLeaseSavedData.get(server);
