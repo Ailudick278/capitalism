@@ -18,6 +18,8 @@ import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.bank.BankAccountHelper;
+import com.ailudick.capitalismmod.bank.BankTransaction;
+import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
@@ -295,6 +297,7 @@ public final class PopulationService {
         }
         long bankDebt = 0L;
         boolean bankOverdue = false;
+        int recentRepayments = 0;
         try {
             net.minecraft.server.level.ServerPlayer player = server.getPlayerList()
                     .getPlayer(java.util.UUID.fromString(household.id()));
@@ -308,6 +311,15 @@ public final class PopulationService {
                     }
                     bankOverdue |= account.loanDaysRemaining() < 0
                             && account.debts().values().stream().anyMatch(value -> value > 0L);
+                    long repaymentSince = server.overworld().getGameTime() - PerpetualCalendar.ticksForDays(90L);
+                    for (BankTransaction transaction : account.transactions()) {
+                        if ("repay".equals(transaction.type()) && transaction.amount() < 0L
+                                && transaction.reference().startsWith("bank-repayment:")
+                                && Currencies.exists(transaction.currencyId())
+                                && (transaction.occurredAt() < 0L || transaction.occurredAt() >= repaymentSince)) {
+                            recentRepayments++;
+                        }
+                    }
                 }
             }
         } catch (IllegalArgumentException ignored) {
@@ -315,11 +327,11 @@ public final class PopulationService {
         }
         long householdNeed = multiply(household.dailyNeedMinor(), household.size());
         int score = HouseholdFinancialRisk.score(household.cashMinor(), householdNeed,
-                rentArrears, wageArrears, bankDebt, household.unemploymentDays());
+                rentArrears, wageArrears, bankDebt, household.unemploymentDays(), bankOverdue, recentRepayments);
         HouseholdFinancialRiskSavedData.get(server).record(new HouseholdFinancialRiskSavedData.Assessment(
                 "household-risk:" + household.id() + ":" + day, household.id(), day, household.cashMinor(),
                 householdNeed, rentArrears, wageArrears, bankDebt,
-                household.unemploymentDays(), score, bankOverdue));
+                household.unemploymentDays(), recentRepayments, score, bankOverdue));
     }
     private static long vatFor(long netUnitPrice) {
         if (netUnitPrice <= 0L || Config.VAT_RATE.get() <= 0.0) return 0L;
