@@ -40,4 +40,12 @@ class HouseholdFinancialRiskTest {
         assertEquals(20, HouseholdFinancialRisk.score(3_000L, 3_000L, 0L, 0L,
                 90_000L, 0, false, 100));
     }
+
+    @Test
+    void highDebtServiceRatioAddsRisk() {
+        assertEquals(0, HouseholdFinancialRisk.score(3_000L, 3_000L, 0L, 0L,
+                0L, 0, false, 0, 3_000L));
+        assertEquals(15, HouseholdFinancialRisk.score(3_000L, 3_000L, 0L, 0L,
+                0L, 0, false, 0, 10_000L));
+    }
 }

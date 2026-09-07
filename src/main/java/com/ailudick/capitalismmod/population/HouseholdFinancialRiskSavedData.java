@@ -19,7 +19,8 @@ public final class HouseholdFinancialRiskSavedData extends SavedData {
     public record Assessment(String id, String householdId, long day, long cashMinor,
                              long dailyNeedMinor, long rentArrearsMinor, long wageArrearsMinor,
                              long bankDebtMinor,
-                             int unemploymentDays, int recentRepaymentCount, int score, boolean bankOverdue) {}
+                             int unemploymentDays, int recentRepaymentCount, long recentRepaymentMinor,
+                             long recentIncomeMinor, long debtServiceRatioBps, int score, boolean bankOverdue) {}
 
     private HouseholdFinancialRiskSavedData() {}
     public static HouseholdFinancialRiskSavedData get(MinecraftServer server) {
@@ -39,6 +40,8 @@ public final class HouseholdFinancialRiskSavedData extends SavedData {
                 || assessment.dailyNeedMinor() < 0L || assessment.rentArrearsMinor() < 0L
                 || assessment.wageArrearsMinor() < 0L || assessment.bankDebtMinor() < 0L
                 || assessment.unemploymentDays() < 0 || assessment.recentRepaymentCount() < 0
+                || assessment.recentRepaymentMinor() < 0L || assessment.recentIncomeMinor() < 0L
+                || assessment.debtServiceRatioBps() < 0L
                 || assessment.score() < 0 || assessment.score() > 100
                 || find(assessment.id()) != null) return false;
         assessments.add(assessment);
@@ -53,6 +56,8 @@ public final class HouseholdFinancialRiskSavedData extends SavedData {
             e.putLong("rentArrears", a.rentArrearsMinor()); e.putLong("wageArrears", a.wageArrearsMinor());
             e.putLong("bankDebt", a.bankDebtMinor());
             e.putInt("unemployment", a.unemploymentDays()); e.putInt("repayments", a.recentRepaymentCount());
+            e.putLong("repaymentAmount", a.recentRepaymentMinor()); e.putLong("incomeAmount", a.recentIncomeMinor());
+            e.putLong("debtServiceBps", a.debtServiceRatioBps());
             e.putInt("score", a.score()); list.add(e);
             e.putBoolean("bankOverdue", a.bankOverdue());
         }
@@ -68,11 +73,14 @@ public final class HouseholdFinancialRiskSavedData extends SavedData {
                     && e.getLong("rentArrears") >= 0L && e.getLong("wageArrears") >= 0L
                     && e.getLong("bankDebt") >= 0L
                     && e.getInt("unemployment") >= 0 && e.getInt("repayments") >= 0
+                    && e.getLong("repaymentAmount") >= 0L && e.getLong("incomeAmount") >= 0L
+                    && e.getLong("debtServiceBps") >= 0L
                     && e.getInt("score") >= 0 && e.getInt("score") <= 100) {
                 data.assessments.add(new Assessment(e.getString("id"), e.getString("household"), e.getLong("day"),
                         e.getLong("cash"), e.getLong("need"), e.getLong("rentArrears"),
                         e.getLong("wageArrears"), e.getLong("bankDebt"), e.getInt("unemployment"),
-                        e.getInt("repayments"), e.getInt("score"), e.getBoolean("bankOverdue")));
+                        e.getInt("repayments"), e.getLong("repaymentAmount"), e.getLong("incomeAmount"),
+                        e.getLong("debtServiceBps"), e.getInt("score"), e.getBoolean("bankOverdue")));
             }
         }
         return data;

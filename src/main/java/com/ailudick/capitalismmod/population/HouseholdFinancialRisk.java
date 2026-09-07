@@ -19,7 +19,7 @@ public final class HouseholdFinancialRisk {
                             long wageArrearsMinor, long bankDebtMinor, int unemploymentDays,
                             boolean bankOverdue) {
         return score(cashMinor, dailyNeedMinor, rentArrearsMinor, wageArrearsMinor,
-                bankDebtMinor, unemploymentDays, bankOverdue, 0);
+                bankDebtMinor, unemploymentDays, bankOverdue, 0, 0L);
     }
 
     /**
@@ -29,9 +29,17 @@ public final class HouseholdFinancialRisk {
     public static int score(long cashMinor, long dailyNeedMinor, long rentArrearsMinor,
                             long wageArrearsMinor, long bankDebtMinor, int unemploymentDays,
                             boolean bankOverdue, int recentRepaymentCount) {
+        return score(cashMinor, dailyNeedMinor, rentArrearsMinor, wageArrearsMinor,
+                bankDebtMinor, unemploymentDays, bankOverdue, recentRepaymentCount, 0L);
+    }
+
+    /** Adds repayment burden measured in basis points of recent household income. */
+    public static int score(long cashMinor, long dailyNeedMinor, long rentArrearsMinor,
+                            long wageArrearsMinor, long bankDebtMinor, int unemploymentDays,
+                            boolean bankOverdue, int recentRepaymentCount, long debtServiceRatioBps) {
         if (cashMinor < 0L || dailyNeedMinor < 0L || rentArrearsMinor < 0L
                 || wageArrearsMinor < 0L || bankDebtMinor < 0L || unemploymentDays < 0
-                || recentRepaymentCount < 0) return 100;
+                || recentRepaymentCount < 0 || debtServiceRatioBps < 0L) return 100;
         long shortfall = dailyNeedMinor > cashMinor ? dailyNeedMinor - cashMinor : 0L;
         int liquidity = dailyNeedMinor <= 0L ? 0
                 : (int) Math.min(40L, shortfall * 40L / dailyNeedMinor);
@@ -43,7 +51,10 @@ public final class HouseholdFinancialRisk {
         int unemploymentRisk = Math.min(20, unemploymentDays * 20 / 90);
         int overdueRisk = bankOverdue ? 15 : 0;
         int repaymentRelief = Math.min(10, recentRepaymentCount * 2);
-        return Math.max(0, Math.min(100, liquidity + debtRisk + unemploymentRisk + overdueRisk - repaymentRelief));
+        int serviceRisk = debtServiceRatioBps <= 3_000L ? 0
+                : (int) Math.min(15L, (debtServiceRatioBps - 3_000L) * 15L / 7_000L);
+        return Math.max(0, Math.min(100, liquidity + debtRisk + unemploymentRisk + overdueRisk
+                + serviceRisk - repaymentRelief));
     }
 
     /** Annual interest-rate premium: 0% at no stress, up to 8% at maximum stress. */

@@ -298,6 +298,7 @@ public final class PopulationService {
         long bankDebt = 0L;
         boolean bankOverdue = false;
         int recentRepayments = 0;
+        long recentRepaymentMinor = 0L;
         try {
             net.minecraft.server.level.ServerPlayer player = server.getPlayerList()
                     .getPlayer(java.util.UUID.fromString(household.id()));
@@ -318,6 +319,9 @@ public final class PopulationService {
                                 && Currencies.exists(transaction.currencyId())
                                 && transaction.occurredAt() >= repaymentSince) {
                             recentRepayments++;
+                            recentRepaymentMinor = add(recentRepaymentMinor,
+                                    ExchangeRates.convert(Math.abs(transaction.amount()),
+                                            Currencies.byId(transaction.currencyId()), Config.defaultCurrency()));
                         }
                     }
                 }
@@ -325,13 +329,24 @@ public final class PopulationService {
         } catch (IllegalArgumentException ignored) {
             // NPC households do not yet have bank accounts.
         }
+        long recentIncomeMinor = 0L;
+        for (LaborPayrollSavedData.Payment payment : LaborPayrollSavedData.get(server).payments().values()) {
+            if (household.id().equals(payment.workerId()) && payment.day() >= Math.max(0L, day - 89L)
+                    && payment.day() <= day) {
+                recentIncomeMinor = add(recentIncomeMinor,
+                        ExchangeRates.convert(payment.amountMinor(), Currencies.USD, Config.defaultCurrency()));
+            }
+        }
+        long debtServiceRatioBps = ratioBps(recentRepaymentMinor, recentIncomeMinor);
         long householdNeed = multiply(household.dailyNeedMinor(), household.size());
         int score = HouseholdFinancialRisk.score(household.cashMinor(), householdNeed,
-                rentArrears, wageArrears, bankDebt, household.unemploymentDays(), bankOverdue, recentRepayments);
+                rentArrears, wageArrears, bankDebt, household.unemploymentDays(), bankOverdue,
+                recentRepayments, debtServiceRatioBps);
         HouseholdFinancialRiskSavedData.get(server).record(new HouseholdFinancialRiskSavedData.Assessment(
                 "household-risk:" + household.id() + ":" + day, household.id(), day, household.cashMinor(),
                 householdNeed, rentArrears, wageArrears, bankDebt,
-                household.unemploymentDays(), recentRepayments, score, bankOverdue));
+                household.unemploymentDays(), recentRepayments, recentRepaymentMinor, recentIncomeMinor,
+                debtServiceRatioBps, score, bankOverdue));
     }
     private static long vatFor(long netUnitPrice) {
         if (netUnitPrice <= 0L || Config.VAT_RATE.get() <= 0.0) return 0L;
@@ -342,4 +357,10 @@ public final class PopulationService {
     private record ConsumptionResult(long remainingCash, long spent) {}
     private static long multiply(long a, long b) { try { return Math.multiplyExact(a, b); } catch (ArithmeticException e) { return Long.MAX_VALUE; } }
     private static long add(long a,long b){try{return Math.addExact(a,b);}catch(ArithmeticException e){return Long.MAX_VALUE;}}
+    private static long ratioBps(long numerator, long denominator) {
+        if (numerator <= 0L) return 0L;
+        if (denominator <= 0L) return 10_000L;
+        return numerator > Long.MAX_VALUE / 10_000L
+                ? 10_000L : Math.min(10_000L, numerator * 10_000L / denominator);
+    }
 }
