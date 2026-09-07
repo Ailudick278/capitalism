@@ -137,8 +137,7 @@ public final class PopulationService {
                     continue;
                 }
                 if (!local) {
-                    population.move(household.id(), originalRegion, now);
-                    population.addCash(household.id(), relocationCost);
+                    population.rollbackMigration(household.id(), originalRegion, offer.region(), now, relocationCost);
                 }
             }
         }

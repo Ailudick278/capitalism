@@ -853,6 +853,23 @@ public final class EconomyAuditService {
         }
         PopulationSavedData population = PopulationSavedData.get(server);
         for (Household household : population.households()) if (household.cashMinor() < 0L || household.size() < household.workingAge()) issues.add("household " + household.id() + " invalid cash or age structure");
+        Set<String> migrationIds = new HashSet<>();
+        for (PopulationSavedData.Migration migration : population.migrations()) {
+            boolean validMigration = migration.id() != null && !migration.id().isBlank()
+                    && migrationIds.add(migration.id())
+                    && migration.day() >= 0L
+                    && migration.householdId() != null && !migration.householdId().isBlank()
+                    && migration.fromRegion() != null && !migration.fromRegion().isBlank()
+                    && migration.toRegion() != null && !migration.toRegion().isBlank()
+                    && !migration.fromRegion().equals(migration.toRegion())
+                    && migration.costMinor() >= 0L && migration.cashAfter() >= 0L
+                    && migration.id().equals("migration:" + migration.householdId() + ":"
+                    + migration.day() + ":" + migration.toRegion());
+            if (!validMigration) issues.add("population migration invalid " + migration.id());
+            if (population.find(migration.householdId()) == null) {
+                issues.add("population migration has no household " + migration.id());
+            }
+        }
         for (var consumption : HouseholdConsumptionSavedData.get(server).records()) {
             Household household = population.find(consumption.householdId());
             long expected = safeMultiply(consumption.quantity(), consumption.unitPriceMinor());
