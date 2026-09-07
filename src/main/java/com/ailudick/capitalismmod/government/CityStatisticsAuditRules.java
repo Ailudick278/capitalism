@@ -15,4 +15,9 @@ public final class CityStatisticsAuditRules {
                 && snapshot.fiscalStress() >= 0 && snapshot.fiscalStress() <= 100
                 && snapshot.activeProjects() >= 0;
     }
+
+    public static boolean maintenanceMatches(long snapshotAmount, long ledgerAmount, boolean evidencePresent) {
+        return snapshotAmount >= 0L && ledgerAmount >= 0L
+                && (!evidencePresent || snapshotAmount == ledgerAmount);
+    }
 }

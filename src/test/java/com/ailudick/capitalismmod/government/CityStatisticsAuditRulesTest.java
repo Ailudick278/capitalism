@@ -14,5 +14,8 @@ class CityStatisticsAuditRulesTest {
                 101, 5, 100L, 1000L, 10L, 0, 1, 0);
         assertTrue(CityStatisticsAuditRules.valid(valid));
         assertFalse(CityStatisticsAuditRules.valid(invalid));
+        assertTrue(CityStatisticsAuditRules.maintenanceMatches(100L, 100L, true));
+        assertFalse(CityStatisticsAuditRules.maintenanceMatches(100L, 90L, true));
+        assertTrue(CityStatisticsAuditRules.maintenanceMatches(100L, 0L, false));
     }
 }

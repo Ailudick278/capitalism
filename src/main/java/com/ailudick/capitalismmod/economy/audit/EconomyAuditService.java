@@ -886,10 +886,20 @@ public final class EconomyAuditService {
             }
         }
         Set<String> citySnapshotKeys = new HashSet<>();
+        var governmentTransactions = GovernmentPolicySavedData.get(server).transactions();
         for (var snapshot : CityStatisticsSavedData.get(server).snapshots()) {
             String key = snapshot.day() + ":" + snapshot.region();
             if (!CityStatisticsAuditRules.valid(snapshot) || !citySnapshotKeys.add(key)) {
                 issues.add("city statistics snapshot invalid " + key);
+            }
+            String maintenancePrefix = "public-maintenance:" + snapshot.day() + ":" + snapshot.region() + ":";
+            long maintenance = governmentTransactions.stream()
+                    .filter(transaction -> transaction.id().startsWith(maintenancePrefix))
+                    .mapToLong(GovernmentPolicySavedData.Transaction::amount).sum();
+            boolean evidence = governmentTransactions.stream()
+                    .anyMatch(transaction -> transaction.id().startsWith(maintenancePrefix));
+            if (!CityStatisticsAuditRules.maintenanceMatches(snapshot.maintenanceSpentMinor(), maintenance, evidence)) {
+                issues.add("city maintenance spending mismatch " + key);
             }
         }
         return List.copyOf(issues);
