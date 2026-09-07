@@ -24,6 +24,7 @@ import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.tax.TaxExpenseService;
+import com.ailudick.capitalismmod.tax.TaxIncomeVoucherService;
 import com.ailudick.capitalismmod.loan.CompanyLoanSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.data.CapitalismData;
@@ -250,6 +251,8 @@ public final class CompanyHelper {
         CorporateTaxAnnualSavedData annual = CorporateTaxAnnualSavedData.get(server);
         annual.recordOnce(CorporateTaxEventRules.income(company.companyId(), sourceId), company.companyId(),
                 currencyId, revenue, yearEnd - year, yearEnd);
+        TaxIncomeVoucherService.record(server, company.ownerUuid(), company.companyId(), "corporate_income",
+                currencyId, revenue, occurredAt, sourceId, "Corporate income source " + sourceId);
         return true;
     }
 
