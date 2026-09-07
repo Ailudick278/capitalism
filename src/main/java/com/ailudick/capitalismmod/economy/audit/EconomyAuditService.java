@@ -92,6 +92,8 @@ import com.ailudick.capitalismmod.tax.TaxCreditSavedData;
 import com.ailudick.capitalismmod.tax.TaxCreditAuditRules;
 import com.ailudick.capitalismmod.tax.TaxPaymentAuditRules;
 import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
+import com.ailudick.capitalismmod.tax.TaxPayment;
+import com.ailudick.capitalismmod.government.TaxRevenueAuditRules;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -495,6 +497,16 @@ public final class EconomyAuditService {
                     || revenue.convertedAmount() <= 0L || revenue.balanceAfter() < 0L) {
                 issues.add("government tax revenue invalid " + revenue.id());
             }
+            String prefix = "tax-payment:";
+            TaxPayment payment = revenue.id() != null && revenue.id().startsWith(prefix)
+                    ? taxLedgerPayment(TaxLedgerSavedData.get(server).payments(), revenue.id().substring(prefix.length()))
+                    : null;
+            TaxBill bill = payment == null ? null : TaxLedgerSavedData.get(server).get(payment.billId());
+            long converted = payment == null || !Currencies.exists(payment.currencyId()) ? 0L
+                    : ExchangeRates.convert(payment.amount(), Currencies.byId(payment.currencyId()), Config.defaultCurrency());
+            if (!TaxRevenueAuditRules.matches(revenue, payment, bill, converted)) {
+                issues.add("government tax revenue has no matching payment " + revenue.id());
+            }
         }
         for (var holding : BondSavedData.get(server).holdings()) {
             if (holding.id().isBlank() || holding.holder() == null || holding.faceValue() <= 0L
@@ -823,6 +835,10 @@ public final class EconomyAuditService {
         return true;
     }
     private static long safeAdd(long a, long b) { try { return Math.addExact(a, b); } catch (ArithmeticException e) { return Long.MIN_VALUE; } }
+    private static TaxPayment taxLedgerPayment(List<TaxPayment> payments, String paymentId) {
+        if (paymentId == null || paymentId.isBlank()) return null;
+        return payments.stream().filter(payment -> paymentId.equals(payment.id())).findFirst().orElse(null);
+    }
     private static long safeMultiply(long a, long b) { try { return Math.multiplyExact(a, b); } catch (ArithmeticException e) { return Long.MIN_VALUE; } }
     private static boolean isUuid(String value) {
         if (value == null || value.isBlank()) return false;
