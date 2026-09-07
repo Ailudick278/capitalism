@@ -7,6 +7,7 @@ import com.ailudick.capitalismmod.risk.FinancialCrisisSavedData;
 import com.ailudick.capitalismmod.calendar.PerpetualCalendar;
 import com.ailudick.capitalismmod.risk.FinancialRiskPolicy;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
+import com.ailudick.capitalismmod.population.NpcBankingSavedData;
 import net.minecraft.server.MinecraftServer;
 
 /** Aggregates online bank exposure and limits crisis-period withdrawals to 10% of deposits per day. */
@@ -25,6 +26,9 @@ public final class BankLiquidityService {
             deposits = add(deposits, value.depositsMinor());
             loans = add(loans, value.loanDebtMinor());
         }
+        NpcBankingSavedData npcBanking = NpcBankingSavedData.get(server);
+        deposits = add(deposits, npcBanking.totalDeposits());
+        loans = add(loans, npcBanking.totalDebt());
         long withdrawn = data.withdrawalsForAssessment(day);
         boolean pressure = BankLiquidityEconomics.solvencyStress(deposits, loans)
                 || BankLiquidityEconomics.withdrawalRunStress(deposits, withdrawn)

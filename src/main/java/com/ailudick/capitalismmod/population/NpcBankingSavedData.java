@@ -39,6 +39,7 @@ public final class NpcBankingSavedData extends SavedData {
         lastInterestDay = day; setDirty(); return true;
     }
     public long totalDebt() { return accounts.stream().mapToLong(Account::debtMinor).reduce(0L, NpcBankingSavedData::safeAdd); }
+    public long totalDeposits() { return accounts.stream().mapToLong(Account::balanceMinor).reduce(0L, NpcBankingSavedData::safeAdd); }
     public long overdueDebt() { return accounts.stream().filter(a -> a.loanDaysRemaining() < 0 && a.debtMinor() > 0L)
             .mapToLong(Account::debtMinor).reduce(0L, NpcBankingSavedData::safeAdd); }
     public Account find(String householdId) { return accounts.stream()
