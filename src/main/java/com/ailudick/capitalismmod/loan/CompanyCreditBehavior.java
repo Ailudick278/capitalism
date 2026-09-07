@@ -5,6 +5,16 @@ import net.minecraft.server.MinecraftServer;
 /** Read-only repayment behaviour summary used by company credit reports. */
 public record CompanyCreditBehavior(int payments, int onTimePayments, int overduePayments,
                                     long principalPaid, long interestPaid, int score) {
+    /** Credit multiplier for businesses with repayment history. */
+    public static double underwritingMultiplier(int payments, int score) {
+        if (payments <= 0) return 1.0;
+        return 0.50 + Math.max(0, Math.min(100, score)) / 200.0;
+    }
+
+    public double underwritingMultiplier() {
+        return underwritingMultiplier(payments, score);
+    }
+
     public static CompanyCreditBehavior from(MinecraftServer server, String companyId) {
         if (server == null || companyId == null || companyId.isBlank()) {
             return new CompanyCreditBehavior(0, 0, 0, 0L, 0L, 0);

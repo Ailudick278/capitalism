@@ -38,6 +38,8 @@ public final class CompanyLoanHelper {
         long maximumDebt = EconomyMath.multiply(company.registeredCapital(), Config.MAX_COMPANY_DEBT_MULTIPLE.get());
         if (maximumDebt < 0L) return null;
         maximumDebt = (long) Math.floor(maximumDebt * FinancialRiskPolicy.creditMultiplier(overdueShare));
+        CompanyCreditBehavior behavior = CompanyCreditBehavior.from(server, company.companyId());
+        maximumDebt = (long) Math.floor(maximumDebt * behavior.underwritingMultiplier());
         List<CompanyLoan> existingLoans = CompanyLoanSavedData.get(server).forCompany(company.companyId());
         if (CompanyDebtServiceAssessment.hasOverdueLoan(existingLoans)) return null;
         long existingDebt = 0L;
