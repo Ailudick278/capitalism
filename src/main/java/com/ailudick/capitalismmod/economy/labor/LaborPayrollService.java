@@ -57,22 +57,35 @@ public final class LaborPayrollService {
             long paid = previousDebit == null ? Math.min(availableMinor, due) : toMinor(previousDebit.amount());
             long paidMajor = paid / Money.MINOR_UNITS_PER_UNIT;
             paid = paidMajor * Money.MINOR_UNITS_PER_UNIT;
+            boolean delivered = false;
+            String householdSource = source;
             if (paidMajor > 0L && (previousDebit != null || CompanyHelper.debitTreasuryNonOperatingOnce(server, company.companyId(), Currencies.USD.id(), paidMajor,
                     "employment_payroll", "Employment wage payment", source))) {
                 try {
                     java.util.UUID workerId = java.util.UUID.fromString(employment.workerId());
                     MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
-                    mailbox.creditMoneyOnce(workerId, Currencies.USD.id(), paid, source);
+                    boolean mailboxDelivered = mailbox.hasCreditSource(source)
+                            || mailbox.creditMoneyOnce(workerId, Currencies.USD.id(), paid, source);
                     ServerPlayer worker = server.getPlayerList().getPlayer(workerId);
-                    if (worker != null) mailbox.redeemMoneyOnly(worker);
-                    PopulationSavedData.get(server).addCashOnce(workerId.toString(),
-                            ExchangeRates.convert(paid, Currencies.USD, Config.defaultCurrency()), source + ":household");
+                    if (worker != null && mailboxDelivered) mailbox.redeemMoneyOnly(worker);
+                    householdSource = source + ":household";
+                    PopulationSavedData population = PopulationSavedData.get(server);
+                    boolean householdDelivered = population.hasCreditedSource(householdSource)
+                            || population.addCashOnce(workerId.toString(), ExchangeRates.convert(paid, Currencies.USD, Config.defaultCurrency()), householdSource);
+                    delivered = mailboxDelivered && householdDelivered;
                 } catch (IllegalArgumentException npcWorker) {
-                    PopulationSavedData.get(server).addCashOnce(employment.workerId(),
+                    delivered = PopulationSavedData.get(server).hasCreditedSource(source)
+                            || PopulationSavedData.get(server).addCashOnce(employment.workerId(),
                             ExchangeRates.convert(paid, Currencies.USD, Config.defaultCurrency()), source);
                 }
-            } else paid = 0L;
-            payroll.settle(employment.id(), day, due - paid);
+            }
+            if (delivered) {
+                payroll.recordPayment(new LaborPayrollSavedData.Payment(source, employment.id(), employment.workerId(), day, paid, householdSource));
+                payroll.settle(employment.id(), day, due - paid);
+            } else {
+                paid = 0L;
+                payroll.settle(employment.id(), day, due);
+            }
             long arrears = payroll.account(employment.id()).unpaid();
             long breachThreshold = employment.dailyWageMinor() > Long.MAX_VALUE / 7L
                     ? Long.MAX_VALUE : employment.dailyWageMinor() * 7L;

@@ -1014,6 +1014,30 @@ public final class EconomyAuditService {
                 issues.add("payroll claim has no employment " + payroll.getKey());
             }
         }
+        for (LaborPayrollSavedData.Payment payment : LaborPayrollSavedData.get(server).payments().values()) {
+            EmploymentRecord employment = labor.employments().stream()
+                    .filter(candidate -> candidate.id().equals(payment.employmentId())).findFirst().orElse(null);
+            boolean valid = payment.source() != null && !payment.source().isBlank()
+                    && payment.employmentId() != null && !payment.employmentId().isBlank()
+                    && payment.workerId() != null && !payment.workerId().isBlank()
+                    && payment.householdSource() != null && !payment.householdSource().isBlank()
+                    && payment.day() >= 0L && payment.amountMinor() > 0L
+                    && payment.amountMinor() % Money.MINOR_UNITS_PER_UNIT == 0L
+                    && employment != null && employment.workerId().equals(payment.workerId());
+            if (!valid) {
+                issues.add("payroll payment invalid " + payment.source());
+                continue;
+            }
+            CompanyLedgerEntry debit = CompanyLedgerSavedData.get(server).findSource(employment.employerId(), payment.source());
+            long amountMajor = payment.amountMinor() / Money.MINOR_UNITS_PER_UNIT;
+            if (debit == null || !CompanyLedgerSourceRules.matches(debit, Currencies.USD.id(), amountMajor, false)) {
+                issues.add("payroll payment missing company debit " + payment.source());
+            }
+            if (population.find(payment.workerId()) == null
+                    || !population.hasCreditedSource(payment.householdSource())) {
+                issues.add("payroll payment missing household credit " + payment.source());
+            }
+        }
         EconomicContractSavedData contracts = EconomicContractSavedData.get(server);
         Set<String> contractIds = new HashSet<>();
         for (var contract : contracts.contracts()) {
