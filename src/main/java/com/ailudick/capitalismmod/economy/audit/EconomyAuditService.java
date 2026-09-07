@@ -99,6 +99,7 @@ import com.ailudick.capitalismmod.government.TaxRevenueAuditRules;
 import com.ailudick.capitalismmod.government.CityStatisticsAuditRules;
 import com.ailudick.capitalismmod.government.CityStatisticsSavedData;
 import com.ailudick.capitalismmod.market.CommodityPriceAuditRules;
+import com.ailudick.capitalismmod.market.CommodityFlowAuditRules;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -210,6 +211,18 @@ public final class EconomyAuditService {
                     || commodities.history().get(itemId).stream().anyMatch(c -> !CommodityPriceAuditRules.validCandle(
                     c.open(), c.high(), c.low(), c.close()))) {
                 issues.add("commodity price history invalid " + itemId);
+            }
+        }
+        for (var flowEntry : commodities.netVolumes().entrySet()) {
+            if (Commodities.byId(flowEntry.getKey()) == null
+                    || !CommodityFlowAuditRules.valid(flowEntry.getKey(), flowEntry.getValue())) {
+                issues.add("commodity net volume invalid " + flowEntry.getKey());
+            }
+        }
+        for (var flowEntry : commodities.supplies().entrySet()) {
+            if (Commodities.byId(flowEntry.getKey()) == null
+                    || !CommodityFlowAuditRules.valid(flowEntry.getKey(), flowEntry.getValue())) {
+                issues.add("commodity supply flow invalid " + flowEntry.getKey());
             }
         }
         EconomySavedData stocks = EconomySavedData.get(server);

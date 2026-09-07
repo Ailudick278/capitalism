@@ -114,6 +114,10 @@ public final class CommoditySavedData extends SavedData {
         return netVolume.getOrDefault(itemId, 0L);
     }
 
+    public Map<String, Long> netVolumes() {
+        return netVolume;
+    }
+
     public void addNetVolume(String itemId, long delta) {
         netVolume.merge(itemId, delta, Long::sum);
         setDirty();
@@ -139,6 +143,10 @@ public final class CommoditySavedData extends SavedData {
 
     public long supply(String itemId) {
         return supply.getOrDefault(itemId, 0L);
+    }
+
+    public Map<String, Long> supplies() {
+        return supply;
     }
 
     public void addSupply(String itemId, long delta) {
