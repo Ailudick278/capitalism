@@ -239,6 +239,12 @@ public final class EconomyAuditService {
                 issues.add("warehouse consumed quantity missing item " + consumed.getKey());
             }
         }
+        for (var batch : warehouse.consumedSourceBatches().entrySet()) {
+            if (batch.getKey() == null || batch.getKey().isBlank() || batch.getValue() == null
+                    || batch.getValue().isBlank() || !warehouse.hasConsumedSource(batch.getKey())) {
+                issues.add("warehouse consumed batch invalid " + batch.getKey());
+            }
+        }
         SupplyOrderIntentSavedData.get(server).intents().stream().limit(100)
                 .forEach(intent -> issues.add("pending supply order " + intent.orderId()));
         BankCashDepositIntentSavedData.get(server).intents().stream().limit(100)
