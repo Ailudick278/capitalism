@@ -64,8 +64,10 @@ public final class LaborPayrollService {
                     "employment_payroll", "Employment wage payment", source))) {
                 long tax = withholdingTax(paid);
                 long net = paid - tax;
+                long taxDefault = ExchangeRates.convert(tax, Currencies.USD, Config.defaultCurrency());
+                long grossDefault = ExchangeRates.convert(paid, Currencies.USD, Config.defaultCurrency());
                 boolean taxCollected = tax <= 0L || GovernmentPolicySavedData.get(server)
-                        .collectWageTax(source + ":tax", day, employment.workerId(), employment.id(), paid, tax);
+                        .collectWageTax(source + ":tax", day, employment.workerId(), employment.id(), grossDefault, taxDefault);
                 if (!taxCollected) {
                     paid = 0L;
                     payroll.settle(employment.id(), day, due);

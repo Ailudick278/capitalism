@@ -1176,8 +1176,10 @@ public final class EconomyAuditService {
                         .anyMatch(revenue -> (payment.source() + ":tax").equals(revenue.id())
                                 && payment.workerId().equals(revenue.householdId())
                                 && payment.employmentId().equals(revenue.employmentId())
-                                && revenue.grossAmount() == payment.amountMinor()
-                                && revenue.taxAmount() == payment.taxMinor());
+                                && revenue.grossAmount() == ExchangeRates.convert(payment.amountMinor(),
+                                Currencies.USD, Config.defaultCurrency())
+                                && revenue.taxAmount() == ExchangeRates.convert(payment.taxMinor(),
+                                Currencies.USD, Config.defaultCurrency()));
                 if (!taxReceipt) issues.add("payroll payment missing wage tax receipt " + payment.source());
             }
         }
