@@ -81,6 +81,8 @@ import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
+import com.ailudick.capitalismmod.tax.TaxIncomeVoucherLedgerSavedData;
+import com.ailudick.capitalismmod.tax.TaxIncomeVoucherAuditRules;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -540,6 +542,26 @@ public final class EconomyAuditService {
                 Long old = previous.get(entry.currencyId());
                 if (old != null && safeAdd(old, entry.amount()) != entry.balanceAfter()) issues.add("company " + company.companyId() + " broken balance chain " + entry.currencyId() + " at " + entry.timestamp());
                 previous.put(entry.currencyId(), entry.balanceAfter());
+            }
+        }
+        Set<String> incomeVoucherSources = new HashSet<>();
+        for (var voucher : TaxIncomeVoucherLedgerSavedData.get(server).all()) {
+            Company company = companies.get(voucher.subjectId());
+            if (!incomeVoucherSources.add(voucher.sourceId())
+                    || !TaxIncomeVoucherAuditRules.valid(voucher.taxpayerUuid(), voucher.subjectId(),
+                    voucher.category(), voucher.currencyId(), voucher.amount(), voucher.occurredAt(),
+                    voucher.sourceId(), Currencies.exists(voucher.currencyId()))) {
+                issues.add("income voucher invalid " + voucher.sourceId());
+            }
+            if (company == null) {
+                issues.add("income voucher has no company " + voucher.subjectId());
+            } else if (!company.ownerUuid().equals(voucher.taxpayerUuid())) {
+                issues.add("income voucher owner mismatch " + voucher.sourceId());
+            } else {
+                boolean ledgerEvidence = ledgers.entries(company.companyId()).stream().anyMatch(entry ->
+                        entry.amount() == voucher.amount() && voucher.currencyId().equals(entry.currencyId())
+                                && entry.timestamp() == voucher.occurredAt());
+                if (!ledgerEvidence) issues.add("income voucher has no ledger evidence " + voucher.sourceId());
             }
         }
         PopulationSavedData population = PopulationSavedData.get(server);
