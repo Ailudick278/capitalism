@@ -87,6 +87,7 @@ import com.ailudick.capitalismmod.economy.PlayerTransferIntentSavedData;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.bond.BondSavedData;
 import com.ailudick.capitalismmod.population.HouseholdConsumptionSavedData;
+import com.ailudick.capitalismmod.population.HouseholdConsumptionAuditRules;
 import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
@@ -854,10 +855,17 @@ public final class EconomyAuditService {
             Household household = population.find(consumption.householdId());
             long expected = safeMultiply(consumption.quantity(), consumption.unitPriceMinor());
             if (household == null) issues.add("consumption has no household " + consumption.id());
-            if (consumption.id().isBlank() || consumption.itemId().isBlank() || consumption.quantity() <= 0L
-                    || consumption.unitPriceMinor() <= 0L || consumption.totalCostMinor() <= 0L
-                    || expected != consumption.totalCostMinor()) {
+            if (!HouseholdConsumptionAuditRules.valid(consumption.id(), consumption.householdId(), consumption.day(),
+                    consumption.category(), consumption.itemId(), consumption.quantity(), consumption.unitPriceMinor(),
+                    consumption.totalCostMinor()) || expected != consumption.totalCostMinor()) {
                 issues.add("household consumption invalid " + consumption.id());
+            }
+            String goodsSource = consumption.id() + ":goods";
+            if (!warehouse.hasConsumedSource(goodsSource)
+                    || !consumption.itemId().equals(warehouse.consumedSourceItems().get(goodsSource))
+                    || !Integer.valueOf((int) Math.min(Integer.MAX_VALUE, consumption.quantity()))
+                    .equals(warehouse.consumedSourceQuantities().get(goodsSource))) {
+                issues.add("household consumption missing goods evidence " + consumption.id());
             }
         }
         HousingLeaseSavedData housing = HousingLeaseSavedData.get(server);
