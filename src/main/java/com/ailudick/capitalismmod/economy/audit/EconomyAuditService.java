@@ -43,6 +43,8 @@ import com.ailudick.capitalismmod.stock.StockSellIntentSavedData;
 import com.ailudick.capitalismmod.stock.StockTradeIntentSavedData;
 import com.ailudick.capitalismmod.stock.StockOrder;
 import com.ailudick.capitalismmod.economy.EconomySavedData;
+import com.ailudick.capitalismmod.economy.MarketTradeAuditRules;
+import com.ailudick.capitalismmod.economy.MarketTradeSavedData;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.MarketOrder;
@@ -223,6 +225,12 @@ public final class EconomyAuditService {
             if (Commodities.byId(flowEntry.getKey()) == null
                     || !CommodityFlowAuditRules.valid(flowEntry.getKey(), flowEntry.getValue())) {
                 issues.add("commodity supply flow invalid " + flowEntry.getKey());
+            }
+        }
+        for (var trade : MarketTradeSavedData.get(server).trades()) {
+            if (!MarketTradeAuditRules.valid(trade.gameTime(), trade.buyer(), trade.seller(), trade.itemId(),
+                    trade.quantity(), trade.currencyId(), trade.total(), trade.market(), trade.fee())) {
+                issues.add("market trade history invalid " + trade.itemId());
             }
         }
         EconomySavedData stocks = EconomySavedData.get(server);
