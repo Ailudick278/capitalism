@@ -21,12 +21,14 @@ public final class LandValuationHelper {
         if (server == null || claim == null) return 0L;
         String region = TradeRegion.of(new net.minecraft.core.BlockPos(claim.chunkX() * 16, 0, claim.chunkZ() * 16));
         int residents = PopulationSavedData.get(server).population(region);
-        int services = LogisticsInfrastructureSavedData.get(server).publicServiceScore(server, region, residents);
+        LogisticsInfrastructureSavedData infrastructure = LogisticsInfrastructureSavedData.get(server);
+        int services = infrastructure.publicServiceScore(server, region, residents);
+        int access = infrastructure.accessScore(region);
         int businessSites = (int) CompanySiteSavedData.get(server).allSites().stream()
                 .filter(site -> claim.dimension().equals(site.dimension()))
                 .filter(site -> region.equals(TradeRegion.of(new net.minecraft.core.BlockPos(
                         site.chunkX() * 16, 0, site.chunkZ() * 16)))).count();
-        return suggestedPrice(server.overworld(), claim, residents, services, businessSites);
+        return suggestedPrice(server.overworld(), claim, residents, services, businessSites, access);
     }
 
     private static long suggestedPrice(Level level, LandClaim claim, int residents, int services) {
@@ -35,6 +37,11 @@ public final class LandValuationHelper {
 
     private static long suggestedPrice(Level level, LandClaim claim, int residents, int services,
                                        int businessSites) {
+        return suggestedPrice(level, claim, residents, services, businessSites, 50);
+    }
+
+    private static long suggestedPrice(Level level, LandClaim claim, int residents, int services,
+                                       int businessSites, int access) {
         if (level == null || claim == null) return 0L;
         double purposeFactor = switch (claim.purpose()) {
             case "residential", "2301" -> 1.20;
@@ -50,7 +57,7 @@ public final class LandValuationHelper {
         double locationFactor = Math.max(0.75, Math.min(1.50, 1.50 - distance / 20000.0));
         double value = (Config.LAND_CLAIM_PRICE.get() + Math.max(0L, claim.resourceAmount()) * 5.0)
                 * purposeFactor * locationFactor * LandDemandEconomics.multiplier(
-                residents, services, businessSites);
+                residents, services, businessSites, access);
         return Math.max(0L, Math.round(value));
     }
 }
