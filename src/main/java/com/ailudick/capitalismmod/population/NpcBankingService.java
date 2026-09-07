@@ -3,12 +3,43 @@ package com.ailudick.capitalismmod.population;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.bank.BankCapitalEconomics;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
+import com.ailudick.capitalismmod.government.MonetaryPolicyEconomics;
 import net.minecraft.server.MinecraftServer;
 
 /** Daily NPC banking: liquidity buffer, emergency credit, repayment, and savings. */
 public final class NpcBankingService {
     private NpcBankingService() {}
     public record Result(Household household, long bankNetCashMinor) {}
+
+    /** Applies one idempotent daily interest pass to all NPC accounts. */
+    public static void applyDailyInterest(MinecraftServer server, long day) {
+        NpcBankingSavedData data = NpcBankingSavedData.get(server);
+        if (data.lastInterestDay() >= day) return;
+        int policyRateBps = GovernmentPolicySavedData.get(server).policyRateBasisPoints();
+        double depositRate = MonetaryPolicyEconomics.adjustedAnnualRate(Config.DEPOSIT_RATE_PER_YEAR.get(), policyRateBps) / 365.0;
+        double loanRate = MonetaryPolicyEconomics.adjustedAnnualRate(Config.LOAN_RATE_PER_YEAR.get(), policyRateBps) / 365.0;
+        BankCapitalSavedData capital = BankCapitalSavedData.get(server);
+        if (!capital.initialized()) capital.initialize(Config.BANK_INITIAL_CAPITAL_MINOR.get());
+        for (NpcBankingSavedData.Account account : data.accounts()) {
+            long depositInterest = interest(account.balanceMinor(), depositRate);
+            if (depositInterest > 0L && data.transact(account.householdId(), day, "deposit_interest",
+                    depositInterest, 0L, account.loanDaysRemaining()) != null) {
+                capital.applyTransactionOnce("npc-bank-interest:" + account.householdId() + ":" + day + ":deposit",
+                        0L, depositInterest);
+            }
+            NpcBankingSavedData.Account current = data.find(account.householdId());
+            if (current == null || current.debtMinor() <= 0L) continue;
+            double effectiveRate = current.loanDaysRemaining() < 0 ? loanRate * 2.0 : loanRate;
+            long loanInterest = interest(current.debtMinor(), effectiveRate);
+            if (loanInterest > 0L && data.transact(account.householdId(), day, "loan_interest",
+                    0L, loanInterest, current.loanDaysRemaining()) != null) {
+                capital.applyTransactionOnce("npc-bank-interest:" + account.householdId() + ":" + day + ":loan",
+                        loanInterest, 0L);
+            }
+        }
+        data.markInterestDay(day);
+    }
 
     public static Result prepare(MinecraftServer server, Household household, long day) {
         if (household == null || !household.id().startsWith("npc-")) return new Result(household, 0L);
@@ -34,6 +65,12 @@ public final class NpcBankingService {
             }
         }
         return new Result(household.withCash(cash), net);
+    }
+
+    private static long interest(long principal, double dailyRate) {
+        if (principal <= 0L || !Double.isFinite(dailyRate) || dailyRate <= 0.0) return 0L;
+        double value = principal * dailyRate;
+        return !Double.isFinite(value) || value >= Long.MAX_VALUE ? Long.MAX_VALUE : (long) value;
     }
 
     public static Result finish(MinecraftServer server, Household household, long day) {

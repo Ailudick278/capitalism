@@ -16,6 +16,7 @@ public final class NpcBankingSavedData extends SavedData {
     private static final int MAX_ACCOUNTS = 16384;
     private static final int MAX_TRANSACTIONS = 64;
     private final List<Account> accounts = new ArrayList<>();
+    private long lastInterestDay = -1L;
 
     public record Transaction(String id, long day, String type, long amountMinor,
                               long balanceAfterMinor, long debtAfterMinor) {}
@@ -32,6 +33,11 @@ public final class NpcBankingSavedData extends SavedData {
                 new Factory<>(NpcBankingSavedData::new, NpcBankingSavedData::load), ID);
     }
     public List<Account> accounts() { return List.copyOf(accounts); }
+    public long lastInterestDay() { return lastInterestDay; }
+    public boolean markInterestDay(long day) {
+        if (day < 0L || lastInterestDay >= day) return false;
+        lastInterestDay = day; setDirty(); return true;
+    }
     public long totalDebt() { return accounts.stream().mapToLong(Account::debtMinor).reduce(0L, NpcBankingSavedData::safeAdd); }
     public long overdueDebt() { return accounts.stream().filter(a -> a.loanDaysRemaining() < 0 && a.debtMinor() > 0L)
             .mapToLong(Account::debtMinor).reduce(0L, NpcBankingSavedData::safeAdd); }
@@ -66,6 +72,7 @@ public final class NpcBankingSavedData extends SavedData {
         return updated;
     }
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        tag.putLong("lastInterestDay", lastInterestDay);
         ListTag list = new ListTag();
         for (Account account : accounts) {
             CompoundTag e = new CompoundTag(); e.putString("id", account.id()); e.putString("household", account.householdId());
@@ -83,6 +90,7 @@ public final class NpcBankingSavedData extends SavedData {
     }
     public static NpcBankingSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         NpcBankingSavedData data = new NpcBankingSavedData();
+        data.lastInterestDay = tag.getLong("lastInterestDay");
         ListTag list = tag.getList("accounts", Tag.TAG_COMPOUND);
         for (int i = Math.max(0, list.size() - MAX_ACCOUNTS); i < list.size(); i++) {
             CompoundTag e = list.getCompound(i);
