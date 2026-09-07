@@ -21,6 +21,7 @@ import com.ailudick.capitalismmod.bank.BankLiquidityAuditRules;
 import com.ailudick.capitalismmod.risk.FinancialRiskAuditRules;
 import com.ailudick.capitalismmod.economy.contract.ContractDisputeSavedData;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
+import com.ailudick.capitalismmod.economy.contract.ContractAuditRules;
 import com.ailudick.capitalismmod.economy.contract.ContractStatus;
 import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.population.Household;
@@ -592,16 +593,15 @@ public final class EconomyAuditService {
             }
         }
         EconomicContractSavedData contracts = EconomicContractSavedData.get(server);
+        Set<String> contractIds = new HashSet<>();
         for (var contract : contracts.contracts()) {
-            if (contract.agreedQuantity() > 0L && contract.fulfilledQuantity() > contract.agreedQuantity()) {
-                issues.add("contract " + contract.id() + " fulfilled quantity exceeds agreement");
-            }
-            if (contract.status() == ContractStatus.COMPLETED && contract.agreedQuantity() > 0L
-                    && contract.fulfilledQuantity() < contract.agreedQuantity()) {
-                issues.add("contract " + contract.id() + " completed before full fulfillment");
-            }
-            if (contract.status() == ContractStatus.BREACHED && contract.breachAmountMinor() <= 0L) {
-                issues.add("contract " + contract.id() + " breached without exposure amount");
+            if (!contractIds.add(contract.id())
+                    || !ContractAuditRules.valid(contract.id(), contract.type(), contract.proposer(),
+                    contract.counterparty(), contract.createdAt(), contract.startsAt(), contract.endsAt(),
+                    contract.agreedAmountMinor(), contract.currencyId(), contract.status(),
+                    contract.fulfilledQuantity(), contract.agreedQuantity(), contract.breachAmountMinor(),
+                    Currencies.exists(contract.currencyId()))) {
+                issues.add("contract invalid " + contract.id());
             }
         }
         for (var dispute : ContractDisputeSavedData.get(server).disputes()) {
