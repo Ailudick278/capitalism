@@ -216,7 +216,7 @@ public final class PopulationService {
         String[][] categories = {{"food", "wheat", "flour", "canned_food", "bread"}, {"energy", "coal", "fuel_oil", "diesel"}, {"living", "planks", "furniture", "wood"}};
         int[] shares = {60, 20, 20};
         for (int i = 0; i < categories.length; i++) {
-            ItemStack item = findCommodity(categories[i]);
+            ItemStack item = findAvailableCommodity(server, categories[i]);
             if (item == null) continue;
             String itemId = Commodities.id(item); long priceMajor = CommoditySavedData.get(server).regionalPrice(itemId, household.region());
             long netUnitPrice = Math.max(1L, ExchangeRates.convert(Money.toMinorSaturated(priceMajor),
@@ -268,6 +268,22 @@ public final class PopulationService {
     private static ItemStack findCommodity(String[] names) {
         for (ItemStack stack : Commodities.ALL) { String id = Commodities.id(stack).toLowerCase(java.util.Locale.ROOT); for (int i=1;i<names.length;i++) if (id.contains(names[i])) return stack; }
         return null;
+    }
+    private static ItemStack findAvailableCommodity(MinecraftServer server, String[] names) {
+        ItemStack fallback = findCommodity(names);
+        for (int i = 1; i < names.length; i++) {
+            String needle = names[i].toLowerCase(java.util.Locale.ROOT);
+            for (ItemStack stack : Commodities.ALL) {
+                String itemId = Commodities.id(stack).toLowerCase(java.util.Locale.ROOT);
+                if (!itemId.contains(needle)) continue;
+                for (Company company : CompanySavedData.get(server).companies().values()) {
+                    if (company == null) continue;
+                    if (WarehouseSavedData.get(server).count(InventoryOwner.company(company.companyId()),
+                            Commodities.id(stack)) > 0) return stack;
+                }
+            }
+        }
+        return fallback;
     }
     private static Company findSeller(MinecraftServer server, String itemId, int quantity) {
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
