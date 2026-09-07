@@ -72,6 +72,8 @@ import net.minecraft.resources.ResourceLocation;
 import com.ailudick.capitalismmod.supply.SupplyOrderIntentSavedData;
 import com.ailudick.capitalismmod.bank.BankCashDepositIntentSavedData;
 import com.ailudick.capitalismmod.bank.BankRepaymentIntentSavedData;
+import com.ailudick.capitalismmod.bank.BankTransactionAuditRules;
+import com.ailudick.capitalismmod.init.ModAttachments;
 import com.ailudick.capitalismmod.currency.CurrencyExchangeIntentSavedData;
 import com.ailudick.capitalismmod.economy.PlayerTransferIntentSavedData;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
@@ -527,6 +529,26 @@ public final class EconomyAuditService {
         for (var player : server.getPlayerList().getPlayers()) {
             if (!BankExposureAuditRules.matches(exposureData.expected(player), exposureData.exposure(player.getUUID()))) {
                 issues.add("online bank exposure differs from account state " + player.getUUID());
+            }
+            for (var accountEntry : player.getData(ModAttachments.BANK_ACCOUNTS).entrySet()) {
+                var account = accountEntry.getValue();
+                if (account == null || !accountEntry.getKey().equals(account.id())
+                        || !BankTransactionAuditRules.validAccount(account.id(), account.credit(), account.balances(),
+                        account.debts(), account.loanDaysRemaining())) {
+                    issues.add("bank account snapshot invalid " + player.getUUID() + "/" + accountEntry.getKey());
+                    continue;
+                }
+                Set<String> transactionReferences = new HashSet<>();
+                for (var transaction : account.transactions()) {
+                    if (!BankTransactionAuditRules.validTransaction(transaction.type(), transaction.currencyId(),
+                            transaction.amount(), transaction.occurredAt(), transaction.reference(),
+                            Currencies.exists(transaction.currencyId()))) {
+                        issues.add("bank transaction invalid " + account.id());
+                    }
+                    if (!transaction.reference().isBlank() && !transactionReferences.add(transaction.reference())) {
+                        issues.add("duplicate bank transaction reference " + account.id());
+                    }
+                }
             }
         }
         for (var snapshot : FinancialRiskSavedData.get(server).snapshots()) {
