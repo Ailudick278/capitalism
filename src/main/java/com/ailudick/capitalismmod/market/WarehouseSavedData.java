@@ -33,6 +33,7 @@ public final class WarehouseSavedData extends SavedData {
     private final java.util.List<AuditEntry> audit = new java.util.ArrayList<>();
     private final Set<String> creditedSources = new HashSet<>();
     private final Map<String, Integer> creditedSourceQuantities = new HashMap<>();
+    private final Map<String, String> creditedSourceItems = new HashMap<>();
     private final Set<String> consumedSources = new HashSet<>();
     private final Map<String, String> consumedSourceItems = new HashMap<>();
     private final Map<String, Integer> consumedSourceQuantities = new HashMap<>();
@@ -50,6 +51,7 @@ public final class WarehouseSavedData extends SavedData {
 
     private record State(Map<String, Map<String, Integer>> storage, java.util.List<AuditEntry> audit,
                          List<String> creditedSources, Map<String, Integer> creditedSourceQuantities,
+                         Map<String, String> creditedSourceItems,
                          List<String> consumedSources, Map<String, String> consumedSourceItems,
                          Map<String, Integer> consumedSourceQuantities,
                          Map<String, String> consumedSourceBatches) {
@@ -62,6 +64,9 @@ public final class WarehouseSavedData extends SavedData {
                 Codec.unboundedMap(Codec.STRING, Codec.INT)
                         .optionalFieldOf("creditedSourceQuantities", Map.of())
                         .forGetter(State::creditedSourceQuantities),
+                Codec.unboundedMap(Codec.STRING, Codec.STRING)
+                        .optionalFieldOf("creditedSourceItems", Map.of())
+                        .forGetter(State::creditedSourceItems),
                 Codec.STRING.listOf().optionalFieldOf("consumedSources", List.of())
                         .forGetter(State::consumedSources),
                 Codec.unboundedMap(Codec.STRING, Codec.STRING)
@@ -122,10 +127,12 @@ public final class WarehouseSavedData extends SavedData {
         credit(owner, item, count);
         creditedSources.add(sourceId);
         creditedSourceQuantities.put(sourceId, count);
+        creditedSourceItems.put(sourceId, BuiltInRegistries.ITEM.getKey(item).toString());
         while (creditedSources.size() > 8192) {
             String oldest = creditedSources.iterator().next();
             creditedSources.remove(oldest);
             creditedSourceQuantities.remove(oldest);
+            creditedSourceItems.remove(oldest);
         }
         setDirty();
         return true;
@@ -135,6 +142,10 @@ public final class WarehouseSavedData extends SavedData {
     public int creditedQuantity(String sourceId) {
         return sourceId == null || sourceId.isBlank()
                 ? 0 : Math.max(0, creditedSourceQuantities.getOrDefault(sourceId, 0));
+    }
+
+    public String creditedItem(String sourceId) {
+        return sourceId == null || sourceId.isBlank() ? "" : creditedSourceItems.getOrDefault(sourceId, "");
     }
 
     public boolean hasCreditSource(String sourceId) {
@@ -148,6 +159,7 @@ public final class WarehouseSavedData extends SavedData {
     public Map<String, String> consumedSourceItems() { return Map.copyOf(consumedSourceItems); }
     public Map<String, Integer> consumedSourceQuantities() { return Map.copyOf(consumedSourceQuantities); }
     public Map<String, String> consumedSourceBatches() { return Map.copyOf(consumedSourceBatches); }
+    public Map<String, String> creditedSourceItems() { return Map.copyOf(creditedSourceItems); }
 
     /** Removes warehouse stock once for a durable consumption source. */
     public boolean consumeOnce(InventoryOwner owner, Item item, int count, String sourceId) {
@@ -371,6 +383,7 @@ public final class WarehouseSavedData extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(storage), new java.util.ArrayList<>(audit),
                 new java.util.ArrayList<>(creditedSources), new HashMap<>(creditedSourceQuantities),
+                new HashMap<>(creditedSourceItems),
                 new java.util.ArrayList<>(consumedSources), new HashMap<>(consumedSourceItems),
                 new HashMap<>(consumedSourceQuantities), new HashMap<>(consumedSourceBatches));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
@@ -396,12 +409,19 @@ public final class WarehouseSavedData extends SavedData {
                             data.creditedSourceQuantities.put(source, quantity);
                         }
                     });
+                    state.creditedSourceItems().forEach((source, item) -> {
+                        if (source != null && !source.isBlank() && item != null && !item.isBlank()) {
+                            data.creditedSourceItems.put(source, item);
+                        }
+                    });
                     while (data.creditedSources.size() > 8192) {
                         String oldest = data.creditedSources.iterator().next();
                         data.creditedSources.remove(oldest);
                         data.creditedSourceQuantities.remove(oldest);
+                        data.creditedSourceItems.remove(oldest);
                     }
                     data.creditedSourceQuantities.keySet().removeIf(source -> !data.creditedSources.contains(source));
+                    data.creditedSourceItems.keySet().removeIf(source -> !data.creditedSources.contains(source));
                     data.consumedSources.addAll(state.consumedSources());
                     state.consumedSourceItems().forEach((source, item) -> {
                         if (source != null && !source.isBlank() && item != null && !item.isBlank()) {

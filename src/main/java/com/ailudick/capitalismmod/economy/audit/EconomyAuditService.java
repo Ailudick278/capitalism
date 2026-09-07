@@ -396,6 +396,12 @@ public final class EconomyAuditService {
                 }
             }
         }
+        for (var credited : warehouse.creditedSourceItems().entrySet()) {
+            if (!validItemId(credited.getValue()) || !warehouse.hasCreditSource(credited.getKey())
+                    || warehouse.creditedQuantity(credited.getKey()) <= 0) {
+                issues.add("warehouse credited source invalid " + credited.getKey());
+            }
+        }
         for (MarketOrder order : commodities.orders()) {
             if (!order.sell()) continue;
             String source = "commodity-sell-order:" + order.id();
