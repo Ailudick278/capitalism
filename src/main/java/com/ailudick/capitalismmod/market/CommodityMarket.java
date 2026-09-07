@@ -474,6 +474,13 @@ public final class CommodityMarket {
             data.resetSupply(id);
             data.addCandle(id, new Candle(oldPrice, Math.max(oldPrice, newPrice), Math.min(oldPrice, newPrice), newPrice));
         }
+        java.util.Set<String> regions = new java.util.HashSet<>(PopulationSavedData.get(server).households().stream()
+                .map(com.ailudick.capitalismmod.population.Household::region).toList());
+        regions.addAll(LogisticsInfrastructureSavedData.get(server).regions());
+        for (String region : regions) for (String id : ids) {
+            data.putRegionalPrice(id, region, RegionalPriceEconomics.withLogisticsPremium(
+                    data.price(id), LogisticsInfrastructureSavedData.get(server).accessScore(region)));
+        }
         data.setDirty();
     }
 

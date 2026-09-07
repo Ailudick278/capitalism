@@ -196,7 +196,7 @@ public final class PopulationService {
         for (int i = 0; i < categories.length; i++) {
             ItemStack item = findCommodity(categories[i]);
             if (item == null) continue;
-            String itemId = Commodities.id(item); long priceMajor = CommoditySavedData.get(server).price(itemId);
+            String itemId = Commodities.id(item); long priceMajor = CommoditySavedData.get(server).regionalPrice(itemId, household.region());
             long netUnitPrice = Math.max(1L, ExchangeRates.convert(Money.toMinorSaturated(priceMajor),
                     Currencies.USD, Config.defaultCurrency()));
             long taxPerUnit = vatFor(netUnitPrice);

@@ -33,6 +33,7 @@ public final class CommoditySavedData extends SavedData {
     private final Map<String, List<Candle>> history = new HashMap<>();
     private final Map<String, Long> supply = new HashMap<>();
     private final Map<String, Long> prevClose = new HashMap<>();
+    private final Map<String, Long> regionalPrices = new HashMap<>();
     private final Set<String> netVolumeSources = new HashSet<>();
 
     private record State(
@@ -42,6 +43,7 @@ public final class CommoditySavedData extends SavedData {
             Map<String, List<Candle>> history,
             Map<String, Long> supply,
             Map<String, Long> prevClose,
+            Map<String, Long> regionalPrices,
             List<String> netVolumeSources) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 MarketOrder.CODEC.listOf().fieldOf("orders").forGetter(State::orders),
@@ -50,6 +52,7 @@ public final class CommoditySavedData extends SavedData {
                 Codec.unboundedMap(Codec.STRING, Candle.CODEC.listOf()).fieldOf("history").forGetter(State::history),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("supply").forGetter(State::supply),
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prevClose").forGetter(State::prevClose),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("regionalPrices", Map.of()).forGetter(State::regionalPrices),
                 Codec.STRING.listOf().optionalFieldOf("netVolumeSources", List.of()).forGetter(State::netVolumeSources)
         ).apply(instance, State::new));
     }
@@ -74,6 +77,15 @@ public final class CommoditySavedData extends SavedData {
     public long price(String itemId) {
         return prices.getOrDefault(itemId, 0L);
     }
+    public long regionalPrice(String itemId, String region) {
+        if (region == null || region.isBlank()) return price(itemId);
+        return regionalPrices.getOrDefault(regionKey(region, itemId), price(itemId));
+    }
+    public void putRegionalPrice(String itemId, String region, long price) {
+        if (region != null && !region.isBlank()) regionalPrices.put(regionKey(region, itemId), Math.max(1L, price));
+        setDirty();
+    }
+    private static String regionKey(String region, String itemId) { return region + "\u0000" + itemId; }
 
     public Map<String, Long> prices() {
         return prices;
@@ -225,7 +237,8 @@ public final class CommoditySavedData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new ArrayList<>(orders), new HashMap<>(prices), new HashMap<>(netVolume),
-                new HashMap<>(history), new HashMap<>(supply), new HashMap<>(prevClose), new ArrayList<>(netVolumeSources));
+                new HashMap<>(history), new HashMap<>(supply), new HashMap<>(prevClose),
+                new HashMap<>(regionalPrices), new ArrayList<>(netVolumeSources));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -240,6 +253,7 @@ public final class CommoditySavedData extends SavedData {
                 state.history().forEach((k, v) -> data.history.put(k, new ArrayList<>(v)));
                 data.supply.putAll(state.supply());
                 data.prevClose.putAll(state.prevClose());
+                data.regionalPrices.putAll(state.regionalPrices());
                 data.netVolumeSources.addAll(state.netVolumeSources());
                 for (MarketOrder order : state.orders()) {
                     // Drop orders whose commodity no longer resolves (config changed).

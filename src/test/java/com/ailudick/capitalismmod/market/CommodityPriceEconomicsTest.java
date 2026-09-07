@@ -25,4 +25,11 @@ class CommodityPriceEconomicsTest {
         assertEquals(90L, CommodityPriceEconomics.applyBasisPointShock(100L, -1000));
         assertEquals(1L, CommodityPriceEconomics.applyBasisPointShock(1L, -9000));
     }
+
+    @Test
+    void logisticsAccessReducesRegionalPremium() {
+        assertEquals(120L, RegionalPriceEconomics.withLogisticsPremium(100L, 0));
+        assertEquals(100L, RegionalPriceEconomics.withLogisticsPremium(100L, 100));
+        assertEquals(1L, RegionalPriceEconomics.withLogisticsPremium(1L, 0));
+    }
 }
