@@ -45,6 +45,8 @@ public final class CompanyLoanHelper {
         maximumDebt = (long) Math.floor(maximumDebt * behavior.underwritingMultiplier());
         List<CompanyLoan> existingLoans = CompanyLoanSavedData.get(server).forCompany(company.companyId());
         if (CompanyDebtServiceAssessment.hasOverdueLoan(existingLoans)) return null;
+        CompanyCollateralAssessment collateral = CompanyCollateralAssessment.from(server, company);
+        if (collateral.indicativeHeadroom() < behavior.requiredCollateral(amount)) return null;
         long existingDebt = 0L;
         for (CompanyLoan loan : existingLoans) {
             existingDebt = EconomyMath.add(existingDebt, loan.principal());

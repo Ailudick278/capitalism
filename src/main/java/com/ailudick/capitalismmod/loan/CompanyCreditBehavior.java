@@ -35,6 +35,20 @@ public record CompanyCreditBehavior(int payments, int onTimePayments, int overdu
         return termMultiplier(payments, score);
     }
 
+    /** Required collateral rises as repayment quality deteriorates. */
+    public static long requiredCollateral(long amount, int payments, int score) {
+        if (amount <= 0L || payments <= 0) return 0L;
+        int boundedScore = Math.max(0, Math.min(100, score));
+        double ratio = 1.50 - boundedScore / 100.0;
+        double required = amount * ratio;
+        return !Double.isFinite(required) || required >= Long.MAX_VALUE
+                ? Long.MAX_VALUE : Math.max(0L, (long) Math.ceil(required));
+    }
+
+    public long requiredCollateral(long amount) {
+        return requiredCollateral(amount, payments, score);
+    }
+
     /** Scores repayment quality by money at risk, rather than treating every payment equally. */
     public static int scoreForRepaymentAmounts(long onTimeAmount, long overdueAmount) {
         long onTime = Math.max(0L, onTimeAmount);
