@@ -545,6 +545,11 @@ public final class EconomyAuditService {
                             Currencies.exists(transaction.currencyId()))) {
                         issues.add("bank transaction invalid " + account.id());
                     }
+                    if ("repay".equals(transaction.type()) && transaction.reference().startsWith("bank-repayment:")
+                            && !EconomyLogSavedData.get(server).hasPayment(player.getUUID(), transaction.currencyId(),
+                            -transaction.amount(), transaction.reference())) {
+                        issues.add("bank repayment has no wallet evidence " + account.id());
+                    }
                     if (!transaction.reference().isBlank() && !transactionReferences.add(transaction.reference())) {
                         issues.add("duplicate bank transaction reference " + account.id());
                     }

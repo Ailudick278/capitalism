@@ -102,7 +102,7 @@ public final class BankAccountHelper {
                 data.markPaid(intent.id());
             }
             if (account.getDebt(intent.currencyId()) == intent.debtBefore()) {
-                applyRepayment(player, account, intent.currencyId(), intent.amount());
+                applyRepayment(player, account, intent.currencyId(), intent.amount(), "bank-repayment:" + intent.id());
             }
             if (getAccount(player, intent.accountId()).getDebt(intent.currencyId()) == intent.debtBefore() - intent.amount()) { data.remove(intent.id()); recovered++; }
         }
@@ -432,14 +432,16 @@ public final class BankAccountHelper {
             return false;
         }
         intents.markPaid(id);
-        applyRepayment(player, account, currency.id(), amount);
+        applyRepayment(player, account, currency.id(), amount, "bank-repayment:" + id);
         intents.remove(id);
         return true;
     }
 
-    private static void applyRepayment(Player player, BankAccount account, String currencyId, long amount) {
+    private static void applyRepayment(Player player, BankAccount account, String currencyId, long amount,
+                                       String paymentReference) {
         BankAccount updated = account.withDebt(currencyId, account.getDebt(currencyId) - amount)
-                .withTransaction(BankTransaction.now(player, "repay", currencyId, -amount, "", "wallet"));
+                .withTransaction(BankTransaction.now(player, "repay", currencyId, -amount,
+                        paymentReference, "wallet"));
         if (totalDebtInBase(updated) == 0) updated = updated.withLoanDaysRemaining(0);
         updateAccount(player, updated);
     }
