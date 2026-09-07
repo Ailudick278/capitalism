@@ -7,7 +7,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 
@@ -19,6 +21,7 @@ import java.util.Set;
 public final class LogisticsInfrastructureSavedData extends SavedData {
     private static final String ID = "capitalismmod_logistics_infrastructure";
     private final Map<String, Map<String, Integer>> facilities = new HashMap<>();
+    private final Map<String, Integer> trafficHistory = new HashMap<>();
 
     private record State(Map<String, Map<String, Integer>> facilities) {
         private static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -64,6 +67,26 @@ public final class LogisticsInfrastructureSavedData extends SavedData {
     /** Regions with any persisted facility, used by regional public-budget passes. */
     public Set<String> regions() {
         return Set.copyOf(facilities.keySet());
+    }
+
+    public Set<String> trafficRegions() {
+        return Set.copyOf(trafficHistory.keySet());
+    }
+
+    /** Stores a five-day-smoothed traffic signal for a region. */
+    public void recordTraffic(String region, int currentScore) {
+        if (region == null || region.isBlank()) return;
+        int current = Math.max(0, Math.min(100, currentScore));
+        int previous = trafficHistory.getOrDefault(region, current);
+        int smoothed = (previous * 4 + current + 2) / 5;
+        if (smoothed != previous) {
+            trafficHistory.put(region, smoothed);
+            setDirty();
+        }
+    }
+
+    public int historicalTrafficScore(String region) {
+        return region == null ? 0 : trafficHistory.getOrDefault(region, 0);
     }
 
     public static boolean isPublicFacility(String facility) {
@@ -156,6 +179,14 @@ public final class LogisticsInfrastructureSavedData extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State.CODEC.encodeStart(NbtOps.INSTANCE, new State(facilities)).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
+        ListTag traffic = new ListTag();
+        trafficHistory.forEach((region, score) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("region", region);
+            entry.putInt("score", score);
+            traffic.add(entry);
+        });
+        tag.put("trafficHistory", traffic);
         return tag;
     }
 
@@ -165,6 +196,13 @@ public final class LogisticsInfrastructureSavedData extends SavedData {
             State.CODEC.parse(NbtOps.INSTANCE, tag.get("data")).result()
                     .ifPresent(state -> state.facilities().forEach((region, values) ->
                             data.facilities.put(region, new HashMap<>(values))));
+        }
+        ListTag traffic = tag.getList("trafficHistory", Tag.TAG_COMPOUND);
+        for (int i = 0; i < traffic.size(); i++) {
+            CompoundTag entry = traffic.getCompound(i);
+            String region = entry.getString("region");
+            if (!region.isBlank()) data.trafficHistory.put(region,
+                    Math.max(0, Math.min(100, entry.getInt("score"))));
         }
         return data;
     }

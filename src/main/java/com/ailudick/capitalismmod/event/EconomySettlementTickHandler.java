@@ -42,6 +42,8 @@ import com.ailudick.capitalismmod.bank.BankLiquidityService;
 import com.ailudick.capitalismmod.bank.BankCapitalService;
 import com.ailudick.capitalismmod.market.CommodityMarket;
 import com.ailudick.capitalismmod.market.LogisticsLossService;
+import com.ailudick.capitalismmod.market.LogisticsSavedData;
+import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.supply.SupplyMarket;
 import com.ailudick.capitalismmod.stock.StockMarket;
 import net.minecraft.server.level.ServerPlayer;
@@ -199,6 +201,7 @@ public final class EconomySettlementTickHandler {
         }
         if (!journal.isCompleted(settlementDay, "markets-and-close")) {
             journal.markStarted(settlementDay, "markets-and-close", server.overworld().getGameTime());
+            recordRegionalTraffic(server);
             AuctionMarket.recoverListingIntents(server);
             AuctionMarket.settleExpired(server);
             FuturesMarket.settleDay(server, settlementDay);
@@ -212,6 +215,20 @@ public final class EconomySettlementTickHandler {
         MoneySupplyService.settleDaily(server, settlementDay);
         CityStatisticsSavedData.get(server).recordDaily(server, settlementDay);
             journal.markCompleted(settlementDay, "markets-and-close", server.overworld().getGameTime());
+        }
+    }
+
+    private static void recordRegionalTraffic(net.minecraft.server.MinecraftServer server) {
+        LogisticsSavedData logistics = LogisticsSavedData.get(server);
+        LogisticsInfrastructureSavedData infrastructure = LogisticsInfrastructureSavedData.get(server);
+        java.util.Set<String> regions = new java.util.HashSet<>(infrastructure.trafficRegions());
+        for (LogisticsSavedData.Shipment shipment : logistics.shipments()) {
+            if (shipment.destinationRegion() != null && !shipment.destinationRegion().isBlank()) {
+                regions.add(shipment.destinationRegion());
+            }
+        }
+        for (String region : regions) {
+            infrastructure.recordTraffic(region, logistics.congestionScore(region));
         }
     }
 

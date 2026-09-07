@@ -32,6 +32,7 @@ public final class LandValuationHelper {
         long marketAverage = LandMarketSavedData.get(server).averageNear(
                 claim.dimension(), claim.chunkX(), claim.chunkZ());
         int congestion = LogisticsSavedData.get(server).congestionScore(region);
+        congestion = Math.max(congestion, infrastructure.historicalTrafficScore(region));
         return suggestedPrice(server.overworld(), claim, residents, services, businessSites, access,
                 marketAverage, congestion);
     }
