@@ -20,8 +20,11 @@ public final class GovernmentPolicyService {
         stimulateHousing(server, population, policy, day);
         int paid = 0;
         for (Household household : population.households()) {
-            if (household.unemploymentDays() < 3 || household.unemploymentDays() > 90
-                    || household.employmentDays() < 7 || household.satisfaction() >= 70) continue;
+            var risk = com.ailudick.capitalismmod.population.HouseholdFinancialRiskSavedData.get(server)
+                    .latest(household.id());
+            boolean highRisk = risk != null && risk.score() >= 70;
+            if ((!highRisk && household.unemploymentDays() < 3) || household.unemploymentDays() > 90
+                    || (!highRisk && household.employmentDays() < 7) || (!highRisk && household.satisfaction() >= 70)) continue;
             if (population.find(household.id()) == null) continue;
             long maximum = multiply(multiply(household.dailyNeedMinor(), household.size()), 60L) / 100L;
             if (benefit > 0L) {

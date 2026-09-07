@@ -10,7 +10,15 @@ public final class MigrationEconomics {
      */
     public static boolean willingToMove(int satisfaction, int originServices, int destinationServices,
                                         long dailyWageMinor, long requiredDailyIncome) {
-        if (satisfaction > 40 || dailyWageMinor < 0L || requiredDailyIncome < 0L) return false;
+        return willingToMove(satisfaction, originServices, destinationServices,
+                dailyWageMinor, requiredDailyIncome, 0);
+    }
+
+    public static boolean willingToMove(int satisfaction, int originServices, int destinationServices,
+                                        long dailyWageMinor, long requiredDailyIncome, int financialRisk) {
+        int risk = Math.max(0, Math.min(100, financialRisk));
+        if (dailyWageMinor < 0L || requiredDailyIncome < 0L
+                || satisfaction - risk / 4 > 40) return false;
         int advantage = Math.max(0, Math.min(30, destinationServices - originServices));
         long relief = requiredDailyIncome * advantage / 150L;
         long threshold = Math.max(0L, requiredDailyIncome - relief);

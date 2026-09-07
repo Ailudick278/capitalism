@@ -27,6 +27,10 @@ public final class HouseholdFinancialRiskSavedData extends SavedData {
     }
     public List<Assessment> assessments() { return List.copyOf(assessments); }
     public Assessment find(String id) { return assessments.stream().filter(a -> a.id().equals(id)).findFirst().orElse(null); }
+    public Assessment latest(String householdId) {
+        return assessments.stream().filter(a -> a.householdId().equals(householdId))
+                .max(java.util.Comparator.comparingLong(Assessment::day)).orElse(null);
+    }
     public boolean record(Assessment assessment) {
         if (assessment == null || assessment.id() == null || assessment.id().isBlank()
                 || assessment.householdId() == null || assessment.householdId().isBlank()

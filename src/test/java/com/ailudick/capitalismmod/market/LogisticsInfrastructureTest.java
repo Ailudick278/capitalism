@@ -24,5 +24,6 @@ class LogisticsInfrastructureTest {
         assertTrue(!MigrationEconomics.willingToMove(40, 20, 50, 799L, 1_000L));
         assertTrue(!MigrationEconomics.willingToMove(40, 20, 100, 799L, 1_000L));
         assertTrue(!MigrationEconomics.willingToMove(41, 20, 100, 2_000L, 1_000L));
+        assertTrue(MigrationEconomics.willingToMove(50, 20, 100, 1_000L, 1_000L, 40));
     }
 }

@@ -129,9 +129,12 @@ public final class PopulationService {
                         .publicServiceScore(server, offer.region(), population.population(offer.region()));
                 long relocationCost = local ? 0L : HousingEconomics.migrationCost(household.dailyNeedMinor(),
                         household.size(), destinationRent / Math.max(1, household.size()), migrationFriction);
+                HouseholdFinancialRiskSavedData.Assessment risk = HouseholdFinancialRiskSavedData.get(server)
+                        .latest(household.id());
                 boolean willingToMove = !local && MigrationEconomics.willingToMove(household.satisfaction(),
                         originServices, destinationServices, offer.dailyWageMinor(),
-                        add(add(livingCost, destinationRent), add(migrationFriction, commuteCost)));
+                        add(add(livingCost, destinationRent), add(migrationFriction, commuteCost)),
+                        risk == null ? 0 : risk.score());
                 if (!local && !willingToMove) continue;
                 if (!local && household.cashMinor() < relocationCost) continue;
                 LaborMarketService.ensureNpcProfile(server, household.id(), household.workingAge());
