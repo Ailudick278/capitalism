@@ -82,6 +82,8 @@ import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
+import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
+import com.ailudick.capitalismmod.company.FreightContractAuditRules;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -208,6 +210,28 @@ public final class EconomyAuditService {
                     loss.transport(), loss.disruptionCount(), loss.lostAt(), loss.unitPrice())
                     || !LogisticsAuditRules.claimUnique(shipmentIds, loss.shipmentId())) {
                 issues.add("logistics loss invalid " + loss.shipmentId());
+            }
+        }
+        Set<String> freightIds = new HashSet<>();
+        Set<String> openFreightShipments = new HashSet<>();
+        Set<String> deliveredShipments = LogisticsDeliverySavedData.get(server).deliveries().stream()
+                .map(LogisticsDeliverySavedData.Delivery::shipmentId).collect(java.util.stream.Collectors.toSet());
+        Set<String> lostShipments = LogisticsLossSavedData.get(server).losses().stream()
+                .map(LogisticsLossSavedData.Loss::shipmentId).collect(java.util.stream.Collectors.toSet());
+        for (var freight : CompanyFreightContractSavedData.get(server).contracts()) {
+            if (!freightIds.add(freight.id())
+                    || !FreightContractAuditRules.valid(freight.id(), freight.shipmentId(),
+                    freight.buyerCompanyId(), freight.carrierCompanyId(), freight.quotedCost(), freight.createdAt(),
+                    freight.acceptedAt(), freight.expiresAt(), freight.status())) {
+                issues.add("freight contract invalid " + freight.id());
+            }
+            if (("offered".equals(freight.status()) || "accepted".equals(freight.status()))
+                    && !openFreightShipments.add(freight.shipmentId())) {
+                issues.add("multiple open freight contracts " + freight.shipmentId());
+            }
+            if (!FreightContractAuditRules.terminalEvidence(freight.status(),
+                    deliveredShipments.contains(freight.shipmentId()), lostShipments.contains(freight.shipmentId()))) {
+                issues.add("freight contract terminal evidence mismatch " + freight.id());
             }
         }
         Set<String> supplyEventKeys = new HashSet<>();
