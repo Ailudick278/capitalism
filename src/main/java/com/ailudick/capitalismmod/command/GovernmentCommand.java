@@ -2,6 +2,7 @@ package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalService;
+import com.ailudick.capitalismmod.bank.CentralBankFacilityService;
 import com.ailudick.capitalismmod.bond.BondMarket;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -46,7 +47,11 @@ public final class GovernmentCommand {
         var recapAmount = Commands.argument("amountMinor", LongArgumentType.longArg(1, 9_000_000_000_000_000L))
                 .executes(c -> recapitalize(c.getSource(), LongArgumentType.getLong(c, "amountMinor")));
         root.then(Commands.literal("bank").requires(s -> s.hasPermission(2))
-                .then(Commands.literal("recapitalize").then(recapAmount)));
+                .then(Commands.literal("recapitalize").then(recapAmount))
+                .then(Commands.literal("facility").then(Commands.argument("amountMinor",
+                        LongArgumentType.longArg(1, 9_000_000_000_000_000L)).then(Commands.argument("termDays",
+                        IntegerArgumentType.integer(1, 360)).executes(c -> facility(c.getSource(),
+                        LongArgumentType.getLong(c, "amountMinor"), IntegerArgumentType.getInteger(c, "termDays")))))));
         var holdingId = Commands.argument("holdingId", com.mojang.brigadier.arguments.StringArgumentType.word())
                 .executes(c -> buyBack(c.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(c, "holdingId")));
         root.then(Commands.literal("openMarket").requires(s -> s.hasPermission(2))
@@ -136,6 +141,20 @@ public final class GovernmentCommand {
             return 0;
         }
         source.sendSuccess(() -> Component.literal("银行资本已补充 " + amount + " minor units。"), true);
+        return 1;
+    }
+
+    private static int facility(CommandSourceStack source, long amount, int termDays) {
+        long day = source.getServer().overworld().getGameTime()
+                / com.ailudick.capitalismmod.calendar.PerpetualCalendar.TICKS_PER_DAY;
+        int rate = Math.max(0, GovernmentPolicySavedData.get(source.getServer()).policyRateBasisPoints() + 200);
+        String sourceId = "manual:" + day + ":" + amount + ":" + termDays + ":" + rate;
+        if (!CentralBankFacilityService.issueFromTreasury(source.getServer(), day, amount, termDays, rate, sourceId)) {
+            source.sendFailure(Component.literal("央行流动性工具仅在金融危机期间可用，或财政余额/条件不足。"));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("央行流动性贷款已发放 " + amount
+                + " minor units，期限 " + termDays + " 天，年化 " + rate + " bps。"), true);
         return 1;
     }
 
