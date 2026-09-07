@@ -409,9 +409,14 @@ public final class CommodityMarket {
     /** Cancels the player's own order, returning the escrowed commodity or money. */
     public static boolean cancelOrder(ServerPlayer player, String orderId) {
         CommoditySavedData data = CommoditySavedData.get(player.getServer());
+        CommoditySettlementSavedData settlements = CommoditySettlementSavedData.get(player.getServer());
         MarketOrder order = data.findOrder(orderId);
         if (order == null || !order.ownerId().equals(player.getStringUUID())) {
             return false;
+        }
+        if (settlements.has(orderId)) {
+            data.removeOrder(orderId);
+            return true;
         }
         if (order.sell()) {
             WarehouseSavedData warehouse = WarehouseSavedData.get(player.getServer());
@@ -433,6 +438,7 @@ public final class CommodityMarket {
                 mailbox.redeemMoneyOnly(player);
             }
         }
+        settlements.record(orderId);
         data.removeOrder(orderId);
         data.setDirty();
         return true;
@@ -493,6 +499,7 @@ public final class CommodityMarket {
         long lifetime = com.ailudick.capitalismmod.calendar.PerpetualCalendar.ticksForDays(expiryDays);
         CommoditySavedData data = CommoditySavedData.get(server);
         WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        CommoditySettlementSavedData settlements = CommoditySettlementSavedData.get(server);
         for (MarketOrder order : new ArrayList<>(data.orders())) {
             if (order.createdAt() <= 0L || now < order.createdAt()
                     || now - order.createdAt() < lifetime) {
@@ -503,6 +510,10 @@ public final class CommodityMarket {
                 owner = UUID.fromString(order.ownerId());
             } catch (IllegalArgumentException | NullPointerException exception) {
                 // Leave malformed records for the explicit admin repair command.
+                continue;
+            }
+            if (settlements.has(order.id())) {
+                data.removeOrder(order.id());
                 continue;
             }
             if (order.sell()) {
@@ -523,6 +534,7 @@ public final class CommodityMarket {
                     }
                 }
             }
+            settlements.record(order.id());
             data.removeOrder(order.id());
         }
     }
