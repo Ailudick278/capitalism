@@ -5,6 +5,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.server.MinecraftServer;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
+import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.company.CompanySiteSavedData;
 
@@ -29,7 +30,9 @@ public final class LandValuationHelper {
                 .filter(site -> region.equals(TradeRegion.of(new net.minecraft.core.BlockPos(
                 site.chunkX() * 16, 0, site.chunkZ() * 16)))).count();
         long marketAverage = LandMarketSavedData.get(server).average(claim.dimension());
-        return suggestedPrice(server.overworld(), claim, residents, services, businessSites, access, marketAverage);
+        int congestion = LogisticsSavedData.get(server).congestionScore(region);
+        return suggestedPrice(server.overworld(), claim, residents, services, businessSites, access,
+                marketAverage, congestion);
     }
 
     private static long suggestedPrice(Level level, LandClaim claim, int residents, int services) {
@@ -43,11 +46,11 @@ public final class LandValuationHelper {
 
     private static long suggestedPrice(Level level, LandClaim claim, int residents, int services,
                                        int businessSites, int access) {
-        return suggestedPrice(level, claim, residents, services, businessSites, access, 0L);
+        return suggestedPrice(level, claim, residents, services, businessSites, access, 0L, 0);
     }
 
     private static long suggestedPrice(Level level, LandClaim claim, int residents, int services,
-                                       int businessSites, int access, long marketAverage) {
+                                       int businessSites, int access, long marketAverage, int congestion) {
         if (level == null || claim == null) return 0L;
         double purposeFactor = switch (claim.purpose()) {
             case "residential", "2301" -> 1.20;
@@ -65,7 +68,8 @@ public final class LandValuationHelper {
         double value = baseline
                 * purposeFactor * locationFactor * LandDemandEconomics.multiplier(
                 residents, services, businessSites, access)
-                * LandDemandEconomics.marketMultiplier(marketAverage, baseline);
+                * LandDemandEconomics.marketMultiplier(marketAverage, baseline)
+                * com.ailudick.capitalismmod.market.LogisticsEconomics.landValueMultiplier(congestion);
         return Math.max(0L, Math.round(value));
     }
 }

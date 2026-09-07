@@ -15,4 +15,17 @@ public final class LogisticsEconomics {
         long extra = increment / 4L;
         return extra > Long.MAX_VALUE - baseTravelTicks ? Long.MAX_VALUE : Math.max(1L, baseTravelTicks + extra);
     }
+
+    /** Converts active cargo load into a bounded regional traffic score. */
+    public static int congestionScore(long load, long capacity) {
+        if (load <= 0L || capacity <= 0L) return 0;
+        long scaled = load > Long.MAX_VALUE / 100L ? Long.MAX_VALUE : load * 100L;
+        return (int) Math.min(100L, scaled / capacity);
+    }
+
+    /** Congestion lowers locational value modestly; it never makes a location worthless. */
+    public static double landValueMultiplier(int congestionScore) {
+        int score = Math.max(0, Math.min(100, congestionScore));
+        return 1.0 - score / 666.6666666667;
+    }
 }

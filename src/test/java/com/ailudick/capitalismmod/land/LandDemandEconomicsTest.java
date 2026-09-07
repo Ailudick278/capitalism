@@ -19,4 +19,13 @@ class LandDemandEconomicsTest {
         assertEquals(1.0, LandDemandEconomics.marketMultiplier(0, 100.0), 0.0001);
         assertTrue(LandDemandEconomics.marketMultiplier(10_000, 100.0) <= 1.50);
     }
+
+    @Test
+    void trafficLoadIsBoundedAndReducesLandValueModestly() {
+        assertEquals(0, com.ailudick.capitalismmod.market.LogisticsEconomics.congestionScore(0, 100));
+        assertEquals(100, com.ailudick.capitalismmod.market.LogisticsEconomics.congestionScore(500, 100));
+        assertTrue(com.ailudick.capitalismmod.market.LogisticsEconomics.landValueMultiplier(100)
+                < com.ailudick.capitalismmod.market.LogisticsEconomics.landValueMultiplier(0));
+        assertTrue(com.ailudick.capitalismmod.market.LogisticsEconomics.landValueMultiplier(100) >= 0.85);
+    }
 }

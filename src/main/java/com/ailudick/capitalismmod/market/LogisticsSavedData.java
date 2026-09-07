@@ -62,6 +62,19 @@ public final class LogisticsSavedData extends SavedData {
         return List.copyOf(shipments);
     }
 
+    /** Estimates current destination-region traffic from cargo still in transit. */
+    public int congestionScore(String region) {
+        if (region == null || region.isBlank()) return 0;
+        long load = 0L;
+        long capacity = 0L;
+        for (Shipment shipment : shipments) {
+            if (!region.equals(shipment.destinationRegion()) || shipment.transport() == null) continue;
+            load = Math.min(Long.MAX_VALUE, load + Math.max(0, shipment.quantity()));
+            capacity = Math.min(Long.MAX_VALUE, capacity + shipment.transport().capacity());
+        }
+        return LogisticsEconomics.congestionScore(load, capacity);
+    }
+
     /** Returns whether a deterministic dispatch already created one of its shipments. */
     public boolean hasIdPrefix(String prefix) {
         return prefix != null && !prefix.isBlank()
