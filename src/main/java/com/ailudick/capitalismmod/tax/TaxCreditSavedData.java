@@ -37,6 +37,9 @@ public final class TaxCreditSavedData extends SavedData {
         return credits.getOrDefault(key(subject, currencyId), 0L);
     }
 
+    public Map<String, Long> balances() { return Map.copyOf(credits); }
+    public List<CreditLot> lots() { return List.copyOf(lots); }
+
     public long totalFor(UUID taxpayerUuid) {
         String marker = ":" + taxpayerUuid + ":";
         return credits.entrySet().stream().filter(entry -> entry.getKey().contains(marker))

@@ -88,6 +88,8 @@ import com.ailudick.capitalismmod.tax.TaxInvoiceAuditRules;
 import com.ailudick.capitalismmod.tax.TaxInvoiceLinkRules;
 import com.ailudick.capitalismmod.tax.TaxLedgerSavedData;
 import com.ailudick.capitalismmod.tax.TaxBill;
+import com.ailudick.capitalismmod.tax.TaxCreditSavedData;
+import com.ailudick.capitalismmod.tax.TaxCreditAuditRules;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -582,6 +584,28 @@ public final class EconomyAuditService {
             if (!TaxInvoiceLinkRules.matchesBill(invoice.direction(), invoice.grossAmount(), invoice.taxAmount(),
                     invoice.creditApplied(), invoice.taxpayerUuid(), invoice.currencyId(), invoice.sourceEventId(), bill)) {
                 issues.add("tax invoice bill mismatch " + invoice.sourceEventId());
+            }
+        }
+        TaxCreditSavedData taxCredits = TaxCreditSavedData.get(server);
+        Map<String, Long> visibleCreditTotals = new HashMap<>();
+        for (var lot : taxCredits.lots()) {
+            if (!TaxCreditAuditRules.validLot(lot.taxpayerUuid(), lot.currencyId(), lot.subjectType(),
+                    lot.subjectId(), lot.sourceId(), lot.periodStart(), lot.periodEnd(), lot.createdAt(), lot.amount(),
+                    Currencies.exists(lot.currencyId()))) {
+                issues.add("tax credit lot invalid " + lot.sourceId());
+                continue;
+            }
+            String key = lot.subjectType() + ":" + lot.subjectId() + ":" + lot.taxpayerUuid() + ":" + lot.currencyId();
+            visibleCreditTotals.merge(key, lot.amount(), EconomyAuditService::safeAdd);
+        }
+        for (var balance : taxCredits.balances().entrySet()) {
+            if (!TaxCreditAuditRules.aggregateCovers(balance.getValue(), visibleCreditTotals.getOrDefault(balance.getKey(), 0L))) {
+                issues.add("tax credit aggregate below visible lots " + balance.getKey());
+            }
+        }
+        for (var invoice : TaxInvoiceSavedData.get(server).invoices()) {
+            if ("input".equals(invoice.direction()) && !taxCredits.hasAppliedSource(invoice.sourceEventId())) {
+                issues.add("input tax invoice has no applied credit source " + invoice.sourceEventId());
             }
         }
         PopulationSavedData population = PopulationSavedData.get(server);
