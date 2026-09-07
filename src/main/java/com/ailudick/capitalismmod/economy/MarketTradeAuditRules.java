@@ -14,7 +14,7 @@ public final class MarketTradeAuditRules {
                 && (buyer == null || seller == null || !buyer.equals(seller))
                 && itemId != null && !itemId.isBlank() && quantity > 0
                 && currencyId != null && !currencyId.isBlank()
-                && total >= 0L && fee >= 0L && fee <= total
+                && total > 0L && fee >= 0L && fee <= total
                 && market != null && !market.isBlank();
     }
 }

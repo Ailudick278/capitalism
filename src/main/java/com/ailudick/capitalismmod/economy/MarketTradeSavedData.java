@@ -80,7 +80,7 @@ public final class MarketTradeSavedData extends SavedData {
                     nbt.hasUUID("seller") ? nbt.getUUID("seller") : null,
                     nbt.getString("item"), quantity, nbt.getString("currency"), total,
                     nbt.contains("market") ? nbt.getString("market") : "unknown",
-                    Math.max(0L, nbt.getLong("fee")));
+                    nbt.getLong("fee"));
             if (MarketTradeAuditRules.valid(trade.gameTime(), trade.buyer(), trade.seller(), trade.itemId(),
                     trade.quantity(), trade.currencyId(), trade.total(), trade.market(), trade.fee())) {
                 data.trades.add(trade);

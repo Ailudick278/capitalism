@@ -27,5 +27,7 @@ class MarketTradeAuditRulesTest {
                 "usd", 100L, "commodity", 1L));
         assertFalse(MarketTradeAuditRules.valid(10L, BUYER, SELLER, "minecraft:wheat", 2,
                 "usd", 100L, "commodity", 101L));
+        assertFalse(MarketTradeAuditRules.valid(10L, BUYER, SELLER, "minecraft:wheat", 2,
+                "usd", 0L, "commodity", 0L));
     }
 }
