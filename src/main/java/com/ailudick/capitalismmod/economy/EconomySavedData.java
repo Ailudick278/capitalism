@@ -51,6 +51,8 @@ public final class EconomySavedData extends SavedData {
     private final Map<String, Long> prevClose = new HashMap<>();
     private final Set<String> shareCreditReceipts = new HashSet<>();
     private final Set<String> shareDebitReceipts = new HashSet<>();
+    private final Map<String, Long> shareDebitQuantities = new HashMap<>();
+    private final Map<String, String> shareDebitStocks = new HashMap<>();
     private final Set<String> shareTransferReceipts = new HashSet<>();
     private final Set<String> netVolumeReceipts = new HashSet<>();
 
@@ -73,6 +75,8 @@ public final class EconomySavedData extends SavedData {
             Map<String, Long> prevClose,
             List<String> shareCreditReceipts,
             List<String> shareDebitReceipts,
+            Map<String, Long> shareDebitQuantities,
+            Map<String, String> shareDebitStocks,
             List<String> shareTransferReceipts,
             List<String> netVolumeReceipts) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -85,6 +89,10 @@ public final class EconomySavedData extends SavedData {
                 Codec.unboundedMap(Codec.STRING, Codec.LONG).fieldOf("prevClose").forGetter(State::prevClose),
                 Codec.STRING.listOf().optionalFieldOf("shareCreditReceipts", List.of()).forGetter(State::shareCreditReceipts),
                 Codec.STRING.listOf().optionalFieldOf("shareDebitReceipts", List.of()).forGetter(State::shareDebitReceipts),
+                Codec.unboundedMap(Codec.STRING, Codec.LONG).optionalFieldOf("shareDebitQuantities", Map.of())
+                        .forGetter(State::shareDebitQuantities),
+                Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("shareDebitStocks", Map.of())
+                        .forGetter(State::shareDebitStocks),
                 Codec.STRING.listOf().optionalFieldOf("shareTransferReceipts", List.of()).forGetter(State::shareTransferReceipts),
                 Codec.STRING.listOf().optionalFieldOf("netVolumeReceipts", List.of()).forGetter(State::netVolumeReceipts)
         ).apply(instance, State::new));
@@ -276,8 +284,13 @@ public final class EconomySavedData extends SavedData {
         if (holdings(stockId, playerId) < amount) return false;
         addShares(stockId, playerId, -amount);
         shareDebitReceipts.add(sourceId);
+        shareDebitQuantities.put(sourceId, amount);
+        shareDebitStocks.put(sourceId, stockId);
         while (shareDebitReceipts.size() > MAX_SHARE_CREDIT_RECEIPTS) {
-            shareDebitReceipts.remove(shareDebitReceipts.iterator().next());
+            String oldest = shareDebitReceipts.iterator().next();
+            shareDebitReceipts.remove(oldest);
+            shareDebitQuantities.remove(oldest);
+            shareDebitStocks.remove(oldest);
         }
         setDirty();
         return true;
@@ -285,6 +298,14 @@ public final class EconomySavedData extends SavedData {
 
     public boolean hasShareDebit(String sourceId) {
         return sourceId != null && !sourceId.isBlank() && shareDebitReceipts.contains(sourceId);
+    }
+
+    public long shareDebitQuantity(String sourceId) {
+        return sourceId == null || sourceId.isBlank() ? 0L : shareDebitQuantities.getOrDefault(sourceId, 0L);
+    }
+
+    public String shareDebitStock(String sourceId) {
+        return sourceId == null || sourceId.isBlank() ? "" : shareDebitStocks.getOrDefault(sourceId, "");
     }
 
     /** Records traded volume once for a durable settlement source. */
@@ -377,6 +398,7 @@ public final class EconomySavedData extends SavedData {
         State state = new State(new HashMap<>(prices), new HashMap<>(netVolume), new HashMap<>(history),
                 new HashMap<>(shareholders), new HashMap<>(listings), new ArrayList<>(orders), new HashMap<>(prevClose),
                 new ArrayList<>(shareCreditReceipts), new ArrayList<>(shareDebitReceipts),
+                new HashMap<>(shareDebitQuantities), new HashMap<>(shareDebitStocks),
                 new ArrayList<>(shareTransferReceipts), new ArrayList<>(netVolumeReceipts));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
@@ -396,6 +418,8 @@ public final class EconomySavedData extends SavedData {
                 data.prevClose.putAll(state.prevClose());
                 data.shareCreditReceipts.addAll(state.shareCreditReceipts());
                 data.shareDebitReceipts.addAll(state.shareDebitReceipts());
+                data.shareDebitQuantities.putAll(state.shareDebitQuantities());
+                data.shareDebitStocks.putAll(state.shareDebitStocks());
                 data.shareTransferReceipts.addAll(state.shareTransferReceipts());
                 data.netVolumeReceipts.addAll(state.netVolumeReceipts());
             });

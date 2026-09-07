@@ -51,6 +51,7 @@ import com.ailudick.capitalismmod.market.MarketOrder;
 import com.ailudick.capitalismmod.market.MarketOrderAuditRules;
 import com.ailudick.capitalismmod.market.CommoditySettlementAuditRules;
 import com.ailudick.capitalismmod.stock.StockSettlementAuditRules;
+import com.ailudick.capitalismmod.stock.StockOrderAuditRules;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
@@ -284,10 +285,20 @@ public final class EconomyAuditService {
         }
         EconomySavedData stocks = EconomySavedData.get(server);
         for (StockOrder order : stocks.orders()) {
-            if (order.id().isBlank() || !marketOrderIds.add("stock:" + order.id())
+            if (!StockOrderAuditRules.valid(order.id(), order.ownerId(), order.stockId(), order.quantity(),
+                    order.pricePerUnit(), order.createdAt())
+                    || !marketOrderIds.add("stock:" + order.id())
                     || !isUuid(order.ownerId()) || order.stockId().isBlank() || !stocks.isStock(order.stockId())
                     || order.quantity() <= 0 || order.pricePerUnit() <= 0L || order.createdAt() < 0L) {
                 issues.add("stock order invalid " + order.id());
+            }
+            if (order.sell()) {
+                String source = "stock-sell-order:" + order.id();
+                if (stocks.hasShareDebit(source)
+                        && (!order.stockId().equals(stocks.shareDebitStock(source))
+                        || !StockOrderAuditRules.coversSellEscrow(stocks.shareDebitQuantity(source), order.quantity()))) {
+                    issues.add("stock sell escrow differs from order " + order.id());
+                }
             }
         }
         Set<String> shipmentIds = new HashSet<>();
