@@ -289,8 +289,12 @@ public final class StockMarket {
         long refund = total - spent - reserved;
         if (refund > 0) {
             MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
-            mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(refund),
-                    "stock-buy-residual-refund:" + orderId);
+            String refundSource = "stock-buy-residual-refund:" + orderId;
+            if (!mailbox.hasCreditSource(refundSource)
+                    && !mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(refund),
+                    refundSource)) {
+                return false;
+            }
             mailbox.redeemMoneyOnly(player);
         }
         return true;
