@@ -28,4 +28,10 @@ public final class LandDemandEconomics {
                 (Math.max(0, Math.min(100, accessScore)) - 50) / 250.0));
         return 1.0 + populationPressure + servicePremium + businessPremium + accessPremium;
     }
+
+    /** Smoothly incorporates observed market prices without allowing a spike to dominate. */
+    public static double marketMultiplier(long marketAverage, double baselineValue) {
+        if (marketAverage <= 0L || !Double.isFinite(baselineValue) || baselineValue <= 0.0) return 1.0;
+        return Math.max(0.75, Math.min(1.50, 0.75 + marketAverage / baselineValue * 0.25));
+    }
 }

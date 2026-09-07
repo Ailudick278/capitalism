@@ -27,8 +27,9 @@ public final class LandValuationHelper {
         int businessSites = (int) CompanySiteSavedData.get(server).allSites().stream()
                 .filter(site -> claim.dimension().equals(site.dimension()))
                 .filter(site -> region.equals(TradeRegion.of(new net.minecraft.core.BlockPos(
-                        site.chunkX() * 16, 0, site.chunkZ() * 16)))).count();
-        return suggestedPrice(server.overworld(), claim, residents, services, businessSites, access);
+                site.chunkX() * 16, 0, site.chunkZ() * 16)))).count();
+        long marketAverage = LandMarketSavedData.get(server).average(claim.dimension());
+        return suggestedPrice(server.overworld(), claim, residents, services, businessSites, access, marketAverage);
     }
 
     private static long suggestedPrice(Level level, LandClaim claim, int residents, int services) {
@@ -42,6 +43,11 @@ public final class LandValuationHelper {
 
     private static long suggestedPrice(Level level, LandClaim claim, int residents, int services,
                                        int businessSites, int access) {
+        return suggestedPrice(level, claim, residents, services, businessSites, access, 0L);
+    }
+
+    private static long suggestedPrice(Level level, LandClaim claim, int residents, int services,
+                                       int businessSites, int access, long marketAverage) {
         if (level == null || claim == null) return 0L;
         double purposeFactor = switch (claim.purpose()) {
             case "residential", "2301" -> 1.20;
@@ -55,9 +61,11 @@ public final class LandValuationHelper {
         double distance = Math.sqrt(Math.pow(claim.chunkX() * 16.0 - level.getSharedSpawnPos().getX(), 2)
                 + Math.pow(claim.chunkZ() * 16.0 - level.getSharedSpawnPos().getZ(), 2));
         double locationFactor = Math.max(0.75, Math.min(1.50, 1.50 - distance / 20000.0));
-        double value = (Config.LAND_CLAIM_PRICE.get() + Math.max(0L, claim.resourceAmount()) * 5.0)
+        double baseline = Config.LAND_CLAIM_PRICE.get() + Math.max(0L, claim.resourceAmount()) * 5.0;
+        double value = baseline
                 * purposeFactor * locationFactor * LandDemandEconomics.multiplier(
-                residents, services, businessSites, access);
+                residents, services, businessSites, access)
+                * LandDemandEconomics.marketMultiplier(marketAverage, baseline);
         return Math.max(0L, Math.round(value));
     }
 }

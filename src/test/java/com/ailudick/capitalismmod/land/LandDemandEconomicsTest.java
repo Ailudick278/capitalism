@@ -16,5 +16,7 @@ class LandDemandEconomicsTest {
                 > LandDemandEconomics.multiplier(0, 50, 0));
         assertTrue(LandDemandEconomics.multiplier(0, 50, 0, 100)
                 > LandDemandEconomics.multiplier(0, 50, 0, 0));
+        assertEquals(1.0, LandDemandEconomics.marketMultiplier(0, 100.0), 0.0001);
+        assertTrue(LandDemandEconomics.marketMultiplier(10_000, 100.0) <= 1.50);
     }
 }
