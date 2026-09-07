@@ -50,6 +50,7 @@ import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
 import com.ailudick.capitalismmod.market.LogisticsAuditRules;
 import com.ailudick.capitalismmod.market.MarketMailboxSavedData;
+import com.ailudick.capitalismmod.market.WarehouseSavedData;
 import com.ailudick.capitalismmod.auction.AuctionAuditRules;
 import com.ailudick.capitalismmod.auction.AuctionSavedData;
 import com.ailudick.capitalismmod.auction.AuctionSettlementSavedData;
@@ -215,6 +216,27 @@ public final class EconomyAuditService {
                 if (!validItemId(item.getKey()) || item.getValue() == null || item.getValue() <= 0) {
                     issues.add("market mailbox item invalid " + item.getKey());
                 }
+            }
+        }
+        WarehouseSavedData warehouse = WarehouseSavedData.get(server);
+        for (var owner : warehouse.allStorage().entrySet()) {
+            if (owner.getKey() == null || owner.getKey().isBlank()) issues.add("warehouse owner invalid");
+            for (var item : owner.getValue().entrySet()) {
+                if (!validItemId(item.getKey()) || item.getValue() == null || item.getValue() <= 0) {
+                    issues.add("warehouse stock invalid " + owner.getKey() + "/" + item.getKey());
+                }
+            }
+        }
+        for (var consumed : warehouse.consumedSourceItems().entrySet()) {
+            Integer quantity = warehouse.consumedSourceQuantities().get(consumed.getKey());
+            if (!validItemId(consumed.getValue()) || quantity == null || quantity <= 0) {
+                issues.add("warehouse consumed source invalid " + consumed.getKey());
+            }
+        }
+        for (var consumed : warehouse.consumedSourceQuantities().entrySet()) {
+            if (!warehouse.consumedSourceItems().containsKey(consumed.getKey()) || consumed.getValue() == null
+                    || consumed.getValue() <= 0) {
+                issues.add("warehouse consumed quantity missing item " + consumed.getKey());
             }
         }
         SupplyOrderIntentSavedData.get(server).intents().stream().limit(100)

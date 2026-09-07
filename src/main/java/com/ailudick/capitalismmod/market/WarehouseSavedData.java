@@ -34,6 +34,8 @@ public final class WarehouseSavedData extends SavedData {
     private final Set<String> creditedSources = new HashSet<>();
     private final Map<String, Integer> creditedSourceQuantities = new HashMap<>();
     private final Set<String> consumedSources = new HashSet<>();
+    private final Map<String, String> consumedSourceItems = new HashMap<>();
+    private final Map<String, Integer> consumedSourceQuantities = new HashMap<>();
 
     public record AuditEntry(String action, String from, String to, String itemId, int count) {
         static final Codec<AuditEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -47,7 +49,8 @@ public final class WarehouseSavedData extends SavedData {
 
     private record State(Map<String, Map<String, Integer>> storage, java.util.List<AuditEntry> audit,
                          List<String> creditedSources, Map<String, Integer> creditedSourceQuantities,
-                         List<String> consumedSources) {
+                         List<String> consumedSources, Map<String, String> consumedSourceItems,
+                         Map<String, Integer> consumedSourceQuantities) {
         static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, Codec.INT))
                         .fieldOf("storage").forGetter(State::storage),
@@ -58,7 +61,11 @@ public final class WarehouseSavedData extends SavedData {
                         .optionalFieldOf("creditedSourceQuantities", Map.of())
                         .forGetter(State::creditedSourceQuantities),
                 Codec.STRING.listOf().optionalFieldOf("consumedSources", List.of())
-                        .forGetter(State::consumedSources)
+                        .forGetter(State::consumedSources),
+                Codec.unboundedMap(Codec.STRING, Codec.STRING)
+                        .optionalFieldOf("consumedSourceItems", Map.of()).forGetter(State::consumedSourceItems),
+                Codec.unboundedMap(Codec.STRING, Codec.INT)
+                        .optionalFieldOf("consumedSourceQuantities", Map.of()).forGetter(State::consumedSourceQuantities)
         ).apply(instance, State::new));
     }
 
@@ -72,6 +79,12 @@ public final class WarehouseSavedData extends SavedData {
 
     public Map<String, Integer> storage(InventoryOwner owner) {
         return storage.getOrDefault(owner.storageKey(), Map.of());
+    }
+
+    public Map<String, Map<String, Integer>> allStorage() {
+        Map<String, Map<String, Integer>> copy = new HashMap<>();
+        storage.forEach((owner, items) -> copy.put(owner, Map.copyOf(items)));
+        return Map.copyOf(copy);
     }
 
     public int count(InventoryOwner owner, String itemId) {
@@ -128,13 +141,25 @@ public final class WarehouseSavedData extends SavedData {
         return sourceId != null && !sourceId.isBlank() && consumedSources.contains(sourceId);
     }
 
+    public Map<String, String> consumedSourceItems() { return Map.copyOf(consumedSourceItems); }
+    public Map<String, Integer> consumedSourceQuantities() { return Map.copyOf(consumedSourceQuantities); }
+
     /** Removes warehouse stock once for a durable consumption source. */
     public boolean consumeOnce(InventoryOwner owner, Item item, int count, String sourceId) {
         if (owner == null || sourceId == null || sourceId.isBlank() || count <= 0) return false;
-        if (consumedSources.contains(sourceId)) return true;
+        if (consumedSources.contains(sourceId)) {
+            String itemId = item == null || item == Items.AIR ? "" : BuiltInRegistries.ITEM.getKey(item).toString();
+            Integer recordedCount = consumedSourceQuantities.get(sourceId);
+            String recordedItem = consumedSourceItems.get(sourceId);
+            return WarehouseAuditRules.matchesConsumption(recordedItem, recordedCount, itemId, count);
+        }
         if (!consume(owner, item, count)) return false;
         consumedSources.add(sourceId);
+        consumedSourceItems.put(sourceId, BuiltInRegistries.ITEM.getKey(item).toString());
+        consumedSourceQuantities.put(sourceId, count);
         while (consumedSources.size() > 8192) consumedSources.remove(consumedSources.iterator().next());
+        while (consumedSourceItems.size() > 8192) consumedSourceItems.remove(consumedSourceItems.keySet().iterator().next());
+        while (consumedSourceQuantities.size() > 8192) consumedSourceQuantities.remove(consumedSourceQuantities.keySet().iterator().next());
         setDirty();
         return true;
     }
@@ -336,7 +361,8 @@ public final class WarehouseSavedData extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         State state = new State(new HashMap<>(storage), new java.util.ArrayList<>(audit),
                 new java.util.ArrayList<>(creditedSources), new HashMap<>(creditedSourceQuantities),
-                new java.util.ArrayList<>(consumedSources));
+                new java.util.ArrayList<>(consumedSources), new HashMap<>(consumedSourceItems),
+                new HashMap<>(consumedSourceQuantities));
         State.CODEC.encodeStart(NbtOps.INSTANCE, state).result()
                 .ifPresent(encoded -> tag.put("data", encoded));
         return tag;
@@ -367,9 +393,21 @@ public final class WarehouseSavedData extends SavedData {
                     }
                     data.creditedSourceQuantities.keySet().removeIf(source -> !data.creditedSources.contains(source));
                     data.consumedSources.addAll(state.consumedSources());
+                    state.consumedSourceItems().forEach((source, item) -> {
+                        if (source != null && !source.isBlank() && item != null && !item.isBlank()) {
+                            data.consumedSourceItems.put(source, item);
+                        }
+                    });
+                    state.consumedSourceQuantities().forEach((source, quantity) -> {
+                        if (source != null && !source.isBlank() && quantity != null && quantity > 0) {
+                            data.consumedSourceQuantities.put(source, quantity);
+                        }
+                    });
                     while (data.consumedSources.size() > 8192) {
                         data.consumedSources.remove(data.consumedSources.iterator().next());
                     }
+                    data.consumedSourceItems.keySet().removeIf(source -> !data.consumedSources.contains(source));
+                    data.consumedSourceQuantities.keySet().removeIf(source -> !data.consumedSources.contains(source));
             });
         }
         return data;
