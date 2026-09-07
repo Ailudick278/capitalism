@@ -1331,7 +1331,7 @@ public class CompanyCommand {
                 + ", existing loan debt USD " + assessment.existingDebt()
                 + ", indicative headroom USD " + assessment.indicativeHeadroom()), false);
         source.sendSuccess(() -> Component.literal(
-                "This is an underwriting estimate only; current loans remain unsecured."), false);
+                "New loans may require this indicative coverage; assets are not yet pledged or liquidated."), false);
         return 1;
     }
 
