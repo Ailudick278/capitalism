@@ -50,6 +50,7 @@ import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.MarketOrder;
 import com.ailudick.capitalismmod.market.MarketOrderAuditRules;
 import com.ailudick.capitalismmod.market.CommoditySettlementAuditRules;
+import com.ailudick.capitalismmod.stock.StockSettlementAuditRules;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
@@ -150,6 +151,20 @@ public final class EconomyAuditService {
         for (var transaction : commodityPhases.entrySet()) {
             if (!CommoditySettlementAuditRules.complete(transaction.getValue())) {
                 issues.add("commodity settlement phases incomplete " + transaction.getKey());
+            }
+        }
+        Map<String, Set<String>> stockPhases = new HashMap<>();
+        for (var entry : financialJournal.entries()) {
+            if ("stock".equals(entry.instrument()) && entry.transactionId().startsWith("stock-trade:")) {
+                if ("completed".equals(entry.status())) {
+                    stockPhases.computeIfAbsent(entry.transactionId(), ignored -> new HashSet<>())
+                            .add(entry.phase());
+                }
+            }
+        }
+        for (var transaction : stockPhases.entrySet()) {
+            if (!StockSettlementAuditRules.complete(transaction.getValue())) {
+                issues.add("stock settlement phases incomplete " + transaction.getKey());
             }
         }
         for (var entry : EconomicSettlementJournalSavedData.get(server).entries()) {
