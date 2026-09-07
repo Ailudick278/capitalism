@@ -11,6 +11,8 @@ class LandDemandEconomicsTest {
         assertEquals(0.8, LandDemandEconomics.multiplier(0, 0), 0.0001);
         assertTrue(LandDemandEconomics.multiplier(10_000, 100)
                 > LandDemandEconomics.multiplier(0, 0));
-        assertTrue(LandDemandEconomics.multiplier(Integer.MAX_VALUE, 100) <= 1.7);
+        assertTrue(LandDemandEconomics.multiplier(Integer.MAX_VALUE, 100, 100) <= 1.95);
+        assertTrue(LandDemandEconomics.multiplier(0, 50, 5)
+                > LandDemandEconomics.multiplier(0, 50, 0));
     }
 }

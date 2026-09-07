@@ -10,10 +10,15 @@ public final class LandDemandEconomics {
      * region cannot make prices overflow or become unplayable.
      */
     public static double multiplier(int residents, int publicServiceScore) {
+        return multiplier(residents, publicServiceScore, 0);
+    }
+
+    public static double multiplier(int residents, int publicServiceScore, int businessSites) {
         double populationPressure = Math.max(0.0, Math.min(0.50,
                 Math.max(0, residents) / 10_000.0));
         double servicePremium = Math.max(-0.20, Math.min(0.20,
                 (Math.max(0, Math.min(100, publicServiceScore)) - 50) / 250.0));
-        return 1.0 + populationPressure + servicePremium;
+        double businessPremium = Math.max(0.0, Math.min(0.25, Math.max(0, businessSites) * 0.05));
+        return 1.0 + populationPressure + servicePremium + businessPremium;
     }
 }

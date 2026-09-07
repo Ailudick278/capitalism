@@ -42,6 +42,10 @@ public final class CompanySiteSavedData extends SavedData {
                 .filter(site -> dimension.equals(site.dimension())).toList();
     }
 
+    public List<Site> allSites() {
+        return sites.values().stream().flatMap(List::stream).toList();
+    }
+
     public boolean set(Site site) {
         if (site == null || site.companyId() == null || site.companyId().isBlank()
                 || site.dimension() == null || site.dimension().isBlank()) return false;

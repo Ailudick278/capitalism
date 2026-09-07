@@ -6,6 +6,7 @@ import net.minecraft.server.MinecraftServer;
 import com.ailudick.capitalismmod.market.TradeRegion;
 import com.ailudick.capitalismmod.market.LogisticsInfrastructureSavedData;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.company.CompanySiteSavedData;
 
 /** Calculates a transparent reference price; it does not control seller pricing. */
 public final class LandValuationHelper {
@@ -21,10 +22,19 @@ public final class LandValuationHelper {
         String region = TradeRegion.of(new net.minecraft.core.BlockPos(claim.chunkX() * 16, 0, claim.chunkZ() * 16));
         int residents = PopulationSavedData.get(server).population(region);
         int services = LogisticsInfrastructureSavedData.get(server).publicServiceScore(server, region, residents);
-        return suggestedPrice(server.overworld(), claim, residents, services);
+        int businessSites = (int) CompanySiteSavedData.get(server).allSites().stream()
+                .filter(site -> claim.dimension().equals(site.dimension()))
+                .filter(site -> region.equals(TradeRegion.of(new net.minecraft.core.BlockPos(
+                        site.chunkX() * 16, 0, site.chunkZ() * 16)))).count();
+        return suggestedPrice(server.overworld(), claim, residents, services, businessSites);
     }
 
     private static long suggestedPrice(Level level, LandClaim claim, int residents, int services) {
+        return suggestedPrice(level, claim, residents, services, 0);
+    }
+
+    private static long suggestedPrice(Level level, LandClaim claim, int residents, int services,
+                                       int businessSites) {
         if (level == null || claim == null) return 0L;
         double purposeFactor = switch (claim.purpose()) {
             case "residential", "2301" -> 1.20;
@@ -39,7 +49,8 @@ public final class LandValuationHelper {
                 + Math.pow(claim.chunkZ() * 16.0 - level.getSharedSpawnPos().getZ(), 2));
         double locationFactor = Math.max(0.75, Math.min(1.50, 1.50 - distance / 20000.0));
         double value = (Config.LAND_CLAIM_PRICE.get() + Math.max(0L, claim.resourceAmount()) * 5.0)
-                * purposeFactor * locationFactor * LandDemandEconomics.multiplier(residents, services);
+                * purposeFactor * locationFactor * LandDemandEconomics.multiplier(
+                residents, services, businessSites);
         return Math.max(0L, Math.round(value));
     }
 }
