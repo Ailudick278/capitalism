@@ -60,6 +60,8 @@ import com.ailudick.capitalismmod.auction.AuctionBidSavedData;
 import com.ailudick.capitalismmod.auction.AuctionSettlementAuditRules;
 import com.ailudick.capitalismmod.supply.SupplySettlementAuditRules;
 import com.ailudick.capitalismmod.supply.SupplyEscrowAuditRules;
+import com.ailudick.capitalismmod.supply.SupplyOrderAuditSavedData;
+import com.ailudick.capitalismmod.supply.SupplyOrderAuditRules;
 import com.ailudick.capitalismmod.business.BusinessEscrowAuditRules;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.ExchangeRates;
@@ -206,6 +208,44 @@ public final class EconomyAuditService {
                     loss.transport(), loss.disruptionCount(), loss.lostAt(), loss.unitPrice())
                     || !LogisticsAuditRules.claimUnique(shipmentIds, loss.shipmentId())) {
                 issues.add("logistics loss invalid " + loss.shipmentId());
+            }
+        }
+        Set<String> supplyEventKeys = new HashSet<>();
+        Map<String, SupplyOrderAuditSavedData.Event> supplyIdentities = new HashMap<>();
+        Map<String, Long> supplyOrdered = new HashMap<>();
+        Map<String, Long> supplyDelivered = new HashMap<>();
+        Map<String, Long> supplyDispatched = new HashMap<>();
+        Map<String, Integer> supplyCreated = new HashMap<>();
+        for (var event : SupplyOrderAuditSavedData.get(server).events()) {
+            if (!SupplyOrderAuditRules.validEvent(event.orderId(), event.type(), event.buyerUuid(),
+                    event.supplierUuid(), event.itemId(), event.quantity(), event.amount(), event.occurredAt(),
+                    validItemId(event.itemId()))) {
+                issues.add("supply order audit event invalid " + event.orderId());
+                continue;
+            }
+            if (!event.eventKey().isBlank() && !supplyEventKeys.add(event.orderId() + ":" + event.type() + ":" + event.eventKey())) {
+                issues.add("duplicate supply order audit event " + event.orderId() + "/" + event.type());
+            }
+            SupplyOrderAuditSavedData.Event identity = supplyIdentities.putIfAbsent(event.orderId(), event);
+            if (identity != null && !SupplyOrderAuditRules.sameOrderIdentity(event.buyerUuid(), event.supplierUuid(),
+                    event.itemId(), identity.buyerUuid(), identity.supplierUuid(), identity.itemId())) {
+                issues.add("supply order audit identity mismatch " + event.orderId());
+            }
+            if ("CREATED".equals(event.type())) {
+                supplyCreated.merge(event.orderId(), 1, Integer::sum);
+                supplyOrdered.merge(event.orderId(), (long) event.quantity(), Math::max);
+            } else if ("DELIVERED".equals(event.type())) {
+                supplyDelivered.merge(event.orderId(), (long) event.quantity(), EconomyAuditService::safeAdd);
+            } else if ("DISPATCHED".equals(event.type())) {
+                supplyDispatched.merge(event.orderId(), (long) event.quantity(), EconomyAuditService::safeAdd);
+            }
+        }
+        for (String orderId : supplyIdentities.keySet()) {
+            long ordered = supplyOrdered.getOrDefault(orderId, 0L);
+            if (supplyCreated.getOrDefault(orderId, 0) != 1
+                    || !SupplyOrderAuditRules.deliveryTotalsWithinOrder(ordered,
+                    supplyDelivered.getOrDefault(orderId, 0L), supplyDispatched.getOrDefault(orderId, 0L))) {
+                issues.add("supply order audit quantity mismatch " + orderId);
             }
         }
         MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(server);
