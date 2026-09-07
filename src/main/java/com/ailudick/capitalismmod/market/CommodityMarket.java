@@ -289,8 +289,12 @@ public final class CommodityMarket {
         long refund = total - spent - reserved;
         if (refund > 0) {
             MarketMailboxSavedData mailbox = MarketMailboxSavedData.get(player.getServer());
-            mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(refund),
-                    "commodity-buy-residual-refund:" + orderId);
+            String refundSource = "commodity-buy-residual-refund:" + orderId;
+            if (!mailbox.hasCreditSource(refundSource)
+                    && !mailbox.creditMoneyOnce(player.getUUID(), Currencies.USD.id(), Money.toMinor(refund),
+                    refundSource)) {
+                return false;
+            }
             mailbox.redeemMoneyOnly(player);
         }
         data.setDirty();
