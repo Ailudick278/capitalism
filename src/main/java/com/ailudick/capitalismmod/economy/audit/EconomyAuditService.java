@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.economy.audit;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyLedgerEntry;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
+import com.ailudick.capitalismmod.company.CompanyLedgerSourceRules;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.economy.labor.EmploymentRecord;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
@@ -866,6 +867,15 @@ public final class EconomyAuditService {
                     || !Integer.valueOf((int) Math.min(Integer.MAX_VALUE, consumption.quantity()))
                     .equals(warehouse.consumedSourceQuantities().get(goodsSource))) {
                 issues.add("household consumption missing goods evidence " + consumption.id());
+            }
+            long revenueUsdMinor = ExchangeRates.convert(consumption.totalCostMinor(),
+                    Config.defaultCurrency(), Currencies.USD);
+            long revenueMajor = Money.toMajorCeiling(revenueUsdMinor);
+            boolean revenueRecorded = revenueMajor > 0L && CompanySavedData.get(server).companies().keySet().stream()
+                    .map(companyId -> CompanyLedgerSavedData.get(server).findSource(companyId, consumption.id()))
+                    .anyMatch(entry -> CompanyLedgerSourceRules.matches(entry, Currencies.USD.id(), revenueMajor, true));
+            if (!revenueRecorded) {
+                issues.add("household consumption missing company revenue " + consumption.id());
             }
         }
         HousingLeaseSavedData housing = HousingLeaseSavedData.get(server);
