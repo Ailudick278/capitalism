@@ -16,4 +16,11 @@ class HouseholdFinancialRiskTest {
     void invalidInputsAreHighRisk() {
         assertEquals(100, HouseholdFinancialRisk.score(-1L, 1L, 0L, 0L, 0));
     }
+
+    @Test
+    void interestPremiumScalesWithRisk() {
+        assertEquals(0.0, HouseholdFinancialRisk.interestPremium(0));
+        assertEquals(0.04, HouseholdFinancialRisk.interestPremium(50), 0.000001);
+        assertEquals(0.08, HouseholdFinancialRisk.interestPremium(100), 0.000001);
+    }
 }

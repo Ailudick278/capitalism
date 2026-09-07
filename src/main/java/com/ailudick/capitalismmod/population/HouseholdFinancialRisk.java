@@ -20,6 +20,11 @@ public final class HouseholdFinancialRisk {
         return Math.min(100, liquidity + debtRisk + unemploymentRisk);
     }
 
+    /** Annual interest-rate premium: 0% at no stress, up to 8% at maximum stress. */
+    public static double interestPremium(int financialRisk) {
+        return Math.max(0, Math.min(100, financialRisk)) * 0.0008;
+    }
+
     private static long add(long left, long right) {
         return right > Long.MAX_VALUE - left ? Long.MAX_VALUE : left + right;
     }

@@ -20,6 +20,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.common.NeoForge;
 import com.ailudick.capitalismmod.population.HouseholdFinancialRiskSavedData;
+import com.ailudick.capitalismmod.population.HouseholdFinancialRisk;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -132,7 +133,12 @@ public final class BankAccountHelper {
         }
         int policyRateBps = GovernmentPolicySavedData.get(player.getServer()).policyRateBasisPoints();
         double depositRate = MonetaryPolicyEconomics.adjustedAnnualRate(Config.DEPOSIT_RATE_PER_YEAR.get(), policyRateBps) / 365.0;
-        double loanRate = MonetaryPolicyEconomics.adjustedAnnualRate(Config.LOAN_RATE_PER_YEAR.get(), policyRateBps) / 365.0;
+        var householdRisk = HouseholdFinancialRiskSavedData.get(player.getServer())
+                .latest(player.getUUID().toString());
+        double riskPremium = householdRisk == null ? 0.0
+                : HouseholdFinancialRisk.interestPremium(householdRisk.score());
+        double loanRate = (MonetaryPolicyEconomics.adjustedAnnualRate(Config.LOAN_RATE_PER_YEAR.get(), policyRateBps)
+                + riskPremium) / 365.0;
         Map<String, BankAccount> accounts = getAccounts(player);
         if (accounts.isEmpty()) {
             player.setData(ModAttachments.LAST_BANK_SETTLEMENT_DAY, settlementDay);
