@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.currency.Currencies;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.population.NpcBankingSavedData;
 import net.minecraft.server.MinecraftServer;
 
 /** Calculates transparent M1-style private money and bank-credit aggregates. */
@@ -25,6 +26,9 @@ public final class MoneySupplyService {
             deposits = add(deposits, value.depositsMinor());
             credit = add(credit, value.loanDebtMinor());
         }
+        NpcBankingSavedData npcBanking = NpcBankingSavedData.get(server);
+        deposits = add(deposits, npcBanking.totalDeposits());
+        credit = add(credit, npcBanking.totalDebt());
         long privateMoney = add(add(household, company), deposits);
         MoneySupplySavedData.Snapshot snapshot = new MoneySupplySavedData.Snapshot(day, household, company,
                 deposits, GovernmentPolicySavedData.get(server).treasuryMinor(), privateMoney, credit);
