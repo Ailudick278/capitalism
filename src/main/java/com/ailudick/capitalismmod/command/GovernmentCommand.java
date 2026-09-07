@@ -53,6 +53,8 @@ public final class GovernmentCommand {
 
     private static int info(CommandSourceStack source) {
         GovernmentPolicySavedData data = GovernmentPolicySavedData.get(source.getServer());
+        long day = source.getServer().overworld().getGameTime()
+                / com.ailudick.capitalismmod.calendar.PerpetualCalendar.TICKS_PER_DAY;
         source.sendSuccess(() -> Component.literal("government treasuryMinor=" + data.treasuryMinor()
                 + " dailyBenefitMinor=" + data.dailyBenefitMinor()
                 + " regionalSupportRate=" + data.regionalSupportRatePercent() + "%"
@@ -61,7 +63,8 @@ public final class GovernmentCommand {
                 + " autoOpenMarket=" + data.automaticOpenMarketPolicy()
                 + " inflationTargetBps=" + data.inflationTargetBps()
                 + " transfers=" + data.transactions().size()
-                + " taxRevenues=" + data.taxRevenues().size()), false);
+                + " taxRevenues=" + data.taxRevenues().size()
+                + " spendingByCategory=" + data.spendingByCategory(day)), false);
         return 1;
     }
 

@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
 
 /** Persistent fiscal policy, reserve balance, and transfer audit trail. */
 public final class GovernmentPolicySavedData extends SavedData {
@@ -56,6 +58,18 @@ public final class GovernmentPolicySavedData extends SavedData {
     public List<Transaction> transactions() { return List.copyOf(transactions); }
     public List<TaxRevenue> taxRevenues() { return List.copyOf(taxRevenues); }
     public List<RentRevenue> rentRevenues() { return List.copyOf(rentRevenues); }
+
+    public Map<GovernmentBudgetCategory, Long> spendingByCategory(long day) {
+        Map<GovernmentBudgetCategory, Long> totals = new HashMap<>();
+        for (Transaction transaction : transactions) {
+            if (transaction.day() != day) continue;
+            GovernmentBudgetCategory category = GovernmentBudgetCategory.fromTransactionId(transaction.id());
+            long previous = totals.getOrDefault(category, 0L);
+            totals.put(category, previous > Long.MAX_VALUE - transaction.amount()
+                    ? Long.MAX_VALUE : previous + transaction.amount());
+        }
+        return Map.copyOf(totals);
+    }
 
     public boolean setDailyBenefit(long amount) {
         if (amount < 0L || amount > 1_000_000_000L) return false;
