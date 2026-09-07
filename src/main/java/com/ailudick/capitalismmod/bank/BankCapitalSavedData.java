@@ -88,6 +88,10 @@ public final class BankCapitalSavedData extends SavedData {
         return true;
     }
 
+    public boolean hasTransaction(String sourceId) {
+        return sourceId != null && !sourceId.isBlank() && transactionReceipts.contains(sourceId);
+    }
+
     public void initialize(long openingCapitalMinor) {
         if (initialized) return;
         capitalMinor = Math.max(0L, openingCapitalMinor);

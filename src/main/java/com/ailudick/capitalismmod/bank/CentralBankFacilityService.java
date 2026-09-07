@@ -22,4 +22,36 @@ public final class CentralBankFacilityService {
         return facilities.add(new CentralBankFacilitySavedData.Facility(sourceId, day, amountMinor,
                 amountMinor, annualRateBasisPoints, termDays, termDays, -1L));
     }
+
+    /** Settles one installment per day; each cash leg is protected by its own receipt. */
+    public static int settleDaily(MinecraftServer server, long day) {
+        if (server == null || day < 0L) return 0;
+        CentralBankFacilitySavedData data = CentralBankFacilitySavedData.get(server);
+        BankCapitalSavedData capital = BankCapitalSavedData.get(server);
+        GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);
+        int settled = 0;
+        for (CentralBankFacilitySavedData.Facility facility : data.facilities()) {
+            if (facility.daysRemaining() <= 0 || facility.lastSettlementDay() >= day) continue;
+            long principal = CentralBankFacilityEconomics.principalInstallment(
+                    facility.remainingPrincipal(), facility.daysRemaining());
+            long interest = CentralBankFacilityEconomics.interestDue(
+                    facility.remainingPrincipal(), facility.annualRateBasisPoints(), 1);
+            long payment = principal > Long.MAX_VALUE - interest ? Long.MAX_VALUE : principal + interest;
+            String receipt = "central-bank-repayment:" + facility.id() + ":" + day;
+            if (!capital.hasTransaction(receipt)) {
+                if (payment <= 0L || capital.capitalMinor() < payment
+                        || !capital.applyTransactionOnce(receipt, interest, payment)) continue;
+            }
+            String governmentReceipt = receipt + ":treasury";
+            if (!government.hasDeposit(governmentReceipt)
+                    && !government.depositOnce(payment, governmentReceipt)) continue;
+            long remaining = Math.max(0L, facility.remainingPrincipal() - principal);
+            int days = Math.max(0, facility.daysRemaining() - 1);
+            data.replace(new CentralBankFacilitySavedData.Facility(facility.id(), facility.issuedDay(),
+                    facility.principalMinor(), remaining, facility.annualRateBasisPoints(),
+                    facility.termDays(), days, day));
+            settled++;
+        }
+        return settled;
+    }
 }
