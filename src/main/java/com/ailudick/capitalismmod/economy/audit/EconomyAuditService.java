@@ -84,6 +84,9 @@ import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
+import com.ailudick.capitalismmod.company.CompanyLogisticsCostSavedData;
+import com.ailudick.capitalismmod.company.CompanyFreightSettlementSavedData;
+import com.ailudick.capitalismmod.company.FreightSettlementAuditRules;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
@@ -232,6 +235,37 @@ public final class EconomyAuditService {
             if (!FreightContractAuditRules.terminalEvidence(freight.status(),
                     deliveredShipments.contains(freight.shipmentId()), lostShipments.contains(freight.shipmentId()))) {
                 issues.add("freight contract terminal evidence mismatch " + freight.id());
+            }
+        }
+        Set<String> freightCostIds = new HashSet<>();
+        CompanyLogisticsCostSavedData freightCosts = CompanyLogisticsCostSavedData.get(server);
+        for (var cost : freightCosts.costs()) {
+            if (!freightCostIds.add(cost.shipmentId())
+                    || !FreightSettlementAuditRules.validCost(cost.shipmentId(), cost.companyId(), cost.itemId(),
+                    cost.quantity(), cost.estimatedCost(), cost.appliedAt(), cost.settled(),
+                    cost.carrierCompanyId(), cost.settledAt())) {
+                issues.add("freight payable invalid " + cost.shipmentId());
+            }
+            if (CompanySavedData.get(server).get(cost.companyId()) == null) {
+                issues.add("freight payable has no buyer company " + cost.shipmentId());
+            }
+            var contract = CompanyFreightContractSavedData.get(server).findByShipment(cost.shipmentId());
+            if (contract != null && !FreightSettlementAuditRules.quoteMatchesCost(contract.quotedCost(), cost.estimatedCost())) {
+                issues.add("freight quote differs from payable " + cost.shipmentId());
+            }
+        }
+        for (var settlement : CompanyFreightSettlementSavedData.get(server).settlements()) {
+            if (!FreightSettlementAuditRules.validSettlement(settlement.shipmentId(), settlement.buyerCompanyId(),
+                    settlement.carrierCompanyId(), settlement.amount(), settlement.buyerDebited(),
+                    settlement.carrierCredited(), settlement.payableClosed())) {
+                issues.add("freight settlement phase invalid " + settlement.shipmentId());
+                continue;
+            }
+            var cost = freightCosts.costs().stream()
+                    .filter(value -> settlement.shipmentId().equals(value.shipmentId())).findFirst().orElse(null);
+            if (cost == null || cost.estimatedCost() != settlement.amount()
+                    || (cost.settled() && !settlement.payableClosed())) {
+                issues.add("freight settlement amount mismatch " + settlement.shipmentId());
             }
         }
         Set<String> supplyEventKeys = new HashSet<>();

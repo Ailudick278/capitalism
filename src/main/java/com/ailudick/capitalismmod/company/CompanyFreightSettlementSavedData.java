@@ -69,6 +69,10 @@ public final class CompanyFreightSettlementSavedData extends SavedData {
         return shipmentId == null || shipmentId.isBlank() ? null : settlements.get(shipmentId);
     }
 
+    public java.util.List<Settlement> settlements() {
+        return java.util.List.copyOf(settlements.values());
+    }
+
     public Settlement begin(String shipmentId, String buyerCompanyId, String carrierCompanyId, long amount) {
         Settlement existing = find(shipmentId);
         if (existing != null) return existing;

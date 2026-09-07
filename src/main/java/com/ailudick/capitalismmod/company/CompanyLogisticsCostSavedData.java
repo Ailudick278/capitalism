@@ -59,6 +59,10 @@ public final class CompanyLogisticsCostSavedData extends SavedData {
         return shipmentId != null && costs.stream().anyMatch(cost -> shipmentId.equals(cost.shipmentId()));
     }
 
+    public List<CapitalizedCost> costs() {
+        return List.copyOf(costs);
+    }
+
     public void record(CapitalizedCost cost) {
         if (cost == null || cost.shipmentId() == null || cost.shipmentId().isBlank()
                 || cost.companyId() == null || cost.companyId().isBlank()
