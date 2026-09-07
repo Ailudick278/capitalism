@@ -93,7 +93,8 @@ public final class PopulationService {
             int schoolCoverage = population.population(household.region()) <= 0 ? 100
                     : Math.min(100, LogisticsInfrastructureSavedData.get(server).count(household.region(), "school")
                     * 1000 / population.population(household.region()));
-            int health = EducationHealthEconomics.nextHealth(household.health(), clinicCoverage, spendingWelfare);
+            int health = EducationHealthEconomics.nextHealth(household.health(), clinicCoverage, spendingWelfare,
+                    goods.foodCoverage());
             int education = EducationHealthEconomics.nextEducation(household.education(), schoolCoverage, household.workingAge());
             boolean employed = !labor.activeForWorker(household.id()).isEmpty();
             Household settled = household.withSettlement(day, remainingCash, welfare, household.region())
@@ -210,8 +211,8 @@ public final class PopulationService {
         }
     }
     private static ConsumptionResult consume(MinecraftServer server, Household household, long cash, long need, long day) {
-        if (cash <= 0L || need <= 0L) return new ConsumptionResult(cash, 0L);
-        long remaining = cash; long spent = 0L;
+        if (cash <= 0L || need <= 0L) return new ConsumptionResult(cash, 0L, 0);
+        long remaining = cash; long spent = 0L; long foodUnits = 0L;
         String[][] categories = {{"food", "wheat", "flour", "canned_food", "bread"}, {"energy", "coal", "fuel_oil", "diesel"}, {"living", "planks", "furniture", "wood"}};
         int[] shares = {60, 20, 20};
         for (int i = 0; i < categories.length; i++) {
@@ -228,7 +229,8 @@ public final class PopulationService {
             String source = "household-consumption:" + household.id() + ":" + day + ":" + categories[i][0];
             HouseholdConsumptionSavedData consumption = HouseholdConsumptionSavedData.get(server);
             HouseholdConsumptionSavedData.Consumption previous = consumption.records().stream().filter(r -> r.id().equals(source)).findFirst().orElse(null);
-            if (previous != null) { remaining -= previous.totalCostMinor(); spent = add(spent, previous.totalCostMinor()); continue; }
+            if (previous != null) { remaining -= previous.totalCostMinor(); spent = add(spent, previous.totalCostMinor());
+                if (i == 0) foodUnits = add(foodUnits, previous.quantity()); continue; }
             Company seller = findSeller(server, itemId, (int) Math.min(Integer.MAX_VALUE, quantity));
             if (seller == null) continue;
             WarehouseSavedData warehouse = WarehouseSavedData.get(server);
@@ -257,8 +259,11 @@ public final class PopulationService {
             consumption.record(new HouseholdConsumptionSavedData.Consumption(source, household.id(), day,
                     categories[i][0], itemId, purchasable, unitPrice, actualCost, taxAmount));
             remaining -= actualCost; spent = add(spent, actualCost);
+            if (i == 0) foodUnits = add(foodUnits, purchasable);
         }
-        return new ConsumptionResult(remaining, spent);
+        long foodTarget = Math.max(1L, (long) household.size() * 2L);
+        int foodCoverage = (int) Math.min(100L, foodUnits * 100L / foodTarget);
+        return new ConsumptionResult(remaining, spent, foodCoverage);
     }
     private static ItemStack findCommodity(String[] names) {
         for (ItemStack stack : Commodities.ALL) { String id = Commodities.id(stack).toLowerCase(java.util.Locale.ROOT); for (int i=1;i<names.length;i++) if (id.contains(names[i])) return stack; }
@@ -397,7 +402,7 @@ public final class PopulationService {
         return !Double.isFinite(calculated) || calculated >= Long.MAX_VALUE
                 ? Long.MAX_VALUE : Math.max(0L, (long) calculated);
     }
-    private record ConsumptionResult(long remainingCash, long spent) {}
+    private record ConsumptionResult(long remainingCash, long spent, int foodCoverage) {}
     private static long multiply(long a, long b) { try { return Math.multiplyExact(a, b); } catch (ArithmeticException e) { return Long.MAX_VALUE; } }
     private static long add(long a,long b){try{return Math.addExact(a,b);}catch(ArithmeticException e){return Long.MAX_VALUE;}}
     private static long ratioBps(long numerator, long denominator) {

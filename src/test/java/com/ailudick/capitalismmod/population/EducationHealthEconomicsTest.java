@@ -14,4 +14,10 @@ class EducationHealthEconomicsTest {
         assertEquals(0, EducationHealthEconomics.laborParticipation(80, 0));
         assertEquals(35, EducationHealthEconomics.laborParticipation(35, 1));
     }
+
+    @Test
+    void foodShortageReducesHealthRecovery() {
+        assertTrue(EducationHealthEconomics.nextHealth(50, 100, 100, 100)
+                > EducationHealthEconomics.nextHealth(50, 100, 100, 0));
+    }
 }

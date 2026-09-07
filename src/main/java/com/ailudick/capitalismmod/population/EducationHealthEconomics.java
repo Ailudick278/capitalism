@@ -10,7 +10,11 @@ public final class EducationHealthEconomics {
     }
 
     public static int nextHealth(int current, int clinicCoverage, int spendingWelfare) {
-        int change = clinicCoverage / 25 + spendingWelfare / 50 - 2;
+        return nextHealth(current, clinicCoverage, spendingWelfare, 100);
+    }
+
+    public static int nextHealth(int current, int clinicCoverage, int spendingWelfare, int foodSecurity) {
+        int change = clinicCoverage / 25 + spendingWelfare / 50 + Math.max(0, Math.min(100, foodSecurity)) / 50 - 4;
         return clamp(current + change, 0, 100);
     }
 
