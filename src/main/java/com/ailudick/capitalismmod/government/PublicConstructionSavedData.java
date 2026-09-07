@@ -63,7 +63,8 @@ public final class PublicConstructionSavedData extends SavedData {
         if (id == null || id.isBlank() || region == null || region.isBlank()
                 || !PublicConstructionEconomics.validFacility(facility) || units <= 0
                 || units > 1_000_000 || projects.size() >= MAX_PROJECTS
-                || contractorCompanyId == null) return null;
+                || contractorCompanyId == null
+                || projects.stream().anyMatch(existing -> id.equals(existing.id()))) return null;
         Project project = new Project(id, region, facility, units, 0, contractorCompanyId,
                 contractorCompanyId.isBlank() ? 0L : PublicConstructionEconomics.unitCost(facility), day, day);
         projects.add(project);
