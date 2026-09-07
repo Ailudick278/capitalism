@@ -54,16 +54,17 @@ public final class BankLiquidityService {
         int overdueShare = risk == null ? 0 : risk.overdueShareBasisPoints();
         if (!FinancialRiskPolicy.newBankCreditAllowed(overdueShare)) return false;
         boolean crisis = FinancialCrisisSavedData.get(server).active();
-        if (!crisis && !FinancialRiskPolicy.bankCapacityRestrictionActive(overdueShare)) return true;
         BankLiquiditySnapshot snapshot = settleDaily(server,
                 server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY);
         long baseAmount = toBase(amount, currencyId);
-        long capacity = BankLiquidityEconomics.capitalAdjustedLoanCapacity(snapshot.depositsMinor(), overdueShare);
         long capital = BankCapitalService.settleDaily(server,
                 server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY).capitalMinor();
         if (capital <= 0L) return false;
-        long capitalCapacity = BankCapitalEconomics.capitalBackedLoanCapacity(capital);
-        capacity = Math.min(capacity, capitalCapacity);
+        long capacity = BankCapitalEconomics.capitalBackedLoanCapacity(capital);
+        if (crisis || FinancialRiskPolicy.bankCapacityRestrictionActive(overdueShare)) {
+            capacity = Math.min(capacity,
+                    BankLiquidityEconomics.capitalAdjustedLoanCapacity(snapshot.depositsMinor(), overdueShare));
+        }
         return baseAmount > 0L && snapshot.loanDebtMinor() <= capacity
                 && baseAmount <= capacity - snapshot.loanDebtMinor();
     }
