@@ -3,6 +3,11 @@ package com.ailudick.capitalismmod.bank;
 /** A deterministic credit assessment derived from existing account data. */
 public record CreditAssessment(int score, long utilized, long approvedLimit, boolean overdue) {
     public static CreditAssessment evaluate(BankAccount account, long debtInBase, long configuredLimit) {
+        return evaluate(account, debtInBase, configuredLimit, false);
+    }
+
+    public static CreditAssessment evaluate(BankAccount account, long debtInBase, long configuredLimit,
+                                             boolean exposureStale) {
         long limit = Math.max(0L, configuredLimit);
         long debt = Math.max(0L, debtInBase);
         double utilization = limit == 0L ? 1.0 : Math.min(1.0, debt / (double) limit);
@@ -20,6 +25,7 @@ public record CreditAssessment(int score, long utilized, long approvedLimit, boo
         if (overdue) score -= 300;
         score = Math.max(300, Math.min(850, score));
         long approved = limit == 0L ? 0L : multiplyRatio(limit, score, 850L);
+        if (exposureStale) approved /= 2L;
         return new CreditAssessment(score, debt, approved, overdue);
     }
 

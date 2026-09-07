@@ -23,6 +23,14 @@ class CreditAssessmentTest {
     }
 
     @Test
+    void staleExposureHalvesApprovedLimit() {
+        BankAccount account = new BankAccount("1", true, Map.of(), Map.of(), List.of(), List.of(), 0);
+        long normal = CreditAssessment.evaluate(account, 0, 100_000).approvedLimit();
+        long stale = CreditAssessment.evaluate(account, 0, 100_000, true).approvedLimit();
+        assertEquals(normal / 2L, stale);
+    }
+
+    @Test
     void overdueDebtReceivesSeverePenalty() {
         BankAccount account = new BankAccount("1", true, Map.of(), Map.of("usd", 100L),
                 List.of(), List.of(), -1);

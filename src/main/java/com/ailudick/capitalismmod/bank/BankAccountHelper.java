@@ -392,7 +392,12 @@ public final class BankAccountHelper {
             return false;
         }
         long combined = EconomyMath.add(existingDebtInBase, newDebtInBase);
-        CreditAssessment assessment = CreditAssessment.evaluate(account, existingDebtInBase, Config.CREDIT_LIMIT.get());
+        var exposure = BankExposureSavedData.get(player.getServer()).exposure(player.getUUID());
+        boolean exposureStale = exposure != null && BankExposureAuditRules.isStale(
+                exposure.syncedAt(), player.getServer().overworld().getGameTime(),
+                BankExposureAuditRules.SNAPSHOT_MAX_AGE_TICKS);
+        CreditAssessment assessment = CreditAssessment.evaluate(account, existingDebtInBase,
+                Config.CREDIT_LIMIT.get(), exposureStale);
         if (assessment.overdue() || combined < 0 || combined > assessment.approvedLimit()) {
             return false;
         }

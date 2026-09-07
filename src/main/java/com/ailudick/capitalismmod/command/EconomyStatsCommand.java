@@ -22,6 +22,8 @@ import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.risk.FinancialRiskPolicy;
 import com.ailudick.capitalismmod.risk.FinancialCrisisSavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
+import com.ailudick.capitalismmod.bank.BankExposureAuditRules;
+import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.government.InflationSavedData;
 import com.ailudick.capitalismmod.government.MoneySupplySavedData;
 import com.mojang.brigadier.CommandDispatcher;
@@ -141,6 +143,10 @@ public final class EconomyStatsCommand {
                     + " governmentTreasuryMinor=" + money.governmentTreasuryMinor()), false);
         }
         if (risk != null) {
+            long now = server.overworld().getGameTime();
+            long staleSnapshots = BankExposureSavedData.get(server).exposures().values().stream()
+                    .filter(value -> BankExposureAuditRules.isStale(value.syncedAt(), now,
+                            BankExposureAuditRules.SNAPSHOT_MAX_AGE_TICKS)).count();
             source.sendSuccess(() -> Component.literal("financial risk day=" + risk.day()
                     + " totalDebtMinor=" + risk.totalDebtMinor()
                     + " bankDebtMinor=" + risk.bankDebtMinor()
@@ -148,6 +154,7 @@ public final class EconomyStatsCommand {
                     + " overdueLoans=" + risk.overdueLoanCount()
                     + " overdueShareBps=" + risk.overdueShareBasisPoints()
                     + " creditMultiplier=" + FinancialRiskPolicy.creditMultiplier(risk.overdueShareBasisPoints())
+                    + " staleBankSnapshots=" + staleSnapshots
                     + " crisis=" + FinancialCrisisSavedData.get(server).active()), false);
         }
         return 1;
