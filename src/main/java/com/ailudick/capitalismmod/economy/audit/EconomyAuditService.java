@@ -575,6 +575,14 @@ public final class EconomyAuditService {
                         issues.add("duplicate bank transaction reference " + account.id());
                     }
                 }
+                var persisted = exposureData.accountSnapshots().getOrDefault(player.getUUID(), Map.of())
+                        .get(account.id());
+                long lastTransactionAt = account.transactions().stream()
+                        .mapToLong(value -> value.occurredAt()).max().orElse(-1L);
+                if (persisted != null && !BankExposureAuditRules.transactionSummaryMatches(persisted,
+                        account.transactions().size(), lastTransactionAt)) {
+                    issues.add("bank transaction summary differs from exposure index " + account.id());
+                }
             }
         }
         for (var snapshot : FinancialRiskSavedData.get(server).snapshots()) {

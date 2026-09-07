@@ -25,7 +25,13 @@ public final class BankExposureSavedData extends SavedData {
     public record Exposure(long depositsMinor, long loanDebtMinor, long overdueDebtMinor,
                            int overdueAccounts, long syncedAt) {}
     public record AccountSnapshot(String accountId, long depositsMinor, long loanDebtMinor,
-                                  long overdueDebtMinor, int loanDaysRemaining, long syncedAt) {}
+                                  long overdueDebtMinor, int loanDaysRemaining, long syncedAt,
+                                  int transactionCount, long lastTransactionAt) {
+        public AccountSnapshot(String accountId, long depositsMinor, long loanDebtMinor,
+                               long overdueDebtMinor, int loanDaysRemaining, long syncedAt) {
+            this(accountId, depositsMinor, loanDebtMinor, overdueDebtMinor, loanDaysRemaining, syncedAt, 0, -1L);
+        }
+    }
 
     private BankExposureSavedData() {}
 
@@ -69,7 +75,7 @@ public final class BankExposureSavedData extends SavedData {
             for (var entry : account.debts().entrySet()) loans = add(loans, toBase(entry.getValue(), entry.getKey()));
             long overdue = account.loanDaysRemaining() < 0 ? loans : 0L;
             result.put(account.id(), new AccountSnapshot(account.id(), deposits, loans, overdue,
-                    account.loanDaysRemaining(), syncedAt));
+                    account.loanDaysRemaining(), syncedAt, account.transactions().size(), lastTransactionAt(account)));
         }
         return result;
     }
@@ -86,6 +92,10 @@ public final class BankExposureSavedData extends SavedData {
             }
         }
         return new Exposure(deposits, loans, overdue, overdueAccounts, syncedAt);
+    }
+
+    private static long lastTransactionAt(BankAccount account) {
+        return account.transactions().stream().mapToLong(BankTransaction::occurredAt).max().orElse(-1L);
     }
 
     private static long toBase(long amount, String currencyId) {
@@ -120,6 +130,8 @@ public final class BankExposureSavedData extends SavedData {
             entry.putLong("overdue", snapshot.overdueDebtMinor());
             entry.putInt("loanDays", snapshot.loanDaysRemaining());
             entry.putLong("syncedAt", snapshot.syncedAt());
+            entry.putInt("transactionCount", snapshot.transactionCount());
+            entry.putLong("lastTransactionAt", snapshot.lastTransactionAt());
             accounts.add(entry);
         }));
         tag.put("accountSnapshots", accounts);
@@ -144,7 +156,8 @@ public final class BankExposureSavedData extends SavedData {
             AccountSnapshot snapshot = new AccountSnapshot(entry.getString("account"),
                     Math.max(0L, entry.getLong("deposits")), Math.max(0L, entry.getLong("loans")),
                     Math.max(0L, entry.getLong("overdue")), entry.getInt("loanDays"),
-                    Math.max(0L, entry.getLong("syncedAt")));
+                    Math.max(0L, entry.getLong("syncedAt")), Math.max(0, entry.getInt("transactionCount")),
+                    entry.contains("lastTransactionAt") ? entry.getLong("lastTransactionAt") : -1L);
             data.accountSnapshots.computeIfAbsent(entry.getUUID("player"), ignored -> new HashMap<>())
                     .putIfAbsent(snapshot.accountId(), snapshot);
         }

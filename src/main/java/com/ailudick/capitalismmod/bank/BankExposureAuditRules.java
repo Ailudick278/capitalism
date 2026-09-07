@@ -32,4 +32,11 @@ public final class BankExposureAuditRules {
         return exposure != null && validAccountSnapshot(snapshot)
                 && exposure.syncedAt() == snapshot.syncedAt();
     }
+
+    public static boolean transactionSummaryMatches(BankExposureSavedData.AccountSnapshot snapshot,
+                                                     int transactionCount, long lastTransactionAt) {
+        return validAccountSnapshot(snapshot) && transactionCount >= 0
+                && snapshot.transactionCount() == transactionCount
+                && snapshot.lastTransactionAt() == lastTransactionAt;
+    }
 }

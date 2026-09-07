@@ -23,6 +23,8 @@ class BankExposureAuditRulesTest {
         assertTrue(BankExposureAuditRules.validAccountSnapshot(snapshot));
         assertTrue(BankExposureAuditRules.totalsMatch(exposure, 100L, 80L, 20L, 1));
         assertTrue(BankExposureAuditRules.timestampMatches(exposure, snapshot));
+        assertTrue(BankExposureAuditRules.transactionSummaryMatches(snapshot, 0, -1L));
+        assertFalse(BankExposureAuditRules.transactionSummaryMatches(snapshot, 1, -1L));
         assertFalse(BankExposureAuditRules.timestampMatches(
                 new BankExposureSavedData.Exposure(100L, 80L, 20L, 1, 101L), snapshot));
         assertFalse(BankExposureAuditRules.totalsMatch(exposure, 100L, 81L, 20L, 1));
