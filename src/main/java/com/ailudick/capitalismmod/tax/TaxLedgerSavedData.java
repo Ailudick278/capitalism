@@ -132,6 +132,7 @@ public final class TaxLedgerSavedData extends SavedData {
             entry.putString("currency", payment.currencyId());
             entry.putLong("amount", payment.amount());
             entry.putLong("paidAt", payment.paidAt());
+            if (!payment.settlementReference().isBlank()) entry.putString("settlementReference", payment.settlementReference());
             paymentList.add(entry);
         }
         tag.put("payments", paymentList);
@@ -186,7 +187,7 @@ public final class TaxLedgerSavedData extends SavedData {
             if (!entry.hasUUID("taxpayer") || entry.getLong("amount") <= 0L) continue;
             TaxPayment payment = new TaxPayment(entry.getString("id"), entry.getString("billId"),
                     entry.getUUID("taxpayer"), entry.getString("currency"), entry.getLong("amount"),
-                    entry.getLong("paidAt"));
+                    entry.getLong("paidAt"), entry.getString("settlementReference"));
             if (data.payments.stream().noneMatch(existing -> existing.id().equals(payment.id()))) {
                 data.payments.add(payment);
             }

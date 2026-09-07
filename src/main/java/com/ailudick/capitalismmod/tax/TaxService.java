@@ -140,7 +140,7 @@ public final class TaxService {
             TaxBill paidBill = bill.withPayment(payment);
             ledger.replace(paidBill);
             recordPayment(player.getServer(), paidBill, new TaxPayment(UUID.randomUUID().toString(), bill.id(), player.getUUID(),
-                    bill.currencyId(), payment, player.getServer().overworld().getGameTime()));
+                    bill.currencyId(), payment, player.getServer().overworld().getGameTime(), paymentReference));
             if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(player.getServer(), paidBill));
             left -= payment;
         }
@@ -165,7 +165,7 @@ public final class TaxService {
         TaxBill paidBill = bill.withPayment(payment);
         ledger.replace(paidBill);
         recordPayment(player.getServer(), paidBill, new TaxPayment(UUID.randomUUID().toString(), bill.id(), player.getUUID(),
-                bill.currencyId(), payment, player.getServer().overworld().getGameTime()));
+                bill.currencyId(), payment, player.getServer().overworld().getGameTime(), paymentReference));
         if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(player.getServer(), paidBill));
         return true;
     }
@@ -198,14 +198,14 @@ public final class TaxService {
         if (alreadyApplied) {
             if (!ledger.hasPayment(source)) {
                 recordPayment(server, bill, new TaxPayment(source, bill.id(), company.ownerUuid(),
-                        bill.currencyId(), payment, server.overworld().getGameTime()));
+                        bill.currencyId(), payment, server.overworld().getGameTime(), source));
             }
             return true;
         }
         TaxBill paidBill = bill.withPayment(payment);
         ledger.replace(paidBill);
         recordPayment(server, paidBill, new TaxPayment(source, bill.id(), company.ownerUuid(),
-                bill.currencyId(), payment, server.overworld().getGameTime()));
+                bill.currencyId(), payment, server.overworld().getGameTime(), source));
         if (paidBill.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(server, paidBill));
         return true;
     }
@@ -231,7 +231,8 @@ public final class TaxService {
             TaxBill updated = bill.withPayment(payment);
             ledger.replace(updated);
             recordPayment(server, updated, new TaxPayment(UUID.randomUUID().toString(), bill.id(),
-                    subject.taxpayerUuid(), bill.currencyId(), payment, now));
+                    subject.taxpayerUuid(), bill.currencyId(), payment, now,
+                    TaxPaymentSource.external(sourceId, bill.id())));
             remaining -= payment;
             settled = addSaturated(settled, payment);
             if (updated.paid()) NeoForge.EVENT_BUS.post(new TaxSettledEvent(server, updated));

@@ -91,6 +91,7 @@ import com.ailudick.capitalismmod.tax.TaxBill;
 import com.ailudick.capitalismmod.tax.TaxCreditSavedData;
 import com.ailudick.capitalismmod.tax.TaxCreditAuditRules;
 import com.ailudick.capitalismmod.tax.TaxPaymentAuditRules;
+import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -603,6 +604,11 @@ public final class EconomyAuditService {
             paymentTotals.put(payment.billId(), total);
             if (!TaxPaymentAuditRules.totalWithinDue(total, bill.totalDue())) {
                 issues.add("tax payment exceeds bill " + payment.billId());
+            }
+            if (payment.settlementReference().startsWith("tax-payment:")
+                    && !EconomyLogSavedData.get(server).hasPayment(payment.taxpayerUuid(), payment.currencyId(),
+                    payment.amount(), payment.settlementReference())) {
+                issues.add("tax payment has no wallet evidence " + payment.id());
             }
         }
         for (TaxBill bill : taxLedger.bills()) {
