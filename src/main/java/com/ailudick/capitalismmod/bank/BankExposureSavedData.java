@@ -14,7 +14,6 @@ import net.minecraft.world.level.saveddata.SavedData;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.HashMap;
 
 /** Persistent base-currency bank exposure, including players who are offline. */
 public final class BankExposureSavedData extends SavedData {
