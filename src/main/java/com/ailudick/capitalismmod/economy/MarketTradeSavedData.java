@@ -37,8 +37,8 @@ public final class MarketTradeSavedData extends SavedData {
     }
 
     public void add(Trade trade) {
-        if (trade == null || trade.quantity() <= 0 || trade.total() < 0 || trade.fee() < 0
-                || trade.itemId() == null || trade.currencyId() == null || trade.market() == null) {
+        if (trade == null || !MarketTradeAuditRules.valid(trade.gameTime(), trade.buyer(), trade.seller(),
+                trade.itemId(), trade.quantity(), trade.currencyId(), trade.total(), trade.market(), trade.fee())) {
             return;
         }
         trades.add(trade);
@@ -75,13 +75,15 @@ public final class MarketTradeSavedData extends SavedData {
             CompoundTag nbt = list.getCompound(i);
             int quantity = nbt.getInt("quantity");
             long total = nbt.getLong("total");
-            if (quantity > 0 && total >= 0) {
-                data.trades.add(new Trade(nbt.getLong("time"),
-                        nbt.hasUUID("buyer") ? nbt.getUUID("buyer") : null,
-                        nbt.hasUUID("seller") ? nbt.getUUID("seller") : null,
-                        nbt.getString("item"), quantity, nbt.getString("currency"), total,
-                        nbt.contains("market") ? nbt.getString("market") : "unknown",
-                        Math.max(0L, nbt.getLong("fee"))));
+            Trade trade = new Trade(nbt.getLong("time"),
+                    nbt.hasUUID("buyer") ? nbt.getUUID("buyer") : null,
+                    nbt.hasUUID("seller") ? nbt.getUUID("seller") : null,
+                    nbt.getString("item"), quantity, nbt.getString("currency"), total,
+                    nbt.contains("market") ? nbt.getString("market") : "unknown",
+                    Math.max(0L, nbt.getLong("fee")));
+            if (MarketTradeAuditRules.valid(trade.gameTime(), trade.buyer(), trade.seller(), trade.itemId(),
+                    trade.quantity(), trade.currencyId(), trade.total(), trade.market(), trade.fee())) {
+                data.trades.add(trade);
             }
         }
         return data;
