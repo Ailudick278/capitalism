@@ -17,6 +17,7 @@ public final class BankLiquiditySavedData extends SavedData {
     private final List<BankLiquiditySnapshot> snapshots = new ArrayList<>();
     private long currentDay = -1L;
     private long withdrawnToday;
+    private long emergencyLiquidityMinor;
 
     private BankLiquiditySavedData() {}
     public static BankLiquiditySavedData get(MinecraftServer server) {
@@ -26,6 +27,20 @@ public final class BankLiquiditySavedData extends SavedData {
     public List<BankLiquiditySnapshot> snapshots() { return List.copyOf(snapshots); }
     public BankLiquiditySnapshot latest() { return snapshots.isEmpty() ? null : snapshots.get(snapshots.size() - 1); }
     public long withdrawnToday(long day) { return currentDay == day ? withdrawnToday : 0L; }
+    public long emergencyLiquidityMinor() { return emergencyLiquidityMinor; }
+
+    public void grantEmergencyLiquidity(long amount) {
+        if (amount <= 0L) return;
+        emergencyLiquidityMinor = amount > Long.MAX_VALUE - emergencyLiquidityMinor
+                ? Long.MAX_VALUE : emergencyLiquidityMinor + amount;
+        setDirty();
+    }
+
+    public void consumeEmergencyLiquidity(long amount) {
+        if (amount <= 0L) return;
+        emergencyLiquidityMinor = Math.max(0L, emergencyLiquidityMinor - amount);
+        setDirty();
+    }
     /** Reads the withdrawals accumulated during the day being closed or the current day. */
     public long withdrawalsForAssessment(long day) {
         if (currentDay == day || currentDay == day - 1L) return withdrawnToday;
@@ -43,6 +58,7 @@ public final class BankLiquiditySavedData extends SavedData {
     }
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putLong("currentDay", currentDay); tag.putLong("withdrawnToday", withdrawnToday);
+        tag.putLong("emergencyLiquidity", emergencyLiquidityMinor);
         ListTag list = new ListTag();
         for (BankLiquiditySnapshot s : snapshots) { CompoundTag e = new CompoundTag(); e.putLong("day", s.day());
             e.putLong("deposits", s.depositsMinor()); e.putLong("loans", s.loanDebtMinor());
@@ -52,6 +68,7 @@ public final class BankLiquiditySavedData extends SavedData {
     public static BankLiquiditySavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         BankLiquiditySavedData data = new BankLiquiditySavedData(); data.currentDay = tag.getLong("currentDay");
         data.withdrawnToday = Math.max(0L, tag.getLong("withdrawnToday"));
+        data.emergencyLiquidityMinor = Math.max(0L, tag.getLong("emergencyLiquidity"));
         ListTag list = tag.getList("snapshots", Tag.TAG_COMPOUND);
         for (int i = Math.max(0, list.size() - MAX_SNAPSHOTS); i < list.size(); i++) { CompoundTag e = list.getCompound(i);
             data.snapshots.add(new BankLiquiditySnapshot(Math.max(0L, e.getLong("day")), Math.max(0L, e.getLong("deposits")),

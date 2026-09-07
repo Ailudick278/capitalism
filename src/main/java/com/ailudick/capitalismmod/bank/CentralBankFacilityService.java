@@ -19,8 +19,10 @@ public final class CentralBankFacilityService {
         String spendingId = "central-bank-facility:" + sourceId;
         if (!government.hasSpending(spendingId)
                 && !government.spend("central-bank-facility", day, amountMinor, spendingId)) return false;
-        return facilities.add(new CentralBankFacilitySavedData.Facility(sourceId, day, amountMinor,
+        boolean added = facilities.add(new CentralBankFacilitySavedData.Facility(sourceId, day, amountMinor,
                 amountMinor, annualRateBasisPoints, termDays, termDays, -1L));
+        if (added) BankLiquiditySavedData.get(server).grantEmergencyLiquidity(amountMinor);
+        return added;
     }
 
     /** Settles one installment per day; each cash leg is protected by its own receipt. */
@@ -45,6 +47,7 @@ public final class CentralBankFacilityService {
             String governmentReceipt = receipt + ":treasury";
             if (!government.hasDeposit(governmentReceipt)
                     && !government.depositOnce(payment, governmentReceipt)) continue;
+            BankLiquiditySavedData.get(server).consumeEmergencyLiquidity(principal);
             long remaining = Math.max(0L, facility.remainingPrincipal() - principal);
             int days = Math.max(0, facility.daysRemaining() - 1);
             data.replace(new CentralBankFacilitySavedData.Facility(facility.id(), facility.issuedDay(),

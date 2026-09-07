@@ -44,8 +44,20 @@ public final class BankLiquidityService {
         BankLiquiditySnapshot snapshot = settleDaily(server,
                 server.overworld().getGameTime() / PerpetualCalendar.TICKS_PER_DAY);
         long baseAmount = toBase(amount, currencyId);
-        long limit = BankLiquidityEconomics.crisisWithdrawalLimit(snapshot.depositsMinor());
-        return BankLiquiditySavedData.get(server).reserveWithdrawal(snapshot.day(), baseAmount, limit);
+        BankLiquiditySavedData data = BankLiquiditySavedData.get(server);
+        long normalLimit = BankLiquidityEconomics.crisisWithdrawalLimit(snapshot.depositsMinor());
+        long limit = normalLimit;
+        long emergency = data.emergencyLiquidityMinor();
+        limit = emergency > Long.MAX_VALUE - limit ? Long.MAX_VALUE : limit + emergency;
+        long before = data.withdrawnToday(snapshot.day());
+        if (!data.reserveWithdrawal(snapshot.day(), baseAmount, limit)) return false;
+        long after = data.withdrawnToday(snapshot.day());
+        long beforeEmergency = Math.max(0L, before - normalLimit);
+        long afterEmergency = Math.max(0L, after - normalLimit);
+        if (afterEmergency > beforeEmergency) {
+            data.consumeEmergencyLiquidity(afterEmergency - beforeEmergency);
+        }
+        return true;
     }
 
     public static boolean authorizeLoan(MinecraftServer server, String currencyId, long amount) {
