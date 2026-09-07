@@ -55,7 +55,8 @@ public final class PopulationService {
                     com.ailudick.capitalismmod.government.GovernmentPolicySavedData.get(server)
                             .collectRent(rent.id(), day, household.id(), household.region(), rent.rentPaidMinor());
                 } else if (CompanySavedData.get(server).get(landlord) != null) {
-                    CompanyHelper.creditTreasuryNonOperatingOnce(server, landlord, Config.defaultCurrency().id(), rent.rentPaidMinor(),
+                    long rentMajor = Money.toMajorCeiling(rent.rentPaidMinor());
+                    CompanyHelper.creditTreasuryNonOperatingOnce(server, landlord, Config.defaultCurrency().id(), rentMajor,
                             "housing_rent", "Household housing rent", rent.id());
                 } else if (landlord.startsWith("player:") && validUuid(landlord.substring("player:".length()))) {
                     PrivateLandlordSavedData.get(server).creditOnce(rent.id(), day,

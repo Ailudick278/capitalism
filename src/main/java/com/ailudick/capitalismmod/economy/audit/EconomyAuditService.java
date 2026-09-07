@@ -28,6 +28,7 @@ import com.ailudick.capitalismmod.economy.contract.EconomicContractSavedData;
 import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
+import com.ailudick.capitalismmod.population.CityHousingSavedData;
 import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseDebtSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseSettlementSavedData;
@@ -879,6 +880,47 @@ public final class EconomyAuditService {
             }
         }
         HousingLeaseSavedData housing = HousingLeaseSavedData.get(server);
+        Set<String> rentPaymentIds = new HashSet<>();
+        for (var payment : housing.payments()) {
+            boolean validPayment = payment.id() != null && !payment.id().isBlank()
+                    && rentPaymentIds.add(payment.id())
+                    && payment.day() >= 0L
+                    && payment.householdId() != null && !payment.householdId().isBlank()
+                    && payment.region() != null && !payment.region().isBlank()
+                    && payment.dueMinor() >= 0L && payment.paidMinor() >= 0L
+                    && payment.rentPaidMinor() >= 0L && payment.depositPaidMinor() >= 0L
+                    && payment.arrearsAfter() >= 0L
+                    && payment.paidMinor() == safeAdd(payment.rentPaidMinor(), payment.depositPaidMinor())
+                    && payment.paidMinor() <= payment.dueMinor();
+            if (!validPayment) {
+                issues.add("housing rent payment invalid " + payment.id());
+                continue;
+            }
+            if (payment.rentPaidMinor() <= 0L) continue;
+            String landlord = CityHousingSavedData.get(server).landlord(payment.region());
+            boolean collected;
+            if ("government".equals(landlord)) {
+                collected = GovernmentPolicySavedData.get(server).rentRevenues().stream()
+                        .anyMatch(revenue -> payment.id().equals(revenue.id())
+                                && revenue.amount() == payment.rentPaidMinor());
+            } else if (CompanySavedData.get(server).get(landlord) != null) {
+                long rentMajor = Money.toMajorCeiling(payment.rentPaidMinor());
+                collected = CompanyLedgerSourceRules.matches(
+                        CompanyLedgerSavedData.get(server).findSource(landlord, payment.id()),
+                        Config.defaultCurrency().id(), rentMajor, true);
+            } else if (landlord.startsWith("player:")) {
+                String owner = landlord.substring("player:".length());
+                collected = PrivateLandlordSavedData.get(server).receipts().stream()
+                        .anyMatch(receipt -> payment.id().equals(receipt.id())
+                                && owner.equals(receipt.ownerId())
+                                && receipt.amount() == payment.rentPaidMinor());
+            } else {
+                collected = GovernmentPolicySavedData.get(server).rentRevenues().stream()
+                        .anyMatch(revenue -> payment.id().equals(revenue.id())
+                                && revenue.amount() == payment.rentPaidMinor());
+            }
+            if (!collected) issues.add("housing rent payment missing landlord receipt " + payment.id());
+        }
         for (var lease : housing.leases()) {
             Household household = population.find(lease.householdId());
             if (household == null) issues.add("housing lease " + lease.householdId() + " has no household");
