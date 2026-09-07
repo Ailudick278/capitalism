@@ -5,11 +5,13 @@ import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanyHelper;
 import com.ailudick.capitalismmod.company.CompanyProductionSavedData;
+import com.ailudick.capitalismmod.company.CompanyProductionBatchSavedData;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyEconomy;
 import com.ailudick.capitalismmod.company.ProductionRecipe;
 import com.ailudick.capitalismmod.company.ProductionCycleIdentity;
 import com.ailudick.capitalismmod.company.ProductionPlanningEconomics;
+import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.InventoryOwner;
 import com.ailudick.capitalismmod.market.WarehouseSavedData;
@@ -36,6 +38,7 @@ public final class CompanyProductionTickHandler {
         tickCounter = 0;
         MinecraftServer server = event.getServer();
         long now = server.overworld().getGameTime();
+        reconcileCompletedProductionJournal(server, now);
         long cycleTicks = Config.COMPANY_PRODUCTION_CYCLE_TICKS.get();
         int maxCatchup = Config.COMPANY_PRODUCTION_MAX_CATCHUP_CYCLES.get();
         CompanyProductionSavedData production = CompanyProductionSavedData.get(server);
@@ -81,6 +84,17 @@ public final class CompanyProductionTickHandler {
             // unpaid production time for later exploitation.
             production.put(new CompanyProductionSavedData.ProductionState(
                     company.companyId(), now, successful, failed, failureReasons));
+        }
+    }
+
+    /** Closes journal phases when the durable batch write already succeeded. */
+    private static void reconcileCompletedProductionJournal(MinecraftServer server, long now) {
+        FinancialSettlementJournalSavedData journal = FinancialSettlementJournalSavedData.get(server);
+        CompanyProductionBatchSavedData batches = CompanyProductionBatchSavedData.get(server);
+        for (FinancialSettlementJournalSavedData.Entry entry : journal.entries()) {
+            if (!"production".equals(entry.instrument()) || !entry.transactionId().startsWith("production:")) continue;
+            if (!"started".equals(entry.status()) || batches.findById(entry.transactionId()) == null) continue;
+            journal.markCompleted(entry.transactionId(), "production", entry.phase(), entry.amountMinor(), now);
         }
     }
 
