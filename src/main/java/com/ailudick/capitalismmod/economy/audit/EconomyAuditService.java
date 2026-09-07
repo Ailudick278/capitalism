@@ -99,6 +99,8 @@ import com.ailudick.capitalismmod.bank.BankExposureSavedData;
 import com.ailudick.capitalismmod.risk.FinancialRiskSavedData;
 import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
+import com.ailudick.capitalismmod.bank.CentralBankFacilitySavedData;
+import com.ailudick.capitalismmod.bank.CentralBankFacilityAuditRules;
 import com.ailudick.capitalismmod.tax.TaxIncomeVoucherLedgerSavedData;
 import com.ailudick.capitalismmod.tax.TaxIncomeVoucherAuditRules;
 import com.ailudick.capitalismmod.tax.TaxInvoiceSavedData;
@@ -774,6 +776,9 @@ public final class EconomyAuditService {
                 bankCapital.cumulativeProfitLossMinor(), bankCapital.lossProvisionMinor(),
                 bankCapital.lastSettlementDay())) {
             issues.add("bank capital ledger invalid");
+        }
+        if (!CentralBankFacilityAuditRules.validHistory(CentralBankFacilitySavedData.get(server).facilities())) {
+            issues.add("central bank facility ledger invalid");
         }
         long bankOverdue = 0L;
         for (var entry : exposureData.exposures().values()) {
