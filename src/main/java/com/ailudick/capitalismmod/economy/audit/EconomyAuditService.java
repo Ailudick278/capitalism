@@ -90,6 +90,7 @@ import com.ailudick.capitalismmod.tax.TaxLedgerSavedData;
 import com.ailudick.capitalismmod.tax.TaxBill;
 import com.ailudick.capitalismmod.tax.TaxCreditSavedData;
 import com.ailudick.capitalismmod.tax.TaxCreditAuditRules;
+import com.ailudick.capitalismmod.tax.TaxPaymentAuditRules;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -584,6 +585,31 @@ public final class EconomyAuditService {
             if (!TaxInvoiceLinkRules.matchesBill(invoice.direction(), invoice.grossAmount(), invoice.taxAmount(),
                     invoice.creditApplied(), invoice.taxpayerUuid(), invoice.currencyId(), invoice.sourceEventId(), bill)) {
                 issues.add("tax invoice bill mismatch " + invoice.sourceEventId());
+            }
+        }
+        TaxLedgerSavedData taxLedger = TaxLedgerSavedData.get(server);
+        Set<String> paymentIds = new HashSet<>();
+        Map<String, Long> paymentTotals = new HashMap<>();
+        for (var payment : taxLedger.payments()) {
+            TaxBill bill = taxLedger.get(payment.billId());
+            if (!paymentIds.add(payment.id())
+                    || !TaxPaymentAuditRules.valid(payment.id(), payment.billId(), payment.taxpayerUuid(),
+                    payment.currencyId(), payment.amount(), payment.paidAt(), Currencies.exists(payment.currencyId()))
+                    || !TaxPaymentAuditRules.matchesBill(payment, bill)) {
+                issues.add("tax payment invalid " + payment.id());
+                continue;
+            }
+            long total = safeAdd(paymentTotals.getOrDefault(payment.billId(), 0L), payment.amount());
+            paymentTotals.put(payment.billId(), total);
+            if (!TaxPaymentAuditRules.totalWithinDue(total, bill.totalDue())) {
+                issues.add("tax payment exceeds bill " + payment.billId());
+            }
+        }
+        for (TaxBill bill : taxLedger.bills()) {
+            long total = paymentTotals.getOrDefault(bill.id(), 0L);
+            if (bill.paidAmount() < 0L || bill.paidAmount() > bill.totalDue()
+                    || !TaxPaymentAuditRules.reconciles(total, bill.paidAmount())) {
+                issues.add("tax bill payment reconciliation failed " + bill.id());
             }
         }
         TaxCreditSavedData taxCredits = TaxCreditSavedData.get(server);
