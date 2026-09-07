@@ -19,6 +19,7 @@ import com.ailudick.capitalismmod.tax.TaxType;
 import com.ailudick.capitalismmod.tax.TaxableIncomeEvent;
 import com.ailudick.capitalismmod.tax.CorporateTaxPeriodSavedData;
 import com.ailudick.capitalismmod.tax.CorporateTaxAnnualSavedData;
+import com.ailudick.capitalismmod.tax.CorporateTaxEventRules;
 import com.ailudick.capitalismmod.tax.TaxTransactionService;
 import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.economy.FinancialSettlementJournalSavedData;
@@ -246,8 +247,9 @@ public final class CompanyHelper {
                 company.companyId(), currencyId, revenue, periodStart, periodEnd);
         long year = PerpetualCalendar.ticksForDays(360L);
         long yearEnd = ((occurredAt / year) + 1L) * year;
-        CorporateTaxAnnualSavedData.get(server).record(company.companyId(), currencyId, revenue,
-                yearEnd - year, yearEnd);
+        CorporateTaxAnnualSavedData annual = CorporateTaxAnnualSavedData.get(server);
+        annual.recordOnce(CorporateTaxEventRules.income(company.companyId(), sourceId), company.companyId(),
+                currencyId, revenue, yearEnd - year, yearEnd);
         return true;
     }
 
@@ -262,8 +264,9 @@ public final class CompanyHelper {
                 company.companyId(), currencyId, expense, periodStart, periodEnd);
         long year = PerpetualCalendar.ticksForDays(360L);
         long yearEnd = ((occurredAt / year) + 1L) * year;
-        CorporateTaxAnnualSavedData.get(server).recordExpense(company.companyId(), currencyId, expense,
-                yearEnd - year, yearEnd);
+        CorporateTaxAnnualSavedData annual = CorporateTaxAnnualSavedData.get(server);
+        annual.recordExpenseOnce(CorporateTaxEventRules.expense(company.companyId(), sourceId), company.companyId(),
+                currencyId, expense, yearEnd - year, yearEnd);
         TaxExpenseService.record(server, company.ownerUuid(), company.companyId(), "business_expense",
                 currencyId, expense, occurredAt, company.companyId() + ":expense:" + sourceId, true);
         return true;

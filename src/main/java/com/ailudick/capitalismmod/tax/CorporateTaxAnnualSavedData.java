@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Stores annual corporate income totals and completed settlement results. */
 public final class CorporateTaxAnnualSavedData extends SavedData {
@@ -17,6 +19,7 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
     private final Map<String, Entry> entries = new HashMap<>();
     private final Map<String, Settlement> settlements = new HashMap<>();
     private final Map<String, Long> prepaid = new HashMap<>();
+    private final Set<String> eventIds = new HashSet<>();
     /** Accumulated corporate tax losses that may offset future profitable years. */
     private final Map<String, Long> lossCarryforward = new HashMap<>();
     public record Entry(String companyId, String currencyId, long revenue, long expenses, long yearStart, long yearEnd) {
@@ -43,6 +46,19 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
         setDirty();
     }
 
+    public boolean containsEvent(String eventId) {
+        return eventId != null && !eventId.isBlank() && eventIds.contains(eventId);
+    }
+
+    public boolean recordOnce(String eventId, String companyId, String currencyId, long revenue,
+                              long yearStart, long yearEnd) {
+        if (eventId == null || eventId.isBlank() || eventIds.contains(eventId) || revenue <= 0L) return false;
+        record(companyId, currencyId, revenue, yearStart, yearEnd);
+        eventIds.add(eventId);
+        setDirty();
+        return true;
+    }
+
     public void recordExpense(String companyId, String currencyId, long expense, long yearStart, long yearEnd) {
         if (expense <= 0L) return;
         String key = companyId + ":" + yearEnd;
@@ -52,6 +68,15 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
                 ? Long.MAX_VALUE : old.expenses() + expense;
         entries.put(key, new Entry(companyId, currencyId, revenue, expenses, yearStart, yearEnd));
         setDirty();
+    }
+
+    public boolean recordExpenseOnce(String eventId, String companyId, String currencyId, long expense,
+                                     long yearStart, long yearEnd) {
+        if (eventId == null || eventId.isBlank() || eventIds.contains(eventId) || expense <= 0L) return false;
+        recordExpense(companyId, currencyId, expense, yearStart, yearEnd);
+        eventIds.add(eventId);
+        setDirty();
+        return true;
     }
 
     public void recordPrepaid(String companyId, long yearEnd, long amount) {
@@ -114,6 +139,9 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
         ListTag prepaidList = new ListTag();
         prepaid.forEach((key, amount) -> { CompoundTag value = new CompoundTag(); value.putString("key", key); value.putLong("amount", amount); prepaidList.add(value); });
         tag.put("prepaid", prepaidList);
+        ListTag eventList = new ListTag();
+        eventIds.forEach(eventId -> { CompoundTag value = new CompoundTag(); value.putString("id", eventId); eventList.add(value); });
+        tag.put("events", eventList);
         ListTag lossList = new ListTag();
         lossCarryforward.forEach((companyId, amount) -> {
             CompoundTag value = new CompoundTag();
@@ -153,6 +181,11 @@ public final class CorporateTaxAnnualSavedData extends SavedData {
             if (!value.getString("companyId").isBlank() && value.getLong("amount") > 0L) {
                 data.lossCarryforward.put(value.getString("companyId"), value.getLong("amount"));
             }
+        }
+        ListTag eventList = tag.getList("events", 10);
+        for (int i = 0; i < eventList.size(); i++) {
+            String eventId = eventList.getCompound(i).getString("id");
+            if (!eventId.isBlank()) data.eventIds.add(eventId);
         }
         return data;
     }
