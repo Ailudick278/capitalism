@@ -715,7 +715,7 @@ public final class SupplyMarket {
                     supplierUuid));
             int fuelUnits = transport.estimatedFuelUnits(batch, distance);
             long fuelUnitPrice = Math.max(0L, com.ailudick.capitalismmod.market.CommoditySavedData
-                    .get(server).price(transport.fuelItemId()));
+                    .get(server).regionalPrice(transport.fuelItemId(), origin));
             long estimatedFuelCost;
             try {
                 estimatedFuelCost = Math.multiplyExact((long) fuelUnits, fuelUnitPrice);
