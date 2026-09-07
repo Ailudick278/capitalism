@@ -98,6 +98,7 @@ import com.ailudick.capitalismmod.tax.TaxPayment;
 import com.ailudick.capitalismmod.government.TaxRevenueAuditRules;
 import com.ailudick.capitalismmod.government.CityStatisticsAuditRules;
 import com.ailudick.capitalismmod.government.CityStatisticsSavedData;
+import com.ailudick.capitalismmod.market.CommodityPriceAuditRules;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -199,6 +200,16 @@ public final class EconomyAuditService {
                     com.ailudick.capitalismmod.market.Commodities.id(order.commodity())) == null
                     || order.quantity() <= 0 || order.pricePerUnit() <= 0L || order.createdAt() < 0L) {
                 issues.add("commodity order invalid " + order.id());
+            }
+        }
+        for (var priceEntry : commodities.prices().entrySet()) {
+            String itemId = priceEntry.getKey();
+            if (Commodities.byId(itemId) == null || !CommodityPriceAuditRules.validPrice(itemId,
+                    priceEntry.getValue(), commodities.fundamental(itemId), commodities.prevClose(itemId))
+                    || commodities.history().get(itemId) == null || commodities.history().get(itemId).size() > 30
+                    || commodities.history().get(itemId).stream().anyMatch(c -> !CommodityPriceAuditRules.validCandle(
+                    c.open(), c.high(), c.low(), c.close()))) {
+                issues.add("commodity price history invalid " + itemId);
             }
         }
         EconomySavedData stocks = EconomySavedData.get(server);
