@@ -125,7 +125,9 @@ public final class PopulationService {
             for (Household household : population.households()) {
                 if (!isNpc(household.id()) || household.workingAge() <= 0 || !labor.activeForWorker(household.id()).isEmpty()) continue;
                 boolean local = household.region().equals(offer.region());
-                long livingCost = multiply(household.dailyNeedMinor(), household.size());
+                long livingCost = MigrationEconomics.costOfLiving(
+                        multiply(household.dailyNeedMinor(), household.size()),
+                        destinationPricePremiumBps(server, offer.region()));
                 long destinationRentPerResident = CityHousingSavedData.get(server).dailyRent(offer.region(),
                         population.population(offer.region()), LogisticsInfrastructureSavedData.get(server)
                                 .count(offer.region(), "housing"));
@@ -175,6 +177,25 @@ public final class PopulationService {
         return created;
     }
     private static boolean isNpc(String id) { return id != null && id.startsWith("npc-"); }
+    private static int destinationPricePremiumBps(MinecraftServer server, String region) {
+        CommoditySavedData commodities = CommoditySavedData.get(server);
+        int maximum = 0;
+        for (ItemStack stack : Commodities.ALL) {
+            String itemId = Commodities.id(stack);
+            if (!isEssential(itemId)) continue;
+            long global = commodities.price(itemId), regional = commodities.regionalPrice(itemId, region);
+            if (global > 0L && regional > global) {
+                long premium = Math.min(10_000L, (regional - global) * 10_000L / global);
+                maximum = Math.max(maximum, (int) premium);
+            }
+        }
+        return maximum;
+    }
+    private static boolean isEssential(String itemId) {
+        String id = itemId.toLowerCase(java.util.Locale.ROOT);
+        return id.contains("bread") || id.contains("potato") || id.contains("carrot")
+                || id.contains("apple") || id.contains("wheat") || id.contains("beef") || id.contains("pork");
+    }
     private static boolean validUuid(String value) { try { java.util.UUID.fromString(value); return true; } catch (IllegalArgumentException e) { return false; } }
     private static void evolveNpc(PopulationSavedData population, Household household, long day) {
         if (!isNpc(household.id()) || day < 0L) return;

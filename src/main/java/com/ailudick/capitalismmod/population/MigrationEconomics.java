@@ -36,4 +36,12 @@ public final class MigrationEconomics {
         long rate = 100L - Math.max(0, Math.min(100, accessScore));
         return base > Long.MAX_VALUE / rate ? Long.MAX_VALUE : base * rate / 100L;
     }
+
+    /** Adjusts household living cost for a regional essential-goods price premium. */
+    public static long costOfLiving(long baseDailyCostMinor, int pricePremiumBps) {
+        if (baseDailyCostMinor <= 0L) return 0L;
+        long premium = Math.max(0L, Math.min(10_000L, pricePremiumBps));
+        if (baseDailyCostMinor > (Long.MAX_VALUE - premium) / 10_000L) return Long.MAX_VALUE;
+        return baseDailyCostMinor + baseDailyCostMinor * premium / 10_000L;
+    }
 }
