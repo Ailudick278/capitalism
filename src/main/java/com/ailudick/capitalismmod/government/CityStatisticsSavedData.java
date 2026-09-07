@@ -40,6 +40,8 @@ public final class CityStatisticsSavedData extends SavedData {
                 .filter(s -> days <= 0 || s.day() >= Math.max(0L, latest - days + 1L)).toList();
     }
 
+    public List<Snapshot> snapshots() { return List.copyOf(snapshots); }
+
     public int recordDaily(MinecraftServer server, long day) {
         PopulationSavedData population = PopulationSavedData.get(server);
         LogisticsInfrastructureSavedData infrastructure = LogisticsInfrastructureSavedData.get(server);

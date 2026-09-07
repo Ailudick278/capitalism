@@ -96,6 +96,8 @@ import com.ailudick.capitalismmod.tax.TaxPaymentAuditRules;
 import com.ailudick.capitalismmod.economy.EconomyLogSavedData;
 import com.ailudick.capitalismmod.tax.TaxPayment;
 import com.ailudick.capitalismmod.government.TaxRevenueAuditRules;
+import com.ailudick.capitalismmod.government.CityStatisticsAuditRules;
+import com.ailudick.capitalismmod.government.CityStatisticsSavedData;
 import com.ailudick.capitalismmod.company.CompanyLifecycleService;
 import com.ailudick.capitalismmod.company.CompanyFreightContractSavedData;
 import com.ailudick.capitalismmod.company.FreightContractAuditRules;
@@ -881,6 +883,13 @@ public final class EconomyAuditService {
                 issues.add("open dispute contract is not disputed " + dispute.id());
             } else if (!"OPEN".equals(dispute.status()) && contract.status() == ContractStatus.DISPUTED) {
                 issues.add("resolved dispute contract remains disputed " + dispute.id());
+            }
+        }
+        Set<String> citySnapshotKeys = new HashSet<>();
+        for (var snapshot : CityStatisticsSavedData.get(server).snapshots()) {
+            String key = snapshot.day() + ":" + snapshot.region();
+            if (!CityStatisticsAuditRules.valid(snapshot) || !citySnapshotKeys.add(key)) {
+                issues.add("city statistics snapshot invalid " + key);
             }
         }
         return List.copyOf(issues);
