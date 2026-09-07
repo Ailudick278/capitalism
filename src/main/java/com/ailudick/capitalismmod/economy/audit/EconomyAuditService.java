@@ -530,8 +530,10 @@ public final class EconomyAuditService {
             long deposits = 0L, loans = 0L, overdue = 0L;
             int overdueAccounts = 0;
             Set<String> accountIds = new HashSet<>();
+            var aggregateExposure = exposureData.exposure(playerEntry.getKey());
             for (var account : playerEntry.getValue().values()) {
-                if (!accountIds.add(account.accountId()) || !BankExposureAuditRules.validAccountSnapshot(account)) {
+                if (!accountIds.add(account.accountId()) || !BankExposureAuditRules.validAccountSnapshot(account)
+                        || !BankExposureAuditRules.timestampMatches(aggregateExposure, account)) {
                     issues.add("bank account exposure snapshot invalid " + playerEntry.getKey());
                     continue;
                 }
@@ -540,7 +542,7 @@ public final class EconomyAuditService {
                 overdue = safeAdd(overdue, account.overdueDebtMinor());
                 if (account.loanDaysRemaining() < 0 && account.loanDebtMinor() > 0L) overdueAccounts++;
             }
-            if (!BankExposureAuditRules.totalsMatch(BankExposureSavedData.get(server).exposure(playerEntry.getKey()),
+            if (!BankExposureAuditRules.totalsMatch(aggregateExposure,
                     deposits, loans, overdue, overdueAccounts)) {
                 issues.add("bank account exposure totals mismatch " + playerEntry.getKey());
             }

@@ -26,4 +26,10 @@ public final class BankExposureAuditRules {
         return exposure != null && deposits == exposure.depositsMinor() && loans == exposure.loanDebtMinor()
                 && overdue == exposure.overdueDebtMinor() && overdueAccounts == exposure.overdueAccounts();
     }
+
+    public static boolean timestampMatches(BankExposureSavedData.Exposure exposure,
+                                           BankExposureSavedData.AccountSnapshot snapshot) {
+        return exposure != null && validAccountSnapshot(snapshot)
+                && exposure.syncedAt() == snapshot.syncedAt();
+    }
 }
