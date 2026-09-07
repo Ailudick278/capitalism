@@ -19,5 +19,7 @@ class CompanyCreditBehaviorTest {
         assertEquals(1.0, CompanyCreditBehavior.termMultiplier(0, 0), 0.0001);
         assertEquals(0.5, CompanyCreditBehavior.termMultiplier(10, 0), 0.0001);
         assertEquals(1.0, CompanyCreditBehavior.termMultiplier(10, 100), 0.0001);
+        assertEquals(90, CompanyCreditBehavior.scoreForRepaymentAmounts(900, 100));
+        assertEquals(0, CompanyCreditBehavior.scoreForRepaymentAmounts(0, 500));
     }
 }

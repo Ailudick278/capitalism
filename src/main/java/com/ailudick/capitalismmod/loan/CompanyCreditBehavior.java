@@ -35,6 +35,15 @@ public record CompanyCreditBehavior(int payments, int onTimePayments, int overdu
         return termMultiplier(payments, score);
     }
 
+    /** Scores repayment quality by money at risk, rather than treating every payment equally. */
+    public static int scoreForRepaymentAmounts(long onTimeAmount, long overdueAmount) {
+        long onTime = Math.max(0L, onTimeAmount);
+        long overdue = Math.max(0L, overdueAmount);
+        if (onTime == 0L && overdue == 0L) return 0;
+        double ratio = onTime / ((double) onTime + overdue);
+        return (int) Math.max(0L, Math.min(100L, Math.round(ratio * 100.0)));
+    }
+
     public static CompanyCreditBehavior from(MinecraftServer server, String companyId) {
         if (server == null || companyId == null || companyId.isBlank()) {
             return new CompanyCreditBehavior(0, 0, 0, 0L, 0L, 0);
@@ -44,6 +53,8 @@ public record CompanyCreditBehavior(int payments, int onTimePayments, int overdu
         int overdue = 0;
         long principal = 0L;
         long interest = 0L;
+        long onTimeAmount = 0L;
+        long overdueAmount = 0L;
         for (CompanyLoanPaymentSavedData.Payment payment
                 : CompanyLoanPaymentSavedData.get(server).forCompany(companyId)) {
             if (payments < Integer.MAX_VALUE) payments++;
@@ -54,10 +65,13 @@ public record CompanyCreditBehavior(int payments, int onTimePayments, int overdu
             }
             principal = addSaturated(principal, Math.max(0L, payment.principal()));
             interest = addSaturated(interest, Math.max(0L, payment.interest()));
+            if (payment.overdue()) {
+                overdueAmount = addSaturated(overdueAmount, Math.max(0L, payment.total()));
+            } else {
+                onTimeAmount = addSaturated(onTimeAmount, Math.max(0L, payment.total()));
+            }
         }
-        int score;
-        if (payments == 0) score = 0;
-        else score = Math.max(0, Math.min(100, 100 - overdue * 25 + onTime * 2));
+        int score = scoreForRepaymentAmounts(onTimeAmount, overdueAmount);
         return new CompanyCreditBehavior(payments, onTime, overdue, principal, interest, score);
     }
 
