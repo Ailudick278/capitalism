@@ -32,4 +32,11 @@ class CommodityPriceEconomicsTest {
         assertEquals(100L, RegionalPriceEconomics.withLogisticsPremium(100L, 100));
         assertEquals(1L, RegionalPriceEconomics.withLogisticsPremium(1L, 0));
     }
+
+    @Test
+    void capacityShortageAddsCongestionDelay() {
+        assertEquals(100L, LogisticsEconomics.congestionDelay(100L, 100, 100));
+        assertEquals(125L, LogisticsEconomics.congestionDelay(100L, 101, 100));
+        assertEquals(300L, LogisticsEconomics.congestionDelay(100L, 801, 100));
+    }
 }
