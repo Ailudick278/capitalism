@@ -410,8 +410,13 @@ public final class CommodityMarket {
             return false;
         }
         if (order.sell()) {
-            WarehouseSavedData.get(player.getServer()).creditOnce(InventoryOwner.player(player.getUUID()),
-                    order.commodity().getItem(), order.quantity(), "commodity-order-cancel-item:" + order.id());
+            WarehouseSavedData warehouse = WarehouseSavedData.get(player.getServer());
+            String refundSource = "commodity-order-cancel-item:" + order.id();
+            if (!warehouse.hasCreditSource(refundSource)
+                    && !warehouse.creditOnce(InventoryOwner.player(player.getUUID()), order.commodity().getItem(),
+                    order.quantity(), refundSource)) {
+                return false;
+            }
         } else {
             long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
             if (total >= 0) {
@@ -497,8 +502,12 @@ public final class CommodityMarket {
                 continue;
             }
             if (order.sell()) {
-                warehouse.creditOnce(InventoryOwner.player(owner), order.commodity().getItem(), order.quantity(),
-                        "commodity-order-expiry-item:" + order.id());
+                String refundSource = "commodity-order-expiry-item:" + order.id();
+                if (!warehouse.hasCreditSource(refundSource)
+                        && !warehouse.creditOnce(InventoryOwner.player(owner), order.commodity().getItem(),
+                        order.quantity(), refundSource)) {
+                    continue;
+                }
             } else {
                 long total = EconomyMath.multiply(order.quantity(), order.pricePerUnit());
                 if (total > 0L) {
