@@ -4,6 +4,7 @@ import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import com.ailudick.capitalismmod.population.NpcBankingSavedData;
 
 /** Reconciles bank operating interest into the persistent equity ledger. */
 public final class BankCapitalService {
@@ -38,6 +39,7 @@ public final class BankCapitalService {
         for (BankExposureSavedData.Exposure exposure : BankExposureSavedData.get(server).exposures().values()) {
             overdueDebt = add(overdueDebt, exposure.overdueDebtMinor());
         }
+        overdueDebt = add(overdueDebt, NpcBankingSavedData.get(server).overdueDebt());
         long provisionDelta = capital.adjustLossProvision(
                 BankCapitalEconomics.lossProvisionTarget(overdueDebt));
         long provisionIncome = provisionDelta < 0L ? positiveMagnitude(provisionDelta) : 0L;

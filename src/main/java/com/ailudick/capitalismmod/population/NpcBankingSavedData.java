@@ -32,6 +32,9 @@ public final class NpcBankingSavedData extends SavedData {
                 new Factory<>(NpcBankingSavedData::new, NpcBankingSavedData::load), ID);
     }
     public List<Account> accounts() { return List.copyOf(accounts); }
+    public long totalDebt() { return accounts.stream().mapToLong(Account::debtMinor).reduce(0L, NpcBankingSavedData::safeAdd); }
+    public long overdueDebt() { return accounts.stream().filter(a -> a.loanDaysRemaining() < 0 && a.debtMinor() > 0L)
+            .mapToLong(Account::debtMinor).reduce(0L, NpcBankingSavedData::safeAdd); }
     public Account find(String householdId) { return accounts.stream()
             .filter(a -> a.householdId().equals(householdId)).findFirst().orElse(null); }
     public Account ensure(String householdId) {

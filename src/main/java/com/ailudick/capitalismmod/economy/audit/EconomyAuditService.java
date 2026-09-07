@@ -33,6 +33,7 @@ import com.ailudick.capitalismmod.population.HouseholdCashflowSavedData;
 import com.ailudick.capitalismmod.population.HouseholdTaxPeriodSavedData;
 import com.ailudick.capitalismmod.population.HouseholdFinancialRisk;
 import com.ailudick.capitalismmod.population.HouseholdFinancialRiskSavedData;
+import com.ailudick.capitalismmod.population.NpcBankingSavedData;
 import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseDebtSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseSettlementSavedData;
@@ -884,6 +885,21 @@ public final class EconomyAuditService {
         }
         PopulationSavedData population = PopulationSavedData.get(server);
         for (Household household : population.households()) if (household.cashMinor() < 0L || household.size() < household.workingAge()) issues.add("household " + household.id() + " invalid cash or age structure");
+        for (NpcBankingSavedData.Account account : NpcBankingSavedData.get(server).accounts()) {
+            boolean validAccount = account.id().equals("npc-account:" + account.householdId())
+                    && account.householdId().startsWith("npc-") && population.find(account.householdId()) != null
+                    && account.balanceMinor() >= 0L && account.debtMinor() >= 0L
+                    && account.loanDaysRemaining() >= -10000;
+            long lastDay = -1L; long lastBalance = 0L; long lastDebt = 0L;
+            for (NpcBankingSavedData.Transaction transaction : account.transactions()) {
+                validAccount &= transaction.day() >= 0L && transaction.day() >= lastDay
+                        && transaction.balanceAfterMinor() >= 0L && transaction.debtAfterMinor() >= 0L
+                        && transaction.id() != null && !transaction.id().isBlank();
+                lastDay = transaction.day(); lastBalance = transaction.balanceAfterMinor(); lastDebt = transaction.debtAfterMinor();
+            }
+            if (!account.transactions().isEmpty()) validAccount &= lastBalance == account.balanceMinor() && lastDebt == account.debtMinor();
+            if (!validAccount) issues.add("npc bank account invalid " + account.id());
+        }
         Set<String> cashflowIds = new HashSet<>();
         for (HouseholdCashflowSavedData.Snapshot snapshot : HouseholdCashflowSavedData.get(server).snapshots()) {
             boolean validSnapshot = snapshot.id() != null && !snapshot.id().isBlank()

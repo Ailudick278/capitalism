@@ -1,5 +1,8 @@
 package com.ailudick.capitalismmod.population;
 
+import com.ailudick.capitalismmod.Config;
+import com.ailudick.capitalismmod.bank.BankCapitalEconomics;
+import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
 import net.minecraft.server.MinecraftServer;
 
 /** Daily NPC banking: liquidity buffer, emergency credit, repayment, and savings. */
@@ -19,7 +22,11 @@ public final class NpcBankingService {
             }
         }
         account = data.find(household.id());
-        long limit = Math.min(Long.MAX_VALUE, multiply(need, 30L));
+        BankCapitalSavedData capital = BankCapitalSavedData.get(server);
+        if (!capital.initialized()) capital.initialize(Config.BANK_INITIAL_CAPITAL_MINOR.get());
+        long totalCapacity = BankCapitalEconomics.capitalBackedLoanCapacity(capital.capitalMinor());
+        long availableCapacity = totalCapacity > data.totalDebt() ? totalCapacity - data.totalDebt() : 0L;
+        long limit = Math.min(multiply(need, 30L), availableCapacity);
         if (cash < need && account.debtMinor() < limit) {
             long amount = Math.min(need - cash, limit - account.debtMinor());
             if (amount > 0L && data.transact(household.id(), day, "loan", 0L, amount, 30) != null) {
