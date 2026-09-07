@@ -97,6 +97,7 @@ public final class PopulationService {
                     "household-cashflow:" + household.id() + ":" + day, household.id(), day,
                     openingCash, wageIncome, governmentIncome, goods.spent(), rent.rentPaidMinor(),
                     remainingCash));
+            recordTaxPeriod(server, household.id(), day);
             LaborProfile profile = labor.profile(household.id());
             if (profile != null) labor.registerProfile(profile.withHealthAndEducation(health, education));
             evolveNpc(population, settled, day);
@@ -256,6 +257,26 @@ public final class PopulationService {
             }
         }
         return total;
+    }
+    private static void recordTaxPeriod(MinecraftServer server, String householdId, long day) {
+        if (day < 29L || day % 30L != 29L) return;
+        long start = day - 29L;
+        long grossWages = 0L, wageTax = 0L, consumption = 0L, consumptionTax = 0L;
+        for (LaborPayrollSavedData.Payment payment : LaborPayrollSavedData.get(server).payments().values()) {
+            if (householdId.equals(payment.workerId()) && payment.day() >= start && payment.day() <= day) {
+                grossWages = add(grossWages, ExchangeRates.convert(payment.amountMinor(), Currencies.USD, Config.defaultCurrency()));
+                wageTax = add(wageTax, ExchangeRates.convert(payment.taxMinor(), Currencies.USD, Config.defaultCurrency()));
+            }
+        }
+        for (HouseholdConsumptionSavedData.Consumption purchase : HouseholdConsumptionSavedData.get(server).records()) {
+            if (householdId.equals(purchase.householdId()) && purchase.day() >= start && purchase.day() <= day) {
+                consumption = add(consumption, purchase.totalCostMinor());
+                consumptionTax = add(consumptionTax, purchase.taxMinor());
+            }
+        }
+        HouseholdTaxPeriodSavedData.get(server).record(new HouseholdTaxPeriodSavedData.Assessment(
+                "household-tax-period:" + householdId + ":" + start + ":" + day,
+                householdId, start, day, grossWages, wageTax, consumption, consumptionTax));
     }
     private static long vatFor(long netUnitPrice) {
         if (netUnitPrice <= 0L || Config.VAT_RATE.get() <= 0.0) return 0L;

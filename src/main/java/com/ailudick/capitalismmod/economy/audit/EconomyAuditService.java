@@ -30,6 +30,7 @@ import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
 import com.ailudick.capitalismmod.population.CityHousingSavedData;
 import com.ailudick.capitalismmod.population.HouseholdCashflowSavedData;
+import com.ailudick.capitalismmod.population.HouseholdTaxPeriodSavedData;
 import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseDebtSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseSettlementSavedData;
@@ -927,6 +928,23 @@ public final class EconomyAuditService {
             if (!validMigration) issues.add("population migration invalid " + migration.id());
             if (population.find(migration.householdId()) == null) {
                 issues.add("population migration has no household " + migration.id());
+            }
+        }
+        Set<String> taxAssessmentIds = new HashSet<>();
+        for (HouseholdTaxPeriodSavedData.Assessment assessment : HouseholdTaxPeriodSavedData.get(server).assessments()) {
+            boolean validAssessment = assessment.id() != null && !assessment.id().isBlank()
+                    && taxAssessmentIds.add(assessment.id())
+                    && assessment.householdId() != null && !assessment.householdId().isBlank()
+                    && assessment.periodStart() >= 0L && assessment.periodEnd() >= assessment.periodStart()
+                    && assessment.periodEnd() - assessment.periodStart() == 29L
+                    && assessment.grossWagesMinor() >= 0L && assessment.wageTaxMinor() >= 0L
+                    && assessment.wageTaxMinor() <= assessment.grossWagesMinor()
+                    && assessment.consumptionMinor() >= 0L && assessment.consumptionTaxMinor() >= 0L
+                    && assessment.consumptionTaxMinor() <= assessment.consumptionMinor()
+                    && assessment.id().equals("household-tax-period:" + assessment.householdId()
+                    + ":" + assessment.periodStart() + ":" + assessment.periodEnd());
+            if (!validAssessment) {
+                issues.add("household tax assessment invalid " + assessment.id());
             }
         }
         for (var consumption : HouseholdConsumptionSavedData.get(server).records()) {
