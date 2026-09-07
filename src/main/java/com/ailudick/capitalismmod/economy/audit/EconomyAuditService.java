@@ -48,6 +48,7 @@ import com.ailudick.capitalismmod.economy.MarketTradeSavedData;
 import com.ailudick.capitalismmod.market.CommoditySavedData;
 import com.ailudick.capitalismmod.market.Commodities;
 import com.ailudick.capitalismmod.market.MarketOrder;
+import com.ailudick.capitalismmod.market.MarketOrderAuditRules;
 import com.ailudick.capitalismmod.market.LogisticsSavedData;
 import com.ailudick.capitalismmod.market.LogisticsDeliverySavedData;
 import com.ailudick.capitalismmod.market.LogisticsLossSavedData;
@@ -197,7 +198,10 @@ public final class EconomyAuditService {
         Set<String> marketOrderIds = new HashSet<>();
         CommoditySavedData commodities = CommoditySavedData.get(server);
         for (MarketOrder order : commodities.orders()) {
-            if (order.id().isBlank() || !marketOrderIds.add("commodity:" + order.id())
+            if (!MarketOrderAuditRules.valid(order.id(), order.ownerId(),
+                    com.ailudick.capitalismmod.market.Commodities.id(order.commodity()), order.quantity(),
+                    order.pricePerUnit(), order.sell(), order.createdAt())
+                    || !marketOrderIds.add("commodity:" + order.id())
                     || !isUuid(order.ownerId()) || order.commodity().isEmpty()
                     || com.ailudick.capitalismmod.market.Commodities.byId(
                     com.ailudick.capitalismmod.market.Commodities.id(order.commodity())) == null

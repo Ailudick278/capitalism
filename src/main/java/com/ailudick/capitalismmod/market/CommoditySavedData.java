@@ -177,6 +177,12 @@ public final class CommoditySavedData extends SavedData {
     }
 
     public void addOrder(MarketOrder order) {
+        if (order == null || !MarketOrderAuditRules.valid(order.id(), order.ownerId(),
+                Commodities.id(order.commodity()), order.quantity(), order.pricePerUnit(),
+                order.sell(), order.createdAt()) || Commodities.byId(Commodities.id(order.commodity())) == null
+                || findOrder(order.id()) != null) {
+            return;
+        }
         orders.add(order);
         setDirty();
     }
@@ -187,8 +193,17 @@ public final class CommoditySavedData extends SavedData {
     }
 
     public void replaceOrder(MarketOrder order) {
+        if (order == null || !MarketOrderAuditRules.valid(order.id(), order.ownerId(),
+                Commodities.id(order.commodity()), order.quantity(), order.pricePerUnit(),
+                order.sell(), order.createdAt()) || Commodities.byId(Commodities.id(order.commodity())) == null) {
+            return;
+        }
         for (int i = 0; i < orders.size(); i++) {
             if (orders.get(i).id().equals(order.id())) {
+                if (!MarketOrderAuditRules.sameIdentity(orders.get(i), order)
+                        || order.quantity() >= orders.get(i).quantity()) {
+                    return;
+                }
                 orders.set(i, order);
                 setDirty();
                 return;
