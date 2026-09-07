@@ -131,9 +131,9 @@ public final class CompanyHelper {
         if (server == null || companyId == null || currencyId == null || amount <= 0L
                 || sourceId == null || sourceId.isBlank()) return false;
         String marker = "[source=" + sourceId + "]";
-        if (CompanyLedgerSavedData.get(server).entries(companyId).stream()
-                .anyMatch(entry -> entry.description() != null && entry.description().contains(marker))) {
-            return true;
+        CompanyLedgerEntry existing = CompanyLedgerSavedData.get(server).findSource(companyId, sourceId);
+        if (existing != null) {
+            return CompanyLedgerSourceRules.matches(existing, currencyId, amount, true);
         }
         CompanySavedData data = CompanySavedData.get(server);
         Company company = data.get(companyId);
@@ -171,9 +171,9 @@ public final class CompanyHelper {
                                                           String sourceId) {
         if (sourceId == null || sourceId.isBlank()) return false;
         String marker = "[source=" + sourceId + "]";
-        if (CompanyLedgerSavedData.get(server).entries(companyId).stream()
-                .anyMatch(entry -> entry.description() != null && entry.description().contains(marker))) {
-            return true;
+        CompanyLedgerEntry existing = CompanyLedgerSavedData.get(server).findSource(companyId, sourceId);
+        if (existing != null) {
+            return CompanyLedgerSourceRules.matches(existing, currencyId, amount, true);
         }
         String markedDescription = (description == null ? "" : description) + " " + marker;
         return creditTreasuryNonOperating(server, companyId, currencyId, amount, type, markedDescription);
@@ -197,8 +197,8 @@ public final class CompanyHelper {
                                                          long amount, String type, String description, String sourceId) {
         if (sourceId == null || sourceId.isBlank() || amount <= 0L) return false;
         String marker = "[source=" + sourceId + "]";
-        if (CompanyLedgerSavedData.get(server).entries(companyId).stream()
-                .anyMatch(entry -> entry.amount() < 0L && entry.description() != null && entry.description().contains(marker))) return true;
+        CompanyLedgerEntry existing = CompanyLedgerSavedData.get(server).findSource(companyId, sourceId);
+        if (existing != null) return CompanyLedgerSourceRules.matches(existing, currencyId, amount, false);
         return debitTreasuryNonOperating(server, companyId, currencyId, amount, type,
                 (description == null ? "" : description) + " " + marker);
     }

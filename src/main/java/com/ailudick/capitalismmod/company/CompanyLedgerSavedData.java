@@ -44,6 +44,17 @@ public final class CompanyLedgerSavedData extends SavedData {
                 && entry.description().contains(marker));
     }
 
+    public CompanyLedgerEntry findSource(String companyId, String sourceId) {
+        if (companyId == null || companyId.isBlank() || sourceId == null || sourceId.isBlank()) return null;
+        String marker = "[source=" + sourceId + "]";
+        List<CompanyLedgerEntry> companyEntries = entries(companyId);
+        for (int i = companyEntries.size() - 1; i >= 0; i--) {
+            CompanyLedgerEntry entry = companyEntries.get(i);
+            if (entry.description() != null && entry.description().contains(marker)) return entry;
+        }
+        return null;
+    }
+
     public void append(CompanyLedgerEntry entry) {
         if (entry == null || entry.companyId() == null || entry.companyId().isBlank()) return;
         entries.computeIfAbsent(entry.companyId(), ignored -> new ArrayList<>()).add(entry);
