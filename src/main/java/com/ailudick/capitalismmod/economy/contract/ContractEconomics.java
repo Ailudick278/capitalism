@@ -4,6 +4,10 @@ package com.ailudick.capitalismmod.economy.contract;
 public final class ContractEconomics {
     private ContractEconomics() {}
 
+    public static boolean isDue(long now, long endsAt) {
+        return now >= 0L && endsAt > 0L && now >= endsAt;
+    }
+
     public static boolean canTransition(ContractStatus from, ContractStatus to) {
         if (from == null || to == null || from == to) return false;
         return switch (from) {

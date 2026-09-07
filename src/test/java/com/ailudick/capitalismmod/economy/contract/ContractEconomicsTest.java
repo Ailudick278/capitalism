@@ -50,6 +50,14 @@ class ContractEconomicsTest {
     }
 
     @Test
+    void dueAtDeadlineIsConsistentAcrossSettlementEntrypoints() {
+        assertTrue(ContractEconomics.isDue(100L, 100L));
+        assertTrue(ContractEconomics.isDue(101L, 100L));
+        assertFalse(ContractEconomics.isDue(99L, 100L));
+        assertFalse(ContractEconomics.isDue(100L, 0L));
+    }
+
+    @Test
     void contractStatusMutationCannotBypassLifecycleRules() {
         EconomicContract offered = new EconomicContract("supply-1", ContractType.SUPPLY,
                 EconomicActorRef.of("company", "seller"), EconomicActorRef.of("company", "buyer"),

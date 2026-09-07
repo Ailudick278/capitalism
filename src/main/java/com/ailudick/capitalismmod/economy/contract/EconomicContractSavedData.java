@@ -83,7 +83,7 @@ public final class EconomicContractSavedData extends SavedData {
         for (int i = 0; i < contracts.size(); i++) {
             EconomicContract contract = contracts.get(i);
             if ((contract.status() == ContractStatus.OFFERED || contract.status() == ContractStatus.ACTIVE)
-                    && contract.endsAt() > 0L && now >= contract.endsAt()) {
+                    && ContractEconomics.isDue(now, contract.endsAt())) {
                 contracts.set(i, contract.withStatus(ContractStatus.EXPIRED));
                 changed++;
             }
@@ -99,7 +99,7 @@ public final class EconomicContractSavedData extends SavedData {
             // Trade orders own their deadline, refund and inventory semantics;
             // their domain service must emit the terminal contract event.
             if (contract.type() == ContractType.TRADE) continue;
-            if (contract.endsAt() <= 0L || now <= contract.endsAt()) continue;
+            if (!ContractEconomics.isDue(now, contract.endsAt())) continue;
             if (contract.status() == ContractStatus.OFFERED && transition(contract.id(), ContractStatus.EXPIRED, now)) {
                 changed++;
             } else if (contract.status() == ContractStatus.ACTIVE
