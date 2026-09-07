@@ -316,7 +316,7 @@ public final class PopulationService {
                         if ("repay".equals(transaction.type()) && transaction.amount() < 0L
                                 && transaction.reference().startsWith("bank-repayment:")
                                 && Currencies.exists(transaction.currencyId())
-                                && (transaction.occurredAt() < 0L || transaction.occurredAt() >= repaymentSince)) {
+                                && transaction.occurredAt() >= repaymentSince) {
                             recentRepayments++;
                         }
                     }
