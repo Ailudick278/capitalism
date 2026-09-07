@@ -18,7 +18,15 @@ public final class HouseholdCashflowSavedData extends SavedData {
 
     public record Snapshot(String id, String householdId, long day, long openingCashMinor,
                            long wageIncomeMinor, long governmentIncomeMinor,
-                           long consumptionMinor, long rentMinor, long closingCashMinor) {}
+                           long consumptionMinor, long rentMinor, long bankNetMinor,
+                           long closingCashMinor) {
+        public Snapshot(String id, String householdId, long day, long openingCashMinor,
+                        long wageIncomeMinor, long governmentIncomeMinor,
+                        long consumptionMinor, long rentMinor, long closingCashMinor) {
+            this(id, householdId, day, openingCashMinor, wageIncomeMinor, governmentIncomeMinor,
+                    consumptionMinor, rentMinor, 0L, closingCashMinor);
+        }
+    }
 
     private HouseholdCashflowSavedData() {}
 
@@ -57,6 +65,7 @@ public final class HouseholdCashflowSavedData extends SavedData {
             entry.putLong("government", snapshot.governmentIncomeMinor());
             entry.putLong("consumption", snapshot.consumptionMinor());
             entry.putLong("rent", snapshot.rentMinor());
+            entry.putLong("bankNet", snapshot.bankNetMinor());
             entry.putLong("closing", snapshot.closingCashMinor());
             list.add(entry);
         }
@@ -77,7 +86,7 @@ public final class HouseholdCashflowSavedData extends SavedData {
                 data.snapshots.add(new Snapshot(entry.getString("id"), entry.getString("household"),
                         entry.getLong("day"), entry.getLong("opening"), entry.getLong("wages"),
                         entry.getLong("government"), entry.getLong("consumption"), entry.getLong("rent"),
-                        entry.getLong("closing")));
+                        entry.contains("bankNet") ? entry.getLong("bankNet") : 0L, entry.getLong("closing")));
             }
         }
         return data;

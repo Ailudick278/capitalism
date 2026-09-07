@@ -46,6 +46,9 @@ public final class PopulationService {
             // has already credited this household (or its arrears) before the
             // household phase runs; recomputing income here would pay wages twice.
             long openingCash = household.cashMinor();
+            NpcBankingService.Result banking = NpcBankingService.prepare(server, household, day);
+            household = banking.household();
+            long bankNetCash = banking.bankNetCashMinor();
             long wageIncome = wageIncome(server, household.id(), day);
             long governmentIncome = governmentIncome(server, household.id(), day);
             long cash = household.cashMinor();
@@ -95,11 +98,14 @@ public final class PopulationService {
                     .withEmploymentState(employed)
                     .withHumanCapital(health, education)
                     .withAnnualAging(day);
+            NpcBankingService.Result bankFinish = NpcBankingService.finish(server, settled, day);
+            settled = bankFinish.household();
+            bankNetCash = add(bankNetCash, bankFinish.bankNetCashMinor());
             population.upsert(settled);
             HouseholdCashflowSavedData.get(server).record(new HouseholdCashflowSavedData.Snapshot(
                     "household-cashflow:" + household.id() + ":" + day, household.id(), day,
-                    openingCash, wageIncome, governmentIncome, goods.spent(), rent.rentPaidMinor(),
-                    remainingCash));
+                    openingCash, wageIncome, governmentIncome, goods.spent(), rent.rentPaidMinor(), bankNetCash,
+                    settled.cashMinor()));
             recordTaxPeriod(server, household.id(), day);
             recordFinancialRisk(server, settled, day);
             LaborProfile profile = labor.profile(household.id());
@@ -328,6 +334,20 @@ public final class PopulationService {
             }
         } catch (IllegalArgumentException ignored) {
             // NPC households do not yet have bank accounts.
+        }
+        if (household.id().startsWith("npc-")) {
+            NpcBankingSavedData.Account account = NpcBankingSavedData.get(server).find(household.id());
+            if (account != null) {
+                bankDebt = add(bankDebt, account.debtMinor());
+                bankOverdue = account.loanDaysRemaining() < 0 && account.debtMinor() > 0L;
+                long since = Math.max(0L, day - 89L);
+                for (NpcBankingSavedData.Transaction transaction : account.transactions()) {
+                    if ("repayment".equals(transaction.type()) && transaction.day() >= since && transaction.day() <= day) {
+                        recentRepayments++;
+                        recentRepaymentMinor = add(recentRepaymentMinor, Math.max(0L, -transaction.amountMinor()));
+                    }
+                }
+            }
         }
         long recentIncomeMinor = 0L;
         for (LaborPayrollSavedData.Payment payment : LaborPayrollSavedData.get(server).payments().values()) {

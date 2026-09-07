@@ -897,6 +897,7 @@ public final class EconomyAuditService {
             long expectedClosing = safeSubtract(safeAdd(safeAdd(snapshot.openingCashMinor(),
                     snapshot.wageIncomeMinor()), snapshot.governmentIncomeMinor()),
                     safeAdd(snapshot.consumptionMinor(), snapshot.rentMinor()));
+            expectedClosing = safeAdd(expectedClosing, snapshot.bankNetMinor());
             if (!validSnapshot || expectedClosing != snapshot.closingCashMinor()) {
                 issues.add("household cashflow snapshot invalid " + snapshot.id());
                 continue;
