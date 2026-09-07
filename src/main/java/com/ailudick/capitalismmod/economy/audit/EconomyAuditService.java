@@ -777,8 +777,21 @@ public final class EconomyAuditService {
                 bankCapital.lastSettlementDay())) {
             issues.add("bank capital ledger invalid");
         }
-        if (!CentralBankFacilityAuditRules.validHistory(CentralBankFacilitySavedData.get(server).facilities())) {
+        var centralFacilities = CentralBankFacilitySavedData.get(server).facilities();
+        if (!CentralBankFacilityAuditRules.validHistory(centralFacilities)) {
             issues.add("central bank facility ledger invalid");
+        }
+        long facilityPrincipal = 0L;
+        for (var facility : centralFacilities) {
+            if (facility.remainingPrincipal() > Long.MAX_VALUE - facilityPrincipal) {
+                facilityPrincipal = Long.MAX_VALUE;
+                break;
+            }
+            facilityPrincipal += facility.remainingPrincipal();
+        }
+        long emergencyLiquidity = BankLiquiditySavedData.get(server).emergencyLiquidityMinor();
+        if (emergencyLiquidity > facilityPrincipal) {
+            issues.add("emergency liquidity exceeds outstanding central bank facilities");
         }
         long bankOverdue = 0L;
         for (var entry : exposureData.exposures().values()) {
