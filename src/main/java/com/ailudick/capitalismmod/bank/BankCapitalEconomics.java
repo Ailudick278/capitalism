@@ -8,8 +8,25 @@ public final class BankCapitalEconomics {
     public static boolean capitalStress(long capitalMinor, long loansMinor) {
         if (loansMinor <= 0L) return capitalMinor < 0L;
         if (capitalMinor <= 0L) return true;
-        long required = loansMinor / 100L * 8L + (loansMinor % 100L) * 8L / 100L;
+        long required = requiredCapital(loansMinor);
         return capitalMinor < required;
+    }
+
+    /** Minimum equity required for an 8% capital ratio, with overflow-safe arithmetic. */
+    public static long requiredCapital(long loansMinor) {
+        if (loansMinor <= 0L) return 0L;
+        long whole = loansMinor / 100L;
+        long remainder = loansMinor % 100L;
+        if (whole > Long.MAX_VALUE / 8L) return Long.MAX_VALUE;
+        long result = whole * 8L + remainder * 8L / 100L;
+        return result < 0L ? Long.MAX_VALUE : result;
+    }
+
+    /** Positive fiscal support needed to restore the minimum capital ratio. */
+    public static long capitalGap(long capitalMinor, long loansMinor) {
+        long required = requiredCapital(loansMinor);
+        long capital = Math.max(0L, capitalMinor);
+        return required > capital ? required - capital : 0L;
     }
 
     /** Maximum loan exposure supported by an 8% capital adequacy floor. */

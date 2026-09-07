@@ -6,6 +6,7 @@ import com.ailudick.capitalismmod.bank.BankLiquiditySavedData;
 import com.ailudick.capitalismmod.bank.BankLiquiditySnapshot;
 import com.ailudick.capitalismmod.bank.BankCapitalSavedData;
 import com.ailudick.capitalismmod.bank.BankCapitalService;
+import com.ailudick.capitalismmod.bank.BankCapitalEconomics;
 import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
 
@@ -44,9 +45,7 @@ public final class FinancialCrisisService {
         if (liquidity == null || liquidity.loanDebtMinor() <= 0L) return;
         BankCapitalSavedData capital = BankCapitalSavedData.get(server);
         if (!capital.initialized()) return;
-        long required = liquidity.loanDebtMinor() / 100L * 8L
-                + (liquidity.loanDebtMinor() % 100L) * 8L / 100L;
-        long gap = required > capital.capitalMinor() ? required - capital.capitalMinor() : 0L;
+        long gap = BankCapitalEconomics.capitalGap(capital.capitalMinor(), liquidity.loanDebtMinor());
         if (gap <= 0L) return;
         GovernmentPolicySavedData government = GovernmentPolicySavedData.get(server);
         long limit = government.treasuryMinor() / 4L;

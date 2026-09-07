@@ -23,6 +23,10 @@ class BankLiquidityEconomicsTest {
         assertEquals(true, BankLiquidityEconomics.withdrawalRunStress(100_000L, 50_001L));
         assertEquals(12_500L, BankCapitalEconomics.capitalBackedLoanCapacity(1_000L));
         assertEquals(0L, BankCapitalEconomics.capitalBackedLoanCapacity(0L));
+        assertEquals(800L, BankCapitalEconomics.requiredCapital(10_000L));
+        assertEquals(1L, BankCapitalEconomics.requiredCapital(13L));
+        assertEquals(200L, BankCapitalEconomics.capitalGap(600L, 10_000L));
+        assertEquals(0L, BankCapitalEconomics.capitalGap(800L, 10_000L));
         assertEquals(true, BankCapitalEconomics.capitalStress(799L, 10_000L));
         assertEquals(false, BankCapitalEconomics.capitalStress(800L, 10_000L));
         assertEquals(501L, BankCapitalEconomics.lossProvisionTarget(1_001L));
