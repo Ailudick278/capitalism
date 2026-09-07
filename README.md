@@ -44,6 +44,7 @@
 /economicevent list
 /government openMarket buyBond <holdingId>
 /government policy openMarket <true|false>
+/government budget [day]
 ```
 
 完整命令以游戏内 `/capitalism help` 为准。

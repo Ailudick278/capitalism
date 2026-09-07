@@ -18,6 +18,9 @@ public final class GovernmentCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         var root = Commands.literal("government");
         root.then(Commands.literal("info").executes(c -> info(c.getSource())));
+        var budgetDay = Commands.argument("day", LongArgumentType.longArg(0L))
+                .executes(c -> budget(c.getSource(), LongArgumentType.getLong(c, "day")));
+        root.then(Commands.literal("budget").then(budgetDay));
         var benefitAmount = Commands.argument("dailyMinor", IntegerArgumentType.integer(0, 1000000000))
                 .executes(c -> benefit(c.getSource(), IntegerArgumentType.getInteger(c, "dailyMinor")));
         var benefit = Commands.literal("benefit").then(benefitAmount);
@@ -64,6 +67,13 @@ public final class GovernmentCommand {
                 + " inflationTargetBps=" + data.inflationTargetBps()
                 + " transfers=" + data.transactions().size()
                 + " taxRevenues=" + data.taxRevenues().size()
+                + " spendingByCategory=" + data.spendingByCategory(day)), false);
+        return 1;
+    }
+
+    private static int budget(CommandSourceStack source, long day) {
+        GovernmentPolicySavedData data = GovernmentPolicySavedData.get(source.getServer());
+        source.sendSuccess(() -> Component.literal("government budget day=" + day
                 + " spendingByCategory=" + data.spendingByCategory(day)), false);
         return 1;
     }
