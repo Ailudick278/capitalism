@@ -299,6 +299,18 @@ public final class EconomyAuditService {
                         || !StockOrderAuditRules.coversSellEscrow(stocks.shareDebitQuantity(source), order.quantity()))) {
                     issues.add("stock sell escrow differs from order " + order.id());
                 }
+            } else if (isUuid(order.ownerId())) {
+                long reservedMajor = safeMultiply(order.quantity(), order.pricePerUnit());
+                long reservedMinor = reservedMajor <= 0L ? Long.MIN_VALUE : Money.toMinorSaturated(reservedMajor);
+                String paymentReference = "stock-buy-order:" + order.id();
+                boolean escrowCovered = economyLog.entries().stream().anyMatch(entry ->
+                        order.ownerId().equals(entry.playerId() == null ? "" : entry.playerId().toString())
+                                && Currencies.USD.id().equals(entry.currencyId())
+                                && paymentReference.equals(entry.reference())
+                                && MarketOrderAuditRules.validBuyEscrow(entry.amount(), reservedMinor));
+                if (!escrowCovered) {
+                    issues.add("stock buy order escrow missing " + order.id());
+                }
             }
         }
         Set<String> shipmentIds = new HashSet<>();
