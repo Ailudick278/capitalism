@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import com.ailudick.capitalismmod.economy.expansion.EconomicActorRef;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -68,5 +69,13 @@ class ContractEconomicsTest {
         assertTrue(active.status() == ContractStatus.ACTIVE);
         assertSame(active, active.withStatus(ContractStatus.ACTIVE));
         assertSame(active, active.withStatus(null));
+    }
+
+    @Test
+    void breachAmountReflectsUnfulfilledQuantity() {
+        EconomicContract contract = new EconomicContract("supply-2", ContractType.SUPPLY,
+                EconomicActorRef.of("company", "seller"), EconomicActorRef.of("company", "buyer"),
+                1L, 1L, 100L, 500L, "usd", ContractStatus.ACTIVE, 3L, 10L, 0L);
+        assertEquals(350L, contract.remainingBreachAmountMinor());
     }
 }

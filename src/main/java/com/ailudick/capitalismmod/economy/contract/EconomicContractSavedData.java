@@ -103,7 +103,7 @@ public final class EconomicContractSavedData extends SavedData {
             if (contract.status() == ContractStatus.OFFERED && transition(contract.id(), ContractStatus.EXPIRED, now)) {
                 changed++;
             } else if (contract.status() == ContractStatus.ACTIVE
-                    && breach(contract.id(), contract.agreedAmountMinor())) {
+                    && breach(contract.id(), contract.remainingBreachAmountMinor())) {
                 changed++;
             }
         }

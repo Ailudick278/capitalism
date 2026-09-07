@@ -54,6 +54,18 @@ public record EconomicContract(String id, ContractType type, EconomicActorRef pr
                 agreedQuantity, safeAdd(breachAmountMinor, Math.max(0L, amountMinor)));
     }
 
+    /** Monetary exposure still at risk when a quantity-based contract expires. */
+    public long remainingBreachAmountMinor() {
+        if (agreedQuantity <= 0L) return agreedAmountMinor;
+        long remaining = Math.max(0L, agreedQuantity - fulfilledQuantity);
+        try {
+            return java.math.BigInteger.valueOf(agreedAmountMinor).multiply(java.math.BigInteger.valueOf(remaining))
+                    .divide(java.math.BigInteger.valueOf(agreedQuantity)).longValueExact();
+        } catch (ArithmeticException exception) {
+            return Long.MAX_VALUE;
+        }
+    }
+
     private static long safeAdd(long left, long right) {
         return right > Long.MAX_VALUE - left ? Long.MAX_VALUE : left + right;
     }
