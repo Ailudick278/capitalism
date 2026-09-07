@@ -29,6 +29,7 @@ import com.ailudick.capitalismmod.population.Household;
 import com.ailudick.capitalismmod.population.PopulationSavedData;
 import com.ailudick.capitalismmod.population.HousingLeaseSavedData;
 import com.ailudick.capitalismmod.population.CityHousingSavedData;
+import com.ailudick.capitalismmod.population.HouseholdCashflowSavedData;
 import com.ailudick.capitalismmod.population.PrivateLandlordSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseDebtSavedData;
 import com.ailudick.capitalismmod.land.LandLeaseSettlementSavedData;
@@ -853,6 +854,37 @@ public final class EconomyAuditService {
         }
         PopulationSavedData population = PopulationSavedData.get(server);
         for (Household household : population.households()) if (household.cashMinor() < 0L || household.size() < household.workingAge()) issues.add("household " + household.id() + " invalid cash or age structure");
+        Set<String> cashflowIds = new HashSet<>();
+        for (HouseholdCashflowSavedData.Snapshot snapshot : HouseholdCashflowSavedData.get(server).snapshots()) {
+            boolean validSnapshot = snapshot.id() != null && !snapshot.id().isBlank()
+                    && cashflowIds.add(snapshot.id())
+                    && snapshot.householdId() != null && !snapshot.householdId().isBlank()
+                    && snapshot.day() >= 0L && snapshot.openingCashMinor() >= 0L
+                    && snapshot.wageIncomeMinor() >= 0L && snapshot.governmentIncomeMinor() >= 0L
+                    && snapshot.consumptionMinor() >= 0L && snapshot.rentMinor() >= 0L
+                    && snapshot.closingCashMinor() >= 0L
+                    && snapshot.id().equals("household-cashflow:" + snapshot.householdId() + ":" + snapshot.day());
+            long expectedClosing = safeSubtract(safeAdd(safeAdd(snapshot.openingCashMinor(),
+                    snapshot.wageIncomeMinor()), snapshot.governmentIncomeMinor()),
+                    safeAdd(snapshot.consumptionMinor(), snapshot.rentMinor()));
+            if (!validSnapshot || expectedClosing != snapshot.closingCashMinor()) {
+                issues.add("household cashflow snapshot invalid " + snapshot.id());
+                continue;
+            }
+            long recordedConsumption = HouseholdConsumptionSavedData.get(server).records().stream()
+                    .filter(consumption -> snapshot.householdId().equals(consumption.householdId())
+                            && snapshot.day() == consumption.day())
+                    .mapToLong(HouseholdConsumptionSavedData.Consumption::totalCostMinor)
+                    .reduce(0L, EconomyAuditService::safeAdd);
+            long recordedRent = HousingLeaseSavedData.get(server).payments().stream()
+                    .filter(payment -> snapshot.householdId().equals(payment.householdId())
+                            && snapshot.day() == payment.day())
+                    .mapToLong(HousingLeaseSavedData.Payment::rentPaidMinor)
+                    .reduce(0L, EconomyAuditService::safeAdd);
+            if (recordedConsumption != snapshot.consumptionMinor() || recordedRent != snapshot.rentMinor()) {
+                issues.add("household cashflow outgoings mismatch " + snapshot.id());
+            }
+        }
         Set<String> migrationIds = new HashSet<>();
         for (PopulationSavedData.Migration migration : population.migrations()) {
             boolean validMigration = migration.id() != null && !migration.id().isBlank()
@@ -1149,6 +1181,7 @@ public final class EconomyAuditService {
         return true;
     }
     private static long safeAdd(long a, long b) { try { return Math.addExact(a, b); } catch (ArithmeticException e) { return Long.MIN_VALUE; } }
+    private static long safeSubtract(long a, long b) { try { return Math.subtractExact(a, b); } catch (ArithmeticException e) { return Long.MIN_VALUE; } }
     private static TaxPayment taxLedgerPayment(List<TaxPayment> payments, String paymentId) {
         if (paymentId == null || paymentId.isBlank()) return null;
         return payments.stream().filter(payment -> paymentId.equals(payment.id())).findFirst().orElse(null);

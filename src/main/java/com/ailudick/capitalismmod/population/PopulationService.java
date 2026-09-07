@@ -3,6 +3,7 @@ package com.ailudick.capitalismmod.population;
 import com.ailudick.capitalismmod.economy.labor.EmploymentRecord;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketService;
+import com.ailudick.capitalismmod.economy.labor.LaborPayrollSavedData;
 import com.ailudick.capitalismmod.economy.expansion.EconomicEventService;
 import com.ailudick.capitalismmod.economy.labor.JobOffer;
 import com.ailudick.capitalismmod.economy.labor.LaborProfile;
@@ -15,6 +16,7 @@ import com.ailudick.capitalismmod.market.TradeRegion;
 import com.ailudick.capitalismmod.company.Company;
 import com.ailudick.capitalismmod.company.CompanySavedData;
 import com.ailudick.capitalismmod.company.CompanyHelper;
+import com.ailudick.capitalismmod.government.GovernmentPolicySavedData;
 import com.ailudick.capitalismmod.company.CompanyLedgerSavedData;
 import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.currency.Currencies;
@@ -40,6 +42,9 @@ public final class PopulationService {
             // LaborPayrollService is the sole wage settlement authority. It
             // has already credited this household (or its arrears) before the
             // household phase runs; recomputing income here would pay wages twice.
+            long openingCash = household.cashMinor();
+            long wageIncome = wageIncome(server, household.id(), day);
+            long governmentIncome = governmentIncome(server, household.id(), day);
             long cash = household.cashMinor();
             int residents = population.population(household.region());
             int housingUnits = LogisticsInfrastructureSavedData.get(server).count(household.region(), "housing");
@@ -88,6 +93,10 @@ public final class PopulationService {
                     .withHumanCapital(health, education)
                     .withAnnualAging(day);
             population.upsert(settled);
+            HouseholdCashflowSavedData.get(server).record(new HouseholdCashflowSavedData.Snapshot(
+                    "household-cashflow:" + household.id() + ":" + day, household.id(), day,
+                    openingCash, wageIncome, governmentIncome, goods.spent(), rent.rentPaidMinor(),
+                    remainingCash));
             LaborProfile profile = labor.profile(household.id());
             if (profile != null) labor.registerProfile(profile.withHealthAndEducation(health, education));
             evolveNpc(population, settled, day);
@@ -219,6 +228,24 @@ public final class PopulationService {
     private static boolean hasCompanySource(MinecraftServer server, String companyId, String source) {
         return CompanyLedgerSavedData.get(server).entries(companyId).stream()
                 .anyMatch(entry -> entry.description() != null && entry.description().contains("[source=" + source + "]"));
+    }
+    private static long wageIncome(MinecraftServer server, String householdId, long day) {
+        long total = 0L;
+        for (LaborPayrollSavedData.Payment payment : LaborPayrollSavedData.get(server).payments().values()) {
+            if (day == payment.day() && householdId.equals(payment.workerId())) {
+                total = add(total, ExchangeRates.convert(payment.amountMinor(), Currencies.USD, Config.defaultCurrency()));
+            }
+        }
+        return total;
+    }
+    private static long governmentIncome(MinecraftServer server, String householdId, long day) {
+        long total = 0L;
+        for (GovernmentPolicySavedData.Transaction transaction : GovernmentPolicySavedData.get(server).transactions()) {
+            if (day == transaction.day() && householdId.equals(transaction.householdId())) {
+                total = add(total, transaction.amount());
+            }
+        }
+        return total;
     }
     private record ConsumptionResult(long remainingCash, long spent) {}
     private static long multiply(long a, long b) { try { return Math.multiplyExact(a, b); } catch (ArithmeticException e) { return Long.MAX_VALUE; } }
