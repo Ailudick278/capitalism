@@ -624,7 +624,7 @@ public final class CompanyHelper {
             return ProductionCycleResult.failure("cost_overflow");
         }
         String productionSource = stableBatchId.isBlank() ? "" : "production-cost:" + stableBatchId;
-        boolean debited = productionSource.isBlank()
+        boolean debited = cost == 0L || productionSource.isBlank()
                 ? debitTreasury(server, company.companyId(), Currencies.USD.id(), cost,
                 "production_expense", "生产周期劳动力、能源与设备维护成本")
                 : debitTreasuryOnce(server, company.companyId(), Currencies.USD.id(), cost,
