@@ -1,4 +1,1 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {"layer0": "minecraft:item/sugar"}
-}
+﻿{"parent":"minecraft:item/generated","textures":{"layer0":"capitalismmod:item/lithium_carbonate"}}

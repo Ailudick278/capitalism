@@ -1,0 +1,68 @@
+{
+  "variants": {
+    "facing=north,half=lower,open=false": {
+      "model": "capitalismmod:block/gas_cylinder_lower",
+      "y": 0
+    },
+    "facing=north,half=lower,open=true": {
+      "model": "capitalismmod:block/gas_cylinder_lower",
+      "y": 0
+    },
+    "facing=north,half=upper,open=false": {
+      "model": "capitalismmod:block/gas_cylinder_upper_closed",
+      "y": 0
+    },
+    "facing=north,half=upper,open=true": {
+      "model": "capitalismmod:block/gas_cylinder_upper_open",
+      "y": 0
+    },
+    "facing=east,half=lower,open=false": {
+      "model": "capitalismmod:block/gas_cylinder_lower",
+      "y": 90
+    },
+    "facing=east,half=lower,open=true": {
+      "model": "capitalismmod:block/gas_cylinder_lower",
+      "y": 90
+    },
+    "facing=east,half=upper,open=false": {
+      "model": "capitalismmod:block/gas_cylinder_upper_closed",
+      "y": 90
+    },
+    "facing=east,half=upper,open=true": {
+      "model": "capitalismmod:block/gas_cylinder_upper_open",
+      "y": 90
+    },
+    "facing=south,half=lower,open=false": {
+      "model": "capitalismmod:block/gas_cylinder_lower",
+      "y": 180
+    },
+    "facing=south,half=lower,open=true": {
+      "model": "capitalismmod:block/gas_cylinder_lower",
+      "y": 180
+    },
+    "facing=south,half=upper,open=false": {
+      "model": "capitalismmod:block/gas_cylinder_upper_closed",
+      "y": 180
+    },
+    "facing=south,half=upper,open=true": {
+      "model": "capitalismmod:block/gas_cylinder_upper_open",
+      "y": 180
+    },
+    "facing=west,half=lower,open=false": {
+      "model": "capitalismmod:block/gas_cylinder_lower",
+      "y": 270
+    },
+    "facing=west,half=lower,open=true": {
+      "model": "capitalismmod:block/gas_cylinder_lower",
+      "y": 270
+    },
+    "facing=west,half=upper,open=false": {
+      "model": "capitalismmod:block/gas_cylinder_upper_closed",
+      "y": 270
+    },
+    "facing=west,half=upper,open=true": {
+      "model": "capitalismmod:block/gas_cylinder_upper_open",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["CIC"," H ","CIC"],"key":{"C":{"item":"capitalismmod:machine_casing"},"I":{"item":"capitalismmod:pressure_pump"},"H":{"item":"minecraft:hopper"}},"result":{"id":"capitalismmod:factory_output_port","count":1}}

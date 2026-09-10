@@ -36,6 +36,7 @@ import com.ailudick.capitalismmod.command.CityCommand;
 import com.ailudick.capitalismmod.command.GovernmentCommand;
 import com.ailudick.capitalismmod.command.ContractDisputeCommand;
 import com.ailudick.capitalismmod.command.EconomicEventCommand;
+import com.ailudick.capitalismmod.command.FactoryCommand;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -83,5 +84,6 @@ public class ModEvents {
         GovernmentCommand.register(dispatcher);
         ContractDisputeCommand.register(dispatcher);
         EconomicEventCommand.register(dispatcher);
+        FactoryCommand.register(dispatcher);
     }
 }

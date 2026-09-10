@@ -18,7 +18,7 @@ public final class ProductionEnergyEconomics {
         return switch (itemId == null ? "" : itemId) {
             case "minecraft:coal", "minecraft:charcoal",
                     "capitalismmod:fuel_oil", "capitalismmod:diesel",
-                    "capitalismmod:gasoline", "capitalismmod:lpg" -> true;
+                    "capitalismmod:gasoline", "capitalismmod:lpg", "capitalismmod:refinery_gas" -> true;
             default -> false;
         };
     }

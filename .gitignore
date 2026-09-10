@@ -39,3 +39,7 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+
+### Local development scratch files ###
+/tmp/
+node_modules/

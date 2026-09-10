@@ -1,0 +1,1 @@
+{"type":"minecraft:ore","config":{"size":10,"discard_chance_on_air_exposure":0.15,"targets":[{"target":{"predicate_type":"minecraft:block_match","block":"minecraft:stone"},"state":{"Name":"capitalismmod:quartz_sand_ore"}}]}}

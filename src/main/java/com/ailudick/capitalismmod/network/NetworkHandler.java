@@ -84,6 +84,19 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 public class NetworkHandler {
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar("1");
+        registrar.playBidirectional(com.ailudick.capitalismmod.network.payload.TechnologySnapshotPayload.TYPE,
+                com.ailudick.capitalismmod.network.payload.TechnologySnapshotPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                        int mask = 0;
+                        for (var era : com.ailudick.capitalismmod.progression.TechnologyEra.values())
+                            if (com.ailudick.capitalismmod.progression.TechnologyProgression.isUnlocked(player.serverLevel(), era))
+                                mask |= 1 << era.ordinal();
+                        context.reply(new com.ailudick.capitalismmod.network.payload.TechnologySnapshotPayload(mask));
+                    } else {
+                        com.ailudick.capitalismmod.client.TechnologySnapshotHandler.accept(payload.mask());
+                    }
+                }));
 
         // Client -> Server.
         registrar.playToServer(ExchangePayload.TYPE, ExchangePayload.STREAM_CODEC, ServerPayloadHandler::handleExchange);

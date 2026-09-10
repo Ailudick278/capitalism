@@ -1,0 +1,27 @@
+{
+  "parent": "capitalismmod:technology/root",
+  "display": {
+    "icon": {"id": "capitalismmod:factory_machine"},
+    "title": {"translate": "advancement.capitalismmod.technology.steam.title"},
+    "description": {"translate": "advancement.capitalismmod.technology.steam.description"},
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "rewards": {"recipes": [
+    "capitalismmod:machine_frame",
+    "capitalismmod:factory",
+    "capitalismmod:factory_input_port",
+    "capitalismmod:factory_output_port",
+    "capitalismmod:factory_machine",
+    "capitalismmod:warehouse"
+  ]},
+  "criteria": {
+    "machine_frame": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {"items": [{"items": ["capitalismmod:machine_frame"]}]}
+    }
+  },
+  "requirements": [["machine_frame"]]
+}

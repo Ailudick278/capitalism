@@ -1,4 +1,1 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {"layer0": "minecraft:item/green_dye"}
-}
+﻿{"parent":"minecraft:item/generated","textures":{"layer0":"capitalismmod:item/etched_pcb"}}

@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "capitalismmod:sulfur_ore", "capitalismmod:deepslate_sulfur_ore",
+    "capitalismmod:limestone_ore", "capitalismmod:phosphate_ore",
+    "capitalismmod:potash_ore", "capitalismmod:quartz_sand_ore"
+  ]
+}

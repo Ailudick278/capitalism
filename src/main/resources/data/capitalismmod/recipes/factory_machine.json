@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["CIC","MPM","CIC"],"key":{"C":{"item":"capitalismmod:machine_casing"},"I":{"item":"capitalismmod:industrial_coil"},"M":{"item":"capitalismmod:electric_motor"},"P":{"item":"capitalismmod:control_panel"}},"result":{"id":"capitalismmod:factory_machine","count":1}}

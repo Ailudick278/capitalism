@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["SRS","SFS","SRS"],"key":{"S":{"item":"capitalismmod:steel_sheet"},"R":{"item":"capitalismmod:refractory_brick"},"F":{"item":"capitalismmod:machine_frame"}},"result":{"id":"capitalismmod:machine_casing","count":1}}

@@ -1,4 +1,1 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {"layer0": "capitalismmod:item/steel_sheet"}
-}
+﻿{"parent":"minecraft:item/generated","textures":{"layer0":"capitalismmod:item/machine_frame"}}

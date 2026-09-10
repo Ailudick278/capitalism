@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["SPS","MCM","SIS"],"key":{"S":{"item":"capitalismmod:steel_sheet"},"P":{"item":"capitalismmod:control_panel"},"M":{"item":"capitalismmod:machine_frame"},"C":{"item":"capitalismmod:machine_casing"},"I":{"item":"capitalismmod:industrial_coil"}},"result":{"id":"capitalismmod:factory","count":1}}

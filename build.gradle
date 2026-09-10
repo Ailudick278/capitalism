@@ -33,6 +33,11 @@ repositories {
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
     }
+    // LDLib2 UI and rendering library
+    maven {
+        name = "FirstDark snapshots"
+        url = "https://maven.firstdark.dev/snapshots"
+    }
 }
 
 base {
@@ -120,11 +125,15 @@ configurations {
 }
 
 dependencies {
+    // LDLib2 powers the redesigned bank dashboard UI.
+    implementation "com.lowdragmc.ldlib2:ldlib2-neoforge-${minecraft_version}:${ldlib2_version}:all"
+
     // Optional mod dependency on JEI (soft dependency). API for compile, full jar for runtime only.
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
     localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+    testImplementation 'com.google.code.gson:gson:2.10.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.0'
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
@@ -180,6 +189,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             minecraft_version_range: minecraft_version_range,
             neo_version            : neo_version,
             loader_version_range   : loader_version_range,
+            ldlib2_version         : ldlib2_version,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

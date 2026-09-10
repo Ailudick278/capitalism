@@ -1,0 +1,19 @@
+{
+  "parent": "capitalismmod:technology/electrification",
+  "display": {
+    "icon": {"id": "capitalismmod:crude_oil"},
+    "title": {"translate": "advancement.capitalismmod.technology.petrochemical.title"},
+    "description": {"translate": "advancement.capitalismmod.technology.petrochemical.description"},
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "crude_oil": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {"items": [{"items": ["capitalismmod:crude_oil"]}]}
+    }
+  },
+  "requirements": [["crude_oil"]]
+}

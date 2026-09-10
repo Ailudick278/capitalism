@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["IRI","GCG","IRI"],"key":{"I":{"item":"minecraft:iron_ingot"},"R":{"item":"minecraft:redstone"},"G":{"item":"minecraft:glass_pane"},"C":{"item":"capitalismmod:copper_wire"}},"result":{"id":"capitalismmod:control_panel","count":1}}

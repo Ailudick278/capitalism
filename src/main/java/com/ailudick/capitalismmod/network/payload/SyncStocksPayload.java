@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.network.payload;
 
 import com.ailudick.capitalismmod.CapitalismMod;
+import com.ailudick.capitalismmod.network.CollectionSnapshots;
 import com.ailudick.capitalismmod.stock.Candle;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -16,6 +17,18 @@ import java.util.Map;
  * Server -> Client: sync stock prices, candle history, and the player's portfolio.
  */
 public record SyncStocksPayload(Map<String, Long> prices, Map<String, Long> portfolio, Map<String, List<Candle>> history, Map<String, String> companies) implements CustomPacketPayload {
+    /**
+     * Construct on the server thread before enqueueing for Netty. Encoding may happen
+     * after the next market tick, so neither maps nor nested lists may reference live data.
+     * Candle is an immutable record and can safely be shared.
+     */
+    public SyncStocksPayload {
+        prices = Map.copyOf(prices);
+        portfolio = Map.copyOf(portfolio);
+        history = CollectionSnapshots.lists(history);
+        companies = Map.copyOf(companies);
+    }
+
     public static final Type<SyncStocksPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(CapitalismMod.MODID, "sync_stocks"));
 

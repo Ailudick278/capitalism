@@ -1,0 +1,19 @@
+{
+  "parent": "capitalismmod:technology/petrochemical",
+  "display": {
+    "icon": {"id": "capitalismmod:packaged_chip"},
+    "title": {"translate": "advancement.capitalismmod.technology.information.title"},
+    "description": {"translate": "advancement.capitalismmod.technology.information.description"},
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "packaged_chip": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {"items": [{"items": ["capitalismmod:packaged_chip"]}]}
+    }
+  },
+  "requirements": [["packaged_chip"]]
+}

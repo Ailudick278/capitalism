@@ -5,6 +5,7 @@ import com.ailudick.capitalismmod.Config;
 import com.ailudick.capitalismmod.network.payload.OpenWorldMapPayload;
 import com.ailudick.capitalismmod.network.payload.OpenLandPayload;
 import com.ailudick.capitalismmod.network.payload.RequestWorldMapTilesPayload;
+import com.ailudick.capitalismmod.screen.TechnologyTreeScreen;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -25,6 +26,10 @@ public class ConglomerateKeyHandler {
         }
         while (ConglomerateKeyMapping.OPEN_LAND_MENU.consumeClick()) {
             PacketDistributor.sendToServer(new OpenLandPayload());
+        }
+        while (ConglomerateKeyMapping.OPEN_TECHNOLOGY.consumeClick()) {
+            if (Minecraft.getInstance().player != null && Minecraft.getInstance().screen == null)
+                Minecraft.getInstance().setScreen(new TechnologyTreeScreen());
         }
         if (Minecraft.getInstance().player != null) {
             var player = Minecraft.getInstance().player;

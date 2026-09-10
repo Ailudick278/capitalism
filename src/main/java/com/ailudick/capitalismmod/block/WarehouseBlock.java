@@ -12,6 +12,8 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -22,9 +24,14 @@ import java.util.HashMap;
  * Warehouse block. Opens a GUI where players deposit and withdraw commodities from
  * the exchange's delivery warehouse.
  */
-public class WarehouseBlock extends Block {
+public class WarehouseBlock extends Block implements EntityBlock {
     public WarehouseBlock(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new com.ailudick.capitalismmod.blockentity.FactoryStorageBlockEntity(pos, state);
     }
 
     @Override

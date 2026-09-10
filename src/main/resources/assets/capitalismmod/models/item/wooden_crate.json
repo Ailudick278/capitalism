@@ -1,4 +1,1 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {"layer0": "minecraft:item/chest"}
-}
+﻿{"parent":"minecraft:item/generated","textures":{"layer0":"capitalismmod:item/wooden_crate"}}

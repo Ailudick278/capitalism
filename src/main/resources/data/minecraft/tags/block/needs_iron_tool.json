@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "capitalismmod:aluminum_ore", "capitalismmod:deepslate_aluminum_ore",
+    "capitalismmod:bauxite_ore", "capitalismmod:deepslate_bauxite_ore",
+    "capitalismmod:nickel_ore", "capitalismmod:deepslate_nickel_ore",
+    "capitalismmod:zinc_ore", "capitalismmod:deepslate_zinc_ore",
+    "capitalismmod:tin_ore", "capitalismmod:deepslate_tin_ore",
+    "capitalismmod:lead_ore", "capitalismmod:deepslate_lead_ore",
+    "capitalismmod:graphite_ore", "capitalismmod:deepslate_graphite_ore"
+  ]
+}

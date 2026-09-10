@@ -15,6 +15,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 public class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(CapitalismMod.MODID);
+    public static final DeferredItem<BlockItem> GAS_CYLINDER = ITEMS.register("gas_cylinder",
+            () -> new BlockItem(ModBlocks.GAS_CYLINDER_BLOCK.get(), new Item.Properties()));
 
     // Denomination items. Values are in minor units (1 major unit = 100 minor units):
     // US Dollar uses cents, Chinese Yuan uses fen, Euro uses cents, Ruble uses kopecks.
@@ -157,6 +159,14 @@ public class ModItems {
             () -> new BlockItem(ModBlocks.TAX_BUREAU_BLOCK.get(), new Item.Properties()));
     public static final DeferredItem<BlockItem> COMPANY = ITEMS.register("company",
             () -> new BlockItem(ModBlocks.COMPANY_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> FACTORY = ITEMS.register("factory",
+            () -> new BlockItem(ModBlocks.FACTORY_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> FACTORY_INPUT_PORT = ITEMS.register("factory_input_port",
+            () -> new BlockItem(ModBlocks.FACTORY_INPUT_PORT_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> FACTORY_OUTPUT_PORT = ITEMS.register("factory_output_port",
+            () -> new BlockItem(ModBlocks.FACTORY_OUTPUT_PORT_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> FACTORY_MACHINE = ITEMS.register("factory_machine",
+            () -> new BlockItem(ModBlocks.FACTORY_MACHINE_BLOCK.get(), new Item.Properties()));
     public static final DeferredItem<BlockItem> WAREHOUSE = ITEMS.register("warehouse",
             () -> new BlockItem(ModBlocks.WAREHOUSE_BLOCK.get(), new Item.Properties()));
     public static final DeferredItem<BlockItem> FUTURES_EXCHANGE = ITEMS.register("futures_exchange",
@@ -380,4 +390,221 @@ public class ModItems {
             () -> new Item(new Item.Properties().stacksTo(64)));
     public static final DeferredItem<Item> PACKAGING_FILM = ITEMS.register("packaging_film",
             () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> REFRACTORY_BRICK = ITEMS.register("refractory_brick",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> INDUSTRIAL_COIL = ITEMS.register("industrial_coil",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PRESSURE_PUMP = ITEMS.register("pressure_pump",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CONTROL_PANEL = ITEMS.register("control_panel",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> MACHINE_CASING = ITEMS.register("machine_casing",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<BlockItem> ALUMINUM_ORE = ITEMS.register("aluminum_ore",
+            () -> new BlockItem(ModBlocks.ALUMINUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_ALUMINUM_ORE = ITEMS.register("deepslate_aluminum_ore",
+            () -> new BlockItem(ModBlocks.DEEPSLATE_ALUMINUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> SULFUR_ORE = ITEMS.register("sulfur_ore",
+            () -> new BlockItem(ModBlocks.SULFUR_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_SULFUR_ORE = ITEMS.register("deepslate_sulfur_ore",
+            () -> new BlockItem(ModBlocks.DEEPSLATE_SULFUR_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<Item> RAW_ALUMINUM = ITEMS.register("raw_aluminum",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ALUMINUM_INGOT = ITEMS.register("aluminum_ingot",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SULFUR = ITEMS.register("sulfur",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<BlockItem> BAUXITE_ORE = ITEMS.register("bauxite_ore", () -> new BlockItem(ModBlocks.BAUXITE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_BAUXITE_ORE = ITEMS.register("deepslate_bauxite_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_BAUXITE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> LIMESTONE_ORE = ITEMS.register("limestone_ore", () -> new BlockItem(ModBlocks.LIMESTONE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> PHOSPHATE_ORE = ITEMS.register("phosphate_ore", () -> new BlockItem(ModBlocks.PHOSPHATE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> POTASH_ORE = ITEMS.register("potash_ore", () -> new BlockItem(ModBlocks.POTASH_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> NICKEL_ORE = ITEMS.register("nickel_ore", () -> new BlockItem(ModBlocks.NICKEL_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_NICKEL_ORE = ITEMS.register("deepslate_nickel_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_NICKEL_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> QUARTZ_SAND_ORE = ITEMS.register("quartz_sand_ore", () -> new BlockItem(ModBlocks.QUARTZ_SAND_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<Item> RAW_BAUXITE = ITEMS.register("raw_bauxite", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LIMESTONE = ITEMS.register("limestone", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PHOSPHATE = ITEMS.register("phosphate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> POTASH = ITEMS.register("potash", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_NICKEL = ITEMS.register("raw_nickel", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> NICKEL_INGOT = ITEMS.register("nickel_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> QUARTZ_SAND = ITEMS.register("quartz_sand", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<BlockItem> ZINC_ORE = ITEMS.register("zinc_ore", () -> new BlockItem(ModBlocks.ZINC_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_ZINC_ORE = ITEMS.register("deepslate_zinc_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_ZINC_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> TIN_ORE = ITEMS.register("tin_ore", () -> new BlockItem(ModBlocks.TIN_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_TIN_ORE = ITEMS.register("deepslate_tin_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_TIN_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> LEAD_ORE = ITEMS.register("lead_ore", () -> new BlockItem(ModBlocks.LEAD_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_LEAD_ORE = ITEMS.register("deepslate_lead_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_LEAD_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> GRAPHITE_ORE = ITEMS.register("graphite_ore", () -> new BlockItem(ModBlocks.GRAPHITE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_GRAPHITE_ORE = ITEMS.register("deepslate_graphite_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_GRAPHITE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> COBALT_ORE = ITEMS.register("cobalt_ore", () -> new BlockItem(ModBlocks.COBALT_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_COBALT_ORE = ITEMS.register("deepslate_cobalt_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_COBALT_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> MANGANESE_ORE = ITEMS.register("manganese_ore", () -> new BlockItem(ModBlocks.MANGANESE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_MANGANESE_ORE = ITEMS.register("deepslate_manganese_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_MANGANESE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> CHROMIUM_ORE = ITEMS.register("chromium_ore", () -> new BlockItem(ModBlocks.CHROMIUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_CHROMIUM_ORE = ITEMS.register("deepslate_chromium_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_CHROMIUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> TITANIUM_ORE = ITEMS.register("titanium_ore", () -> new BlockItem(ModBlocks.TITANIUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_TITANIUM_ORE = ITEMS.register("deepslate_titanium_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_TITANIUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> TUNGSTEN_ORE = ITEMS.register("tungsten_ore", () -> new BlockItem(ModBlocks.TUNGSTEN_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_TUNGSTEN_ORE = ITEMS.register("deepslate_tungsten_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_TUNGSTEN_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> MOLYBDENUM_ORE = ITEMS.register("molybdenum_ore", () -> new BlockItem(ModBlocks.MOLYBDENUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_MOLYBDENUM_ORE = ITEMS.register("deepslate_molybdenum_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_MOLYBDENUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> FLUORITE_ORE = ITEMS.register("fluorite_ore", () -> new BlockItem(ModBlocks.FLUORITE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_FLUORITE_ORE = ITEMS.register("deepslate_fluorite_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_FLUORITE_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> RARE_EARTH_ORE = ITEMS.register("rare_earth_ore", () -> new BlockItem(ModBlocks.RARE_EARTH_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_RARE_EARTH_ORE = ITEMS.register("deepslate_rare_earth_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_RARE_EARTH_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<Item> RAW_COBALT = ITEMS.register("raw_cobalt", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> COBALT_INGOT = ITEMS.register("cobalt_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_MANGANESE = ITEMS.register("raw_manganese", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> MANGANESE_INGOT = ITEMS.register("manganese_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_CHROMIUM = ITEMS.register("raw_chromium", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CHROMIUM_INGOT = ITEMS.register("chromium_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_TITANIUM = ITEMS.register("raw_titanium", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> TITANIUM_INGOT = ITEMS.register("titanium_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_TUNGSTEN = ITEMS.register("raw_tungsten", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> TUNGSTEN_INGOT = ITEMS.register("tungsten_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_MOLYBDENUM = ITEMS.register("raw_molybdenum", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> MOLYBDENUM_INGOT = ITEMS.register("molybdenum_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FLUORITE = ITEMS.register("fluorite", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RARE_EARTH_CONCENTRATE = ITEMS.register("rare_earth_concentrate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<BlockItem> URANIUM_ORE = ITEMS.register("uranium_ore", () -> new BlockItem(ModBlocks.URANIUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<BlockItem> DEEPSLATE_URANIUM_ORE = ITEMS.register("deepslate_uranium_ore", () -> new BlockItem(ModBlocks.DEEPSLATE_URANIUM_ORE_BLOCK.get(), new Item.Properties()));
+    public static final DeferredItem<Item> MIXED_RARE_EARTH_CARBONATE = ITEMS.register("mixed_rare_earth_carbonate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> NEODYMIUM_OXIDE = ITEMS.register("neodymium_oxide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LANTHANUM_OXIDE = ITEMS.register("lanthanum_oxide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CERIUM_OXIDE = ITEMS.register("cerium_oxide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DYSPROSIUM_OXIDE = ITEMS.register("dysprosium_oxide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RARE_EARTH_MAGNET = ITEMS.register("rare_earth_magnet", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_URANIUM = ITEMS.register("raw_uranium", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> YELLOWCAKE = ITEMS.register("yellowcake", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> URANIUM_HEXAFLUORIDE = ITEMS.register("uranium_hexafluoride", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> NUCLEAR_FUEL = ITEMS.register("nuclear_fuel", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RADIOACTIVE_TAILINGS = ITEMS.register("radioactive_tailings", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RADIATION_SHIELDING = ITEMS.register("radiation_shielding", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_ZINC = ITEMS.register("raw_zinc", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ZINC_INGOT = ITEMS.register("zinc_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_TIN = ITEMS.register("raw_tin", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> TIN_INGOT = ITEMS.register("tin_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RAW_LEAD = ITEMS.register("raw_lead", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LEAD_INGOT = ITEMS.register("lead_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> GRAPHITE = ITEMS.register("graphite", () -> new Item(new Item.Properties().stacksTo(64)));
+    // Real-world industrial chain intermediates.
+    public static final DeferredItem<Item> ALUMINA = ITEMS.register("alumina", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> COPPER_CONCENTRATE = ITEMS.register("copper_concentrate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> COPPER_CATHODE = ITEMS.register("copper_cathode", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> NICKEL_SULFATE = ITEMS.register("nickel_sulfate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SILICON_INGOT = ITEMS.register("silicon_ingot", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PHOTORESIST = ITEMS.register("photoresist", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> TESTED_WAFER = ITEMS.register("tested_wafer", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FINAL_CHIP_TEST = ITEMS.register("final_chip_test", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> COPPER_CLAD_LAMINATE = ITEMS.register("copper_clad_laminate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ASSEMBLED_PCB = ITEMS.register("assembled_pcb", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CATHODE_PRECURSOR = ITEMS.register("cathode_precursor", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LFP_CATHODE = ITEMS.register("lfp_cathode", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> NMC_CATHODE = ITEMS.register("nmc_cathode", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SYNGAS = ITEMS.register("syngas", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> REFORMATE = ITEMS.register("reformate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> C4_FRACTION = ITEMS.register("c4_fraction", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ETHYLBENZENE = ITEMS.register("ethylbenzene", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ACRYLONITRILE = ITEMS.register("acrylonitrile", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BISPHENOL_A = ITEMS.register("bisphenol_a", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> EPICHLOROHYDRIN = ITEMS.register("epichlorohydrin", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> REFINERY_GAS = ITEMS.register("refinery_gas", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> KEROSENE = ITEMS.register("kerosene", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> GAS_OIL = ITEMS.register("gas_oil", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> VACUUM_RESID = ITEMS.register("vacuum_resid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> HYDROGEN = ITEMS.register("hydrogen", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SULFURIC_ACID = ITEMS.register("sulfuric_acid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ETHYLENE_OXIDE = ITEMS.register("ethylene_oxide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PROPYLENE_OXIDE = ITEMS.register("propylene_oxide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> POLYETHYLENE_FILM = ITEMS.register("polyethylene_film", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> POLYPROPYLENE_FIBER = ITEMS.register("polypropylene_fiber", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SALT = ITEMS.register("salt", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CHLORINE = ITEMS.register("chlorine", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CAUSTIC_SODA = ITEMS.register("caustic_soda", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> VINYL_CHLORIDE = ITEMS.register("vinyl_chloride", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PVC_RESIN = ITEMS.register("pvc_resin", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PVC_PIPE = ITEMS.register("pvc_pipe", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BUTADIENE = ITEMS.register("butadiene", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PET_FIBER = ITEMS.register("pet_fiber", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> RECLAIMED_PLASTIC = ITEMS.register("reclaimed_plastic", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> POLYETHER_POLYOL = ITEMS.register("polyether_polyol", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> POLYURETHANE_FOAM = ITEMS.register("polyurethane_foam", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CUMENE = ITEMS.register("cumene", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PHENOL = ITEMS.register("phenol", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ACETONE = ITEMS.register("acetone", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PHENOLIC_RESIN = ITEMS.register("phenolic_resin", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> METHANOL = ITEMS.register("methanol", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FORMALDEHYDE = ITEMS.register("formaldehyde", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ETHYLENE_DICHLORIDE = ITEMS.register("ethylene_dichloride", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> NITROGEN = ITEMS.register("nitrogen", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> OXYGEN = ITEMS.register("oxygen", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> AMMONIA = ITEMS.register("ammonia", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> UREA = ITEMS.register("urea", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> AMMONIUM_NITRATE = ITEMS.register("ammonium_nitrate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PHOSPHATE_FERTILIZER = ITEMS.register("phosphate_fertilizer", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> HYDROCHLORIC_ACID = ITEMS.register("hydrochloric_acid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> NITRIC_ACID = ITEMS.register("nitric_acid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SODIUM_HYPOCHLORITE = ITEMS.register("sodium_hypochlorite", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> HYDROGEN_PEROXIDE = ITEMS.register("hydrogen_peroxide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SODA_ASH = ITEMS.register("soda_ash", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ACTIVATED_CARBON = ITEMS.register("activated_carbon", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ALUM = ITEMS.register("alum", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> INDUSTRIAL_WATER = ITEMS.register("industrial_water", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> INDUSTRIAL_COATING = ITEMS.register("industrial_coating", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> INDUSTRIAL_ADHESIVE = ITEMS.register("industrial_adhesive", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> INDUSTRIAL_DYE = ITEMS.register("industrial_dye", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ETHANOL = ITEMS.register("ethanol", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> LACTIC_ACID = ITEMS.register("lactic_acid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PLA_PELLETS = ITEMS.register("pla_pellets", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ACTIVE_PHARMACEUTICAL = ITEMS.register("active_pharmaceutical", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ANTIBIOTIC_TABLET = ITEMS.register("antibiotic_tablet", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DISINFECTANT = ITEMS.register("disinfectant", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BRINE = ITEMS.register("brine", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SODIUM_BICARBONATE = ITEMS.register("sodium_bicarbonate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CALCIUM_CHLORIDE = ITEMS.register("calcium_chloride", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PHOSPHORIC_ACID = ITEMS.register("phosphoric_acid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> AMMONIUM_SULFATE = ITEMS.register("ammonium_sulfate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DAP_FERTILIZER = ITEMS.register("dap_fertilizer", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BLEACHING_AGENT = ITEMS.register("bleaching_agent", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DYED_FIBER = ITEMS.register("dyed_fiber", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FINISHED_TEXTILE = ITEMS.register("finished_textile", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> GLUCOSE = ITEMS.register("glucose", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CITRIC_ACID = ITEMS.register("citric_acid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> BIODEGRADABLE_PACKAGING = ITEMS.register("biodegradable_packaging", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SALICYLIC_ACID = ITEMS.register("salicylic_acid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ASPIRIN_INTERMEDIATE = ITEMS.register("aspirin_intermediate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PAINKILLER_TABLET = ITEMS.register("painkiller_tablet", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> WASTEWATER_SLUDGE = ITEMS.register("wastewater_sludge", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> COMPRESSED_AIR = ITEMS.register("compressed_air", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ARGON = ITEMS.register("argon", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ACETIC_ACID = ITEMS.register("acetic_acid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PHARMACEUTICAL_EXCIPIENT = ITEMS.register("pharmaceutical_excipient", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> STERILE_SOLUTION = ITEMS.register("sterile_solution", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> COATED_TABLET = ITEMS.register("coated_tablet", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CULTURE_MEDIUM = ITEMS.register("culture_medium", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> YEAST_CULTURE = ITEMS.register("yeast_culture", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FERMENTATION_BROTH = ITEMS.register("fermentation_broth", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CARBON_DIOXIDE = ITEMS.register("carbon_dioxide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ETHYL_ACETATE = ITEMS.register("ethyl_acetate", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SOLVENT_BLEND = ITEMS.register("solvent_blend", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PESTICIDE_ACTIVE = ITEMS.register("pesticide_active", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> HERBICIDE = ITEMS.register("herbicide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FUNGICIDE = ITEMS.register("fungicide", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CARBON_BLACK = ITEMS.register("carbon_black", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> TIRE = ITEMS.register("tire", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> INDUSTRIAL_SEALANT = ITEMS.register("industrial_sealant", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> HYDROFLUORIC_ACID = ITEMS.register("hydrofluoric_acid", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ELECTRONIC_SOLVENT = ITEMS.register("electronic_solvent", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> ELECTRONIC_ETCHANT = ITEMS.register("electronic_etchant", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PAPER_COATING = ITEMS.register("paper_coating", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PRINTING_INK = ITEMS.register("printing_ink", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> COATED_PAPER = ITEMS.register("coated_paper", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> PRINTED_PAPER = ITEMS.register("printed_paper", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> SURFACTANT = ITEMS.register("surfactant", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> DETERGENT = ITEMS.register("detergent", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> CLEANING_AGENT = ITEMS.register("cleaning_agent", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> MEDICAL_OXYGEN = ITEMS.register("medical_oxygen", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> WELDING_GAS = ITEMS.register("welding_gas", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<Item> FOOD_GRADE_CARBON_DIOXIDE = ITEMS.register("food_grade_carbon_dioxide", () -> new Item(new Item.Properties().stacksTo(64)));
 }

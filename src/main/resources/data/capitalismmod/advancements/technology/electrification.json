@@ -1,0 +1,26 @@
+{
+  "parent": "capitalismmod:technology/steam_industry",
+  "display": {
+    "icon": {"id": "capitalismmod:electric_motor"},
+    "title": {"translate": "advancement.capitalismmod.technology.electrification.title"},
+    "description": {"translate": "advancement.capitalismmod.technology.electrification.description"},
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "rewards": {"recipes": [
+    "capitalismmod:electric_motor",
+    "capitalismmod:copper_wire",
+    "capitalismmod:industrial_coil",
+    "capitalismmod:control_panel",
+    "capitalismmod:pressure_pump"
+  ]},
+  "criteria": {
+    "electric_motor": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {"items": [{"items": ["capitalismmod:electric_motor"]}]}
+    }
+  },
+  "requirements": [["electric_motor"]]
+}

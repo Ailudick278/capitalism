@@ -16,6 +16,9 @@ public final class ConglomerateKeyMapping {
     public static final KeyMapping OPEN_LAND_MENU = new KeyMapping(
             "key.capitalismmod.open_land_menu", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_L,
             "key.categories.capitalismmod");
+    public static final KeyMapping OPEN_TECHNOLOGY = new KeyMapping(
+            "key.capitalismmod.open_technology", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K,
+            "key.categories.capitalismmod");
 
     private ConglomerateKeyMapping() {
     }
@@ -25,5 +28,6 @@ public final class ConglomerateKeyMapping {
             event.register(OPEN_LAND);
         }
         event.register(OPEN_LAND_MENU);
+        event.register(OPEN_TECHNOLOGY);
     }
 }

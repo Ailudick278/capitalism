@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["CIC"," H ","CIC"],"key":{"C":{"item":"capitalismmod:machine_casing"},"I":{"item":"capitalismmod:industrial_coil"},"H":{"item":"minecraft:hopper"}},"result":{"id":"capitalismmod:factory_input_port","count":1}}

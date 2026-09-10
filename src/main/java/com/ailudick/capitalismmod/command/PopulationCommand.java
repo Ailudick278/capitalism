@@ -1,6 +1,7 @@
 package com.ailudick.capitalismmod.command;
 
 import com.ailudick.capitalismmod.population.PopulationSavedData;
+import com.ailudick.capitalismmod.population.NpcEntityService;
 import com.ailudick.capitalismmod.economy.labor.LaborMarketSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -21,6 +22,11 @@ public final class PopulationCommand {
                         .then(Commands.argument("region", StringArgumentType.word())
                                 .then(Commands.argument("count", IntegerArgumentType.integer(1, 10000))
                                         .executes(c -> seed(c.getSource(), StringArgumentType.getString(c, "region"), IntegerArgumentType.getInteger(c, "count"))))))
+                .then(Commands.literal("entities").requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("region", StringArgumentType.word())
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 128))
+                                        .executes(c -> entities(c.getSource(), StringArgumentType.getString(c, "region"),
+                                                IntegerArgumentType.getInteger(c, "count"))))))
                 .then(Commands.literal("merge").requires(source -> source.hasPermission(2))
                         .then(Commands.argument("source", StringArgumentType.word())
                                 .then(Commands.argument("target", StringArgumentType.word())
@@ -50,6 +56,13 @@ public final class PopulationCommand {
     private static int seed(CommandSourceStack source, String region, int count) {
         int created = com.ailudick.capitalismmod.population.PopulationService.seedNpc(source.getServer(), region, count);
         source.sendSuccess(() -> Component.literal("seeded npc households=" + created + " region=" + region), true);
+        return created;
+    }
+    private static int entities(CommandSourceStack source, String region, int count) {
+        int created = NpcEntityService.materialize(source.getServer(), source.getLevel(),
+                source.getPosition(), region, count);
+        source.sendSuccess(() -> Component.literal("materialized NPC entities=" + created
+                + " region=" + region), true);
         return created;
     }
     private static int merge(CommandSourceStack source, String sourceId, String targetId) {
